@@ -20,6 +20,20 @@ const (
 	RoleAssistant Role = "assistant"
 )
 
+// LoggingLevel represents the severity of a log message (RFC-5424)
+type LoggingLevel string
+
+const (
+	LogDebug     LoggingLevel = "debug"
+	LogInfo      LoggingLevel = "info"
+	LogNotice    LoggingLevel = "notice"
+	LogWarning   LoggingLevel = "warning"
+	LogError     LoggingLevel = "error"
+	LogCritical  LoggingLevel = "critical"
+	LogAlert     LoggingLevel = "alert"
+	LogEmergency LoggingLevel = "emergency"
+)
+
 // Service implements the MCP RPC service.
 type Service struct {
 	mu      sync.RWMutex

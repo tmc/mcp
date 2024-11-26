@@ -36,19 +36,24 @@ const (
 
 // Service implements the MCP RPC service.
 type Service struct {
-	mu      sync.RWMutex
-	tools   map[string]Tool
-	caps    Capabilities
-	version string
-	name    string
+	mu       sync.RWMutex
+	tools    map[string]Tool
+	caps     Capabilities
+	version  string
+	name     string
+	dispatch *Dispatcher
+	limiter  *RateLimiter // Add rate limiter
 }
 
-// NewService creates a new MCP service.
-func NewService(name, version string) *Service {
-	return &Service{
+// NewService creates a new MCP service with default configuration
+func NewService(name, version string, opts ...Option) *Service {
+	s := &Service{
 		tools:   make(map[string]Tool),
 		version: version,
 		name:    name,
+		// Default configuration
+		dispatch: NewDispatcher(),
+		limiter:  NewRateLimiter(DefaultRateLimitConfig()),
 		caps: Capabilities{
 			Tools: &struct {
 				ListChanged bool `json:"listChanged,omitempty"`
@@ -57,6 +62,35 @@ func NewService(name, version string) *Service {
 			},
 		},
 	}
+
+	// Apply options
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
+}
+
+// Add notification methods
+func (s *Service) Handle(method string, h Handler) {
+	if s.dispatch != nil {
+		s.dispatch.Handle(method, h)
+	}
+}
+
+func (s *Service) NotifyListChanged(method string) error {
+	if s.dispatch == nil {
+		return nil
+	}
+	switch method {
+	case MethodToolListChanged:
+		if s.caps.Tools == nil || !s.caps.Tools.ListChanged {
+			return nil
+		}
+	default:
+		return fmt.Errorf("unsupported list change notification: %s", method)
+	}
+	return s.dispatch.NotifyListChanged(method)
 }
 
 // Initialize handles client initialization.

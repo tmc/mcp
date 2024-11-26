@@ -19,6 +19,30 @@ func NewClient(conn io.ReadWriteCloser) *Client {
 	return &Client{jsonrpc.NewClient(conn)}
 }
 
+// SendNotification sends a notification without expecting a response
+func (c *Client) SendNotification(ctx context.Context, method string, params interface{}) error {
+	// Create notification message
+	notification := struct {
+		JSONRPC string      `json:"jsonrpc"`
+		Method  string      `json:"method"`
+		Params  interface{} `json:"params,omitempty"`
+	}{
+		JSONRPC: "2.0",
+		Method:  method,
+		Params:  params,
+	}
+
+	// Marshal notification
+	data, err := json.Marshal(notification)
+	if err != nil {
+		return fmt.Errorf("marshal notification: %w", err)
+	}
+
+	// Send raw message
+	// Note: We use a special method name prefix to indicate this is a notification
+	return c.Call("MCP._notify", &data, &struct{}{})
+}
+
 // Initialize sends the initialize request.
 func (c *Client) Initialize(ctx context.Context, clientInfo Implementation) (*InitializeReply, error) {
 	args := &InitializeArgs{

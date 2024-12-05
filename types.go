@@ -3,73 +3,58 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"io"
 )
 
-// Protocol types
-type (
-	InitializeArgs struct {
-		ProtocolVersion string             `json:"protocolVersion"`
-		Capabilities    ClientCapabilities `json:"capabilities"`
-		ClientInfo      Implementation     `json:"clientInfo"`
-	}
+// Core interfaces
 
-	InitializeReply struct {
-		ProtocolVersion string         `json:"protocolVersion"`
-		Capabilities    Capabilities   `json:"capabilities"`
-		ServerInfo      Implementation `json:"serverInfo"`
-		Instructions    string         `json:"instructions,omitempty"`
-	}
+// Transport handles MCP protocol communication.
+type Transport interface {
+	io.ReadWriteCloser
+}
 
-	ListToolsArgs struct {
-		Cursor string `json:"cursor,omitempty"`
-	}
+// Handler processes MCP messages.
+type Handler interface {
+	Handle(ctx context.Context, msg []byte) ([]byte, error)
+}
 
-	ListToolsReply struct {
-		Tools      []Tool `json:"tools"`
-		NextCursor string `json:"nextCursor,omitempty"`
-	}
+// Tool represents an executable MCP tool.
+type Tool interface {
+	Name() string
+	Handler(ctx context.Context, args json.RawMessage) (*ToolResult, error)
+}
 
-	CallToolArgs struct {
-		Name      string          `json:"name"`
-		Arguments json.RawMessage `json:"arguments,omitempty"`
-	}
+// ToolResult represents the result of a tool execution.
+type ToolResult struct {
+	Content []Content `json:"content"`
+	IsError bool      `json:"isError,omitempty"`
+}
 
-	CallToolReply ToolResult
+// Content represents tool output content.
+type Content struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Data     []byte `json:"data,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+}
 
-	Tool struct {
-		Name        string                                                      `json:"name"`
-		Description string                                                      `json:"description,omitempty"`
-		InputSchema map[string]any                                              `json:"inputSchema"`
-		Handler     func(context.Context, json.RawMessage) (*ToolResult, error) `json:"-"`
-	}
+// Implementation types
 
-	ToolResult struct {
-		Content []Content `json:"content"`
-		IsError bool      `json:"isError,omitempty"`
-		Meta    any       `json:"_meta,omitempty"`
-	}
+// BaseTool provides a basic Tool implementation.
+type BaseTool struct {
+	name    string
+	handler func(context.Context, json.RawMessage) (*ToolResult, error)
+}
 
-	Content struct {
-		Type     string `json:"type"`
-		Text     string `json:"text,omitempty"`
-		Data     []byte `json:"data,omitempty"`
-		MimeType string `json:"mimeType,omitempty"`
+func NewTool(name string, handler func(context.Context, json.RawMessage) (*ToolResult, error)) Tool {
+	return &BaseTool{
+		name:    name,
+		handler: handler,
 	}
+}
 
-	Implementation struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
-	}
+func (t *BaseTool) Name() string { return t.name }
 
-	Capabilities struct {
-		Experimental map[string]any `json:"experimental,omitempty"`
-		Tools        *struct {
-			ListChanged bool `json:"listChanged,omitempty"`
-		} `json:"tools,omitempty"`
-	}
-
-	ClientCapabilities struct {
-		Experimental map[string]any `json:"experimental,omitempty"`
-		Sampling     *struct{}      `json:"sampling,omitempty"`
-	}
-)
+func (t *BaseTool) Handler(ctx context.Context, args json.RawMessage) (*ToolResult, error) {
+	return t.handler(ctx, args)
+}

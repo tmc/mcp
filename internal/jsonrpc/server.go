@@ -108,4 +108,3 @@ func (s *Server) writeError(enc *json.Encoder, id any, code int, message string)
 	}
 	return enc.Encode(resp)
 }
-

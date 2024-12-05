@@ -33,4 +33,3 @@ func (t *StdioTransport) Read(p []byte) (n int, err error)  { return t.in.Read(p
 func (t *StdioTransport) Write(p []byte) (n int, err error) { return t.out.Write(p) }
 func (t *StdioTransport) Close() error                      { return nil }
 func (t *StdioTransport) Context() context.Context          { return t.ctx }
-

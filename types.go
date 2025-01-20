@@ -80,6 +80,7 @@ type CallToolArgs struct {
 // CallToolReply represents the response to callTool.
 type CallToolReply struct {
 	Content []Content `json:"content"`
+	IsError bool      `json:"isError,omitempty"`
 }
 
 // Implementation types

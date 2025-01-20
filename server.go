@@ -104,6 +104,7 @@ func (s *Server) Handle(ctx context.Context, msg []byte) ([]byte, error) {
 		}
 		result = CallToolReply{
 			Content: toolResult.Content,
+			IsError: toolResult.IsError,
 		}
 	}
 

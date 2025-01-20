@@ -38,12 +38,12 @@ func TestFilesystemServer(t *testing.T) {
 		t.Fatalf("Failed to initialize server: %v", err)
 	}
 
-	if reply.ServerInfo.Name != "filesystem" {
-		t.Errorf("got server name %q, want %q", reply.ServerInfo.Name, "filesystem")
+	if reply.Name != "filesystem-server" {
+		t.Errorf("got server name %q, want %q", reply.Name, "filesystem-server")
 	}
 
 	// Test tool listing
-	result, err := server.Call("tools/list", nil)
+	result, err := server.Call("listTools", nil)
 	if err != nil {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
@@ -70,12 +70,10 @@ func TestFilesystemServer(t *testing.T) {
 	}
 
 	// Test reading file
-	result, err = server.Call("tools/call", map[string]interface{}{
-		"name": "read_file",
-		"arguments": map[string]interface{}{
-			"path": testFile,
-		},
+	args, _ := json.Marshal(map[string]interface{}{
+		"path": testFile,
 	})
+	result, err = server.Call("read_file", args)
 	if err != nil {
 		t.Fatalf("Failed to call read_file: %v", err)
 	}

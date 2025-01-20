@@ -24,23 +24,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create service
-	svc := mcp.NewService("filesystem-server", "1.0.0")
+	// Create server
+	server := mcp.NewServer("filesystem-server", "1.0.0")
 
 	// Register read_file tool
-	err := svc.RegisterTool(mcp.Tool{
-		Name: "read_file",
-		Description: "Read the complete contents of a file from the file system. " +
-			"Handles various text encodings and provides detailed error messages " +
+	err := server.RegisterTool(mcp.NewTool(
+		"read_file",
+		"Read the complete contents of a file from the file system. "+
+			"Handles various text encodings and provides detailed error messages "+
 			"if the file cannot be read.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"path": map[string]any{"type": "string"},
-			},
-			"required": []string{"path"},
-		},
-		Handler: func(ctx context.Context, args json.RawMessage) (*mcp.ToolResult, error) {
+		func(ctx context.Context, args json.RawMessage) (*mcp.ToolResult, error) {
 			var params struct {
 				Path string `json:"path"`
 			}
@@ -74,26 +67,36 @@ func main() {
 				}},
 			}, nil
 		},
-	})
+	))
 	if err != nil {
 		log.Fatalf("Failed to register tool: %v", err)
 	}
 
-	// Create server
-	server := mcp.NewServer(svc)
+	// Create transport
+	transport := mcp.NewStdioTransport(context.Background())
 
-	// Serve on stdin/stdout
-	server.ServeConn(struct {
-		io.Reader
-		io.Writer
-		io.Closer
-	}{
-		Reader: os.Stdin,
-		Writer: os.Stdout,
-		Closer: nopCloser{},
-	})
+	// Handle messages
+	for {
+		msg := make([]byte, 4096)
+		n, err := transport.Read(msg)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Printf("Read error: %v", err)
+			continue
+		}
+
+		resp, err := server.Handle(context.Background(), msg[:n])
+		if err != nil {
+			log.Printf("Handle error: %v", err)
+			continue
+		}
+
+		_, err = transport.Write(append(resp, '\n'))
+		if err != nil {
+			log.Printf("Write error: %v", err)
+			continue
+		}
+	}
 }
-
-type nopCloser struct{}
-
-func (nopCloser) Close() error { return nil }

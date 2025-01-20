@@ -131,7 +131,7 @@ func handleMCPStart(s *script.State, output io.Writer, state *serverState, args 
 		output,
 	)
 	// Create MCP client
-	state.client = mcp.NewClient(transport)
+	state.client = mcp.NewClient("mcptest", "1.0.0", transport)
 
 	// Return a wait function that will clean up the server
 	return func(*script.State) (string, string, error) {
@@ -155,32 +155,12 @@ func handleMCP(s *script.State, output io.Writer, state *serverState, args ...st
 		params = []byte(args[1])
 	}
 
-	// Log the raw request
-	req := struct {
-		JSONRPC string          `json:"jsonrpc"`
-		ID      int             `json:"id"`
-		Method  string          `json:"method"`
-		Params  json.RawMessage `json:"params,omitempty"`
-	}{
-		JSONRPC: "2.0",
-		ID:      1,
-		Method:  method,
-		Params:  params,
-	}
-	reqBytes, _ := json.Marshal(req)
-	fmt.Fprintf(output, "# >> %s\n", string(reqBytes))
-
 	var result json.RawMessage
 	var err error
 
 	switch method {
 	case "initialize":
-		var initArgs mcp.InitializeArgs
-		if err := json.Unmarshal(params, &initArgs); err != nil {
-			return nil, fmt.Errorf("parsing initialize args: %v", err)
-		}
-		fmt.Fprintf(output, "# Calling Initialize with ClientInfo: %+v\n", initArgs.ClientInfo)
-		reply, err := state.client.Initialize(s.Context(), initArgs.ClientInfo)
+		reply, err := state.client.Initialize(s.Context())
 		if err != nil {
 			fmt.Fprintf(output, "# Initialize error: %v\n", err)
 			return nil, err
@@ -188,15 +168,28 @@ func handleMCP(s *script.State, output io.Writer, state *serverState, args ...st
 		fmt.Fprintf(output, "# Initialize reply: %+v\n", reply)
 		result, err = json.Marshal(reply)
 
-		// ... rest of the cases ...
+	case "listTools":
+		reply, err := state.client.ListTools(s.Context())
+		if err != nil {
+			fmt.Fprintf(output, "# ListTools error: %v\n", err)
+			return nil, err
+		}
+		fmt.Fprintf(output, "# ListTools reply: %+v\n", reply)
+		result, err = json.Marshal(reply)
+
+	default:
+		reply, err := state.client.CallTool(s.Context(), method, params)
+		if err != nil {
+			fmt.Fprintf(output, "# CallTool error: %v\n", err)
+			return nil, err
+		}
+		fmt.Fprintf(output, "# CallTool reply: %+v\n", reply)
+		result, err = json.Marshal(reply)
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("executing %s: %v", method, err)
 	}
-
-	// Log the raw response
-	fmt.Fprintf(output, "# << %s\n", string(result))
 
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, result, "", "  "); err != nil {
@@ -212,10 +205,15 @@ func handleMCP(s *script.State, output io.Writer, state *serverState, args ...st
 type debugTransport struct {
 	rw  io.ReadWriteCloser
 	out io.Writer
+	ctx context.Context
 }
 
 func newDebugTransport(rw io.ReadWriteCloser, out io.Writer) *debugTransport {
-	return &debugTransport{rw: rw, out: out}
+	return &debugTransport{
+		rw:  rw,
+		out: out,
+		ctx: context.Background(),
+	}
 }
 
 func (d *debugTransport) Read(p []byte) (n int, err error) {
@@ -238,6 +236,10 @@ func (d *debugTransport) Close() error {
 	return d.rw.Close()
 }
 
+func (d *debugTransport) Context() context.Context {
+	return d.ctx
+}
+
 // mcpCommands returns the MCP-specific script commands
 func mcpCommands(output io.Writer, state *serverState) map[string]script.Cmd {
 	return map[string]script.Cmd{
@@ -248,7 +250,7 @@ func mcpCommands(output io.Writer, state *serverState) map[string]script.Cmd {
 			return handleMCPStart(s, output, state, args...)
 		}),
 		"mcp": script.Command(script.CmdUsage{
-			Summary: "run MCP command",
+			Summary: "send MCP command",
 		}, func(s *script.State, args ...string) (script.WaitFunc, error) {
 			return handleMCP(s, output, state, args...)
 		}),
@@ -261,11 +263,5 @@ type rwc struct {
 }
 
 func (r rwc) Close() error {
-	if err := r.WriteCloser.Close(); err != nil {
-		return err
-	}
-	if rc, ok := r.Reader.(io.Closer); ok {
-		return rc.Close()
-	}
-	return nil
+	return r.WriteCloser.Close()
 }

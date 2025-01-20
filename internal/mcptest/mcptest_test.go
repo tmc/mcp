@@ -1,6 +1,7 @@
 package mcptest
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -10,27 +11,27 @@ func TestRunTXTARFile(t *testing.T) {
 	const testScript = `Test basic MCP functionality
 -- script.txt --
 # Test initialization
-mcp ./testdata/echo-server initialize {"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}
-stdout '{"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"echo","version":"1.0.0"}}'
+mcp ./testdata/echo-server initialize {}
+stdout '{"jsonrpc":"2.0","id":1,"result":{"name":"echo","version":"1.0.0","protocolVersion":"2024-11-05"}}'
 
 # Test tool listing
-mcp ./testdata/echo-server tools/list {}
-stdout '{"tools":[{"name":"echo","description":"Echo the input","inputSchema":{"type":"object","properties":{"message":{"type":"string"}}}}]}'
+mcp ./testdata/echo-server listTools {}
+stdout '{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"echo","description":"Echo the input"}]}}'
 
 # Test tool call
-mcp ./testdata/echo-server tools/call {"name":"echo","arguments":{"message":"hello"}}
-stdout '{"content":[{"type":"text","text":"hello"}]}'
+mcp ./testdata/echo-server echo {"message":"hello"}
+stdout '{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"hello"}]}}'
 
 # Test invalid tool
-! mcp ./testdata/echo-server tools/call {"name":"invalid","arguments":{}}
-stderr 'unknown tool: invalid'
+! mcp ./testdata/echo-server invalid {}
+stderr 'unknown method: invalid'
 
 # Test with conditions
-[unix] mcp ./testdata/echo-server tools/list {}
+[unix] mcp ./testdata/echo-server listTools {}
 [windows] skip 'not supported on windows'
 
 # Test with optional command
-? mcp ./testdata/echo-server tools/call {"name":"optional","arguments":{}}
+? mcp ./testdata/echo-server optional {}
 `
 
 	if err := os.WriteFile("test.txtar", []byte(testScript), 0644); err != nil {
@@ -38,7 +39,8 @@ stderr 'unknown tool: invalid'
 	}
 	defer os.Remove("test.txtar")
 
-	if err := RunTxTarFile(context.Background(), "test.txtar", "."); err != nil {
+	var output bytes.Buffer
+	if err := RunTxTarFile(context.Background(), "test.txtar", &output); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -85,13 +85,14 @@ func NewTestServer(t *testing.T, serverPath string, opts ...ServerOption) *TestS
 	go s.logStderr()
 
 	// Create debug transport
-	transport := newDebugTransport(
-		rwc{s.stdin, s.stdout},
-		s.debugLog,
-	)
+	transport := &debugTransport{
+		rw:  rwc{s.stdin, s.stdout},
+		out: s.debugLog,
+		ctx: context.Background(),
+	}
 
 	// Create client
-	s.client = mcp.NewClient(transport)
+	s.client = mcp.NewClient("test-client", "1.0.0", transport)
 
 	// Monitor process
 	go func() {
@@ -105,10 +106,7 @@ func NewTestServer(t *testing.T, serverPath string, opts ...ServerOption) *TestS
 
 func (s *TestServer) Initialize(ctx context.Context) (*mcp.InitializeReply, error) {
 	// Send initialize request
-	reply, err := s.client.Initialize(ctx, mcp.Implementation{
-		Name:    "test-client",
-		Version: "1.0.0",
-	})
+	reply, err := s.client.Initialize(ctx)
 	if err != nil {
 		// Check if process exited
 		select {
@@ -118,9 +116,6 @@ func (s *TestServer) Initialize(ctx context.Context) (*mcp.InitializeReply, erro
 			return nil, err
 		}
 	}
-
-	// Send initialized notification
-	s.client.SendNotification(ctx, "initialized", nil)
 
 	return reply, nil
 }
@@ -209,9 +204,6 @@ func (s *TestServer) Call(method string, params interface{}) (json.RawMessage, e
 }
 
 func (s *TestServer) Close() error {
-	if s.client != nil {
-		s.client.Close()
-	}
 	if s.cmd != nil && s.cmd.Process != nil {
 		s.cmd.Process.Kill()
 		<-s.done // Wait for process to exit

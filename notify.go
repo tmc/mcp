@@ -6,47 +6,34 @@ import (
 	"sync"
 )
 
-// Handler handles an MCP notification
-type Handler func(method string, params json.RawMessage) error
+// NotifyHandler handles an MCP notification
+type NotifyHandler func(method string, params json.RawMessage) error
 
 // Dispatcher manages MCP notification routing
 type Dispatcher struct {
 	mu       sync.RWMutex
-	handlers map[string][]Handler
+	handlers map[string][]NotifyHandler
 }
 
 // List change notification methods
 const (
-	MethodRootsListChanged    = "notifications/roots/list_changed"
-	MethodResourceListChanged = "notifications/resources/list_changed"
-	MethodPromptListChanged   = "notifications/prompts/list_changed"
-	MethodToolListChanged     = "notifications/tools/list_changed"
-)
-
-// Progress and logging notification methods
-const (
-	MethodProgress = "notifications/progress"
-	MethodLogging  = "notifications/message"
-)
-
-// Other notification methods
-const (
-	MethodCancelled   = "notifications/cancelled"
-	MethodInitialized = "notifications/initialized"
+	MethodRootsListChanged   = "notifications/roots/list_changed"
+	MethodProgressChanged    = "notifications/progress_changed"
+	MethodLoggingMessageSent = "notifications/logging_message_sent"
 )
 
 // NewDispatcher creates a new notification dispatcher
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		handlers: make(map[string][]Handler),
+		handlers: make(map[string][]NotifyHandler),
 	}
 }
 
 // Handle registers a handler for a notification method
-func (d *Dispatcher) Handle(method string, h Handler) {
+func (d *Dispatcher) Handle(method string, h NotifyHandler) {
 	d.mu.Lock()
-	defer d.mu.Unlock()
 	d.handlers[method] = append(d.handlers[method], h)
+	d.mu.Unlock()
 }
 
 // Dispatch sends a notification to all registered handlers
@@ -55,23 +42,24 @@ func (d *Dispatcher) Dispatch(method string, params json.RawMessage) error {
 	handlers := d.handlers[method]
 	d.mu.RUnlock()
 
+	var lastErr error
 	for _, h := range handlers {
 		if err := h(method, params); err != nil {
-			return fmt.Errorf("handler error: %w", err)
+			lastErr = err
 		}
 	}
-	return nil
+	return lastErr
 }
 
-// List change notifications
+// NotifyListChanged sends a list changed notification
 func (d *Dispatcher) NotifyListChanged(method string) error {
 	return d.Dispatch(method, nil)
 }
 
-// Progress notifications
+// NotifyProgress sends a progress notification
 func (d *Dispatcher) NotifyProgress(token interface{}, progress float64, total *float64) error {
 	params := struct {
-		Token    interface{} `json:"progressToken"`
+		Token    interface{} `json:"token"`
 		Progress float64     `json:"progress"`
 		Total    *float64    `json:"total,omitempty"`
 	}{
@@ -81,16 +69,16 @@ func (d *Dispatcher) NotifyProgress(token interface{}, progress float64, total *
 	}
 	data, err := json.Marshal(params)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshaling progress params: %w", err)
 	}
-	return d.Dispatch(MethodProgress, data)
+	return d.Dispatch(MethodProgressChanged, data)
 }
 
-// Logging notifications
+// NotifyLoggingMessage sends a logging message notification
 func (d *Dispatcher) NotifyLoggingMessage(level LoggingLevel, logger string, data interface{}) error {
 	params := struct {
 		Level  LoggingLevel `json:"level"`
-		Logger string       `json:"logger,omitempty"`
+		Logger string       `json:"logger"`
 		Data   interface{}  `json:"data"`
 	}{
 		Level:  level,
@@ -99,7 +87,7 @@ func (d *Dispatcher) NotifyLoggingMessage(level LoggingLevel, logger string, dat
 	}
 	msgData, err := json.Marshal(params)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshaling logging message params: %w", err)
 	}
-	return d.Dispatch(MethodLogging, msgData)
+	return d.Dispatch(MethodLoggingMessageSent, msgData)
 }

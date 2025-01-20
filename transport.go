@@ -6,13 +6,6 @@ import (
 	"os"
 )
 
-// Transport handles communication between client and server
-type Transport interface {
-	io.ReadWriteCloser
-	// Context returns the context for this transport
-	Context() context.Context
-}
-
 // StdioTransport implements Transport over stdin/stdout
 type StdioTransport struct {
 	ctx context.Context

@@ -1,0 +1,256 @@
+```xml
+<reasoning>
+  <overview>
+    The user is requesting a specification for an "mcp-exec" server. This server will provide a tool that allows MCP clients to execute arbitrary shell commands on the server-side. The specification should outline the tool's name, description, input parameters, output format, error handling, and security considerations. It should also include an example of how to configure the server in a client's configuration file.
+  </overview>
+  <goals>
+    <goal>
+      Define the name and description of the `exec` tool.
+    </goal>
+    <goal>
+      Specify the input parameters for the `exec` tool, including command, arguments, environment variables, and working directory.
+    </goal>
+    <goal>
+      Define the output format of the `exec` tool, including stdout, stderr, and exit code.
+    </goal>
+    <goal>
+      Outline the error handling behavior of the `exec` tool, including how different types of errors are reported.
+    </goal>
+    <goal>
+      Address security considerations for executing arbitrary commands, including input validation, sandboxing, and user consent.
+    </goal>
+    <goal>
+      Provide an example configuration for integrating the `mcp-exec` server with the Claude Desktop client.
+    </goal>
+    <goal>
+      Include a brief section on how to build and run the server using Docker.
+    </goal>
+    <goal>
+      Add a license section.
+    </goal>
+  </goals>
+  <considerations>
+    <consideration>
+      Executing arbitrary shell commands is inherently risky and requires careful security considerations.
+    </consideration>
+    <consideration>
+      The server should provide mechanisms to limit the scope of commands that can be executed and to obtain user consent before execution.
+    </consideration>
+    <consideration>
+      The server should handle errors gracefully and provide informative error messages to the client.
+    </consideration>
+    <consideration>
+      The server should be configurable to allow users to customize its behavior, such as setting environment variables or specifying allowed commands.
+    </consideration>
+    <consideration>
+      The server should be easy to deploy and run, ideally using containerization technologies like Docker.
+    </consideration>
+  </considerations>
+  <specification>
+    <server name="mcp-exec">
+      <description>
+        A Model Context Protocol (MCP) server that allows clients to execute shell commands on the server.
+      </description>
+      <tool name="exec">
+        <description>
+          Executes a shell command on the server.
+        </description>
+        <input>
+          <parameter name="command" type="string" required="true">
+            <description>
+              The shell command to execute.
+            </description>
+          </parameter>
+          <parameter name="arguments" type="array" optional="true">
+            <description>
+              An array of string arguments to pass to the command.
+            </description>
+          </parameter>
+          <parameter name="environment" type="object" optional="true">
+            <description>
+              A set of environment variables to set for the command's execution environment.
+            </description>
+          </parameter>
+          <parameter name="working_directory" type="string" optional="true">
+            <description>
+              The working directory in which to execute the command.
+            </description>
+          </parameter>
+          <parameter name="timeout" type="number" optional="true" default="60">
+            <description>
+              The maximum execution time for the command in seconds.
+            </description>
+          </parameter>
+        </input>
+        <output>
+          <field name="stdout" type="string">
+            <description>
+              The standard output of the command.
+            </description>
+          </field>
+          <field name="stderr" type="string">
+            <description>
+              The standard error of the command.
+            </description>
+          </field>
+          <field name="exit_code" type="number">
+            <description>
+              The exit code of the command.
+            </description>
+          </field>
+        </output>
+        <errors>
+          <error code="INVALID_PARAMS">
+            <description>
+              Returned if the input parameters are invalid or missing.
+            </description>
+          </error>
+          <error code="EXECUTION_FAILED">
+            <description>
+              Returned if the command execution fails.
+            </description>
+          </error>
+          <error code="TIMEOUT">
+            <description>
+              Returned if the command execution exceeds the specified timeout.
+            </description>
+          </error>
+          <error code="NOT_ALLOWED">
+            <description>
+              Returned if the command is not allowed due to security restrictions.
+            </description>
+          </error>
+        </errors>
+      </tool>
+      <security>
+        <consideration>
+          The `exec` tool provides arbitrary command execution capabilities, which poses significant security risks if not handled carefully.
+        </consideration>
+        <consideration>
+          Implementations must obtain explicit user consent before executing any command.
+        </consideration>
+        <consideration>
+          Implementations should provide mechanisms to restrict the set of allowed commands, such as whitelisting or sandboxing.
+        </consideration>
+        <consideration>
+          Input parameters should be carefully validated and sanitized to prevent command injection vulnerabilities.
+        </consideration>
+        <consideration>
+          Resource limits (CPU, memory, network) should be enforced to prevent denial-of-service attacks.
+        </consideration>
+        <consideration>
+          Consider running the server in an isolated environment, such as a container or virtual machine.
+        </consideration>
+      </security>
+      <configuration>
+        <example name="Claude Desktop">
+          ```json
+          {
+            "mcpServers": {
+              "exec": {
+                "command": "docker",
+                "args": ["run", "-i", "--rm", "mcp/exec"]
+              }
+            }
+          }
+          ```
+        </example>
+      </configuration>
+      <build>
+        <instruction>
+          Docker: `docker build -t mcp/exec -f src/exec/Dockerfile .`
+        </instruction>
+      </build>
+      <license>
+        MIT License
+      </license>
+    </server>
+  </specification>
+</reasoning>
+
+```markdown
+# MCP Exec Server Specification
+
+## Overview
+
+The `mcp-exec` server is a Model Context Protocol (MCP) server that provides a tool for executing shell commands on the server-side. This capability allows MCP clients to perform various tasks, such as running scripts, interacting with the file system, and executing system utilities.
+
+**WARNING**: This server provides the ability to execute arbitrary commands on the host system. It should be used with extreme caution and only in trusted environments with appropriate security measures in place.
+
+## Tool: `exec`
+
+### Description
+
+Executes a shell command on the server and returns the output.
+
+### Input Parameters
+
+| Parameter           | Type     | Required | Default | Description                                                                                                                                                                |
+| :------------------ | :------- | :------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `command`           | `string` | Yes      |         | The shell command to execute.                                                                                                                                              |
+| `arguments`         | `array`  | No       | `[]`    | An array of string arguments to pass to the command.                                                                                                                      |
+| `environment`       | `object` | No       | `{}`    | A set of environment variables to set for the command's execution environment. The object's keys are the variable names, and the values are the variable values. |
+| `working_directory` | `string` | No       |         | The working directory in which to execute the command.                                                                                                                    |
+| `timeout`           | `number` | No       | `60`    | The maximum execution time for the command in seconds.                                                                                                                   |
+
+### Output
+
+| Field       | Type     | Description                                      |
+| :---------- | :------- | :----------------------------------------------- |
+| `stdout`    | `string` | The standard output of the command.             |
+| `stderr`    | `string` | The standard error of the command.             |
+| `exit_code` | `number` | The exit code of the command.                   |
+
+### Errors
+
+| Code              | Description                                                   |
+| :---------------- | :------------------------------------------------------------ |
+| `INVALID_PARAMS`  | Returned if the input parameters are invalid or missing.    |
+| `EXECUTION_FAILED`| Returned if the command execution fails.                    |
+| `TIMEOUT`         | Returned if the command execution exceeds the specified timeout. |
+| `NOT_ALLOWED`     | Returned if the command is not allowed due to security restrictions. |
+
+## Security Considerations
+
+The `exec` tool provides arbitrary command execution capabilities, which poses significant security risks if not handled carefully. Implementations must adhere to the following security guidelines:
+
+1. **User Consent:** Implementations must obtain explicit user consent before executing any command. The user should be presented with the full command and its arguments and have the opportunity to approve or deny the execution.
+2. **Command Whitelisting:** Implementations should provide a mechanism to restrict the set of allowed commands. This can be achieved through a whitelist of permitted commands or by using a restricted shell.
+3. **Input Validation:** All input parameters must be carefully validated and sanitized to prevent command injection vulnerabilities.
+4. **Sandboxing:** Consider running the commands in an isolated environment, such as a container or virtual machine, to limit the impact of potential security breaches.
+5. **Resource Limits:** Enforce resource limits (CPU, memory, network) on the executed commands to prevent denial-of-service attacks.
+6. **Least Privilege:** Run the server with the least privilege necessary to perform its tasks. Avoid running as root or with administrative privileges.
+
+## Configuration
+
+### Example: Claude Desktop
+
+To use the `mcp-exec` server with Claude Desktop, add the following configuration to your `claude_desktop_config.json` file:
+
+```json
+{
+  "mcpServers": {
+    "exec": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mcp/exec"]
+    }
+  }
+}
+```
+
+This configuration tells Claude Desktop to start the `mcp-exec` server using Docker. You can replace `mcp/exec` with the appropriate image name or command if you are not using Docker.
+
+## Building
+
+### Docker
+
+To build the Docker image for the `mcp-exec` server, run the following command from the root of the MCP project:
+
+```bash
+docker build -t mcp/exec -f src/exec/Dockerfile .
+```
+
+## License
+
+This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+```

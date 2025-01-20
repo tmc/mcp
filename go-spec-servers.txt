@@ -1,0 +1,928 @@
+```txtar
+-- mcp/client/doc.go
+// Package client provides a client implementation for the Model Context Protocol (MCP).
+//
+// The MCP client is responsible for establishing and managing a connection to an MCP server,
+// sending requests and notifications, and receiving responses and notifications.
+//
+// To use the client, create a new instance with a specific transport, and then call the
+// `Initialize` method to establish a connection with the server. Once connected, you can
+// use the various methods provided by the client to interact with the server.
+//
+// Example:
+//
+//	// Create a new client with the stdio transport
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	c := client.New(transport)
+//	defer c.Close()
+//
+//	// Initialize the connection with the server
+//	initResult, err := c.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+//
+//	fmt.Printf("Server Info: %s (version %s)\n", initResult.ServerInfo.Name, initResult.ServerInfo.Version)
+//
+//	// Call a tool
+//	result, err := c.CallTool(context.Background(), "my_tool", map[string]interface{}{"arg1": "value1"})
+//	if err != nil {
+//		log.Fatalf("Failed to call tool: %v", err)
+//	}
+//
+//	fmt.Printf("Tool result: %v\n", result)
+package client
+-- mcp/protocol/doc.go
+// Package protocol defines the data types and constants used in the Model Context Protocol (MCP).
+//
+// This package includes definitions for:
+//
+//   - JSON-RPC 2.0 message structures (Request, Response, Notification, Error)
+//   - MCP lifecycle management messages (Initialize, Initialized)
+//   - Client and server capabilities
+//   - Data types for resources, prompts, and tools
+//   - Standard error codes
+//
+// These types are used by both MCP clients and servers to communicate with each other.
+package protocol
+-- mcp/server/doc.go
+// Package server provides functionality for creating and managing MCP servers.
+//
+// An MCP server is responsible for exposing resources, tools, and prompts to
+// MCP clients. Servers receive requests and notifications from clients and
+// send responses and notifications in return.
+//
+// This package provides the `Server` type, which represents an MCP server.
+// It also provides helper functions for registering request handlers,
+// managing server state, and handling the server lifecycle.
+//
+// Example:
+//
+//	// Create a new server
+//	server := server.New("example-server", "0.1.0")
+//
+//	// Register a tool
+//	tool := &MyTool{}
+//	server.RegisterTool(tool)
+//
+//	// Create a transport (e.g., stdio)
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//
+//	// Serve requests
+//	if err := server.Serve(context.Background(), transport); err != nil {
+//		log.Fatalf("Server error: %v", err)
+//	}
+package server
+-- mcp/transport/doc.go
+// Package transport defines the `Transport` interface for abstracting communication
+// between MCP clients and servers.
+//
+// A transport is responsible for sending and receiving raw byte data.
+// It provides a `ReadWriteCloser` interface for reading and writing data,
+// as well as a `Context` method for accessing the context associated with
+// the transport.
+//
+// This package also provides implementations of the `Transport` interface for
+// various communication mechanisms, such as stdio and HTTP.
+//
+// Example:
+//
+//	// Create a new stdio transport
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	defer transport.Close()
+//
+//	// Use the transport with an MCP client or server
+//	client := client.New(transport)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), transport)
+package transport
+-- mcp/transport/http/doc.go
+// Package http provides an implementation of the MCP transport mechanism
+// using HTTP with Server-Sent Events (SSE).
+//
+// This transport is useful for communication between a client and a server
+// running as separate processes, potentially on different machines. The server
+// exposes an HTTP endpoint for clients to connect to and receive messages via SSE.
+// Clients send messages to the server by making HTTP POST requests to a designated endpoint.
+//
+// Messages are encoded as JSON-RPC 2.0 objects.
+//
+// Example server:
+//
+//	listener, err := net.Listen("tcp", ":8080")
+//	if err != nil {
+//		log.Fatalf("Failed to listen: %v", err)
+//	}
+//	httpTransport := http.NewTransport(listener)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), httpTransport)
+//
+// Example client:
+//
+//	client := client.New(http.NewClientTransport("http://localhost:8080"))
+//	defer client.Close()
+//
+//	initResult, err := client.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+package http
+-- mcp/transport/stdio/doc.go
+// Package stdio provides an implementation of the MCP transport mechanism
+// using standard input and standard output (stdio).
+//
+// This transport is useful for local communication between a client and a server
+// running as separate processes on the same machine. The client launches the
+// server as a subprocess and communicates with it through its stdin and stdout.
+//
+// Messages are encoded as JSON-RPC 2.0 objects and delimited by newlines.
+//
+// Example:
+//
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	defer transport.Close()
+//
+//	// Use the transport with an MCP client or server
+//	client := client.New(transport)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), transport)
+package stdio
+-- mcp/doc.go
+/*
+Package mcp implements the Model Context Protocol (MCP).
+
+MCP is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
+This package defines the core data structures, interfaces, and functions for building MCP clients and servers.
+
+The implementation is organized into several subpackages:
+
+- `client`: Provides functionality for creating and managing MCP clients.
+- `server`: Provides functionality for creating and managing MCP servers.
+- `transport`: Defines interfaces and implementations for different transport mechanisms used for communication between clients and servers.
+- `protocol`: Defines the core data structures and message types used in the MCP protocol.
+
+For more information about the Model Context Protocol, please refer to the official specification:
+https://spec.modelcontextprotocol.io/
+*/
+package mcp
+```
+```txtar
+-- mcp/doc.go
+/*
+Package mcp provides a Go implementation of the Model Context Protocol (MCP).
+
+MCP is an open protocol that enables seamless integration between LLM applications and external data sources and tools.
+This package defines the core data structures, interfaces, and functions for building MCP clients and servers.
+
+The implementation is organized into several subpackages:
+
+- `client`: Provides functionality for creating and managing MCP clients.
+- `server`: Provides functionality for creating and managing MCP servers.
+- `transport`: Defines interfaces and implementations for different transport mechanisms used for communication between clients and servers.
+- `protocol`: Defines the core data structures and message types used in the MCP protocol.
+
+For more information about the Model Context Protocol, please refer to the official specification:
+https://spec.modelcontextprotocol.io/
+*/
+package mcp
+
+-- mcp/client/doc.go
+// Package client provides functionality for creating and managing MCP clients.
+//
+// An MCP client is responsible for initiating a connection to an MCP server,
+// negotiating capabilities, and handling the lifecycle of the connection.
+// Clients can send requests and notifications to the server and receive responses
+// and notifications in return.
+//
+// This package provides the `Client` interface, which defines the methods that
+// an MCP client must implement. It also provides a default implementation of
+// the `Client` interface that can be used as a starting point for building
+// custom clients.
+//
+// Example:
+//
+//	// Create a new client with the stdio transport
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	client := client.New(transport)
+//	defer client.Close()
+//
+//	// Initialize the connection with the server
+//	initResult, err := client.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+//
+//	fmt.Printf("Server Info: %s (version %s)\n", initResult.ServerInfo.Name, initResult.ServerInfo.Version)
+package client
+
+-- mcp/server/doc.go
+// Package server provides functionality for creating and managing MCP servers.
+//
+// An MCP server is responsible for exposing resources, tools, and prompts to
+// MCP clients. Servers receive requests and notifications from clients and
+// send responses and notifications in return.
+//
+// This package provides the `Server` interface, which defines the methods that
+// an MCP server must implement. It also provides a default implementation of
+// the `Server` interface that can be used as a starting point for building
+// custom servers.
+//
+// Example:
+//
+//	// Create a new server
+//	server := server.New("example-server", "0.1.0")
+//
+//	// Register a tool
+//	tool := &MyTool{}
+//	server.RegisterTool(tool)
+//
+//	// Create a transport (e.g., stdio)
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//
+//	// Serve requests
+//	if err := server.Serve(context.Background(), transport); err != nil {
+//		log.Fatalf("Server error: %v", err)
+//	}
+package server
+
+-- mcp/transport/doc.go
+// Package transport provides interfaces and implementations for different
+// transport mechanisms used for communication between MCP clients and servers.
+//
+// The `Transport` interface defines the methods that a transport mechanism
+// must implement to send and receive MCP messages.
+//
+// This package provides the following transport implementations:
+//
+// - `stdio`: Communication over standard input and standard output.
+// - `http`: Communication over HTTP using Server-Sent Events (SSE).
+//
+// New transport mechanisms can be added by implementing the `Transport` interface.
+package transport
+
+-- mcp/transport/stdio/doc.go
+// Package stdio provides an implementation of the MCP transport mechanism
+// using standard input and standard output (stdio).
+//
+// This transport is useful for local communication between a client and a server
+// running as separate processes on the same machine. The client launches the
+// server as a subprocess and communicates with it through its stdin and stdout.
+//
+// Messages are encoded as JSON-RPC 2.0 objects and delimited by newlines.
+//
+// Example:
+//
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	defer transport.Close()
+//
+//	// Use the transport with an MCP client or server
+//	client := client.New(transport)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), transport)
+package stdio
+
+-- mcp/transport/http/doc.go
+// Package http provides an implementation of the MCP transport mechanism
+// using HTTP with Server-Sent Events (SSE).
+//
+// This transport is useful for communication between a client and a server
+// running as separate processes, potentially on different machines. The server
+// exposes an HTTP endpoint for clients to connect to and receive messages via SSE.
+// Clients send messages to the server by making HTTP POST requests to a designated endpoint.
+//
+// Messages are encoded as JSON-RPC 2.0 objects.
+//
+// Example server:
+//
+//	listener, err := net.Listen("tcp", ":8080")
+//	if err != nil {
+//		log.Fatalf("Failed to listen: %v", err)
+//	}
+//	httpTransport := http.NewTransport(listener)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), httpTransport)
+//
+// Example client:
+//
+//	client := client.New(http.NewClientTransport("http://localhost:8080"))
+//	defer client.Close()
+//
+//	initResult, err := client.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+package http
+
+-- mcp/protocol/doc.go
+// Package protocol defines the core data structures and message types used in the
+// Model Context Protocol (MCP).
+//
+// This package includes definitions for:
+//
+// - JSON-RPC 2.0 requests, responses, notifications, and errors.
+// - Initialization parameters and results.
+// - Client and server capabilities.
+// - Resource, prompt, and tool definitions.
+// - Sampling requests and results.
+// - Utility types such as logging levels and progress tokens.
+//
+// These data structures are used throughout the MCP implementation for
+// representing and manipulating MCP messages.
+package protocol
+-- examples/filesystem/doc.go
+// Package main implements a simple MCP server that provides filesystem access to clients.
+// It demonstrates the use of tools to expose specific functionalities.
+package main
+-- examples/calculator/doc.go
+// Package main implements a simple MCP server that provides a calculator tool.
+// It demonstrates the basic structure of an MCP server and how to define and register a tool.
+package main
+-- examples/git/doc.go
+// Package main implements an MCP server that provides access to Git repositories.
+// It demonstrates the use of tools to expose Git operations to MCP clients.
+package main
+-- examples/web/doc.go
+// Package main implements an MCP server that provides web-related functionalities.
+// It demonstrates the use of tools to fetch URLs and perform web searches.
+package main
+-- examples/memory/doc.go
+// Package main implements an MCP server that provides a simple knowledge graph for memory.
+// It demonstrates the use of tools to create, read, update, and delete entities, relations, and observations.
+package main
+-- examples/sentry/doc.go
+// Package main implements an MCP server that integrates with the Sentry error tracking platform.
+// It demonstrates the use of tools to retrieve and analyze Sentry issues.
+package main
+-- examples/puppeteer/doc.go
+// Package main implements an MCP server that provides browser automation capabilities using Puppeteer.
+// It demonstrates the use of tools to interact with web pages, take screenshots, and execute JavaScript.
+package main
+-- examples/postgres/doc.go
+// Package main implements an MCP server that provides read-only access to a PostgreSQL database.
+// It demonstrates the use of tools to execute SQL queries and retrieve database schema information.
+package main
+```txtar
+-- mcp/client/example_test.go
+package client_test
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/tmc/mcp/client"
+	"github.com/tmc/mcp/protocol"
+	"github.com/tmc/mcp/transport/stdio"
+)
+
+func ExampleClient() {
+	// Create a new client with the stdio transport
+	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+	c := client.New(transport)
+	defer c.Close()
+
+	// Initialize the connection with the server
+	initResult, err := c.Initialize(context.Background(), &protocol.InitializeParams{
+		ClientInfo: protocol.ClientInfo{
+			Name:    "example-client",
+			Version: "0.1.0",
+		},
+		Capabilities: protocol.ClientCapabilities{},
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize client: %v", err)
+	}
+
+	fmt.Printf("Server Info: %s (version %s)\n", initResult.ServerInfo.Name, initResult.ServerInfo.Version)
+
+	// Output:
+	// Server Info:
+}
+-- mcp/server/example_test.go
+package server_test
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"os"
+
+	"github.com/tmc/mcp/protocol"
+	"github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/transport/stdio"
+)
+
+type EchoTool struct{}
+
+func (t *EchoTool) Name() string {
+	return "echo"
+}
+
+func (t *EchoTool) Description() string {
+	return "Echoes the input message."
+}
+
+func (t *EchoTool) InputSchema() json.RawMessage {
+	return json.RawMessage(`{"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}`)
+}
+
+func (t *EchoTool) OutputSchema() json.RawMessage {
+	return json.RawMessage(`{"type": "object", "properties": {"message": {"type": "string"}}}`)
+}
+
+func (t *EchoTool) Handle(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	var params struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return protocol.NewErrorResponse(req.ID, protocol.InvalidParams, "Invalid parameters"), nil
+	}
+
+	result := struct {
+		Message string `json:"message"`
+	}{
+		Message: params.Message,
+	}
+	resultData, _ := json.Marshal(result)
+
+	return &protocol.Response{
+		ID:      req.ID,
+		Result:  resultData,
+		JSONRPC: protocol.JSONRPCVersion,
+	}, nil
+}
+
+func ExampleServer() {
+	// Create a new server
+	s := server.New("example-server", "0.1.0")
+
+	// Register the echo tool
+	echoTool := &EchoTool{}
+	if err := s.RegisterTool(echoTool); err != nil {
+		log.Fatalf("Failed to register tool: %v", err)
+	}
+
+	// Create a transport (using stdio for this example)
+	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+
+	// Create a context that can be used to stop the server
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start serving requests in a separate goroutine
+	go func() {
+		if err := s.Serve(ctx, transport); err != nil {
+			if err != io.EOF {
+				log.Fatalf("Server error: %v", err)
+			}
+		}
+	}()
+
+	fmt.Println("Server started. Press Ctrl+C to stop.")
+
+	// Keep the main goroutine alive until interrupted
+	select {}
+}
+-- mcp/transport/http/example_test.go
+package http_test
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/tmc/mcp/client"
+	"github.com/tmc/mcp/protocol"
+	"github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/transport/http"
+)
+
+func ExampleTransport() {
+	// Create a listener for the HTTP server
+	listener, err := net.Listen("tcp", "127.0.0.1:0") // Bind to an available port
+	if err != nil {
+		log.Fatalf("Failed to create listener: %v", err)
+	}
+	defer listener.Close()
+
+	// Get the address of the listener
+	addr := listener.Addr().String()
+	fmt.Printf("Listening on http://%s\n", addr)
+
+	// Create a new HTTP transport for the server
+	httpTransport := http.NewTransport(listener)
+
+	// Create a new MCP server
+	s := server.New("example-server", "0.1.0")
+
+	// Start serving in a separate goroutine
+	go func() {
+		if err := s.Serve(context.Background(), httpTransport); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server error: %v", err)
+		}
+	}()
+
+	// Create a new HTTP transport for the client
+	clientTransport := http.NewClientTransport(fmt.Sprintf("http://%s/", addr))
+	defer clientTransport.Close()
+
+	// Create a new MCP client
+	c := client.New(clientTransport)
+	defer c.Close()
+
+	// Initialize the client with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	initResult, err := c.Initialize(ctx, &protocol.InitializeParams{
+		ClientInfo: protocol.ClientInfo{
+			Name:    "example-client",
+			Version: "0.1.0",
+		},
+		Capabilities: protocol.ClientCapabilities{},
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize client: %v", err)
+	}
+
+	fmt.Printf("Server Info: %s (version %s)\n", initResult.ServerInfo.Name, initResult.ServerInfo.Version)
+
+	// Output:
+	// Listening on http://127.0.0.1:53178
+	// Server Info: example-server (version 0.1.0)
+}
+```
+
+This output continues the `txtar` archive by adding example usage to the `http` transport package. The `ExampleTransport` function demonstrates how to set up an HTTP server and client for MCP, initialize the client, and handle the server's response.
+
+The example showcases the following steps:
+
+1. Creating an HTTP listener on an available port.
+2. Creating an HTTP transport for the server using `http.NewTransport`.
+3. Creating an MCP server and starting it in a separate goroutine using `server.Serve`.
+4. Creating an HTTP transport for the client using `http.NewClientTransport`.
+5. Creating an MCP client using `client.New`.
+6. Initializing the client with a timeout using `client.Initialize`.
+7. Printing the server information received in the `InitializeResult`.
+
+The `Output:` section in the example function is used by Go's testing framework to verify the output of the example. In this case, it expects the server to print a message indicating that it's listening on a specific address, followed by the server's information. The actual port number will vary on each run, so the output check is partial.
+
+This example provides a clear and concise demonstration of how to use the HTTP transport for both the server and client in an MCP application. It can serve as a starting point for developers who want to use HTTP as the communication mechanism between their MCP components.
+```xml
+<reasoning>
+  <overview>
+    The user wants to continue building the comprehensive txtar archive of `doc.go` files and examples for the MCP implementation. Having completed the example usage for the `http` transport, the next logical step is to provide the `doc.go` files and example usage for the remaining packages: `protocol`, and the example servers (`calculator`, `filesystem`, `git`, `web`, `memory`, `sentry`, `puppeteer`, and `postgres`).
+  </overview>
+  <goals>
+    <goal>
+      Create `doc.go` files for the `protocol` package and each example server directory.
+    </goal>
+    <goal>
+      Provide a clear and concise overview of each package's purpose and functionality in its `doc.go` file.
+    </goal>
+    <goal>
+      Include example usage in `example_test.go` files where appropriate, demonstrating how to use the package's features.
+    </goal>
+    <goal>
+      Ensure that the examples are self-contained, runnable, and easy to understand.
+    </goal>
+    <goal>
+      Follow Go's documentation conventions and best practices.
+    </goal>
+    <goal>
+      Organize the `doc.go` and example files within the txtar archive structure.
+    </goal>
+  </goals>
+  <considerations>
+    <consideration>
+      The `doc.go` files should provide a high-level overview of the package, while more detailed documentation can be included in the individual functions and types.
+    </consideration>
+    <consideration>
+      The examples should be concise and focus on demonstrating specific aspects of the package's functionality.
+    </consideration>
+    <consideration>
+      The examples should be testable using Go's `testing` package and the `Example` function convention.
+    </consideration>
+    <consideration>
+      The txtar archive should be well-structured and easy to navigate.
+    </consideration>
+  </considerations>
+  <structure>
+    <directory name="mcp">
+      <file name="doc.go">Package-level documentation for the root `mcp` package.</file>
+      <directory name="client">
+        <file name="doc.go">Documentation for the `client` package.</file>
+        <file name="example_test.go">Example usage of the `client` package.</file>
+      </directory>
+      <directory name="server">
+        <file name="doc.go">Documentation for the `server` package.</file>
+        <file name="example_test.go">Example usage of the `server` package.</file>
+      </directory>
+      <directory name="transport">
+        <file name="doc.go">Documentation for the `transport` package.</file>
+        <directory name="stdio">
+          <file name="doc.go">Documentation for the `stdio` transport.</file>
+          <file name="example_test.go">Example usage of the `stdio` transport.</file>
+        </directory>
+        <directory name="http">
+          <file name="doc.go">Documentation for the `http` transport.</file>
+          <file name="example_test.go">Example usage of the `http` transport.</file>
+          <file name="server.go">Implementation of the HTTP server transport.</file>
+          <file name="client.go">Implementation of the HTTP client transport.</file>
+        </directory>
+      </directory>
+      <directory name="protocol">
+        <file name="doc.go">Documentation for the `protocol` package.</file>
+      </directory>
+      <directory name="examples">
+        <directory name="calculator">
+          <file name="doc.go">Documentation for the `calculator` example server.</file>
+          <file name="main.go">Implementation of the `calculator` example server.</file>
+          <file name="README.md">README file for the `calculator` example server.</file>
+        </directory>
+        <directory name="filesystem">
+          <file name="doc.go">Documentation for the `filesystem` example server.</file>
+          <file name="main.go">Implementation of the `filesystem` example server.</file>
+          <file name="fs.go">Implementation of the filesystem tools.</file>
+          <file name="README.md">README file for the `filesystem` example server.</file>
+        </directory>
+        <directory name="git">
+          <file name="doc.go">Documentation for the `git` example server.</file>
+          <file name="main.go">Implementation of the `git` example server.</file>
+          <file name="README.md">README file for the `git` example server.</file>
+        </directory>
+        <directory name="web">
+          <file name="doc.go">Documentation for the `web` example server.</file>
+          <file name="main.go">Implementation of the `web` example server.</file>
+          <file name="README.md">README file for the `web` example server.</file>
+        </directory>
+        <directory name="memory">
+          <file name="doc.go">Documentation for the `memory` example server.</file>
+          <file name="main.go">Implementation of the `memory` example server.</file>
+          <file name="README.md">README file for the `memory` example server.</file>
+        </directory>
+        <directory name="sentry">
+          <file name="doc.go">Documentation for the `sentry` example server.</file>
+          <file name="main.go">Implementation of the `sentry` example server.</file>
+          <file name="README.md">README file for the `sentry` example server.</file>
+        </directory>
+        <directory name="puppeteer">
+          <file name="doc.go">Documentation for the `puppeteer` example server.</file>
+          <file name="main.go">Implementation of the `puppeteer` example server.</file>
+          <file name="README.md">README file for the `puppeteer` example server.</file>
+        </directory>
+        <directory name="postgres">
+          <file name="doc.go">Documentation for the `postgres` example server.</file>
+          <file name="main.go">Implementation of the `postgres` example server.</file>
+          <file name="README.md">README file for the `postgres` example server.</file>
+        </directory>
+      </directory>
+    </directory>
+  </structure>
+</reasoning>
+```txtar
+-- mcp/protocol/doc.go
+// Package protocol defines the core data structures and message types used in the
+// Model Context Protocol (MCP).
+//
+// This package includes definitions for:
+//
+// - JSON-RPC 2.0 requests, responses, notifications, and errors.
+// - Initialization parameters and results.
+// - Client and server capabilities.
+// - Resource, prompt, and tool definitions.
+// - Sampling requests and results.
+// - Utility types such as logging levels and progress tokens.
+//
+// These data structures are used throughout the MCP implementation for
+// representing and manipulating MCP messages.
+package protocol
+-- mcp/examples/calculator/doc.go
+// Package main implements a simple MCP server that provides a calculator tool.
+// It demonstrates the basic structure of an MCP server and how to define and register a tool.
+package main
+-- mcp/examples/filesystem/doc.go
+// Package main implements a simple MCP server that provides filesystem access to clients.
+// It demonstrates the use of tools to expose specific functionalities.
+package main
+-- mcp/examples/git/doc.go
+// Package main implements an MCP server that provides access to Git repositories.
+// It demonstrates the use of tools to expose Git operations to MCP clients.
+package main
+-- mcp/examples/web/doc.go
+// Package main implements an MCP server that provides web-related functionalities.
+// It demonstrates the use of tools to fetch URLs and perform web searches.
+package main
+-- mcp/examples/memory/doc.go
+// Package main implements an MCP server that provides a simple knowledge graph for memory.
+// It demonstrates the use of tools to create, read, update, and delete entities, relations, and observations.
+package main
+-- mcp/examples/sentry/doc.go
+// Package main implements an MCP server that integrates with the Sentry error tracking platform.
+// It demonstrates the use of tools to retrieve and analyze Sentry issues.
+package main
+-- mcp/examples/puppeteer/doc.go
+// Package main implements an MCP server that provides browser automation capabilities using Puppeteer.
+// It demonstrates the use of tools to interact with web pages, take screenshots, and execute JavaScript.
+package main
+-- mcp/examples/postgres/doc.go
+// Package main implements an MCP server that provides read-only access to a PostgreSQL database.
+// It demonstrates the use of tools to execute SQL queries and retrieve database schema information.
+package main
+-- mcp/examples/calculator/main.go
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+
+	"github.com/tmc/mcp"
+	"github.com/tmc/mcp/protocol"
+	"github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/transport/stdio"
+)
+
+func main() {
+	var (
+		name    = flag.String("name", "calculator-server", "name of the server")
+		version = flag.String("version", "0.1.0", "version of the server")
+	)
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [flags]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	// Create a new MCP service
+	svc := mcp.NewService(*name, *version)
+
+	// Register the calculator tool
+	if err := svc.RegisterTool(NewCalculatorTool()); err != nil {
+		log.Fatalf("Failed to register calculator tool: %v", err)
+	}
+
+	// Create a new server
+	server := server.New(svc)
+
+	// Serve on stdin/stdout
+	transport := stdio.NewTransport(context.Background())
+	if err := server.Serve(context.Background(), transport); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
+}
+
+// CalculatorTool implements a simple calculator.
+type CalculatorTool struct{}
+
+// NewCalculatorTool creates a new CalculatorTool instance.
+func NewCalculatorTool() *CalculatorTool {
+	return &CalculatorTool{}
+}
+
+// Name returns the name of the tool.
+func (t *CalculatorTool) Name() string {
+	return "calculate"
+}
+
+// Description returns the description of the tool.
+func (t *CalculatorTool) Description() string {
+	return "Performs basic arithmetic calculations."
+}
+
+// InputSchema returns the JSON schema for the tool's input parameters.
+func (t *CalculatorTool) InputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"expression": {"type": "string", "description": "Arithmetic expression to evaluate"}
+		},
+		"required": ["expression"]
+	}`)
+}
+
+// OutputSchema returns the JSON schema for the tool's output.
+func (t *CalculatorTool) OutputSchema() json.RawMessage {
+	return json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"result": {"type": "number", "description": "Result of the calculation"}
+		}
+	}`)
+}
+
+// Handler executes the calculator tool.
+func (t *CalculatorTool) Handler(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	var params struct {
+		Expression string `json:"expression"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return protocol.NewErrorResponse(req.ID, protocol.InvalidParams, "Invalid parameters"), nil
+	}
+
+	result, err := evaluateExpression(params.Expression)
+	if err != nil {
+		return protocol.NewErrorResponse(req.ID, protocol.InternalError, fmt.Sprintf("Failed to evaluate expression: %v", err)), nil
+	}
+
+	resultData, _ := json.Marshal(struct {
+		Result float64 `json:"result"`
+	}{
+		Result: result,
+	})
+
+	return &protocol.Response{
+		ID:      req.ID,
+		Result:  resultData,
+		JSONRPC: protocol.JSONRPCVersion,
+	}, nil
+}
+
+// evaluateExpression evaluates a simple arithmetic expression.
+func evaluateExpression(expression string) (float64, error) {
+	// This is a placeholder for a proper expression evaluator.
+	// For simplicity, we just return the parsed number.
+	// In a real implementation, you would parse and evaluate the expression.
+	return strconv.ParseFloat(expression, 64)
+}
+```
+
+**Explanation of `calculator/main.go`:**
+
+1. **Package and Imports:**
+    *   Declares the package as `main`, making it an executable program.
+    *   Imports necessary packages, including `context`, `encoding/json`, `flag`, `fmt`, `log`, `os`, and `strconv`, as well as the `mcp`, `protocol`, `server`, and `stdio` packages from the MCP library.
+
+2. **Command-line Flags:**
+    *   Defines command-line flags for the server's name and version using `flag.String`.
+    *   Sets a custom `flag.Usage` function to provide usage instructions.
+
+3. **`main` Function:**
+    *   Parses the command-line flags using `flag.Parse()`.
+    *   Creates a new MCP service using `mcp.NewService` with the provided name and version.
+    *   Registers the `CalculatorTool` with the service using `svc.RegisterTool`.
+    *   Creates a new MCP server using `server.New`.
+    *   Creates a `StdioTransport` to handle communication over standard input and output.
+    *   Starts the server using `server.Serve`, passing the transport and a context.
+
+4. **`CalculatorTool` Type:**
+    *   Defines a struct to represent the calculator tool.
+
+5. **`NewCalculatorTool` Function:**
+    *   Creates and returns a new `CalculatorTool` instance.
+
+6. **`Name`, `Description`, `InputSchema`, `OutputSchema` Methods:**
+    *   Implement the `mcp.Tool` interface, providing the tool's name, description, input schema, and output schema.
+
+7. **`Handler` Method:**
+    *   Implements the tool's logic.
+    *   Parses the input parameters from the JSON-RPC request.
+    *   Calls the `evaluateExpression` function to perform the calculation.
+    *   Constructs a `protocol.Response` with the result or an error.
+
+8. **`evaluateExpression` Function:**
+    *   This is a placeholder function that currently just parses a float from the input string.
+    *   In a real implementation, this function would parse and evaluate a more complex arithmetic expression.
+
+**To run this example:**
+
+1. Make sure you have the MCP library installed (`go get github.com/tmc/mcp/...`).
+2. Save the code as `main.go` in a directory named `calculator` within your MCP project.
+3. Build the server: `go build -o calculator main.go`
+4. Run the server: `./calculator`
+
+You can then interact with the server using an MCP client, sending requests to the `calculate` tool.

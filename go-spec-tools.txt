@@ -1,0 +1,434 @@
+```txtar
+-- mcp/doc.go
+/*
+Package mcp implements the core types and functionality for the Model Context Protocol.
+
+This includes:
+
+- The base MCP message types and data structures.
+- Interfaces for implementing MCP clients and servers.
+- Helper functions for working with MCP messages.
+
+This package does not provide a complete MCP implementation. Instead, it defines the
+building blocks for creating MCP clients, servers, and tools.
+
+See the subdirectories for specific implementations:
+
+- cmd/ for command-line tools implementing the MCP specification.
+- internal/ for internal helper packages.
+*/
+package mcp
+-- mcp/client/doc.go
+// Package client provides a client implementation for the Model Context Protocol (MCP).
+//
+// The MCP client is responsible for establishing a connection to an MCP server,
+// negotiating capabilities, and handling the lifecycle of the connection.
+// Clients can send requests and notifications to the server and receive responses
+// and notifications in return.
+//
+// Example:
+//
+//	// Create a new client with the stdio transport
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	client := client.New(transport)
+//	defer client.Close()
+//
+//	// Initialize the connection with the server
+//	initResult, err := client.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+//
+//	fmt.Printf("Server Info: %s (version %s)\n", initResult.ServerInfo.Name, initResult.ServerInfo.Version)
+package client
+-- mcp/server/doc.go
+// Package server provides functionality for creating and managing MCP servers.
+//
+// An MCP server is responsible for exposing resources, tools, and prompts to
+// MCP clients. Servers receive requests and notifications from clients and
+// send responses and notifications in return.
+//
+// Example:
+//
+//	// Create a new server
+//	server := server.New("example-server", "0.1.0")
+//
+//	// Register a tool
+//	tool := &MyTool{}
+//	server.RegisterTool(tool)
+//
+//	// Create a transport (e.g., stdio)
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//
+//	// Serve requests
+//	if err := server.Serve(context.Background(), transport); err != nil {
+//		log.Fatalf("Server error: %v", err)
+//	}
+package server
+-- mcp/transport/doc.go
+// Package transport provides interfaces and implementations for different
+// transport mechanisms used for communication between MCP clients and servers.
+//
+// The Transport interface defines the methods that a transport mechanism
+// must implement to send and receive MCP messages.
+//
+// This package provides the following transport implementations:
+//
+//   - stdio: Communication over standard input and standard output.
+//   - http: Communication over HTTP using Server-Sent Events (SSE).
+//
+// New transport mechanisms can be added by implementing the Transport interface.
+package transport
+-- mcp/transport/http/doc.go
+// Package http provides an implementation of the MCP transport mechanism
+// using HTTP with Server-Sent Events (SSE).
+//
+// This transport is useful for communication between a client and a server
+// running as separate processes, potentially on different machines. The server
+// exposes an HTTP endpoint for clients to connect to and receive messages via SSE.
+// Clients send messages to the server by making HTTP POST requests to a designated endpoint.
+//
+// Messages are encoded as JSON-RPC 2.0 objects.
+//
+// Example server:
+//
+//	listener, err := net.Listen("tcp", ":8080")
+//	if err != nil {
+//		log.Fatalf("Failed to listen: %v", err)
+//	}
+//	httpTransport := http.NewTransport(listener)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), httpTransport)
+//
+// Example client:
+//
+//	client := client.New(http.NewClientTransport("http://localhost:8080"))
+//	defer client.Close()
+//
+//	initResult, err := client.Initialize(context.Background(), &protocol.InitializeParams{
+//		ClientInfo: protocol.ClientInfo{
+//			Name:    "example-client",
+//			Version: "0.1.0",
+//		},
+//		Capabilities: protocol.ClientCapabilities{},
+//	})
+//	if err != nil {
+//		log.Fatalf("Failed to initialize client: %v", err)
+//	}
+package http
+-- mcp/transport/stdio/doc.go
+// Package stdio provides an implementation of the MCP transport mechanism
+// using standard input and standard output (stdio).
+//
+// This transport is useful for local communication between a client and a server
+// running as separate processes on the same machine. The client launches the
+// server as a subprocess and communicates with it through its stdin and stdout.
+//
+// Messages are encoded as JSON-RPC 2.0 objects and delimited by newlines.
+//
+// Example:
+//
+//	transport := stdio.NewTransport(os.Stdin, os.Stdout)
+//	defer transport.Close()
+//
+//	// Use the transport with an MCP client or server
+//	client := client.New(transport)
+//	server := server.New("example-server", "0.1.0")
+//	go server.Serve(context.Background(), transport)
+package stdio
+-- mcp/protocol/doc.go
+// Package protocol defines the core data structures and message types used in the
+// Model Context Protocol (MCP).
+//
+// This package includes definitions for:
+//
+// - JSON-RPC 2.0 requests, responses, notifications, and errors.
+// - Initialization parameters and results.
+// - Client and server capabilities.
+// - Resource, prompt, and tool definitions.
+// - Sampling requests and results.
+// - Utility types such as logging levels and progress tokens.
+//
+// These data structures are used throughout the MCP implementation for
+// representing and manipulating MCP messages.
+package protocol
+-- cmd/mcp-mock-client/doc.go
+/*
+Mcp-mock-client replays MCP requests from a recording file.
+
+It reads recorded requests and writes them to stdout, one per line.
+Each request is a JSON object from the original recording.
+
+Usage:
+    mcp-mock-client [flags] recording
+
+Example:
+    # Replay requests to a mock server
+    mcp-mock-client requests.mcp | mcp-mock-server responses.mcp
+
+    # Just see the requests
+    mcp-mock-client -n requests.mcp
+*/
+package main
+-- cmd/mcp-mock-server/doc.go
+/*
+Mcp-mock-server responds to MCP requests with responses from a recording file.
+
+It reads JSON requests from stdin and writes matching responses from the recording
+to stdout. Requests are matched in order by default, or by a request ID if present
+in the JSON.
+
+Usage:
+    mcp-mock-server [flags] recording
+
+Example:
+    # Respond to requests using baseline.mcp
+    echo '{"method":"GET"}' | mcp-mock-server baseline.mcp
+
+    # Use in a pipeline
+    mcp-client | mcp-mock-server baseline.mcp | mcp-verify
+*/
+package main
+-- cmd/mcp-replay/doc.go
+/*
+Mcp-replay replays recorded MCP interactions to a server.
+
+Usage:
+    mcp-replay [flags] recording
+
+Flags:
+    -s, --server string   target MCP server address (default "localhost:1234")
+    -v, --verbose         verbose output
+
+Mcp-replay reads a recording file generated by mcp-spy and replays the
+inputs to the specified MCP server. It can optionally preserve the original
+timing of the interactions.
+*/
+package main
+-- cmd/mcp-spy/doc.go
+/*
+Mcp-spy records and optionally filters the input and output of a command.
+
+Usage:
+    mcp-spy [flags] command [args...]
+
+Flags:
+    -rate float   rate limit in lines per second (default 0)
+    -color        use colors for I/O streams (default true)
+    -indent       use indentation instead of colors
+    -in string    filter command for stdin when terminal (e.g. 'jq .')
+    -out string   filter command for stdout when terminal (e.g. 'jq .')
+
+Mcp-spy runs the given command, intercepts its standard input and output,
+and logs the data to files. It can optionally apply filters to the input
+and output streams when connected to a terminal.
+
+The input and output are logged to stdin.log, stdout.log, and stderr.log
+in the current directory, or in the directory specified by the -dir flag.
+
+If the -rate flag is provided, input is rate-limited to the specified
+number of lines per second.
+
+If the -color flag is set, the output is colorized to distinguish between
+input, output, and error streams. If the -indent flag is set, indentation
+is used instead of colors.
+
+If the -in flag is set and the input is a terminal, the input is piped
+through the specified filter command before being passed to the command.
+
+If the -out flag is set and the output is a terminal, the output is piped
+through the specified filter command before being written to stdout.
+*/
+package main
+-- cmd/mcp-start/doc.go
+/*
+Mcp-start starts an MCP server and records its input and output.
+
+Usage:
+    mcp-start [flags] command [args...]
+
+Mcp-start runs the given command as an MCP server, capturing its standard
+input and output. It creates a recording file with the same name as the
+command and a ".mcp" extension, where it writes all input and output of
+the server.
+
+Flags:
+    -f string   output file (default: <cmd>.mcp)
+    -dir string   working directory
+
+Mcp-start also creates a PID file named <cmd>.mcp.pid containing the process
+ID of the server. This file can be used to terminate the server later.
+
+Example:
+    mcp-start -f server.mcp ./my-server :1234
+
+This will start the server, capture its I/O to server.mcp, and write its PID
+to server.mcp.pid.
+*/
+package main
+-- cmd/mcp-test/doc.go
+/*
+Mcptest runs MCP test scripts.
+
+Usage:
+    mcptest [flags] [testdata...]
+
+Mcptest runs test scripts defined in .txt files. Each script file contains a
+series of commands and assertions, similar to shell commands. The commands
+are executed in a temporary directory, and the assertions are checked against
+the actual output.
+
+Flags:
+    -update
+        Update golden test output.
+
+Test Script Format:
+
+A test script is a text file containing a sequence of commands and assertions.
+Each command starts with a '$' character, followed by the command and its
+arguments. Assertions start with a keyword (e.g., 'stdout', 'stderr', 'exists',
+'not-exists') followed by the expected output or condition.
+
+Example:
+
+    # Test basic functionality
+    $ echo "hello" | mcpspy -f test.mcp
+    $ mcpverify -f test.mcp -s localhost:1234
+    --- FAIL: line 1
+        input: {"method":"GET","path":"/users"}
+        diff (-got +want):
+          {
+            "status": 200,
+            "data": {
+        -     "users": ["alice","bob"]
+        +     "users": ["alice","bob","charlie"]
+            }
+          }
+    ok 2
+
+Supported Commands:
+
+- `mcp-mock-client`: Replays MCP requests from a recording file.
+- `mcp-mock-server`: Responds to MCP requests with responses from a recording file.
+- `mcp-replay`: Replays recorded MCP interactions to a server.
+- `mcp-spy`: Records MCP protocol interactions to a file.
+- `mcp-start`: Starts an MCP server and records its input and output.
+- `mcp-verify`: Verifies server responses against recordings.
+- `cat`: Concatenates files and prints on the standard output.
+- `cd`: Changes the current directory.
+- `cmp`: Compares two files byte by byte.
+- `cp`: Copies files and directories.
+- `echo`: Displays a line of text.
+- `env`: Prints environment variables or sets them for a command.
+- `exec`: Executes a command in the shell.
+- `exists`: Checks if a file or directory exists.
+- `grep`: Searches for a pattern in files.
+- `kill`: Sends a signal to a process.
+- `mkdir`: Creates directories.
+- `mv`: Moves or renames files and directories.
+- `not`: Inverts the result of the next command.
+- `rm`: Removes files or directories.
+- `sleep`: Delays for a specified amount of time.
+- `stat`: Displays file or file system status.
+- `touch`: Changes file timestamps or creates an empty file.
+- `wc`: Prints newline, word, and byte counts for each file.
+
+Assertions:
+
+- `stdout <pattern>`: Checks that the standard output matches the pattern.
+- `stderr <pattern>`: Checks that the standard error matches the pattern.
+- `exists <file>`: Checks that the file exists.
+- `not-exists <file>`: Checks that the file does not exist.
+- `cmp <file> <file>`: Checks that the two files are identical.
+
+For more information about the MCP tools, see the individual command documentation.
+*/
+package main
+-- cmd/mcp-verify/doc.go
+/*
+Mcp-verify replays MCP requests from a recording file and verifies the server's
+responses against the expected responses in the recording.
+
+Usage:
+    mcp-verify [flags] recording
+
+Mcp-verify reads a recording file generated by mcp-spy, replays the requests
+to an MCP server, and compares the actual responses with the expected responses
+in the recording. Any differences are reported as errors.
+
+Flags:
+    -s string   server address (default "localhost:1234")
+    -failfast   stop on first difference
+    -diff       use cmp.Diff to compare JSON (default true)
+
+Example:
+    mcp-verify -s localhost:8080 recording.mcp
+*/
+package main
+-- internal/mcp/doc.go
+// Package mcp provides core types and functionality for implementing the Model
+// Context Protocol (MCP).
+//
+// It includes shared types like `Entry` for representing recorded MCP interactions,
+// and helper functions for working with recordings.
+//
+// This package is intended for internal use by MCP tools and is not part of the
+// stable public API.
+package mcp
+-- testscript/doc.go
+// Package testscript provides utilities for running test scripts.
+//
+// Test scripts are defined in .txt files and contain a sequence of commands and
+// assertions. The script engine executes the commands and checks the assertions.
+//
+// Test scripts can be used to test command-line tools, MCP servers, or any other
+// program that can be interacted with through standard input, output, and error
+// streams.
+//
+// The `Test` function is the main entry point for running test scripts. It takes
+// a testing.T, a pattern to match test scripts, and a setup function to configure
+// the environment.
+//
+// Example:
+//
+//	func TestMyTool(t *testing.T) {
+//		testscript.Test(t, "testdata/*.txt", func(env *testscript.Env) error {
+//			env.Vars = append(env.Vars, "MYTOOL_PATH="+filepath.Join(env.WorkDir, "mytool"))
+//			return nil
+//		})
+//	}
+//
+// The `Test` function will discover all .txt files matching the pattern, set up
+// a temporary working directory, and execute each script in a separate environment.
+// The setup function can be used to customize the environment, such as setting
+// environment variables or creating files.
+//
+// Test scripts can use the following commands:
+//
+//   - `cd`: Change the current directory.
+//   - `exec`: Execute a command and check its exit status.
+//   - `exists`: Check that a file exists.
+//   - `not-exists`: Check that a file does not exist.
+//   - `grep`: Check that a file contains a pattern.
+//   - `not-grep`: Check that a file does not contain a pattern.
+//   - `stdin`: Set the standard input for subsequent commands.
+//   - `stdout`: Check the standard output of the previous command.
+//   - `stderr`: Check the standard error of the previous command.
+//   - `env`: Set environment variables for subsequent commands.
+//   - `mkdir`: Create directories.
+//   - `cp`: Copy files or directories.
+//   - `rm`: Remove files or directories.
+//   - `sleep`: Pause execution for a specified duration.
+//   - `source`: Execute commands from a file.
+//   - `stop`: Stop the script execution.
+//   - `cmp`: Compare two files.
+//   - `contains`: Check that a string contains a substring.
+//   - `not-contains`: Check that a string does not contain a substring.
+//   - `echo`: Print a message to standard output.
+//   - `cat`: Concatenate files and print on the standard output

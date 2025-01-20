@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
-	"net/rpc"
 	"os"
 	"os/exec"
 	"time"
@@ -26,25 +26,42 @@ func main() {
 	}
 	flag.Parse()
 
-	// Create a new MCP service
-	svc := mcp.NewService(*name, *version)
+	// Create server
+	server := mcp.NewServer(*name, *version)
 
 	// Register the exec tool
-	err := svc.RegisterTool(NewExecTool())
+	err := server.RegisterTool(NewExecTool())
 	if err != nil {
 		log.Fatalf("Failed to register exec tool: %v", err)
 	}
 
-	// Create a new RPC server and register the service
-	server := rpc.NewServer()
-	err = server.RegisterName("MCP", svc)
-	if err != nil {
-		log.Fatalf("Failed to register service: %v", err)
-	}
-
-	// Serve on stdin/stdout
+	// Create transport
 	transport := mcp.NewStdioTransport(context.Background())
-	server.ServeConn(transport)
+
+	// Handle messages
+	for {
+		msg := make([]byte, 4096)
+		n, err := transport.Read(msg)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Printf("Read error: %v", err)
+			continue
+		}
+
+		resp, err := server.Handle(context.Background(), msg[:n])
+		if err != nil {
+			log.Printf("Handle error: %v", err)
+			continue
+		}
+
+		_, err = transport.Write(append(resp, '\n'))
+		if err != nil {
+			log.Printf("Write error: %v", err)
+			continue
+		}
+	}
 }
 
 // ExecTool implements a Tool that executes shell commands.
@@ -54,7 +71,7 @@ type ExecTool struct {
 }
 
 // NewExecTool creates a new ExecTool instance.
-func NewExecTool() *ExecTool {
+func NewExecTool() mcp.Tool {
 	return &ExecTool{
 		name:        "exec",
 		description: "Executes a shell command and returns the output.",
@@ -69,19 +86,6 @@ func (t *ExecTool) Name() string {
 // Description returns the description of the tool.
 func (t *ExecTool) Description() string {
 	return t.description
-}
-
-// InputSchema returns the JSON schema for the tool's input parameters.
-func (t *ExecTool) InputSchema() json.RawMessage {
-	return json.RawMessage(`{
-		"type": "object",
-		"properties": {
-			"command": {"type": "string"},
-			"args": {"type": "array", "items": {"type": "string"}},
-			"timeout": {"type": "number", "description": "Timeout in seconds", "default": 60}
-		},
-		"required": ["command"]
-	}`)
 }
 
 // Handler executes the shell command and returns the output.

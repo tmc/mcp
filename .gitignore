@@ -1,0 +1,19 @@
+# Binaries
+mcp-exec
+mcpctl
+mcpspy
+mcpverify
+mcpreplay
+
+# Vendor directories
+vendor/
+
+# Test files
+test.txt
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store 

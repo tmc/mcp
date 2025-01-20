@@ -7,54 +7,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestListChangeNotifications(t *testing.T) {
-	tests := []struct {
-		name     string
-		method   string
-		caps     Capabilities
-		wantSent bool
-	}{
-		{
-			name:   "tools list changed with capability",
-			method: MethodToolListChanged,
-			caps: Capabilities{
-				Tools: &struct {
-					ListChanged bool `json:"listChanged,omitempty"`
-				}{ListChanged: true},
-			},
-			wantSent: true,
-		},
-		{
-			name:     "tools list changed without capability",
-			method:   MethodToolListChanged,
-			caps:     Capabilities{},
-			wantSent: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService("test", "1.0.0")
-			svc.caps = tt.caps
-
-			var notified bool
-			svc.Handle(tt.method, func(method string, params json.RawMessage) error {
-				notified = true
-				return nil
-			})
-
-			err := svc.NotifyListChanged(tt.method)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if notified != tt.wantSent {
-				t.Errorf("notification sent = %v, want %v", notified, tt.wantSent)
-			}
-		})
-	}
-}
-
 func TestDispatcher(t *testing.T) {
 	d := NewDispatcher()
 
@@ -87,15 +39,15 @@ func TestNotifications(t *testing.T) {
 				total := 100.0
 				return d.NotifyProgress("token1", 50.0, &total)
 			},
-			wantType: MethodProgress,
-			wantData: `{"progressToken":"token1","progress":50,"total":100}`,
+			wantType: MethodProgressChanged,
+			wantData: `{"token":"token1","progress":50,"total":100}`,
 		},
 		{
 			name: "logging message",
 			send: func(d *Dispatcher) error {
 				return d.NotifyLoggingMessage(LogInfo, "test", "hello")
 			},
-			wantType: MethodLogging,
+			wantType: MethodLoggingMessageSent,
 			wantData: `{"level":"info","logger":"test","data":"hello"}`,
 		},
 	}

@@ -74,10 +74,10 @@ func TestExecServer(t *testing.T) {
 
 	var execReply struct {
 		Content []struct {
-			Type    string `json:"type"`
-			Text    string `json:"text"`
-			IsError bool   `json:"isError,omitempty"`
+			Type string `json:"type"`
+			Text string `json:"text"`
 		} `json:"content"`
+		IsError bool `json:"isError,omitempty"`
 	}
 	if err := json.Unmarshal(result, &execReply); err != nil {
 		t.Fatalf("Failed to parse exec reply: %v", err)
@@ -103,7 +103,7 @@ func TestExecServer(t *testing.T) {
 		t.Fatalf("Failed to parse exec reply: %v", err)
 	}
 
-	if len(execReply.Content) != 1 || !execReply.Content[0].IsError {
+	if len(execReply.Content) != 1 || !execReply.IsError {
 		t.Error("expected timeout error")
 	}
 

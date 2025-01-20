@@ -19,6 +19,8 @@ import (
 func main() {
 	// Configure logging to stderr
 	log.SetOutput(os.Stderr)
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.Printf("mcp-exec server starting...")
 
 	// Define and parse command-line flags
 	var (
@@ -33,27 +35,71 @@ func main() {
 
 	// Create server
 	server := mcp.NewServer(*name, *version)
+	log.Printf("Created server: name=%s version=%s", *name, *version)
 
 	// Register the exec tool
 	err := server.RegisterTool(NewExecTool())
 	if err != nil {
 		log.Fatalf("Failed to register exec tool: %v", err)
 	}
+	log.Printf("Registered exec tool")
 
 	// Create transport
 	transport := mcp.NewStdioTransport(context.Background())
+	log.Printf("Created stdio transport")
+
+	// Create a context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start heartbeat goroutine
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				// Send a ping notification
+				ping := map[string]interface{}{
+					"jsonrpc": "2.0",
+					"method":  "$/ping",
+					"params":  map[string]interface{}{},
+				}
+				pingJSON, _ := json.Marshal(ping)
+				log.Printf("Sending ping...")
+				_, err := transport.Write(append(pingJSON, '\n'))
+				if err != nil {
+					log.Printf("Ping error: %v", err)
+				}
+			}
+		}
+	}()
 
 	// Handle messages
 	for {
 		msg := make([]byte, 4096)
+		log.Printf("Waiting for message...")
 		n, err := transport.Read(msg)
 		if err != nil {
 			if err == io.EOF {
-				break
+				log.Printf("EOF received, waiting for more input...")
+				time.Sleep(100 * time.Millisecond)
+				continue
 			}
 			log.Printf("Read error: %v", err)
 			continue
 		}
+
+		if n == 0 {
+			log.Printf("Empty message received, waiting for more input...")
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		log.Printf("Received message: %s", msg[:n])
 
 		resp, err := server.Handle(context.Background(), msg[:n])
 		if err != nil {
@@ -61,14 +107,13 @@ func main() {
 			continue
 		}
 
-		// Log the response for debugging
-		log.Printf("Response: %s", resp)
-
+		log.Printf("Sending response: %s", resp)
 		_, err = transport.Write(append(resp, '\n'))
 		if err != nil {
 			log.Printf("Write error: %v", err)
 			continue
 		}
+		log.Printf("Response sent successfully")
 	}
 }
 

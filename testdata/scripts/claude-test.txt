@@ -1,0 +1,6 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","id":1,"result":{"name":"mcp-exec","version":"0.1.0","protocolVersion":"2024-11-05"}}
+{"jsonrpc":"2.0","id":2,"method":"listTools","params":{}}
+{"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"exec","description":"Execute shell commands"}]}}
+{"jsonrpc":"2.0","id":3,"method":"exec","params":{"command":"ps aux | grep Claude"}}
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"USER   PID  %CPU %MEM      VSZ    RSS   TT  STAT STARTED      TIME COMMAND"}]}} 

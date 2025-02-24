@@ -1,0 +1,1 @@
+# Calculator Server - Real-time calculation service. Endpoints: /health, /calculate (POST with operation), /ws (real-time calculations). Operations: add, subtract, multiply, divide. Each operation takes parameters a and b. Run ./test_with_claude.sh to test.

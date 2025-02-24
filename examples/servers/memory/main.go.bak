@@ -1,0 +1,15 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+)
+
+func main() {
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	})
+	log.Printf("Memory server starting on :8087")
+	log.Fatal(http.ListenAndServe(":8087", nil))
+}

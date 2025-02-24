@@ -1,0 +1,1 @@
+# Stock Market Server - Real-time stock price updates via WebSocket. Endpoints: /health, /stocks (list stocks), /ws (real-time updates). Subscribe to specific symbols with JSON message {"action":"subscribe","symbols":["AAPL","MSFT"]}. Updates every 2 seconds with simulated price changes. Run ./test_with_claude.sh to test.

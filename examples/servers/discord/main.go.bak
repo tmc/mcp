@@ -1,0 +1,27 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"sync"
+)
+
+type Server struct {
+	channels []string
+	mu       sync.RWMutex
+}
+
+func main() {
+	server := &Server{channels: []string{"general", "random"}}
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	})
+	http.HandleFunc("/channels", func(w http.ResponseWriter, r *http.Request) {
+		server.mu.RLock()
+		json.NewEncoder(w).Encode(server.channels)
+		server.mu.RUnlock()
+	})
+	log.Printf("Discord server starting on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}

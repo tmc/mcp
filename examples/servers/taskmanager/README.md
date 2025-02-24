@@ -1,0 +1,1 @@
+# Task Manager Server - Real-time task management service. Endpoints: /health, /tasks (GET/POST), /tasks/update (POST), /ws (real-time updates). Features: task creation, status updates (pending/in_progress/completed), priority levels, timestamps, WebSocket notifications. Run ./test_with_claude.sh to test.

@@ -1,0 +1,58 @@
+package main
+
+import (
+	"encoding/json"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
+type Server struct {
+	channels map[string]Channel
+	messages []Message
+	mu       sync.RWMutex
+}
+type Channel struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+type Message struct {
+	ID        string    `json:"id"`
+	ChannelID string    `json:"channel_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func main() {
+	server := &Server{channels: map[string]Channel{"general": {ID: "general", Name: "general"}, "random": {ID: "random", Name: "random"}}, messages: make([]Message, 0)}
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	})
+	http.HandleFunc("/channels", func(w http.ResponseWriter, r *http.Request) {
+		server.mu.RLock()
+		channels := make([]Channel, 0, len(server.channels))
+		for _, ch := range server.channels {
+			channels = append(channels, ch)
+		}
+		json.NewEncoder(w).Encode(channels)
+		server.mu.RUnlock()
+	})
+	http.HandleFunc("/messages", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			var msg Message
+			json.NewDecoder(r.Body).Decode(&msg)
+			msg.CreatedAt = time.Now()
+			server.mu.Lock()
+			server.messages = append(server.messages, msg)
+			server.mu.Unlock()
+			json.NewEncoder(w).Encode(msg)
+		} else {
+			server.mu.RLock()
+			json.NewEncoder(w).Encode(server.messages)
+			server.mu.RUnlock()
+		}
+	})
+	log.Printf("Discord server starting on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}

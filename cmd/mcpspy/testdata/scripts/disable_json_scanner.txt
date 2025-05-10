@@ -1,0 +1,22 @@
+# Test non-JSON input handling
+#
+# This test verifies that mcpspy can handle non-JSON input gracefully
+
+# Test with input that isn't JSON formatted
+cat non_json_input.txt | mcpspy -f output.log -v
+
+# Verify that non-JSON input is processed line by line
+cat output.log
+stdout "mcp-recv This is not JSON"
+stdout "mcp-recv This is another line"
+! stdout "  \"method\": "  # Should not have pretty printing
+
+# Count the number of parsed lines
+grep -c "mcp-recv" output.log
+stdout 2
+
+# Test files to be used
+-- non_json_input.txt --
+This is not JSON
+This is another line
+This has some {braces} but isn't valid JSON

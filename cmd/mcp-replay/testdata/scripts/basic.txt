@@ -1,0 +1,3 @@
+# Test basic functionality
+mcp-replay --help
+stdout 'Usage: mcp-replay [options] recording'

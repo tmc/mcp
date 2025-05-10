@@ -1,0 +1,5 @@
+{"method": "split_test", "params": {
+    "test": true,
+    "value": "test value"
+  }
+}

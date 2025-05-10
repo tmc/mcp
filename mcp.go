@@ -2,157 +2,145 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"sync"
 )
 
-// Protocol version constants
-const (
-	ProtocolVersion = "2024-11-05"
-	JSONRPCVersion  = "2.0"
-)
+// Support for creating typed tool handlers that automatically handle JSON serialization/deserialization.
+// This allows for a more idiomatic Go API when registering tools.
 
-// Role represents a participant in the protocol.
-type Role string
-
-const (
-	RoleUser      Role = "user"
-	RoleAssistant Role = "assistant"
-)
-
-// LoggingLevel represents the severity of a log message (RFC-5424)
-type LoggingLevel string
-
-const (
-	LogDebug     LoggingLevel = "debug"
-	LogInfo      LoggingLevel = "info"
-	LogNotice    LoggingLevel = "notice"
-	LogWarning   LoggingLevel = "warning"
-	LogError     LoggingLevel = "error"
-	LogCritical  LoggingLevel = "critical"
-	LogAlert     LoggingLevel = "alert"
-	LogEmergency LoggingLevel = "emergency"
-)
-
-// Service implements the MCP RPC service.
-type Service struct {
-	mu       sync.RWMutex
-	tools    map[string]Tool
-	caps     Capabilities
-	version  string
-	name     string
-	dispatch *Dispatcher
-	limiter  *RateLimiter // Add rate limiter
-}
-
-// NewService creates a new MCP service with default configuration
-func NewService(name, version string, opts ...Option) *Service {
-	s := &Service{
-		tools:   make(map[string]Tool),
-		version: version,
-		name:    name,
-		// Default configuration
-		dispatch: NewDispatcher(),
-		limiter:  NewRateLimiter(DefaultRateLimitConfig()),
-		caps: Capabilities{
-			Tools: &struct {
-				ListChanged bool `json:"listChanged,omitempty"`
-			}{
-				ListChanged: true,
-			},
-		},
-	}
-
-	// Apply options
-	for _, opt := range opts {
-		opt(s)
-	}
-
-	return s
-}
-
-// Add notification methods
-func (s *Service) Handle(method string, h Handler) {
-	if s.dispatch != nil {
-		s.dispatch.Handle(method, h)
-	}
-}
-
-func (s *Service) NotifyListChanged(method string) error {
-	if s.dispatch == nil {
-		return nil
-	}
-	switch method {
-	case MethodToolListChanged:
-		if s.caps.Tools == nil || !s.caps.Tools.ListChanged {
-			return nil
-		}
-	default:
-		return fmt.Errorf("unsupported list change notification: %s", method)
-	}
-	return s.dispatch.NotifyListChanged(method)
-}
-
-// Initialize handles client initialization.
-func (s *Service) Initialize(args *InitializeArgs, reply *InitializeReply) error {
-	reply.ProtocolVersion = ProtocolVersion
-	reply.ServerInfo = Implementation{
-		Name:    s.name,
-		Version: s.version,
-	}
-	reply.Capabilities = s.caps
-	return nil
-}
-
-// ListTools returns available tools.
-func (s *Service) ListTools(args *ListToolsArgs, reply *ListToolsReply) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	tools := make([]Tool, 0, len(s.tools))
-	for _, t := range s.tools {
-		// Don't expose handler in response
-		t.Handler = nil
-		tools = append(tools, t)
-	}
-	reply.Tools = tools
-	return nil
-}
-
-// CallTool executes a tool.
-func (s *Service) CallTool(args *CallToolArgs, reply *CallToolReply) error {
-	s.mu.RLock()
-	tool, ok := s.tools[args.Name]
-	s.mu.RUnlock()
-
-	if !ok {
-		return fmt.Errorf("unknown tool: %s", args.Name)
-	}
-
-	result, err := tool.Handler(context.Background(), args.Arguments)
+// RegisterTypedTool registers a type-safe tool handler with automatic JSON marshaling/unmarshaling.
+// Input is the Go type for the tool's input, and Output is the Go type for the tool's output.
+func RegisterTypedTool[Input any, Output any](
+	server *Server,
+	name string,
+	description string,
+	handler func(context.Context, Input) (Output, error),
+) error {
+	// Create a JSON schema from the Input type if possible
+	inputSchema, err := createJSONSchema[Input]()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create input schema: %w", err)
 	}
-	*reply = CallToolReply(*result)
-	return nil
+
+	// Register the tool with the server
+	toolHandler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		// Parse the input
+		var input Input
+		if err := json.Unmarshal(req.Arguments, &input); err != nil {
+			return &CallToolResult{
+				IsError: true,
+				Content: []any{
+					map[string]string{
+						"type": "text",
+						"text": fmt.Sprintf("Invalid input: %v", err),
+					},
+				},
+			}, nil
+		}
+
+		// Call the handler
+		output, err := handler(ctx, input)
+		if err != nil {
+			return &CallToolResult{
+				IsError: true,
+				Content: []any{
+					map[string]string{
+						"type": "text",
+						"text": fmt.Sprintf("Error: %v", err),
+					},
+				},
+			}, nil
+		}
+
+		// Convert the output to a generic map for the content
+		outputJSON, err := json.Marshal(output)
+		if err != nil {
+			return &CallToolResult{
+				IsError: true,
+				Content: []any{
+					map[string]string{
+						"type": "text",
+						"text": fmt.Sprintf("Failed to marshal output: %v", err),
+					},
+				},
+			}, nil
+		}
+
+		var outputMap map[string]any
+		if err := json.Unmarshal(outputJSON, &outputMap); err != nil {
+			// If it can't be unmarshaled as a map, use it as a text result
+			return &CallToolResult{
+				Content: []any{
+					map[string]string{
+						"type": "text",
+						"text": string(outputJSON),
+					},
+				},
+			}, nil
+		}
+
+		// Return the result
+		return &CallToolResult{
+			Content: []any{
+				map[string]any{
+					"type":   "text",
+					"format": "json",
+					"text":   string(outputJSON),
+				},
+			},
+		}, nil
+	}
+
+	// Add the tool with its handler
+	tool := Tool{
+		Name:        name,
+		Description: description,
+		InputSchema: inputSchema,
+	}
+	return server.RegisterTool(tool, toolHandler)
 }
 
-// RegisterTool adds a tool to the service.
-func (s *Service) RegisterTool(t Tool) error {
-	if t.Name == "" {
-		return fmt.Errorf("tool name required")
-	}
-	if t.Handler == nil {
-		return fmt.Errorf("tool handler required")
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, exists := s.tools[t.Name]; exists {
-		return fmt.Errorf("tool %q already registered", t.Name)
+// createJSONSchema generates a simple JSON schema representation for the given type.
+// This is a basic implementation that could be enhanced in the future.
+func createJSONSchema[T any]() (json.RawMessage, error) {
+	// For now, just create a simple schema with example values
+	var example T
+	exampleJSON, err := json.Marshal(example)
+	if err != nil {
+		return nil, err
 	}
 
-	s.tools[t.Name] = t
-	return nil
+	var exampleMap map[string]any
+	if err := json.Unmarshal(exampleJSON, &exampleMap); err != nil {
+		// If it's not a struct that can be represented as a map, return a simpler schema
+		return json.Marshal(map[string]any{
+			"type": "string", // Default to string, could be improved with reflection
+		})
+	}
+
+	// Create a schema based on the example
+	schema := map[string]any{
+		"type": "object",
+		"properties": func() map[string]any {
+			props := make(map[string]any)
+			for k, v := range exampleMap {
+				propType := "string" // Default
+				switch v.(type) {
+				case float64:
+					propType = "number"
+				case bool:
+					propType = "boolean"
+				case map[string]any:
+					propType = "object"
+				case []any:
+					propType = "array"
+				}
+				props[k] = map[string]any{"type": propType}
+			}
+			return props
+		}(),
+	}
+
+	return json.Marshal(schema)
 }

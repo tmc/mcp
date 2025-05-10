@@ -1,0 +1,71 @@
+# Basic test for mcpdiff functionality
+
+# First, make sure the test files exist
+exists sample1.mcp
+exists sample2.mcp
+exists different1.mcp
+exists different2.mcp
+exists timestamp1.mcp
+exists timestamp2.mcp
+
+# Help flag should show usage
+mcpdiff --help
+stderr 'Usage:'
+stderr 'Options:'
+
+# Test with default settings (should show differences in ID)
+mcpdiff sample1.mcp sample2.mcp
+stdout 'id":1'
+stdout 'id":2'
+
+# Test with JSON output
+mcpdiff --json sample1.mcp sample2.mcp
+stdout '"matches": false'
+stdout '"file1": "sample1.mcp"'
+stdout '"file2": "sample2.mcp"'
+
+# Test with regular differences
+mcpdiff different1.mcp different2.mcp
+stdout 'version'
+stdout '1.0.0'
+stdout '2.0.0'
+
+# Test with timestamps (should ignore by default)
+mcpdiff timestamp1.mcp timestamp2.mcp
+stdout 'Files match'
+
+# Test with timestamps comparison explicitly enabled
+mcpdiff -t=false timestamp1.mcp timestamp2.mcp
+stdout '1000.001'
+stdout '2000.002'
+! stdout 'Files match'
+
+# Test with timestamps comparison explicitly disabled
+mcpdiff -t=true timestamp1.mcp timestamp2.mcp
+stdout 'Files match'
+! stdout '1000.001'
+! stdout '2000.002'
+
+-- sample1.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 1234567890.123
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"name":"test-server"}} # 1234567890.124
+
+-- sample2.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 1234567890.123
+mcp-send {"jsonrpc":"2.0","id":2,"result":{"name":"test-server"}} # 1234567890.124
+
+-- different1.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 1234567890.123
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"name":"test-server","version":"1.0.0"}} # 1234567890.124
+mcp-recv {"jsonrpc":"2.0","id":2,"method":"read","params":{"path":"sample.txt"}} # 1234567890.125
+
+-- different2.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 1234567890.123
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"name":"test-server","version":"2.0.0"}} # 1234567890.124
+mcp-recv {"jsonrpc":"2.0","id":2,"method":"write","params":{"path":"sample.txt"}} # 1234567890.125
+
+-- timestamp1.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"test"} # 1000.001
+
+-- timestamp2.mcp --
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"test"} # 2000.002

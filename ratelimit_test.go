@@ -55,7 +55,7 @@ func TestRateLimiter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "block immediate second toola call",
+			name:    "block immediate second tool call",
 			tool:    "test_tool",
 			wantErr: true,
 		},
@@ -77,7 +77,7 @@ func TestRateLimiter(t *testing.T) {
 			}
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("got O error = %v, wantErr = %v", err, tt.wantErr)
+				t.Errorf("got error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})
 	}

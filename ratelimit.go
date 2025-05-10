@@ -34,6 +34,15 @@ type RateLimitConfig struct {
 	ToolBurst map[string]int
 }
 
+type RateLimitError struct {
+	Message string `json:"message"`
+}
+
+// Error implements the error interface for RateLimitError
+func (e *RateLimitError) Error() string {
+	return e.Message
+}
+
 // DefaultRateLimitConfig provides sensible defaults
 func DefaultRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
@@ -87,18 +96,16 @@ func NewRateLimiter(cfg RateLimitConfig) *RateLimiter {
 // Allow checks if a request should be allowed
 func (rl *RateLimiter) Allow(ctx context.Context, method string) error {
 	// Check global limit first
-	if err := rl.global.Wait(ctx); err != nil {
-		return err
+	if !rl.global.Allow() {
+		return &RateLimitError{Message: "global rate limit exceeded"}
 	}
 
 	rl.mu.RLock()
 	limiter, exists := rl.methods[method]
 	rl.mu.RUnlock()
 
-	if exists {
-		if err := limiter.Wait(ctx); err != nil {
-			return err
-		}
+	if exists && !limiter.Allow() {
+		return &RateLimitError{Message: "method rate limit exceeded"}
 	}
 
 	return nil
@@ -115,10 +122,8 @@ func (rl *RateLimiter) AllowTool(ctx context.Context, toolName string) error {
 	}
 	rl.mu.RUnlock()
 
-	if limiter != nil {
-		if err := limiter.Wait(ctx); err != nil {
-			return err
-		}
+	if limiter != nil && !limiter.Allow() {
+		return &RateLimitError{Message: "tool rate limit exceeded"}
 	}
 
 	return nil

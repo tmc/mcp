@@ -1,57 +1,138 @@
 /*
-Package mcp implements the Model Context Protocol (MCP).
+Package mcp provides Go implementations for the Model Context Protocol (MCP)
+client and server. It defines core MCP types, interfaces for interaction, and
+abstractions for transport mechanisms, aiming to provide an idiomatic Go API
+for building MCP integrations.
 
-Notifications
+This package relies on the standard Go library and the experimental jsonrpc2
+package (golang.org/x/exp/jsonrpc2) for underlying JSON-RPC communication,
+which is kept internal to this SDK.
 
-The MCP protocol supports various types of notifications that can be sent between
-client and server. Notifications are capability-based, meaning both sides must
-agree to support specific notification types during initialization.
+# Overview
 
-Server Capabilities:
-  - Tool list changes (tools.listChanged)
-  - Resource list changes (resources.listChanged)
-  - Progress updates
-  - Logging messages
+The Model Context Protocol (MCP) enables seamless integration between LLM applications
+and external tools, resources, and prompts. This implementation provides:
 
-Client Capabilities:
-  - Root list changes (roots.listChanged)
+- Complete support for the MCP specification
+- Type-safe generic API with Go generics
+- Tools, resources, and prompts management
+- Client and server implementations
+- Multiple transport options
 
-Example server with notifications:
+# Client Example
 
-    svc := mcp.NewService("example", "1.0.0")
+Here's a basic example of using the client:
 
-    // Handle logging notifications
-    svc.Handle(mcp.MethodLogging, func(method string, params json.RawMessage) error {
-        var msg struct {
-            Level  mcp.LoggingLevel `json:"level"`
-            Logger string           `json:"logger"`
-            Data   interface{}      `json:"data"`
-        }
-        if err := json.Unmarshal(params, &msg); err != nil {
-            return err
-        }
-        log.Printf("[%s] %s: %v\n", msg.Level, msg.Logger, msg.Data)
-        return nil
-    })
+	// Create a transport
+	transport := mcp.NewStdioTransport(os.Stdin, os.Stdout)
 
-Example client with notifications:
+	// Create a client
+	client, err := mcp.NewClient(transport)
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
+	defer client.Close()
 
-    client := mcp.NewClient(conn)
+	// Initialize the client
+	ctx := context.Background()
+	result, err := client.Initialize(ctx, mcp.InitializeRequest{
+		ClientInfo: mcp.Implementation{
+			Name:    "example-client",
+			Version: "1.0.0",
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize: %v", err)
+	}
 
-    // Handle tool list changes
-    client.Handle(mcp.MethodToolListChanged, func(method string, params json.RawMessage) error {
-        log.Println("Tool list changed")
-        return nil
-    })
+	fmt.Printf("Connected to %s (version %s)\n",
+		result.ServerInfo.Name, result.ServerInfo.Version)
 
-    // Initialize with capabilities
-    reply, err := client.Initialize(context.Background(), mcp.Implementation{
-        Name:    "example-client",
-        Version: "1.0.0",
-    }, mcp.ClientCapabilities{
-        Sampling: &struct{}{},
-    })
+	// List available tools
+	toolsResult, err := client.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		log.Fatalf("Failed to list tools: %v", err)
+	}
 
-For more examples, see the examples directory.
+	fmt.Printf("Available tools:\n")
+	for _, tool := range toolsResult.Tools {
+		fmt.Printf("- %s: %s\n", tool.Name, tool.Description)
+	}
+
+# Server Example
+
+Here's a basic example of implementing a server:
+
+	// Create a server
+	server := mcp.NewServer("example-server", "1.0.0",
+		mcp.WithToolCapabilities(true),
+		mcp.WithInstructions("An example MCP server"),
+	)
+
+	// Register a type-safe tool
+	type CalculatorInput struct {
+		A int `json:"a"`
+		B int `json:"b"`
+	}
+
+	type CalculatorOutput struct {
+		Result int `json:"result"`
+	}
+
+	err := mcp.RegisterTypedTool(server, "add", "Add two numbers",
+		func(ctx context.Context, input CalculatorInput) (CalculatorOutput, error) {
+			return CalculatorOutput{Result: input.A + input.B}, nil
+		})
+	if err != nil {
+		log.Fatalf("Failed to register tool: %v", err)
+	}
+
+	// Start the server (nil defaults to using stdin/stdout)
+	if err := server.Serve(context.Background(), nil); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
+
+	// Or provide a custom transport function
+	// customTransport := func(ctx context.Context) (io.ReadWriteCloser, error) {
+	//     // Create or get your io.ReadWriteCloser here
+	//     return myReadWriteCloser, nil
+	// }
+	// if err := server.Serve(context.Background(), customTransport); err != nil {
+	//     log.Fatalf("Server error: %v", err)
+	// }
+
+# Notifications
+
+The MCP protocol supports asynchronous notifications from server to client.
+These can be handled using the OnNotification method on the client:
+
+	client.OnNotification(func(notification mcp.JSONRPCNotification) {
+		fmt.Printf("Received notification: %s\n", notification.Method)
+		// Handle specific notification types
+		switch notification.Method {
+		case "tools/list/changed":
+			// Refresh tool list
+		case "progress":
+			// Update progress UI
+		}
+	})
+
+# Working with Resources
+
+Resources represent data that can be read from the server:
+
+	// Register a resource on the server
+	server.RegisterResourceHandler("/data/config.json",
+		func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			// Return the resource content
+			return []mcp.ResourceContents{
+				// Resource implementation
+			}, nil
+		})
+
+	// Read a resource from the client
+	result, err := client.ReadResource(ctx, mcp.ReadResourceRequest{
+		URI: "/data/config.json",
+	})
 */
 package mcp

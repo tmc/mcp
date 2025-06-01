@@ -6,8 +6,7 @@ package adapters
 import (
 	"context"
 
-	"github.com/tmc/mcp/protocol"
-	"github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
 // Adapter is the common interface that all server adapters must implement.
@@ -15,14 +14,14 @@ import (
 // the standard SDK server interface.
 type Adapter interface {
 	// Initialize sets up the adapter with the target server implementation
-	Initialize(ctx context.Context, server server.Server) error
+	Initialize(ctx context.Context, server interface{}) error
 
 	// HandleRequest processes incoming requests and routes them to the appropriate
 	// handler in the wrapped implementation
 	HandleRequest(ctx context.Context, method string, params any) (any, error)
 
 	// GetCapabilities returns the capabilities of the wrapped server
-	GetCapabilities() protocol.ServerCapabilities
+	GetCapabilities() modelcontextprotocol.ServerCapabilities
 }
 
 // Registry maintains a collection of available adapters

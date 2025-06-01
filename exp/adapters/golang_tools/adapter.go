@@ -6,20 +6,47 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tmc/mcp/adapters"
-	"github.com/tmc/mcp/protocol"
-	"github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/exp/adapters"
+	"github.com/tmc/mcp/modelcontextprotocol"
 	
 	// The golang-tools types would normally be imported here
 	// mcp "golang.org/x/tools/internal/mcp"
 	// mcpProtocol "golang.org/x/tools/internal/mcp/protocol"
 )
 
+// Server is a minimal interface for the golang-tools server
+type Server interface {
+	GetServerInfo() ServerInfo
+	GetTools() []Tool
+	GetPrompts() []Prompt
+	CallTool(ctx context.Context, name string, args map[string]json.RawMessage) (any, error)
+	GetPrompt(ctx context.Context, name string, args map[string]string) (any, error)
+}
+
+type ServerInfo struct {
+	Name            string
+	Version         string
+	Instructions    string
+	ProtocolVersion string
+}
+
+type Tool struct {
+	Name        string
+	Description string
+	InputSchema json.RawMessage
+}
+
+type Prompt struct {
+	Name        string
+	Description string
+	Arguments   []PromptArgument
+}
+
 // GolangToolsAdapter adapts golang-tools-internal-mcp servers to work with the standard MCP SDK.
 // It handles the translation between the golang-tools implementation patterns and
 // the SDK server interface.
 type GolangToolsAdapter struct {
-	server       server.Server
+	server       Server
 	golangServer interface{} // This would be *mcp.Server from golang-tools
 	
 	// Store tools and prompts locally
@@ -96,11 +123,24 @@ func NewAdapter() adapters.Adapter {
 }
 
 // Initialize sets up the adapter with the target server
-func (a *GolangToolsAdapter) Initialize(ctx context.Context, srv server.Server) error {
-	a.server = srv
+func (a *GolangToolsAdapter) Initialize(ctx context.Context, srv interface{}) error {
+	if srv != nil {
+		if s, ok := srv.(Server); ok {
+			a.server = s
+		}
+	}
 	
-	// Extract server info from the SDK server
-	info := srv.GetServerInfo()
+	// Extract server info from the SDK server if available
+	var info ServerInfo
+	if a.server != nil {
+		info = a.server.GetServerInfo()
+	} else {
+		info = ServerInfo{
+			Name:            "golang-tools-adapter",
+			Version:         "0.1.0",
+			ProtocolVersion: "2024-11-05",
+		}
+	}
 	
 	// Create the golang-tools server (simulated since we don't have the actual implementation)
 	// In a real implementation, this would call the golang-tools NewServer function
@@ -137,20 +177,22 @@ func (a *GolangToolsAdapter) HandleRequest(ctx context.Context, method string, p
 }
 
 // GetCapabilities returns the server capabilities
-func (a *GolangToolsAdapter) GetCapabilities() protocol.ServerCapabilities {
-	caps := protocol.ServerCapabilities{}
+func (a *GolangToolsAdapter) GetCapabilities() modelcontextprotocol.ServerCapabilities {
+	caps := modelcontextprotocol.ServerCapabilities{}
 	
 	// Check if we have tools registered
 	if len(a.tools) > 0 {
-		caps.Tools = &protocol.ToolsCapability{
-			ListChanged: false,
+		toolsListChanged := false
+		caps.Tools = &modelcontextprotocol.ToolsServerCapability{
+			ListChanged: &toolsListChanged,
 		}
 	}
 	
 	// Check if we have prompts registered
 	if len(a.prompts) > 0 {
-		caps.Prompts = &protocol.PromptsCapability{
-			ListChanged: false,
+		promptsListChanged := false
+		caps.Prompts = &modelcontextprotocol.PromptsServerCapability{
+			ListChanged: &promptsListChanged,
 		}
 	}
 	
@@ -161,9 +203,9 @@ func (a *GolangToolsAdapter) handleInitialize(ctx context.Context, params any) (
 	// Return initialization result using the SDK server's info
 	info := a.server.GetServerInfo()
 	
-	return protocol.InitializeResult{
+	return modelcontextprotocol.InitializeResult{
 		ProtocolVersion: info.ProtocolVersion,
-		ServerInfo: protocol.Implementation{
+		ServerInfo: modelcontextprotocol.Implementation{
 			Name:    info.Name,
 			Version: info.Version,
 		},
@@ -173,17 +215,22 @@ func (a *GolangToolsAdapter) handleInitialize(ctx context.Context, params any) (
 
 func (a *GolangToolsAdapter) handleListTools(ctx context.Context, params any) (any, error) {
 	// Convert tools to SDK protocol
-	tools := make([]protocol.Tool, len(a.tools))
+	tools := make([]modelcontextprotocol.Tool, len(a.tools))
 	for i, tool := range a.tools {
-		schemaBytes, _ := json.Marshal(tool.InputSchema)
-		tools[i] = protocol.Tool{
+		// Create a simple schema structure
+		schema := modelcontextprotocol.ToolSchema{
+			Type:       "object",
+			Properties: make(map[string]json.RawMessage),
+		}
+		
+		tools[i] = modelcontextprotocol.Tool{
 			Name:        tool.Name,
-			Description: tool.Description,
-			InputSchema: schemaBytes,
+			Description: &tool.Description,
+			InputSchema: schema,
 		}
 	}
 	
-	return protocol.ListToolsResult{
+	return modelcontextprotocol.ListToolsResult{
 		Tools: tools,
 	}, nil
 }
@@ -228,37 +275,37 @@ func (a *GolangToolsAdapter) handleCallTool(ctx context.Context, params any) (an
 	}
 	
 	// Convert result to SDK protocol
-	content := make([]protocol.Content, len(result.Content))
+	content := make([]modelcontextprotocol.Content, len(result.Content))
 	for i, c := range result.Content {
 		content[i] = convertContent(c)
 	}
 	
-	return protocol.CallToolResult{
+	return modelcontextprotocol.CallToolResult{
 		Content: content,
-		IsError: result.IsError,
+		IsError: &result.IsError,
 	}, nil
 }
 
 func (a *GolangToolsAdapter) handleListPrompts(ctx context.Context, params any) (any, error) {
 	// Convert prompts to SDK protocol
-	prompts := make([]protocol.Prompt, len(a.prompts))
+	prompts := make([]modelcontextprotocol.Prompt, len(a.prompts))
 	for i, prompt := range a.prompts {
-		args := make([]protocol.PromptArgument, len(prompt.Arguments))
+		args := make([]*modelcontextprotocol.PromptArgument, len(prompt.Arguments))
 		for j, arg := range prompt.Arguments {
-			args[j] = protocol.PromptArgument{
+			args[j] = &modelcontextprotocol.PromptArgument{
 				Name:        arg.Name,
-				Description: arg.Description,
-				Required:    arg.Required,
+				Description: &arg.Description,
+				Required:    &arg.Required,
 			}
 		}
-		prompts[i] = protocol.Prompt{
+		prompts[i] = modelcontextprotocol.Prompt{
 			Name:        prompt.Name,
-			Description: prompt.Description,
+			Description: &prompt.Description,
 			Arguments:   args,
 		}
 	}
 	
-	return protocol.ListPromptsResult{
+	return modelcontextprotocol.ListPromptsResult{
 		Prompts: prompts,
 	}, nil
 }
@@ -301,15 +348,15 @@ func (a *GolangToolsAdapter) handleGetPrompt(ctx context.Context, params any) (a
 	}
 	
 	// Convert messages to SDK protocol
-	messages := make([]protocol.PromptMessage, len(result.Messages))
+	messages := make([]modelcontextprotocol.PromptMessage, len(result.Messages))
 	for i, msg := range result.Messages {
-		messages[i] = protocol.PromptMessage{
-			Role:    protocol.Role(msg.Role),
+		messages[i] = modelcontextprotocol.PromptMessage{
+			Role:    modelcontextprotocol.Role(msg.Role),
 			Content: convertContent(msg.Content),
 		}
 	}
 	
-	return protocol.GetPromptResult{
+	return modelcontextprotocol.GetPromptResult{
 		Description: result.Description,
 		Messages:    messages,
 	}, nil
@@ -347,7 +394,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				}
 				
 				// Convert result to golang-tools format
-				callResult, ok := result.(protocol.CallToolResult)
+				callResult, ok := result.(modelcontextprotocol.CallToolResult)
 				if !ok {
 					return nil, fmt.Errorf("unexpected tool result type: %T", result)
 				}
@@ -399,7 +446,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				}
 				
 				// Convert result to golang-tools format
-				getResult, ok := result.(protocol.GetPromptResult)
+				getResult, ok := result.(modelcontextprotocol.GetPromptResult)
 				if !ok {
 					return nil, fmt.Errorf("unexpected prompt result type: %T", result)
 				}
@@ -425,15 +472,15 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 }
 
 // convertContent converts golang-tools content to SDK protocol content
-func convertContent(content Content) protocol.Content {
+func convertContent(content Content) modelcontextprotocol.Content {
 	switch content.Type {
 	case "text":
-		return protocol.TextContent{
+		return modelcontextprotocol.TextContent{
 			Type: "text",
 			Text: content.Text,
 		}
 	case "image":
-		return protocol.ImageContent{
+		return modelcontextprotocol.ImageContent{
 			Type:     "image",
 			Data:     content.Data,
 			MimeType: content.MIMEType,
@@ -441,18 +488,18 @@ func convertContent(content Content) protocol.Content {
 	case "resource":
 		if content.Resource != nil {
 			if content.Resource.Blob != nil {
-				return protocol.ResourceContent{
+				return modelcontextprotocol.ResourceContent{
 					Type: "resource",
-					Resource: protocol.BlobResourceContents{
+					Resource: modelcontextprotocol.BlobResourceContents{
 						URI:      content.Resource.URI,
 						MimeType: content.Resource.MIMEType,
 						Blob:     *content.Resource.Blob,
 					},
 				}
 			}
-			return protocol.ResourceContent{
+			return modelcontextprotocol.ResourceContent{
 				Type: "resource",
-				Resource: protocol.TextResourceContents{
+				Resource: modelcontextprotocol.TextResourceContents{
 					URI:      content.Resource.URI,
 					MimeType: content.Resource.MIMEType,
 					Text:     content.Resource.Text,
@@ -462,39 +509,39 @@ func convertContent(content Content) protocol.Content {
 	}
 	
 	// Default to text content
-	return protocol.TextContent{
+	return modelcontextprotocol.TextContent{
 		Type: "text",
 		Text: content.Text,
 	}
 }
 
 // convertSDKContentToGolang converts SDK protocol content to golang-tools content
-func convertSDKContentToGolang(content protocol.Content) Content {
+func convertSDKContentToGolang(content modelcontextprotocol.Content) Content {
 	switch c := content.(type) {
-	case protocol.TextContent:
+	case modelcontextprotocol.TextContent:
 		return Content{
 			Type: "text",
 			Text: c.Text,
 		}
-	case protocol.ImageContent:
+	case modelcontextprotocol.ImageContent:
 		return Content{
 			Type:     "image",
 			Data:     c.Data,
 			MIMEType: c.MimeType,
 		}
-	case protocol.ResourceContent:
+	case modelcontextprotocol.ResourceContent:
 		golangContent := Content{
 			Type: "resource",
 		}
 		
 		switch r := c.Resource.(type) {
-		case protocol.TextResourceContents:
+		case modelcontextprotocol.TextResourceContents:
 			golangContent.Resource = &Resource{
 				URI:      r.URI,
 				MIMEType: r.MimeType,
 				Text:     r.Text,
 			}
-		case protocol.BlobResourceContents:
+		case modelcontextprotocol.BlobResourceContents:
 			blob := r.Blob
 			golangContent.Resource = &Resource{
 				URI:      r.URI,

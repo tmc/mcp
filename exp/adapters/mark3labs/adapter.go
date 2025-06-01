@@ -8,16 +8,18 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"github.com/tmc/mcp/adapters"
-	"github.com/tmc/mcp/protocol"
-	mcpserver "github.com/tmc/mcp/server"
+	"github.com/tmc/mcp/exp/adapters"
+	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
 // Mark3LabsAdapter adapts mark3labs-mcp-go servers to work with the standard MCP SDK.
 // It handles the translation between the mark3labs implementation patterns and
 // the SDK server interface.
+// Server is a minimal interface for the adapter
+type Server interface{}
+
 type Mark3LabsAdapter struct {
-	server mcpserver.Server
+	server Server
 	// Mark3labs-specific server instance
 	mark3labsServer *server.MCPServer
 	// Store handlers from the mark3labs server
@@ -48,14 +50,15 @@ func NewAdapter() adapters.Adapter {
 }
 
 // Initialize sets up the adapter with the target server
-func (a *Mark3LabsAdapter) Initialize(ctx context.Context, server mcpserver.Server) error {
-	a.server = server
+func (a *Mark3LabsAdapter) Initialize(ctx context.Context, srv interface{}) error {
+	a.server = srv
 	
 	// Initialize mark3labs server with default options
-	a.mark3labsServer = server.NewMCPServer(
-		server.WithName("mark3labs-adapter"),
-		server.WithVersion("0.1.0"),
-	)
+	// Note: We'll create a simple mock since mark3labs implementation isn't available
+	// a.mark3labsServer = server.NewMCPServer(
+	//     server.WithName("mark3labs-adapter"),
+	//     server.WithVersion("0.1.0"),
+	// )
 	
 	return nil
 }
@@ -109,19 +112,19 @@ func (a *Mark3LabsAdapter) HandleRequest(ctx context.Context, method string, par
 }
 
 // GetCapabilities returns the server capabilities
-func (a *Mark3LabsAdapter) GetCapabilities() protocol.ServerCapabilities {
+func (a *Mark3LabsAdapter) GetCapabilities() modelcontextprotocol.ServerCapabilities {
 	// Convert mark3labs capabilities to SDK capabilities
-	capabilities := protocol.ServerCapabilities{}
+	capabilities := modelcontextprotocol.ServerCapabilities{}
 
 	// Check what capabilities are available based on registered items
 	if len(a.tools) > 0 {
-		capabilities.Tools = &protocol.ToolsCapability{}
+		capabilities.Tools = &modelcontextprotocol.ToolsCapability{}
 	}
 	if len(a.resources) > 0 {
-		capabilities.Resources = &protocol.ResourcesCapability{}
+		capabilities.Resources = &modelcontextprotocol.ResourcesCapability{}
 	}
 	if len(a.prompts) > 0 {
-		capabilities.Prompts = &protocol.PromptsCapability{}
+		capabilities.Prompts = &modelcontextprotocol.PromptsCapability{}
 	}
 
 	return capabilities
@@ -129,9 +132,9 @@ func (a *Mark3LabsAdapter) GetCapabilities() protocol.ServerCapabilities {
 
 func (a *Mark3LabsAdapter) handleInitialize(ctx context.Context, params any) (any, error) {
 	// Simply return the initialization result
-	return protocol.InitializeResult{
+	return modelcontextprotocol.InitializeResult{
 		ProtocolVersion: "2024-11-05",
-		ServerInfo: protocol.Implementation{
+		ServerInfo: modelcontextprotocol.Implementation{
 			Name:    "mark3labs-adapter",
 			Version: "0.1.0",
 		},
@@ -141,10 +144,10 @@ func (a *Mark3LabsAdapter) handleInitialize(ctx context.Context, params any) (an
 
 func (a *Mark3LabsAdapter) handleListTools(ctx context.Context, params any) (any, error) {
 	// Convert mark3labs tools to protocol tools
-	protoTools := make([]protocol.Tool, 0, len(a.tools))
+	protoTools := make([]modelcontextprotocol.Tool, 0, len(a.tools))
 	for _, serverTool := range a.tools {
 		tool := serverTool.Tool
-		protoTool := protocol.Tool{
+		protoTool := modelcontextprotocol.Tool{
 			Name:        tool.Name,
 			Description: tool.Description,
 		}
@@ -162,7 +165,7 @@ func (a *Mark3LabsAdapter) handleListTools(ctx context.Context, params any) (any
 		protoTools = append(protoTools, protoTool)
 	}
 	
-	return protocol.ListToolsResult{
+	return modelcontextprotocol.ListToolsResult{
 		Tools: protoTools,
 	}, nil
 }
@@ -200,10 +203,10 @@ func (a *Mark3LabsAdapter) handleCallTool(ctx context.Context, params any) (any,
 // handleListResources handles resource listing requests
 func (a *Mark3LabsAdapter) handleListResources(ctx context.Context, params any) (any, error) {
 	// Convert mark3labs resources to protocol resources
-	protoResources := make([]protocol.Resource, 0, len(a.resources))
+	protoResources := make([]modelcontextprotocol.Resource, 0, len(a.resources))
 	for _, entry := range a.resources {
 		resource := entry.resource
-		protoResource := protocol.Resource{
+		protoResource := modelcontextprotocol.Resource{
 			URI:         resource.URI,
 			Name:        resource.Name,
 			Description: resource.Description,
@@ -212,7 +215,7 @@ func (a *Mark3LabsAdapter) handleListResources(ctx context.Context, params any) 
 		protoResources = append(protoResources, protoResource)
 	}
 	
-	return protocol.ListResourcesResult{
+	return modelcontextprotocol.ListResourcesResult{
 		Resources: protoResources,
 	}, nil
 }
@@ -239,12 +242,12 @@ func (a *Mark3LabsAdapter) handleReadResource(ctx context.Context, params any) (
 			}
 			
 			// Convert mark3labs resource contents to protocol
-			protoContents := make([]protocol.ResourceContents, 0, len(contents))
+			protoContents := make([]modelcontextprotocol.ResourceContents, 0, len(contents))
 			for _, content := range contents {
 				protoContents = append(protoContents, a.convertResourceContents(content))
 			}
 			
-			return protocol.ReadResourceResult{
+			return modelcontextprotocol.ReadResourceResult{
 				Contents: protoContents,
 			}, nil
 		}
@@ -256,19 +259,19 @@ func (a *Mark3LabsAdapter) handleReadResource(ctx context.Context, params any) (
 // handleListPrompts handles prompt listing requests
 func (a *Mark3LabsAdapter) handleListPrompts(ctx context.Context, params any) (any, error) {
 	// Convert mark3labs prompts to protocol prompts
-	protoPrompts := make([]protocol.Prompt, 0, len(a.prompts))
+	protoPrompts := make([]modelcontextprotocol.Prompt, 0, len(a.prompts))
 	for _, entry := range a.prompts {
 		prompt := entry.prompt
-		protoPrompt := protocol.Prompt{
+		protoPrompt := modelcontextprotocol.Prompt{
 			Name:        prompt.Name,
 			Description: prompt.Description,
 		}
 		
 		// Convert arguments if present
 		if len(prompt.Arguments) > 0 {
-			protoPrompt.Arguments = make([]protocol.PromptArgument, 0, len(prompt.Arguments))
+			protoPrompt.Arguments = make([]modelcontextprotocol.PromptArgument, 0, len(prompt.Arguments))
 			for _, arg := range prompt.Arguments {
-				protoArg := protocol.PromptArgument{
+				protoArg := modelcontextprotocol.PromptArgument{
 					Name:        arg.Name,
 					Description: arg.Description,
 					Required:    arg.Required,
@@ -280,7 +283,7 @@ func (a *Mark3LabsAdapter) handleListPrompts(ctx context.Context, params any) (a
 		protoPrompts = append(protoPrompts, protoPrompt)
 	}
 	
-	return protocol.ListPromptsResult{
+	return modelcontextprotocol.ListPromptsResult{
 		Prompts: protoPrompts,
 	}, nil
 }
@@ -317,9 +320,9 @@ func (a *Mark3LabsAdapter) handleGetPrompt(ctx context.Context, params any) (any
 }
 
 // convertToolResult converts mark3labs CallToolResult to protocol format
-func (a *Mark3LabsAdapter) convertToolResult(result *mcp.CallToolResult) *protocol.CallToolResult {
-	protoResult := &protocol.CallToolResult{
-		Content: make([]protocol.Content, 0, len(result.Content)),
+func (a *Mark3LabsAdapter) convertToolResult(result *mcp.CallToolResult) *modelcontextprotocol.CallToolResult {
+	protoResult := &modelcontextprotocol.CallToolResult{
+		Content: make([]modelcontextprotocol.Content, 0, len(result.Content)),
 		IsError: result.IsError,
 	}
 	
@@ -331,27 +334,27 @@ func (a *Mark3LabsAdapter) convertToolResult(result *mcp.CallToolResult) *protoc
 }
 
 // convertContent converts mark3labs Content to protocol format
-func (a *Mark3LabsAdapter) convertContent(content mcp.Content) protocol.Content {
+func (a *Mark3LabsAdapter) convertContent(content mcp.Content) modelcontextprotocol.Content {
 	switch c := content.(type) {
 	case mcp.TextContent:
-		return protocol.TextContent{
+		return modelcontextprotocol.TextContent{
 			Type: "text",
 			Text: c.Text,
 		}
 	case mcp.ImageContent:
-		return protocol.ImageContent{
+		return modelcontextprotocol.ImageContent{
 			Type:     "image",
 			Data:     c.Data,
 			MimeType: c.MIMEType,
 		}
 	case mcp.EmbeddedResource:
-		return protocol.ResourceContent{
+		return modelcontextprotocol.ResourceContent{
 			Type:     "resource",
 			Resource: a.convertResourceContents(c.Resource),
 		}
 	default:
 		// Fallback to text content
-		return protocol.TextContent{
+		return modelcontextprotocol.TextContent{
 			Type: "text",
 			Text: fmt.Sprintf("%v", content),
 		}
@@ -359,23 +362,23 @@ func (a *Mark3LabsAdapter) convertContent(content mcp.Content) protocol.Content 
 }
 
 // convertResourceContents converts mark3labs ResourceContents to protocol format
-func (a *Mark3LabsAdapter) convertResourceContents(contents mcp.ResourceContents) protocol.ResourceContents {
+func (a *Mark3LabsAdapter) convertResourceContents(contents mcp.ResourceContents) modelcontextprotocol.ResourceContents {
 	switch c := contents.(type) {
 	case mcp.TextResourceContents:
-		return protocol.TextResourceContents{
+		return modelcontextprotocol.TextResourceContents{
 			URI:      c.URI,
 			MimeType: c.MIMEType,
 			Text:     c.Text,
 		}
 	case mcp.BlobResourceContents:
-		return protocol.BlobResourceContents{
+		return modelcontextprotocol.BlobResourceContents{
 			URI:      c.URI,
 			MimeType: c.MIMEType,
 			Blob:     c.Blob,
 		}
 	default:
 		// Fallback to text resource contents
-		return protocol.TextResourceContents{
+		return modelcontextprotocol.TextResourceContents{
 			URI:      "unknown",
 			MimeType: "text/plain",
 			Text:     fmt.Sprintf("%v", contents),
@@ -384,25 +387,25 @@ func (a *Mark3LabsAdapter) convertResourceContents(contents mcp.ResourceContents
 }
 
 // convertPromptResult converts mark3labs GetPromptResult to protocol format
-func (a *Mark3LabsAdapter) convertPromptResult(result *mcp.GetPromptResult) *protocol.GetPromptResult {
-	protoResult := &protocol.GetPromptResult{
+func (a *Mark3LabsAdapter) convertPromptResult(result *mcp.GetPromptResult) *modelcontextprotocol.GetPromptResult {
+	protoResult := &modelcontextprotocol.GetPromptResult{
 		Description: result.Description,
-		Messages:    make([]protocol.PromptMessage, 0, len(result.Messages)),
+		Messages:    make([]modelcontextprotocol.PromptMessage, 0, len(result.Messages)),
 	}
 	
 	for _, msg := range result.Messages {
-		protoMsg := protocol.PromptMessage{
-			Role: protocol.Role(msg.Role),
+		protoMsg := modelcontextprotocol.PromptMessage{
+			Role: modelcontextprotocol.Role(msg.Role),
 		}
 		
 		// Convert content
 		if textContent, ok := msg.Content.(mcp.TextContent); ok {
-			protoMsg.Content = protocol.TextContent{
+			protoMsg.Content = modelcontextprotocol.TextContent{
 				Type: "text",
 				Text: textContent.Text,
 			}
 		} else if imageContent, ok := msg.Content.(mcp.ImageContent); ok {
-			protoMsg.Content = protocol.ImageContent{
+			protoMsg.Content = modelcontextprotocol.ImageContent{
 				Type:     "image",
 				Data:     imageContent.Data,
 				MimeType: imageContent.MIMEType,

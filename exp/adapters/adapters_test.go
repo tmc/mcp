@@ -67,22 +67,22 @@ func TestAdapterRegistry(t *testing.T) {
 	}
 }
 
+// testAdapter is a test implementation of the Adapter interface
+type testAdapter struct{}
+
+func (ta *testAdapter) Initialize(ctx context.Context, srv interface{}) error {
+	return nil
+}
+
+func (ta *testAdapter) HandleRequest(ctx context.Context, method string, params any) (any, error) {
+	return map[string]interface{}{}, nil
+}
+
+func (ta *testAdapter) GetCapabilities() modelcontextprotocol.ServerCapabilities {
+	return modelcontextprotocol.ServerCapabilities{}
+}
+
 func TestCustomAdapter(t *testing.T) {
-	// Test custom adapter implementation
-	type testAdapter struct{}
-
-	func (ta *testAdapter) Initialize(ctx context.Context, srv server.Server) error {
-		return nil
-	}
-
-	func (ta *testAdapter) HandleRequest(ctx context.Context, method string, params any) (any, error) {
-		return map[string]interface{}{}, nil
-	}
-
-	func (ta *testAdapter) GetCapabilities() modelcontextprotocol.ServerCapabilities {
-		return modelcontextprotocol.ServerCapabilities{}
-	}
-
 	// Register custom adapter
 	adapters.DefaultRegistry.Register("test", func() adapters.Adapter {
 		return &testAdapter{}

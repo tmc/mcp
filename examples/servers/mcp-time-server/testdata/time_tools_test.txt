@@ -1,0 +1,65 @@
+# MCP Time Server Tools Test
+# Tests the get_current_time and convert_time tools
+
+# Build the time server binary
+go build -o mcp-time-server .
+
+# Test get_current_time tool with UTC timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"UTC"}},"id":2}
+EOF
+
+# Verify get_current_time response structure
+stdout '"timezone":"UTC"'
+stdout '"datetime"'
+stdout '"is_dst"'
+
+# Test get_current_time with New York timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"timezone":"America/New_York"'
+stdout '"datetime"'
+stdout '"is_dst"'
+
+# Test get_current_time with London timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Europe/London"}},"id":2}
+EOF
+
+stdout '"timezone":"Europe/London"'
+stdout '"datetime"'
+stdout '"is_dst"'
+
+# Test convert_time tool from UTC to New York
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"14:30","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"source"'
+stdout '"target"'
+stdout '"time_difference"'
+stdout '"timezone":"UTC"'
+stdout '"timezone":"America/New_York"'
+
+# Test convert_time from New York to Tokyo
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"America/New_York","time":"09:00","target_timezone":"Asia/Tokyo"}},"id":2}
+EOF
+
+stdout '"source"'
+stdout '"target"'
+stdout '"time_difference"'
+stdout '"timezone":"America/New_York"'
+stdout '"timezone":"Asia/Tokyo"'

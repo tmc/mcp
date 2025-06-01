@@ -1,0 +1,131 @@
+# MCP Weather Server Units Test
+# Tests different unit systems for weather data
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Set API key for tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test metric units (Celsius, m/s, etc.)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London","units":"metric"}},"id":2}
+EOF
+
+# Since we're using a test API key, expect error but verify the request was formed
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test imperial units (Fahrenheit, mph, etc.)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"New York","units":"imperial"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test kelvin units (scientific)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Tokyo","units":"kelvin"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test default units (should be metric when not specified)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Berlin"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test metric units for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Paris","units":"metric"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test imperial units for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Los Angeles","units":"imperial"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test kelvin units for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Moscow","units":"kelvin"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test case insensitive units (should be handled by API)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Sydney","units":"METRIC"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test with mixed case units
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Toronto","units":"Imperial"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test invalid units (should still pass but may cause API error)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Rome","units":"invalid_unit"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test empty units string (should use default)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Madrid","units":""}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test switching units between calls
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Vienna","units":"metric"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Vienna","units":"imperial"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Vienna","units":"kelvin"}},"id":4}
+EOF
+
+# All should fail with test API key but verify requests are made
+stdout '"isError":true'

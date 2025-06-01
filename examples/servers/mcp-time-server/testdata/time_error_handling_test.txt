@@ -1,0 +1,129 @@
+# MCP Time Server Error Handling Tests
+# Tests various error conditions and invalid inputs
+
+# Build the time server binary
+go build -o mcp-time-server .
+
+# Test invalid timezone for get_current_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Invalid/Timezone"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current time'
+stdout 'invalid timezone'
+
+# Test missing timezone parameter for get_current_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{}},"id":2}
+EOF
+
+stderr 'timezone is required'
+
+# Test empty timezone parameter for get_current_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":""}},"id":2}
+EOF
+
+stderr 'timezone is required'
+
+# Test invalid source timezone for convert_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"Invalid/Source","time":"12:00","target_timezone":"UTC"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid source timezone'
+
+# Test invalid target timezone for convert_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"12:00","target_timezone":"Invalid/Target"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid target timezone'
+
+# Test invalid time format for convert_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"invalid","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid time format'
+
+# Test missing time parameter for convert_time
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stderr 'time is required'
+
+# Test invalid hour in time format
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"25:00","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid hour'
+
+# Test invalid minute in time format
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"12:60","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid minute'
+
+# Test negative hour
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"-1:00","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid hour'
+
+# Test non-numeric hour
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"UTC","time":"ab:00","target_timezone":"America/New_York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error converting time'
+stdout 'invalid hour'
+
+# Test malformed JSON parameters
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":"invalid"},"id":2}
+EOF
+
+stderr 'invalid parameters'

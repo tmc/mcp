@@ -1,0 +1,130 @@
+# MCP Time Server Timezone Validation Tests
+# Tests various timezone formats and edge cases
+
+# Build the time server binary
+go build -o mcp-time-server .
+
+# Test with various valid IANA timezone names
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"America/Los_Angeles"}},"id":2}
+EOF
+
+stdout '"timezone":"America/Los_Angeles"'
+stdout '"datetime"'
+stdout '"is_dst"'
+
+# Test with GMT timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"GMT"}},"id":2}
+EOF
+
+stdout '"timezone":"GMT"'
+stdout '"datetime"'
+
+# Test with EST timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"EST"}},"id":2}
+EOF
+
+stdout '"timezone":"EST"'
+stdout '"datetime"'
+
+# Test with Local timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Local"}},"id":2}
+EOF
+
+stdout '"timezone":"Local"'
+stdout '"datetime"'
+
+# Test with Australia timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Australia/Sydney"}},"id":2}
+EOF
+
+stdout '"timezone":"Australia/Sydney"'
+stdout '"datetime"'
+stdout '"is_dst"'
+
+# Test with Africa timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Africa/Cairo"}},"id":2}
+EOF
+
+stdout '"timezone":"Africa/Cairo"'
+stdout '"datetime"'
+
+# Test timezone conversion between continents
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"Europe/Berlin","time":"18:30","target_timezone":"Australia/Melbourne"}},"id":2}
+EOF
+
+stdout '"timezone":"Europe/Berlin"'
+stdout '"timezone":"Australia/Melbourne"'
+stdout '"time_difference"'
+
+# Test with Pacific timezone islands
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Pacific/Honolulu"}},"id":2}
+EOF
+
+stdout '"timezone":"Pacific/Honolulu"'
+stdout '"datetime"'
+
+# Test with Atlantic timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Atlantic/Azores"}},"id":2}
+EOF
+
+stdout '"timezone":"Atlantic/Azores"'
+stdout '"datetime"'
+
+# Test invalid timezone formats
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Random/FakeCity"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current time'
+stdout 'invalid timezone'
+
+# Test with special characters in timezone name
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"America/Port-au-Prince"}},"id":2}
+EOF
+
+stdout '"timezone":"America/Port-au-Prince"'
+stdout '"datetime"'
+
+# Test with numeric timezone-like names (should fail)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"UTC+5"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current time'
+stdout 'invalid timezone'

@@ -1,0 +1,114 @@
+# MCP Echo Server Error Handling Tests
+# Tests various error conditions and invalid inputs
+
+# Build the echo server binary
+go build -o mcp-echo-server .
+
+# Test missing message parameter
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{}},"id":2}
+EOF
+
+stderr 'missing required argument: message'
+
+# Test empty message parameter
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":""}},"id":2}
+EOF
+
+stderr 'message cannot be empty'
+
+# Test message with only whitespace
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"   "}},"id":2}
+EOF
+
+stderr 'message cannot be empty'
+
+# Test message with tabs and newlines only
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"\t\n\r "}},"id":2}
+EOF
+
+stderr 'message cannot be empty'
+
+# Test invalid message type (number instead of string)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":123}},"id":2}
+EOF
+
+stderr 'invalid message argument'
+
+# Test invalid message type (boolean instead of string)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":true}},"id":2}
+EOF
+
+stderr 'invalid message argument'
+
+# Test invalid message type (array instead of string)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":["array","value"]}},"id":2}
+EOF
+
+stderr 'invalid message argument'
+
+# Test invalid message type (object instead of string)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":{"nested":"object"}}},"id":2}
+EOF
+
+stderr 'invalid message argument'
+
+# Test invalid message type (null)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":null}},"id":2}
+EOF
+
+stderr 'invalid message argument'
+
+# Test malformed JSON in arguments
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":"invalid"},"id":2}
+EOF
+
+stderr 'json: cannot unmarshal string into Go value of type'
+
+# Test calling non-existent tool
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"nonexistent","arguments":{"message":"test"}},"id":2}
+EOF
+
+stderr 'tool not found'
+
+# Test with extra unknown parameters (should still work)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test","extra_param":"ignored"}},"id":2}
+EOF
+
+stdout '"echo":"test"'
+stdout '"timestamp"'

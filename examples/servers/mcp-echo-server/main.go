@@ -3,37 +3,78 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/tmc/mcp"
-	"github.com/tmc/mcp/modelcontextprotocol"
+)
+
+const (
+	ServerName    = "echo-server"
+	ServerVersion = "1.0.0"
 )
 
 func main() {
-	// Create server with name and version
-	srv := mcp.NewServer("echo-server", "1.0.0")
+	// Redirect logs to stderr to keep stdout clean for the protocol
+	log.SetOutput(os.Stderr)
+	log.Println("Starting MCP Echo Server...")
+
+	// Create a context that can be canceled
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	// Create a server
+	server := mcp.NewServer(ServerName, ServerVersion,
+		mcp.WithServerInstructions("An echo server that returns messages with timestamps"),
+	)
 
 	// Register echo tool
-	srv.RegisterTool("echo", "Echoes back the provided message along with a timestamp. Use this tool to get a response that includes your message and the current server time.", func(ctx context.Context, args map[string]json.RawMessage) (*modelcontextprotocol.CallToolResult, error) {
-		// Parse message argument
-		var messageRaw json.RawMessage
-		var exists bool
-		if messageRaw, exists = args["message"]; !exists {
-			return nil, errors.New("missing required argument: message")
+	registerEchoTool(server)
+
+	// Serve via stdio
+	log.Println("Starting protocol server via stdio...")
+	if err := server.Serve(ctx, nil); err != nil {
+		if err != context.Canceled {
+			log.Fatalf("Error serving: %v", err)
+		}
+		log.Println("Server terminated.")
+	}
+}
+
+func registerEchoTool(server *mcp.Server) {
+	echoTool := mcp.Tool{
+		Name:        "echo",
+		Description: "Echoes back the provided message along with a timestamp. Use this tool to get a response that includes your message and the current server time.",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"message": {
+					"type": "string",
+					"description": "The message to echo back"
+				}
+			},
+			"required": ["message"]
+		}`),
+	}
+
+	server.RegisterTool(echoTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		var params map[string]interface{}
+		if err := json.Unmarshal(req.Arguments, &params); err != nil {
+			return nil, fmt.Errorf("invalid parameters: %v", err)
 		}
 
-		var message string
-		if err := json.Unmarshal(messageRaw, &message); err != nil {
-			return nil, fmt.Errorf("invalid message argument: %w", err)
+		message, ok := params["message"].(string)
+		if !ok || message == "" {
+			return nil, fmt.Errorf("message is required and must be a string")
 		}
 
 		if strings.TrimSpace(message) == "" {
-			return nil, errors.New("message cannot be empty")
+			return nil, fmt.Errorf("message cannot be empty")
 		}
 
 		// Create response data
@@ -46,26 +87,16 @@ func main() {
 		log.Printf("[%s] Echo: \"%s\"", responseData["timestamp"], message)
 
 		// Convert to JSON string
-		responseJSON, err := json.Marshal(responseData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal response: %w", err)
-		}
-
-		return &modelcontextprotocol.CallToolResult{
-			Content: []modelcontextprotocol.Content{
-				modelcontextprotocol.TextContent{
-					Type: "text",
-					Text: string(responseJSON),
+		responseJSON, _ := json.MarshalIndent(responseData, "", "  ")
+		return &mcp.CallToolResult{
+			Content: []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": string(responseJSON),
 				},
 			},
 		}, nil
 	})
 
-	// Start server with stdio transport
-	transport := mcp.StdioTransport{}
-	log.Println("Echo server running on stdio")
-
-	if err := srv.Serve(context.Background(), transport); err != nil {
-		log.Fatalf("Server error: %v", err)
-	}
+	log.Println("Registered echo tool")
 }

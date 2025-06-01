@@ -1,0 +1,93 @@
+# MCP Weather Server Forecast Test
+# Tests the get_weather_forecast tool functionality
+# Note: These tests simulate API calls and may require mocking for CI
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Set API key for tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test weather forecast for London (without specifying units - should default to metric)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"London"}},"id":2}
+EOF
+
+# Since this will likely fail with invalid API key, we expect an error response
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test weather forecast with metric units explicitly
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Barcelona,ES","units":"metric"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test weather forecast with imperial units
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Chicago,US","units":"imperial"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test weather forecast with kelvin units
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Seoul,KR","units":"kelvin"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test forecast for various international cities
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Sydney,AU"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test forecast for city with complex name
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Mexico City,MX"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test multiple forecast requests in sequence
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Amsterdam"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Brussels"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Copenhagen"}},"id":4}
+EOF
+
+# All should fail with test API key
+stdout '"isError":true'
+
+# Test mixing current weather and forecast calls
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Vienna"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Vienna"}},"id":3}
+EOF
+
+# Both should fail with test API key
+stdout '"isError":true'

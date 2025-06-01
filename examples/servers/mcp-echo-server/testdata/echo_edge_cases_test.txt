@@ -1,0 +1,133 @@
+# MCP Echo Server Edge Cases Test
+# Tests edge cases and boundary conditions
+
+# Build the echo server binary
+go build -o mcp-echo-server .
+
+# Test with very long message
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"$(printf 'A%.0s' {1..1000})"}},"id":2}
+EOF
+
+stdout '"echo":"'
+stdout '"timestamp"'
+
+# Test message with leading/trailing whitespace (should preserve it)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"  message with spaces  "}},"id":2}
+EOF
+
+stdout '"echo":"  message with spaces  "'
+stdout '"timestamp"'
+
+# Test message with internal newlines
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"line1\nline2\nline3"}},"id":2}
+EOF
+
+stdout '"echo":"line1\\nline2\\nline3"'
+stdout '"timestamp"'
+
+# Test message with internal tabs
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"col1\tcol2\tcol3"}},"id":2}
+EOF
+
+stdout '"echo":"col1\\tcol2\\tcol3"'
+stdout '"timestamp"'
+
+# Test message with carriage returns
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"text\rwith\rcarriage\rreturns"}},"id":2}
+EOF
+
+stdout '"echo":"text\\rwith\\rcarriage\\rreturns"'
+stdout '"timestamp"'
+
+# Test message with backslashes
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"path\\to\\file\\name.txt"}},"id":2}
+EOF
+
+stdout '"echo":"path\\\\to\\\\file\\\\name.txt"'
+stdout '"timestamp"'
+
+# Test message with quotes
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"He said \"Hello world!\" to everyone"}},"id":2}
+EOF
+
+stdout '"echo":"He said \\"Hello world!\\" to everyone"'
+stdout '"timestamp"'
+
+# Test message with single quotes
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"It's a beautiful day, isn't it?"}},"id":2}
+EOF
+
+stdout '"echo":"It'\''s a beautiful day, isn'\''t it?"'
+stdout '"timestamp"'
+
+# Test message with mixed control characters
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"mixed\n\t\r\"control'chars"}},"id":2}
+EOF
+
+stdout '"echo":"mixed\\n\\t\\r\\"control'\''chars"'
+stdout '"timestamp"'
+
+# Test message with zero-width characters
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"word​invisible​spaces"}},"id":2}
+EOF
+
+stdout '"echo":"word​invisible​spaces"'
+stdout '"timestamp"'
+
+# Test with very large ID number
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":999999999}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"large ID test"}},"id":999999999}
+EOF
+
+stdout '"echo":"large ID test"'
+stdout '"timestamp"'
+stdout '"id":999999999'
+
+# Test rapid consecutive calls
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"call1"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"call2"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"call3"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"call4"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"call5"}},"id":6}
+EOF
+
+stdout '"echo":"call1"'
+stdout '"echo":"call2"'
+stdout '"echo":"call3"'
+stdout '"echo":"call4"'
+stdout '"echo":"call5"'

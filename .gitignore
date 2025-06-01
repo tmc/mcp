@@ -7,4 +7,5 @@ cat_output*.txt
 *.log
 **/mcp-*
 !**/mcp-*.go
+!**/mcp-*-server/
 explain_*.sh

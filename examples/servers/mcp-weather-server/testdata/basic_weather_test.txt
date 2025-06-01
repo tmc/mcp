@@ -1,0 +1,43 @@
+# Basic MCP Weather Server Test
+# Tests server startup, initialization, and basic tool discovery
+# Note: These tests require OPENWEATHER_API_KEY to be set for full functionality
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Test without API key (should fail gracefully)
+env OPENWEATHER_API_KEY=
+exec mcp-weather-server 2>&1
+stderr 'OPENWEATHER_API_KEY environment variable is required'
+
+# Set a test API key for remaining tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test basic MCP protocol initialization
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"mcp-weather-server"'
+stdout '"version":"0.1.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify weather tools are listed correctly
+stdout '"name":"get_current_weather"'
+stdout '"name":"get_weather_forecast"'
+stdout '"description":"Get current weather information for a location"'
+stdout '"description":"Get 5-day weather forecast for a location"'
+
+# Verify ping response
+stdout '"result":"pong"'
+
+# Verify tool schemas include required parameters
+stdout '"location"'
+stdout '"units"'
+stdout '"required"'

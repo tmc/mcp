@@ -1,0 +1,89 @@
+# MCP Echo Server Tool Test
+# Tests the echo tool functionality with various messages
+
+# Build the echo server binary
+go build -o mcp-echo-server .
+
+# Test basic echo with simple message
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello World"}},"id":2}
+EOF
+
+# Verify echo response structure
+stdout '"echo":"Hello World"'
+stdout '"timestamp"'
+
+# Test echo with longer message
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"This is a longer message to test the echo functionality with more text"}},"id":2}
+EOF
+
+stdout '"echo":"This is a longer message to test the echo functionality with more text"'
+stdout '"timestamp"'
+
+# Test echo with special characters
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Special chars: !@#$%^&*()_+{}[]|\\:;\"'<>?,./"}},"id":2}
+EOF
+
+stdout '"echo":"Special chars: !@#$%^&*()_+{}[]|\\:;\"'\'<>?,./"'
+stdout '"timestamp"'
+
+# Test echo with Unicode characters
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Unicode: 你好世界 🌍 🚀 ñáéíóú"}},"id":2}
+EOF
+
+stdout '"echo":"Unicode: 你好世界 🌍 🚀 ñáéíóú"'
+stdout '"timestamp"'
+
+# Test echo with numbers
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Numbers: 123 456.789 -42"}},"id":2}
+EOF
+
+stdout '"echo":"Numbers: 123 456.789 -42"'
+stdout '"timestamp"'
+
+# Test echo with JSON-like content
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"{\"nested\":\"json\",\"array\":[1,2,3]}"}},"id":2}
+EOF
+
+stdout '"echo":"{\"nested\":\"json\",\"array\":[1,2,3]}"'
+stdout '"timestamp"'
+
+# Test echo with single character
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"A"}},"id":2}
+EOF
+
+stdout '"echo":"A"'
+stdout '"timestamp"'
+
+# Test multiple echo calls in sequence
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"First message"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Second message"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Third message"}},"id":4}
+EOF
+
+stdout '"echo":"First message"'
+stdout '"echo":"Second message"'
+stdout '"echo":"Third message"'

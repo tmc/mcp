@@ -1,0 +1,92 @@
+# MCP Weather Server Current Weather Test
+# Tests the get_current_weather tool functionality
+# Note: These tests simulate API calls and may require mocking for CI
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Set API key for tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test current weather for London (without specifying units - should default to metric)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London"}},"id":2}
+EOF
+
+# Since this will likely fail with invalid API key, we expect an error response
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test current weather with metric units explicitly
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Paris","units":"metric"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test current weather with imperial units
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"New York","units":"imperial"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test current weather with kelvin units
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Tokyo","units":"kelvin"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test current weather with city,country format
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Berlin,DE"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test with a comprehensive location name
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"San Francisco,US"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test with international location
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Mumbai,IN"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test multiple weather requests in sequence
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Paris"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Rome"}},"id":4}
+EOF
+
+# All should fail with test API key
+stdout '"isError":true'

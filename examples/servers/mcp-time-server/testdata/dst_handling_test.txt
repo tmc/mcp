@@ -1,0 +1,133 @@
+# MCP Time Server DST Handling Tests
+# Tests daylight saving time detection and handling
+
+# Build the time server binary
+go build -o mcp-time-server .
+
+# Test DST detection for US/Eastern timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"US/Eastern"}},"id":2}
+EOF
+
+stdout '"timezone":"US/Eastern"'
+stdout '"is_dst"'
+stdout '"datetime"'
+
+# Test DST detection for US/Pacific timezone
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"US/Pacific"}},"id":2}
+EOF
+
+stdout '"timezone":"US/Pacific"'
+stdout '"is_dst"'
+stdout '"datetime"'
+
+# Test DST detection for Europe/Berlin (observes DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Europe/Berlin"}},"id":2}
+EOF
+
+stdout '"timezone":"Europe/Berlin"'
+stdout '"is_dst"'
+stdout '"datetime"'
+
+# Test DST detection for Asia/Tokyo (no DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Asia/Tokyo"}},"id":2}
+EOF
+
+stdout '"timezone":"Asia/Tokyo"'
+stdout '"is_dst":false'
+stdout '"datetime"'
+
+# Test DST handling in time conversion (DST to non-DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"America/New_York","time":"14:00","target_timezone":"Asia/Tokyo"}},"id":2}
+EOF
+
+stdout '"source"'
+stdout '"target"'
+stdout '"is_dst"'
+stdout '"timezone":"America/New_York"'
+stdout '"timezone":"Asia/Tokyo"'
+
+# Test DST handling in time conversion (non-DST to DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"Asia/Shanghai","time":"22:00","target_timezone":"Europe/Paris"}},"id":2}
+EOF
+
+stdout '"source"'
+stdout '"target"'
+stdout '"is_dst"'
+stdout '"timezone":"Asia/Shanghai"'
+stdout '"timezone":"Europe/Paris"'
+
+# Test DST with Arizona (no DST observation)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"America/Phoenix"}},"id":2}
+EOF
+
+stdout '"timezone":"America/Phoenix"'
+stdout '"is_dst":false'
+stdout '"datetime"'
+
+# Test DST with Indiana (complex DST rules)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"America/Indiana/Indianapolis"}},"id":2}
+EOF
+
+stdout '"timezone":"America/Indiana/Indianapolis"'
+stdout '"is_dst"'
+stdout '"datetime"'
+
+# Test DST conversion with Australia (Southern hemisphere DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"Australia/Sydney"}},"id":2}
+EOF
+
+stdout '"timezone":"Australia/Sydney"'
+stdout '"is_dst"'
+stdout '"datetime"'
+
+# Test DST conversion between same DST observing regions
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_time","arguments":{"source_timezone":"America/New_York","time":"10:30","target_timezone":"Europe/London"}},"id":2}
+EOF
+
+stdout '"source"'
+stdout '"target"'
+stdout '"is_dst"'
+stdout '"timezone":"America/New_York"'
+stdout '"timezone":"Europe/London"'
+stdout '"time_difference"'
+
+# Test with UTC (never has DST)
+exec mcp-time-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_time","arguments":{"timezone":"UTC"}},"id":2}
+EOF
+
+stdout '"timezone":"UTC"'
+stdout '"is_dst":false'
+stdout '"datetime"'

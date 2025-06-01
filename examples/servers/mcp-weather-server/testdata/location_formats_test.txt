@@ -1,0 +1,159 @@
+# MCP Weather Server Location Formats Test
+# Tests various location input formats
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Set API key for tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test simple city name
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with country code
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Paris,FR"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with full country name (should work if API supports it)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Berlin,Germany"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with state/province
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Austin,TX,US"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with spaces
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"New York"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with special characters
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"São Paulo"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with accented characters
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Zürich"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with hyphens
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Baden-Baden"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test city with apostrophes
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"L'Aquila"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test Asian city names
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Tokyo,JP"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test Arabic/Middle Eastern city names
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Dubai,AE"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test Cyrillic city names
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Moscow,RU"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test very long city name
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test forecast with various location formats
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Barcelona,ES"}},"id":2}
+EOF
+
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test with mixed current weather and forecast for same location
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"Amsterdam,NL"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Amsterdam,NL"}},"id":3}
+EOF
+
+# Both should fail with test API key
+stdout '"isError":true'

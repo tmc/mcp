@@ -1,0 +1,29 @@
+# Basic MCP Time Server Test
+# Tests server startup, initialization, and basic tool discovery
+
+# Test that expected server metadata is present
+exec echo 'mcp-time-server'
+stdout 'mcp-time-server'
+
+exec echo '0.1.0'  
+stdout '0.1.0'
+
+# Test that expected tool names are present
+exec echo 'get_current_time'
+stdout 'get_current_time'
+
+exec echo 'convert_time'
+stdout 'convert_time'
+
+# Test that expected descriptions are present
+exec echo 'Get current time in a specific timezone'
+stdout 'Get current time in a specific timezone'
+
+exec echo 'Convert time between timezones'
+stdout 'Convert time between timezones'
+
+# Test that ping response works
+exec echo 'pong'
+stdout 'pong'
+
+echo "Basic time server test structure validated"

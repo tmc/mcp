@@ -1,0 +1,151 @@
+# MCP Weather Server Error Handling Tests
+# Tests various error conditions and invalid inputs
+
+# Build the weather server binary
+go build -o mcp-weather-server .
+
+# Set API key for tests
+env OPENWEATHER_API_KEY=test_api_key_123
+
+# Test missing location parameter for current weather
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test empty location parameter for current weather
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":""}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test missing location parameter for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test empty location parameter for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":""}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test invalid units parameter for current weather
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London","units":"celsius"}},"id":2}
+EOF
+
+# Should still make the API call but with invalid units
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test invalid units parameter for forecast
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_forecast","arguments":{"location":"Paris","units":"fahrenheit"}},"id":2}
+EOF
+
+# Should still make the API call but with invalid units
+stdout '"isError":true'
+stdout 'Error getting weather forecast'
+
+# Test invalid location type (number instead of string)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":123}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test invalid location type (boolean instead of string)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":true}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test invalid units type (number instead of string)
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"London","units":123}},"id":2}
+EOF
+
+# Should proceed with default units since invalid units type is ignored
+stdout '"isError":true'
+stdout 'Error getting current weather'
+
+# Test malformed JSON parameters
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":"invalid"},"id":2}
+EOF
+
+stderr 'invalid parameters'
+
+# Test calling non-existent tool
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_weather_history","arguments":{"location":"London"}},"id":2}
+EOF
+
+stderr 'tool not found'
+
+# Test with null location
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":null}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test with array location
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":["London","UK"]}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test with object location
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":{"city":"London"}}},"id":2}
+EOF
+
+stderr 'location is required'
+
+# Test with very long location name
+exec mcp-weather-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_current_weather","arguments":{"location":"$(printf 'A%.0s' {1..1000})"}},"id":2}
+EOF
+
+# Should fail with API error due to invalid location
+stdout '"isError":true'
+stdout 'Error getting current weather'

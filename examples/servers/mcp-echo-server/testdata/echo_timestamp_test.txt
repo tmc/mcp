@@ -1,0 +1,91 @@
+# MCP Echo Server Timestamp Tests
+# Tests timestamp functionality and format validation
+
+# Build the echo server binary
+go build -o mcp-echo-server .
+
+# Test timestamp format in response
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"timestamp test"}},"id":2}
+EOF
+
+# Verify timestamp is in RFC3339 format (e.g., 2024-01-15T14:30:45Z)
+stdout '"echo":"timestamp test"'
+stdout '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+
+# Test multiple calls have different timestamps (or at least not identical)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"first"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"second"}},"id":3}
+EOF
+
+stdout '"echo":"first"'
+stdout '"echo":"second"'
+stdout '"timestamp"'
+
+# Test that timestamp is included in every response
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"a"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"b"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"c"}},"id":4}
+EOF
+
+stdout '"echo":"a".*"timestamp"'
+stdout '"echo":"b".*"timestamp"'
+stdout '"echo":"c".*"timestamp"'
+
+# Test timestamp with Unicode message
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Unicode test: 🕐🕑🕒⏰"}},"id":2}
+EOF
+
+stdout '"echo":"Unicode test: 🕐🕑🕒⏰"'
+stdout '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+
+# Test timestamp with very long message
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"This is a very long message that tests whether the timestamp is still properly included even when the message content is quite lengthy and spans multiple words and contains various punctuation marks and numbers like 123 and 456."}},"id":2}
+EOF
+
+stdout '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+
+# Test timestamp precision (should include seconds)
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"precision test"}},"id":2}
+EOF
+
+# Should have at least seconds precision
+stdout '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+
+# Test that timestamp field comes after echo field in JSON
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"order test"}},"id":2}
+EOF
+
+stdout '"echo":"order test","timestamp"'
+
+# Test that both echo and timestamp are always present
+exec mcp-echo-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"completeness test"}},"id":2}
+EOF
+
+stdout '"echo":"completeness test"'
+stdout '"timestamp"'
+# Both fields should be in the same response
+stdout '"echo":"completeness test".*"timestamp"'

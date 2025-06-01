@@ -1,0 +1,19 @@
+# Test building mcpspy binary
+
+# Change to mcpspy directory
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcpspy
+
+# Build mcpspy
+exec go build
+exists mcpspy
+
+# Test help flag
+exec ./mcpspy -h
+stderr 'Usage'
+stderr 'output recording file'
+stderr 'verbose mode'
+stderr 'quiet mode'
+
+# Test with invalid flag
+! exec ./mcpspy --unknown-flag
+stderr 'unknown flag'

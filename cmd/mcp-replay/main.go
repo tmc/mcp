@@ -33,11 +33,19 @@ var (
 	autoNotifications = flag.Bool("auto-notify", true, "automatically send server notifications from the recording without waiting for requests")
 	autoResponses     = flag.Bool("auto-respond", false, "automatically send all server responses from the recording in sequence without waiting for matching requests")
 	preserveOrder     = flag.Bool("preserve-order", true, "preserve message order for complex interactions like sampling")
+	useShadow         = flag.Bool("use-shadow", false, "use shadow server responses in mock server mode")
 )
 
 // Regular expression to match the timestamp portion with milliseconds
 // Used for timing calculations, not for error reporting
 var timestampRegex = regexp.MustCompile(` # (\d+)(?:\.(\d+))?$`)
+
+// OperationNotification represents a notification related to an operation
+type OperationNotification struct {
+	JSON          string
+	ProgressValue int
+	DelayMs       int
+}
 
 func main() {
 	log.SetPrefix("mcp-replay: ")
@@ -106,7 +114,7 @@ func main() {
 				log.Println("mock server mode: enabling JSON mode by default")
 			}
 		}
-		runMockServer(recordingFile, out)
+		runMockServer(recordingFile, out, nil)
 		return
 	}
 
@@ -131,7 +139,7 @@ func main() {
 			}
 		}
 
-		runMockClient(recordingFile, out)
+		runMockClient(recordingFile, out, nil)
 		return
 	}
 

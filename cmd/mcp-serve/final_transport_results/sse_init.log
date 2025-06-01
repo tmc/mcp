@@ -1,0 +1,27 @@
+Testing SSE transport at http://localhost:3001
+Connecting to SSE: http://localhost:3001/sse
+Got endpoint: /message?sessionId=9fad5138-114d-457b-8a02-d514396ca244
+Sending request to: http://localhost:3001/message?sessionId=9fad5138-114d-457b-8a02-d514396ca244
+Request sent, status: 202 Accepted
+
+JSON-RPC Response:
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {
+      "prompts": {},
+      "resources": {
+        "subscribe": true
+      },
+      "tools": {},
+      "logging": {},
+      "completions": {}
+    },
+    "serverInfo": {
+      "name": "example-servers/everything",
+      "version": "1.0.0"
+    }
+  }
+}

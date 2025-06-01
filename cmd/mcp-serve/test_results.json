@@ -1,0 +1,44 @@
+{
+  "test_runs": [
+    {
+      "round": 1,
+      "timestamp": "1747379807",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "success_rate": 100.00
+    },
+    {
+      "round": 2,
+      "timestamp": "1747379815",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "success_rate": 100.00
+    },
+    {
+      "round": 3,
+      "timestamp": "1747379822",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "success_rate": 100.00
+    },
+    {
+      "round": 4,
+      "timestamp": "1747379830",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "success_rate": 100.00
+    },
+    {
+      "round": 5,
+      "timestamp": "1747379838",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "success_rate": 100.00
+    }
+  ]
+}

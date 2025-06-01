@@ -1,0 +1,55 @@
+# Test JSON scanning functionality in mcpspy
+#
+# This script tests the mcpspy tool's ability to parse and format JSON messages
+# from stdin and log them properly with timestamps.
+
+# Data files (define these first)
+-- input.json --
+{"method": "initialize", "params": {"protocolVersion": "2024-11-05", "clientInfo": {"name": "test-client", "version": "1.0.0"}, "capabilities": {}}}
+{"method": "tools/list", "params": {}}
+{"method": "tools/call", "params": {"name": "TestTool", "arguments": {"key": "value"}}}
+
+-- split_json.txt --
+{"method": "split_test", "param
+": "value"}
+
+# Basic JSON processing test - use mcpspy instead of run
+cat input.json | mcpspy -f output1.log -v
+! stderr "error"
+# Verify colored output
+stderr "\033\\[32m" # Green color code for recv messages
+# Verify that all JSON objects were captured
+grep "mcp-recv" output1.log
+stdout '{"method": "initialize"'
+stdout '{"method": "tools/list"'
+stdout '{"method": "tools/call"'
+
+# Test pretty-print JSON option
+cat input.json | mcpspy -f output2.log -v -pretty
+! stderr "error"
+# Verify colored output with pretty printing
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output2.log
+stdout '"method": "initialize"'
+stdout '"method": "tools/list"'
+stdout '"method": "tools/call"'
+stdout '"arguments": {'
+# Verify indentation in the pretty-printed output
+stdout '  "method":'
+
+# Test with split/fragmented JSON (simulate slow input)
+cat split_json.txt | mcpspy -f output3.log -v
+! stderr "error"
+# Verify colored output with split JSON
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output3.log
+stdout '{"method": "split_test"'
+stdout '"param": "value"'
+
+# Test with JSON processing disabled (using -json=false is no longer supported)
+# Instead use -no-json which does the same thing
+cat input.json | mcpspy -f output4.log -v -no-json
+! stderr "error"
+# Verify colored output even with JSON disabled
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output4.log

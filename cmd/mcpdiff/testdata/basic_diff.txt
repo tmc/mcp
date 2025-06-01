@@ -1,0 +1,135 @@
+# Basic diff test
+#
+# This script tests the mcpdiff tool's ability to compare MCP trace files
+# and identify differences between them.
+
+# First, create test files with known differences
+-- file1.mcp --
+{
+  "version": "1.0",
+  "requests": [
+    {
+      "id": "req1",
+      "method": "test",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"method\":\"test\",\"params\":{}}"
+    }
+  ],
+  "responses": [
+    {
+      "id": "req1",
+      "method": "",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"result\":{}}"
+    }
+  ]
+}
+
+-- file2.mcp --
+{
+  "version": "1.0",
+  "requests": [
+    {
+      "id": "req1",
+      "method": "test",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"method\":\"test\",\"params\":{}}"
+    }
+  ],
+  "responses": [
+    {
+      "id": "req1",
+      "method": "",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"result\":{\"status\":\"success\"}}"
+    }
+  ]
+}
+
+-- identical1.mcp --
+{
+  "version": "1.0",
+  "requests": [
+    {
+      "id": "req1",
+      "method": "identical",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"method\":\"identical\",\"params\":{}}"
+    }
+  ],
+  "responses": [
+    {
+      "id": "req1",
+      "method": "",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"result\":{\"status\":\"identical\"}}"
+    }
+  ]
+}
+
+-- identical2.mcp --
+{
+  "version": "1.0",
+  "requests": [
+    {
+      "id": "req1",
+      "method": "identical",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"method\":\"identical\",\"params\":{}}"
+    }
+  ],
+  "responses": [
+    {
+      "id": "req1",
+      "method": "",
+      "content": "{\"jsonrpc\":\"2.0\",\"id\":\"req1\",\"result\":{\"status\":\"identical\"}}"
+    }
+  ]
+}
+
+-- empty.mcp --
+{
+  "version": "1.0",
+  "requests": [],
+  "responses": []
+}
+
+-- malformed.mcp --
+{
+  "version": "1.0",
+  "requests": [],
+  "responses":
+}
+
+# Test basic diff between two files with differences
+mcpdiff file1.mcp file2.mcp
+stdout "Response differences:"
+stdout "req1:"
+! stderr "error"
+# Exit code should be 1 to indicate differences were found
+! stdout "No differences found"
+
+# Test with identical files
+mcpdiff identical1.mcp identical2.mcp
+stdout "No differences found"
+! stdout "Response differences:"
+! stderr "error"
+# Exit code should be 0 for identical files
+
+# Test with the -ignore-order flag
+mcpdiff file1.mcp file2.mcp -ignore-order
+stdout "Response differences:"
+! stderr "error"
+
+# Test with the -ignore-timestamps flag
+mcpdiff file1.mcp file2.mcp -ignore-timestamps
+stdout "Response differences:"
+! stderr "error"
+
+# Test with --json output flag
+mcpdiff file1.mcp file2.mcp --json
+stdout "{\"difference\":"
+! stderr "error"
+
+# Test comparing with empty file
+mcpdiff file1.mcp empty.mcp
+stdout "Response count mismatch"
+! stderr "error"
+
+# Test basic help
+mcpdiff -h
+stdout "Compare two MCP trace files"
+! stderr "error"

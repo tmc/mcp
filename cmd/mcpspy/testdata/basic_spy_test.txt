@@ -1,0 +1,86 @@
+# Basic mcpspy test
+#
+# This script tests the core functionality of mcpspy, including
+# its ability to capture, format, and log MCP protocol messages.
+
+# Setup test files with sample MCP messages
+-- simple_request.json --
+{"jsonrpc":"2.0","id":"req1","method":"initialize","params":{"capabilities":{}}}
+{"jsonrpc":"2.0","id":"req2","method":"tools/list","params":{}}
+
+-- complex_message.json --
+{"jsonrpc":"2.0","id":"complex1","method":"tools/call","params":{"name":"TestTool","arguments":{"nested":{"key1":"value1","key2":42,"array":[1,2,3]}}}}
+
+-- multiline_split.json --
+{"jsonrpc":"2.0",
+"id":"split1",
+"method":"split_test",
+"params":{
+  "multiline": true
+}}
+
+# Test basic message capture
+cat simple_request.json | mcpspy -v -f output1.mcp -- echo "Test command"
+! stderr "error"
+# Verify colored output appears in the stderr (we look for ANSI color code \033[32m or green)
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output1.mcp
+stdout "Test command"
+
+# Verify the output file contains the captured requests
+grep "initialize" output1.mcp
+grep "tools/list" output1.mcp
+grep "req1" output1.mcp
+grep "req2" output1.mcp
+
+# Test with pretty printing enabled
+cat complex_message.json | mcpspy -v -pretty -f output2.mcp -- echo "With pretty printing"
+! stderr "error"
+# Verify colored output for pretty-printed messages
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output2.mcp
+stdout "With pretty printing"
+
+# Verify the pretty-printed output has proper formatting
+grep "\"method\": \"tools/call\"" output2.mcp
+grep "\"name\": \"TestTool\"" output2.mcp
+grep "\"nested\": {" output2.mcp
+grep "\"array\": [" output2.mcp
+
+# Test with JSON scanning disabled
+cat simple_request.json | mcpspy -v -json=false -f output3.mcp -- echo "No JSON scanning"
+! stderr "error"
+# Verify colored output still works with JSON scanning disabled
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output3.mcp
+! grep "\"method\": \"initialize\"" output3.mcp
+
+# Test with split/multiline JSON
+cat multiline_split.json | mcpspy -v -f output4.mcp -- echo "Multiline JSON"
+! stderr "error"
+# Verify colored output still works with multiline JSON
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output4.mcp
+grep "split_test" output4.mcp
+grep "\"multiline\": true" output4.mcp
+
+# Test with pipe mode (log both sides of communication)
+cat simple_request.json | mcpspy -v -pipe -f output5.mcp -- echo "Testing pipe mode"
+! stderr "error"
+# Verify colored output in pipe mode
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output5.mcp
+stdout "Testing pipe mode"
+
+# Test timestamps format
+cat simple_request.json | mcpspy -v -ts-format "2006-01-02" -f output6.mcp -- echo "Custom timestamp format"
+! stderr "error"
+# Verify colored output still works with custom timestamp format
+stderr "\033\\[32m" # Green color code for recv messages
+# Verify timestamp format has YYYY-MM-DD pattern
+grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2}" output6.mcp
+
+# Test help output
+mcpspy -h
+stdout "mcpspy captures and logs MCP protocol messages"
+stdout "Usage"

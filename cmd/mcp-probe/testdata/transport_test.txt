@@ -1,0 +1,22 @@
+# Test transport creation for mcp-probe
+# Tests command transport and stdio transport
+
+# Change to the mcp-probe directory
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-probe
+
+# Build mcp-probe first since it's not in the default tools
+exec go build
+
+# Test with help
+exec ./mcp-probe -h
+stderr 'Usage'
+stderr 'timeout'
+stderr 'HTTP endpoint'
+
+# Test with invalid flag
+! exec ./mcp-probe -invalid
+stderr 'flag provided but not defined'
+
+# Build a simple test server
+exec go build -o testserver testserver/main.go
+exists testserver

@@ -1,0 +1,59 @@
+Testing HTTP transport at http://localhost:3001
+
+Trying endpoint: http://localhost:3001/mcp
+Status: 406 Not Acceptable
+Headers: map[Connection:[keep-alive] Date:[Fri, 16 May 2025 08:03:11 GMT] Keep-Alive:[timeout=5] X-Powered-By:[Express]]
+JSON-RPC Response:
+{
+  "jsonrpc": "2.0",
+  "id": null,
+  "error": {
+    "code": -32000,
+    "message": "Not Acceptable: Client must accept both application/json and text/event-stream"
+  }
+}
+
+Trying endpoint: http://localhost:3001/rpc
+Status: 404 Not Found
+Headers: map[Connection:[keep-alive] Content-Length:[143] Content-Security-Policy:[default-src 'none'] Content-Type:[text/html; charset=utf-8] Date:[Fri, 16 May 2025 08:03:11 GMT] Keep-Alive:[timeout=5] X-Content-Type-Options:[nosniff] X-Powered-By:[Express]]
+Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /rpc</pre>
+</body>
+</html>
+
+
+Trying endpoint: http://localhost:3001/api
+Status: 404 Not Found
+Headers: map[Connection:[keep-alive] Content-Length:[143] Content-Security-Policy:[default-src 'none'] Content-Type:[text/html; charset=utf-8] Date:[Fri, 16 May 2025 08:03:11 GMT] Keep-Alive:[timeout=5] X-Content-Type-Options:[nosniff] X-Powered-By:[Express]]
+Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api</pre>
+</body>
+</html>
+
+
+Trying endpoint: http://localhost:3001
+Status: 404 Not Found
+Headers: map[Connection:[keep-alive] Content-Length:[140] Content-Security-Policy:[default-src 'none'] Content-Type:[text/html; charset=utf-8] Date:[Fri, 16 May 2025 08:03:11 GMT] Keep-Alive:[timeout=5] X-Content-Type-Options:[nosniff] X-Powered-By:[Express]]
+Response: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /</pre>
+</body>
+</html>
+

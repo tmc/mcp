@@ -1,0 +1,28 @@
+# Test mcpdiff compare mode functionality
+
+# Create a test trace file with shadow records
+exec echo '# mcptrace:v1 compare=true' > test-compare.mcp
+exec echo 'mcp-recv {"jsonrpc":"2.0","method":"calc","id":1,"params":{"value":42}} # 1683000000.000 spanid=aaaaaaaaaaaaaaa1' >> test-compare.mcp
+exec echo 'mcp-send {"jsonrpc":"2.0","id":1,"result":{"answer":84}} # 1683000000.100 spanid=aaaaaaaaaaaaaaa2' >> test-compare.mcp
+exec echo 'mcp-send-shadow {"jsonrpc":"2.0","id":1,"result":{"answer":86}} # 1683000000.101 spanid=bbbbbbbbbbbbbbb2 linksto=aaaaaaaaaaaaaaa2 baggage=shadow=true' >> test-compare.mcp
+
+# Run mcpdiff in compare mode
+exec mcpdiff -compare test-compare.mcp
+stdout '@@ -4,1 +4,1 @@'
+stdout '-send # 1683000000.100 {"jsonrpc":"2.0","id":1,"result":{"answer":84}}'
+stdout '\+send-shadow # 1683000000.101 {"jsonrpc":"2.0","id":1,"result":{"answer":86}}'
+
+# Test with no differences
+exec echo '# mcptrace:v1 compare=true' > test-no-diff.mcp
+exec echo 'mcp-recv {"jsonrpc":"2.0","method":"ping","id":1} # 1683000000.000 spanid=ccccccccccccccc1' >> test-no-diff.mcp
+exec echo 'mcp-send {"jsonrpc":"2.0","id":1,"result":"pong"} # 1683000000.100 spanid=ccccccccccccccc2' >> test-no-diff.mcp
+exec echo 'mcp-send-shadow {"jsonrpc":"2.0","id":1,"result":"pong"} # 1683000000.101 spanid=ddddddddddddddd2 linksto=ccccccccccccccc2 baggage=shadow=true' >> test-no-diff.mcp
+
+exec mcpdiff -compare test-no-diff.mcp
+! stdout @@ # No diff output when responses match
+
+# Test with semantic comparison
+exec mcpdiff -compare -s test-compare.mcp
+stdout '@@ -4,1 +4,1 @@'
+stdout '"answer":84'
+stdout '"answer":86'

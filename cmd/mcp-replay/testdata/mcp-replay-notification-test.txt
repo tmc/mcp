@@ -1,0 +1,29 @@
+# Server Mode Tests
+
+# === Test 1: Basic Notification ===
+# Verify that notifications are properly included in output
+mcp-replay -v -speed=10 test-notifications.mcp
+stdout 'notifications/message'
+stdout 'Test notification'
+stdout 'Debug-level message'
+
+# === Test 2: Auto-Respond Mode ===
+# Test auto-respond mode which sends all responses without waiting for requests
+mcp-replay -v -speed=10 -json -auto-respond -mock-server test-notifications.mcp
+stdout '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"server":true}}}'
+stdout '{"method":"notifications/message","params":{"level":"info","data":"Test notification"},"jsonrpc":"2.0"}'
+
+-- test-notifications.mcp --
+mcp-recv {"jsonrpc":"2.0","method":"initialize","id":1} # 1000000000.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"server":true}}} # 1000000000.500
+mcp-send {"method":"notifications/message","params":{"level":"info","data":"Test notification"},"jsonrpc":"2.0"} # 1000000001.000
+
+mcp-send {"method":"notifications/progress","params":{"progress":1,"total":5,"progressToken":6},"jsonrpc":"2.0"} # 1000000001.100
+mcp-send {"method":"notifications/progress","params":{"progress":2,"total":5,"progressToken":6},"jsonrpc":"2.0"} # 1000000001.200
+mcp-send {"method":"notifications/progress","params":{"progress":3,"total":5,"progressToken":6},"jsonrpc":"2.0"} # 1000000001.300
+mcp-send {"method":"notifications/progress","params":{"progress":4,"total":5,"progressToken":6},"jsonrpc":"2.0"} # 1000000001.400
+mcp-send {"method":"notifications/progress","params":{"progress":5,"total":5,"progressToken":6},"jsonrpc":"2.0"} # 1000000001.500
+
+mcp-send {"method":"notifications/message","params":{"level":"debug","data":"Debug-level message"},"jsonrpc":"2.0"} # 1000000002.500
+
+mcp-recv {"jsonrpc":"2.0","method":"exit"} # 1000000003.000

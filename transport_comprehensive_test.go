@@ -535,11 +535,11 @@ func TestErrTransportClosed(t *testing.T) {
 		t.Errorf("Expected error message %q, got %q", expectedMsg, ErrTransportClosed.Error())
 	}
 
-	// Test that nil transport returns io.ErrClosedPipe
+	// Test that nil transport returns ErrTransportClosed
 	transport := &ReadWriteCloserTransport{nil}
 	_, err := transport.Dial(context.Background())
-	if !errors.Is(err, io.ErrClosedPipe) {
-		t.Errorf("Expected io.ErrClosedPipe, got %v", err)
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Errorf("Expected ErrTransportClosed, got %v", err)
 	}
 }
 

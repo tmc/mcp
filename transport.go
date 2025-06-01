@@ -27,7 +27,7 @@ type ReadWriteCloserTransport struct {
 
 func (t *ReadWriteCloserTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	if t.ReadWriteCloser == nil {
-		return nil, io.ErrClosedPipe
+		return nil, ErrTransportClosed
 	}
 	return t.ReadWriteCloser, nil
 }

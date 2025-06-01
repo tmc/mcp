@@ -1,0 +1,11 @@
+Testing SSE transport at http://localhost:3001
+Connecting to SSE endpoint: http://localhost:3001/sse
+SSE Connection Status: 200 OK
+Reading SSE events...
+Got message endpoint: /message?sessionId=19e2f65e-d15b-42ca-a52e-f43cdb25d5bf
+
+Sending JSON-RPC request to: http://localhost:3001/message?sessionId=19e2f65e-d15b-42ca-a52e-f43cdb25d5bf
+Response Status: 202 Accepted
+
+Reading response events:
+Event: Accepted

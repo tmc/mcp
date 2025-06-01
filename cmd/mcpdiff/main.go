@@ -381,8 +381,8 @@ func diffFiles(file1, file2 string) {
 	} else {
 		// Print the unified diff header
 		if !*noColor {
-			fmt.Printf("%s--- %s%s\n", blue, file1, reset)
-			fmt.Printf("%s+++ %s%s\n", blue, file2, reset)
+			fmt.Printf("%s--- %s%s\n", brightCyan, file1, reset)
+			fmt.Printf("%s+++ %s%s\n", brightCyan, file2, reset)
 		} else {
 			fmt.Printf("--- %s\n", file1)
 			fmt.Printf("+++ %s\n", file2)

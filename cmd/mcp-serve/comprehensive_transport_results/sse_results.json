@@ -1,0 +1,10 @@
+{
+  "transport": "sse",
+  "tests": [
+    {
+      "name": "initialize",
+      "request": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"ComprehensiveTest\",\"version\":\"1.0.0\"}}}",
+      "log": "Testing SSE transport at http://localhost:3001\nConnecting to SSE endpoint: http://localhost:3001/sse\nSSE Connection Status: 200 OK\nReading SSE events...\nGot message endpoint: /message?sessionId=19e2f65e-d15b-42ca-a52e-f43cdb25d5bf\n\nSending JSON-RPC request to: http://localhost:3001/message?sessionId=19e2f65e-d15b-42ca-a52e-f43cdb25d5bf\nResponse Status: 202 Accepted\n\nReading response events:\nEvent: Accepted"
+    }
+  ]
+}

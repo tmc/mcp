@@ -33,7 +33,7 @@ func TestJSONScanner(t *testing.T) {
 	}
 
 	// Main test file
-	testFile := "testdata/all_json_scanner_tests.txt"
+	testFile := "testdata/json_scanner_shell_test.sh"
 
 	// Create a temporary directory for the test
 	tempDir, err := os.MkdirTemp("", "mcpspy-test")

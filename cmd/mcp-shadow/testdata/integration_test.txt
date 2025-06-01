@@ -1,0 +1,34 @@
+# Integration test for mcp-shadow
+# Skip if running in short mode
+[short] skip
+
+# Build mcp-shadow in current directory
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-shadow
+exec go build
+exists mcp-shadow
+
+# Create temporary directory for test files
+env TMPDIR=$WORK/tmp
+mkdir $TMPDIR
+
+# Create test trace file
+cd $TMPDIR
+exec sh -c 'echo "#mcptrace:v1" > primary.mcp'
+exec sh -c 'echo "mcp-recv {\"method\":\"test\",\"id\":1} # 1000" >> primary.mcp'
+
+# Create shadow trace file
+exec sh -c 'echo "#mcptrace:v1" > shadow.mcp'
+exec sh -c 'echo "mcp-recv {\"method\":\"test\",\"id\":1} # 1000" >> shadow.mcp'
+
+# Create an echo script to simulate servers
+exec sh -c 'echo "#!/bin/sh" > echo_server.sh'
+exec sh -c 'echo "while read line; do" >> echo_server.sh'
+exec sh -c 'echo "  echo \\\"\$line\\\"" >> echo_server.sh'
+exec sh -c 'echo "done" >> echo_server.sh'
+exec chmod +x echo_server.sh
+
+# Test basic shadow mode without files (just build test)
+exec /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-shadow/mcp-shadow -h
+stderr 'Usage'
+stderr 'primary server command to execute'
+stderr 'shadow server command to execute'

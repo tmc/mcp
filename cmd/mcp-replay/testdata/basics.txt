@@ -1,0 +1,36 @@
+# Basic Usage
+
+# Plays back an mcp file
+mcp-replay sample.mcp
+stdout -count=2 -q 'jsonrpc'
+
+## Alternate syntax
+mcp-replay -f sample.mcp
+stdout -count=2 -q 'jsonrpc'
+
+## Writing to a file
+mcp-replay -f sample.mcp -o output.mcp
+cmp -q output.mcp sample.mcp
+
+## Raw JSON mode
+mcp-replay -f sample.mcp -json
+! stdout 'mcp-recv'
+stdout -count=2 '^{"jsonrpc"'
+
+# Verbose mode and speed flag
+mcp-replay -v -speed=2.2 sample.mcp
+stderr -count=1 -q 'replaying sample.mcp at 2.2x speed'
+
+cmp -q output.mcp sample.mcp
+## Writing to an invalid file fails
+! mcp-replay -f sample.mcp -o .
+
+## Running bare fails with usage
+! mcp-replay
+
+## Opening non-existent files fails
+! mcp-replay -f non-existent.mcp
+
+-- sample.mcp --
+mcp-recv {"jsonrpc":"2.0","method":"initialize","id":1} # 1683000000.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"server":true}}} # 1683000000.550

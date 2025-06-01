@@ -1,0 +1,50 @@
+# Test mcp-replay shadow functionality
+
+# Create a test trace file with shadow responses
+cat > shadow-trace.mcp << 'EOF'
+# mcptrace:v1 compare=true
+mcp-recv {"jsonrpc":"2.0","method":"initialize","id":1} # 1683000000.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"primary":true}}} # 1683000001.000
+mcp-send-shadow {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"shadow":true}}} # 1683000001.100
+mcp-recv {"jsonrpc":"2.0","method":"test","id":2} # 1683000002.000
+mcp-send {"jsonrpc":"2.0","id":2,"result":"primary result"} # 1683000002.500
+mcp-send-shadow {"jsonrpc":"2.0","id":2,"result":"shadow result"} # 1683000002.600
+EOF
+
+# Test 1: Default mode - should replay primary responses
+exec mcp-replay -f shadow-trace.mcp
+stdout 'mcp-recv.*"method":"initialize"'
+stdout 'mcp-send.*"primary":true'
+stdout 'mcp-recv.*"method":"test"'
+stdout 'mcp-send.*"primary result"'
+! stdout 'mcp-send-shadow'
+
+# Test 2: Mock server mode with primary responses (default)
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | exec mcp-replay -mock-server -f shadow-trace.mcp
+stdout '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"primary":true}}}'
+! stdout '"shadow":true'
+
+# Test 3: Mock server mode with shadow responses
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | exec mcp-replay -mock-server -shadow -f shadow-trace.mcp
+stdout '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"shadow":true}}}'
+! stdout '"primary":true'
+
+# Test 4: Auto-respond mode with shadow
+exec mcp-replay -mock-server -auto-respond -shadow -f shadow-trace.mcp
+stdout '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"shadow":true}}}'
+stdout '{"jsonrpc":"2.0","id":2,"result":"shadow result"}'
+! stdout '"primary":true'
+! stdout '"primary result"'
+
+# Test 5: Test that shadow mode works with --json output
+echo '{"jsonrpc":"2.0","method":"test","id":2}' | exec mcp-replay -mock-server -shadow -json -f shadow-trace.mcp
+stdout '"shadow result"'
+! stdout 'mcp-send'
+
+# Test 6: Test tracing with shadow mode
+echo '{"jsonrpc":"2.0","method":"initialize","id":1}' | exec mcp-replay -mock-server -shadow -trace trace-output.mcp -f shadow-trace.mcp
+stdout '{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"shadow":true}}}'
+
+# Check trace file output contains shadow direction
+exec cat trace-output.mcp
+stdout 'mcp-send-shadow.*"shadow":true'

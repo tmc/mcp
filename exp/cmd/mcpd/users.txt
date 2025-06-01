@@ -1,0 +1,3 @@
+admin:password123
+user:secret456
+guest:welcome

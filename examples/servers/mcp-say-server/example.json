@@ -1,0 +1,50 @@
+{
+  "simple": {
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "id": 1,
+    "params": {
+      "name": "say",
+      "arguments": {
+        "text": "Hello from MCP Say Server!"
+      }
+    }
+  },
+  "with_voice": {
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "id": 2,
+    "params": {
+      "name": "say",
+      "arguments": {
+        "text": "Hello from Samantha voice",
+        "voice": "Samantha"
+      }
+    }
+  },
+  "with_rate": {
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "id": 3,
+    "params": {
+      "name": "say",
+      "arguments": {
+        "text": "This is spoken at 200 words per minute",
+        "rate": 200
+      }
+    }
+  },
+  "with_voice_and_rate": {
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "id": 4,
+    "params": {
+      "name": "say",
+      "arguments": {
+        "text": "This combines voice and rate settings",
+        "voice": "Alex",
+        "rate": 150
+      }
+    }
+  }
+}

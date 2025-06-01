@@ -1,0 +1,30 @@
+# Test smart generator with binary introspection
+# Verifies that the smart generator can analyze binaries and generate valid commands
+
+# Start test server
+mcp-server-start echoserver -- go run ./examples/servers/mcp-echo-server
+
+# Test binary introspection
+exec go test -v -run TestBinaryIntrospection ./fuzzing
+stdout 'Introspected binary:'
+stdout 'Supports help: true'
+stdout 'Accepts stdin:'
+stdout 'PASS'
+
+# Test smart generator creation
+exec go test -v -run TestSmartGeneratorCreation ./fuzzing
+stdout 'Smart generator initialized'
+stdout 'Binary cache populated'
+stdout 'PASS'
+
+# Test command generation with introspection
+exec go test -v -run TestSmartCommandGeneration ./fuzzing
+stdout 'Generated smart exec command'
+stdout 'Valid command structure'
+stdout 'PASS'
+
+# Test validation and regeneration
+exec go test -v -run TestValidateAndRegenerate ./fuzzing
+stdout 'Validation passed'
+stdout 'Generated valid script'
+stdout 'PASS'

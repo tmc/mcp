@@ -1,0 +1,288 @@
+# MCP Conformance Tests - Security
+# Tests for authentication, authorization, and security validation
+
+# ============================
+# HTTP AUTHORIZATION TESTS
+# ============================
+
+# TEST 1: Basic Authentication
+# Server requiring HTTP Basic Auth should reject unauthenticated requests
+exec mcp-scripttest-server --http=localhost:8770 --auth=basic --username=test_user --password=test_password
+cmp stderr "MCP server listening on http://localhost:8770 with basic auth"
+
+# Request without authentication should fail
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8770 --show-status-code
+stdout "Status: 401 Unauthorized"
+
+# Request with authentication should succeed
+setstdin {"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8770 --basic-auth=test_user:test_password
+stdout '"result":'
+
+# TEST 2: Bearer Token Authentication
+# Server requiring bearer token should reject unauthenticated requests
+exec mcp-scripttest-server --http=localhost:8771 --auth=bearer --token=test_token
+cmp stderr "MCP server listening on http://localhost:8771 with bearer auth"
+
+# Request without authentication should fail
+setstdin {"jsonrpc":"2.0","id":3,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8771 --show-status-code
+stdout "Status: 401 Unauthorized"
+
+# Request with wrong token should fail
+setstdin {"jsonrpc":"2.0","id":4,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8771 --header="Authorization: Bearer wrong_token" --show-status-code
+stdout "Status: 401 Unauthorized"
+
+# Request with correct token should succeed
+setstdin {"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8771 --header="Authorization: Bearer test_token"
+stdout '"result":'
+
+# TEST 3: Origin Validation
+# Server should validate Origin header to prevent CSRF/DNS rebinding attacks
+exec mcp-scripttest-server --http=localhost:8772 --validate-origin=example.com
+cmp stderr "MCP server listening on http://localhost:8772 with origin validation"
+
+# Request without Origin header should fail
+setstdin {"jsonrpc":"2.0","id":6,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8772 --show-status-code
+stdout "Status: 403 Forbidden"
+stdout "Invalid Origin"
+
+# Request with incorrect Origin should fail
+setstdin {"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8772 --header="Origin: http://malicious-site.com" --show-status-code
+stdout "Status: 403 Forbidden"
+stdout "Invalid Origin"
+
+# Request with correct Origin should succeed
+setstdin {"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8772 --header="Origin: http://example.com"
+stdout '"result":'
+
+# ============================
+# AUTHORIZATION SCOPE TESTS
+# ============================
+
+# TEST 4: Resource Access Control
+# Server should enforce access controls based on resource permissions
+exec mcp-scripttest-server --http=localhost:8773 --capabilities=resources --auth=bearer --token=test_token
+cmp stderr "MCP server listening on http://localhost:8773 with bearer auth"
+
+# Authenticate and initialize
+setstdin {"jsonrpc":"2.0","id":9,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer test_token"
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer test_token"
+
+# List resources
+setstdin {"jsonrpc":"2.0","id":10,"method":"resources/list"}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer test_token"
+stdout '"result":'
+stdout '"resources":'
+stdout '"uri":"resource://public"'
+stdout '"uri":"resource://private"'
+
+# Public resource should be accessible
+setstdin {"jsonrpc":"2.0","id":11,"method":"resources/get","params":{"uri":"resource://public"}}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer test_token"
+stdout '"result":'
+stdout '"resource":'
+stdout '"text":"This is a public resource"'
+
+# Private resource should be denied with limited token
+setstdin {"jsonrpc":"2.0","id":12,"method":"resources/get","params":{"uri":"resource://private"}}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer test_token"
+stdout '"error":'
+stdout '"message":"Access denied"'
+
+# With admin token, private resource should be accessible
+setstdin {"jsonrpc":"2.0","id":13,"method":"resources/get","params":{"uri":"resource://private"}}
+exec cat | mcp-send --http=http://localhost:8773 --header="Authorization: Bearer admin_token"
+stdout '"result":'
+stdout '"resource":'
+stdout '"text":"This is a private resource"'
+
+# TEST 5: Tool Permission Restrictions
+# Server should enforce tool execution permissions
+exec mcp-scripttest-server --http=localhost:8774 --capabilities=tools --auth=bearer --token=test_token --tools=safe_tool,dangerous_tool
+cmp stderr "MCP server listening on http://localhost:8774 with bearer auth"
+
+# Authenticate and initialize
+setstdin {"jsonrpc":"2.0","id":14,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer test_token"
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer test_token"
+
+# List available tools
+setstdin {"jsonrpc":"2.0","id":15,"method":"tools/list"}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer test_token"
+stdout '"result":'
+stdout '"tools":'
+stdout '"name":"safe_tool"'
+# Dangerous tool should not be listed with regular token
+! stdout '"name":"dangerous_tool"'
+
+# Safe tool should be allowed
+setstdin {"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"safe_tool","arguments":{}}}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer test_token"
+stdout '"result":'
+stdout '"content":'
+stdout '"text":"Safe tool executed"'
+
+# Dangerous tool should be denied even if the user knows about it
+setstdin {"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"dangerous_tool","arguments":{}}}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer test_token"
+stdout '"error":'
+stdout '"message":"Unknown tool: dangerous_tool"'
+
+# With admin token, dangerous tool should be both listed and callable
+setstdin {"jsonrpc":"2.0","id":18,"method":"tools/list"}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer admin_token"
+stdout '"result":'
+stdout '"tools":'
+stdout '"name":"safe_tool"'
+stdout '"name":"dangerous_tool"'
+
+setstdin {"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"dangerous_tool","arguments":{}}}
+exec cat | mcp-send --http=http://localhost:8774 --header="Authorization: Bearer admin_token"
+stdout '"result":'
+stdout '"content":'
+stdout '"text":"Dangerous tool executed"'
+
+# ============================
+# INPUT VALIDATION TESTS
+# ============================
+
+# TEST 6: Request Size Limits
+# Server should reject requests that exceed size limits
+exec mcp-scripttest-server --stdio --max-request-size=1024
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":20,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Normal request should be accepted
+setstdin {"jsonrpc":"2.0","id":21,"method":"echo","params":{"message":"This is a normal request"}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"This is a normal request"'
+
+# Generate a very large request that exceeds the limit
+setstdin {"jsonrpc":"2.0","id":22,"method":"echo","params":{"message":"$VERY_LARGE_PAYLOAD_EXCEEDING_1024_BYTES"}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"message":"Request size limit exceeded"'
+
+# TEST 7: Tool Argument Validation
+# Server should validate tool arguments to prevent injection attacks
+exec mcp-scripttest-server --stdio --capabilities=tools --tools=echo_tool,search_tool --strict-validation
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":23,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Valid arguments should be accepted
+setstdin {"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"search_tool","arguments":{"query":"normal search"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"text":"Search results for: normal search"'
+
+# SQL injection attempt should be rejected
+setstdin {"jsonrpc":"2.0","id":25,"method":"tools/call","params":{"name":"search_tool","arguments":{"query":"' OR 1=1; --"}}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"message":"Invalid arguments: Potential SQL injection detected"'
+
+# Command injection attempt should be rejected
+setstdin {"jsonrpc":"2.0","id":26,"method":"tools/call","params":{"name":"echo_tool","arguments":{"text":"hello $(rm -rf /); world"}}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"message":"Invalid arguments: Potential command injection detected"'
+
+# ============================
+# RATE LIMITING TESTS
+# ============================
+
+# TEST 8: Request Rate Limiting
+# Server should enforce rate limits
+exec mcp-scripttest-server --http=localhost:8775 --rate-limit=2 --rate-window=5
+cmp stderr "MCP server listening on http://localhost:8775 with rate limiting"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":27,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8775
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8775
+
+# First request within limit
+setstdin {"jsonrpc":"2.0","id":28,"method":"ping"}
+exec cat | mcp-send --http=http://localhost:8775
+stdout '"result":'
+
+# Second request within limit
+setstdin {"jsonrpc":"2.0","id":29,"method":"ping"}
+exec cat | mcp-send --http=http://localhost:8775
+stdout '"result":'
+
+# Third request exceeds rate limit
+setstdin {"jsonrpc":"2.0","id":30,"method":"ping"}
+exec cat | mcp-send --http=http://localhost:8775 --show-status-code
+stdout "Status: 429 Too Many Requests"
+stdout '"error":'
+stdout '"message":"Rate limit exceeded"'
+
+# Wait for rate window to reset
+sleep 5
+
+# After window resets, request should succeed again
+setstdin {"jsonrpc":"2.0","id":31,"method":"ping"}
+exec cat | mcp-send --http=http://localhost:8775
+stdout '"result":'
+
+# ============================
+# OUTPUT SANITIZATION TESTS
+# ============================
+
+# TEST 9: Tool Output Sanitization
+# Server should sanitize tool outputs to prevent XSS and other injection attacks
+exec mcp-scripttest-server --stdio --capabilities=tools --tools=user_content_tool --sanitize-output
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":32,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"SecurityTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Request with potential XSS in user-generated content
+setstdin {"jsonrpc":"2.0","id":33,"method":"tools/call","params":{"name":"user_content_tool","arguments":{"fetch_user_id":"user_with_xss"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+
+# Output should contain sanitized content (HTML entities escaped)
+stdout '"text":"'
+stdout '&lt;script&gt;alert(\"xss\");&lt;/script&gt;'
+! stdout '<script>alert("xss");</script>'

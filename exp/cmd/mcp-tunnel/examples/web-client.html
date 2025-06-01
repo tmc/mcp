@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Tunnel Web Client Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>MCP Tunnel Web Client Example</h1>
+    
+    <div class="container">
+        <h2>Connect to MCP Server</h2>
+        <label>
+            Tunnel URL:
+            <input type="text" id="tunnelUrl" placeholder="https://mcp-tunnel.run.app/tunnels/abc123">
+        </label>
+        <label>
+            Transport Type:
+            <select id="transport">
+                <option value="stdio">stdio</option>
+                <option value="sse">sse</option>
+                <option value="http">http</option>
+            </select>
+        </label>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connectionStatus"></div>
+    </div>
+
+    <div class="container">
+        <h2>Send MCP Request</h2>
+        <label>
+            Request Method:
+            <input type="text" id="method" value="ping" placeholder="e.g., ping, tools/list">
+        </label>
+        <label>
+            Request Params (JSON):
+            <textarea id="params" rows="4" placeholder='{"key": "value"}'>{}</textarea>
+        </label>
+        <button onclick="sendRequest()">Send Request</button>
+        <div id="response" class="response"></div>
+    </div>
+
+    <div class="container">
+        <h2>SSE Stream (for SSE transport)</h2>
+        <button onclick="startSSE()">Start SSE Stream</button>
+        <button onclick="stopSSE()">Stop SSE Stream</button>
+        <div id="sseMessages" class="response"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+
+        async function testConnection() {
+            const url = document.getElementById('tunnelUrl').value;
+            const status = document.getElementById('connectionStatus');
+            
+            if (!url) {
+                status.innerHTML = '<span class="error">Please enter a tunnel URL</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    status.innerHTML = '<span class="success">✓ Connection successful</span>';
+                } else {
+                    status.innerHTML = `<span class="error">Connection failed: ${response.status}</span>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<span class="error">Connection error: ${error.message}</span>`;
+            }
+        }
+
+        async function sendRequest() {
+            const url = document.getElementById('tunnelUrl').value;
+            const method = document.getElementById('method').value;
+            const paramsText = document.getElementById('params').value;
+            const responseDiv = document.getElementById('response');
+            
+            if (!url || !method) {
+                responseDiv.innerHTML = '<span class="error">Please enter URL and method</span>';
+                return;
+            }
+
+            try {
+                const params = JSON.parse(paramsText || '{}');
+                const request = {
+                    jsonrpc: "2.0",
+                    method: method,
+                    params: params,
+                    id: Date.now()
+                };
+
+                responseDiv.innerHTML = 'Sending request...';
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(request)
+                });
+
+                const data = await response.json();
+                responseDiv.innerHTML = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        }
+
+        function startSSE() {
+            const url = document.getElementById('tunnelUrl').value;
+            const transport = document.getElementById('transport').value;
+            const messagesDiv = document.getElementById('sseMessages');
+            
+            if (!url) {
+                messagesDiv.innerHTML = '<span class="error">Please enter a tunnel URL</span>';
+                return;
+            }
+
+            if (transport !== 'sse') {
+                messagesDiv.innerHTML = '<span class="error">SSE is only available for SSE transport</span>';
+                return;
+            }
+
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            messagesDiv.innerHTML = 'Connecting to SSE stream...';
+            
+            eventSource = new EventSource(url);
+            
+            eventSource.onopen = function() {
+                messagesDiv.innerHTML = 'Connected to SSE stream\n';
+            };
+            
+            eventSource.onmessage = function(event) {
+                messagesDiv.innerHTML += `\nMessage: ${event.data}`;
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            };
+            
+            eventSource.onerror = function(error) {
+                messagesDiv.innerHTML += `\n<span class="error">Error: Connection failed</span>`;
+            };
+        }
+
+        function stopSSE() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                document.getElementById('sseMessages').innerHTML += '\n\nSSE stream stopped';
+            }
+        }
+    </script>
+</body>
+</html>

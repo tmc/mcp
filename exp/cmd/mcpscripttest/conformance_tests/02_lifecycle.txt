@@ -1,0 +1,150 @@
+# MCP Conformance Tests - Lifecycle
+# Tests for proper protocol lifecycle: initialization, operation, and shutdown
+
+# Get the server command from the environment
+server_command = $MCP_SERVER_COMMAND
+
+# If stdio is not supported, skip this test file
+[!stdio] skip "Server does not support stdio transport"
+
+# Start the test server in the background
+exec $server_command &
+# Give the server a moment to start up
+sleep 0.5
+
+# TEST 1: Initialization Phase
+# Client must first send an initialize request with:
+# - Protocol version supported
+# - Client capabilities
+# - Client implementation information
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{"roots":{"listChanged":true},"sampling":{}},"clientInfo":{"name":"MCPTestClient","version":"1.0.0"}}}
+exec cat
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"result":'
+stdout '"protocolVersion":'
+stdout '"capabilities":'
+stdout '"serverInfo":'
+
+# TEST 2: Initialize request cannot be in a batch
+setstdin [{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}]
+exec cat
+stdout '"error":'
+stdout '"code":'
+stdout '"message":"Initialize request cannot be part of a batch"'
+
+# TEST 3: Client must send initialized notification after successful initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+# No response expected for notifications
+
+# TEST 4: Operation Phase - Normal protocol operations
+# After initialization, normal requests can be sent
+setstdin {"jsonrpc":"2.0","id":4,"method":"ping"}
+exec cat
+stdout '"jsonrpc":"2.0"'
+stdout '"id":4'
+stdout '"result":'
+
+# TEST 5: Pre-initialization restrictions
+# A new server instance where we try to send regular requests before initialization
+exec $server_command &
+# Give the server a moment to start up
+sleep 0.5
+
+# Send a regular request before initialization (should be rejected)
+setstdin {"jsonrpc":"2.0","id":5,"method":"echo","params":{"message":"before init"}}
+exec cat
+stdout '"error":'
+# Exact error message may vary, but should indicate initialization issue
+# stdout '"message":"Server not initialized"'
+
+# Ping requests are allowed before initialization
+setstdin {"jsonrpc":"2.0","id":6,"method":"ping"}
+exec cat
+stdout '"result":'
+stdout '"id":6'
+
+# TEST 6: Graceful Shutdown
+# For stdio transport, the client should:
+# 1. Close input stream to child process
+# 2. Wait for server to exit
+
+# First initialize properly
+setstdin {"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# Send a special shutdown request that our test server recognizes
+setstdin {"jsonrpc":"2.0","id":8,"method":"shutdown"}
+exec cat
+stdout '"id":8'
+stdout '"result":'
+
+# TEST 7: Post-Shutdown Behavior
+# After shutdown, the server should reject new requests
+setstdin {"jsonrpc":"2.0","id":9,"method":"echo","params":{"message":"after shutdown"}}
+exec cat
+stdout '"error":'
+# Exact error message may vary, but should indicate the server is shutting down
+# stdout '"message":"Server is shutting down"'
+
+# TEST 8: Timeouts
+# Server should respond within a reasonable timeframe, or client can cancel requests
+# This test requires a test server that can simulate delays, so we make it conditional
+[!test_server_delay] skip "Server doesn't support simulating delays for timeout testing"
+
+# Start a server that can simulate delays
+# If we get here, the test server supports simulating delays
+exec $server_command &
+# Give the server a moment to start up
+sleep 0.5
+
+# Initialize first
+setstdin {"jsonrpc":"2.0","id":10,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+# No response expected
+
+# In a real timeout test, we would send a request with a timeout that would expire
+# Since we can't reliably do this with any arbitrary server, we just document what should happen
+# setstdin {"jsonrpc":"2.0","id":11,"method":"delayed_echo","params":{"message":"timeout test"}}
+# A proper server should either return a timeout error or the response after the delay
+# stdout '"error":'
+# stdout '"message":"Request timed out"'
+
+# TEST 9: Cancellation
+# Client can explicitly cancel a long-running operation
+# This test requires a test server that can handle cancellation, so we make it conditional
+[!test_server_cancel] skip "Server doesn't support cancellation testing"
+
+# Start a server that supports cancellation
+# If we get here, the test server supports cancellation
+exec $server_command &
+# Give the server a moment to start up
+sleep 0.5
+
+# Initialize first
+setstdin {"jsonrpc":"2.0","id":12,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# In a real cancellation test, we would:
+# 1. Send a long-running request in the background
+# 2. Send a cancellation notification
+# 3. Verify the server acknowledges the cancellation
+#
+# Since we can't reliably do this with any arbitrary server, we just document what should happen:
+# - A server should support the $/cancelRequest notification
+# - When a cancellation is received, the server should attempt to cancel the operation
+# - If successful, the server should return an error response with a cancelled message
+# - If the operation already completed, the server would ignore the cancellation

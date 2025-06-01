@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"rsc.io/script"
@@ -17,6 +18,16 @@ import (
 )
 
 var defaultInheritEnv = []string{"USER", "HOME", "PATH"}
+
+// stdinStore stores pending stdin for the next command
+var stdinStore struct {
+	sync.Mutex
+	pendingContent map[*script.State]string
+}
+
+func init() {
+	stdinStore.pendingContent = make(map[*script.State]string)
+}
 
 // MCPScripttestOptions defines configuration options for MCP scripttest
 type MCPScripttestOptions struct {
@@ -28,6 +39,10 @@ type MCPScripttestOptions struct {
 	CustomConditions map[string]script.Cond
 	// Whether to include default MCP commands
 	IncludeDefaultMCPCommands bool
+	// Whether to run go tool deadcode at the end of tests
+	RunDeadcodeCheck bool
+	// Whether to enable debug shell on test failure
+	DebugMode bool
 }
 
 // DefaultOptions returns the default options
@@ -37,6 +52,8 @@ func DefaultOptions() *MCPScripttestOptions {
 		CustomCommands:            make(map[string]script.Cmd),
 		CustomConditions:          make(map[string]script.Cond),
 		IncludeDefaultMCPCommands: true,
+		RunDeadcodeCheck:          true,
+		DebugMode:                 false,
 	}
 }
 
@@ -136,6 +153,9 @@ func NewEngine(opts ...*MCPScripttestOptions) *script.Engine {
 		addDefaultMCPCommands(e)
 	}
 
+	// Add server command support
+	registerServerCommands(e)
+
 	// Add custom commands and conditions
 	for k, v := range options.CustomCommands {
 		e.Cmds[k] = v
@@ -157,11 +177,25 @@ func addDefaultMCPCommands(e *script.Engine) {
 	e.Cmds["mcp-verify"] = mcpVerifyCmd
 	e.Cmds["mcp-send"] = mcpSendCmd
 	e.Cmds["mcp-recv"] = mcpRecvCmd
+	e.Cmds["mcp-serve"] = mcpServeCmd
+	e.Cmds["mcp-scripttest-server"] = mcpScripttestServerCmd
 	e.Cmds["mcpspy"] = mcpSpyCmd // Alias
 	e.Cmds["mcpdiff"] = mcpDiffCmd
 
+	// Add the missing MCP tools
+	e.Cmds["mcpcat"] = mcpcatCmd
+	e.Cmds["mcp-sort"] = mcpSortCmd
+	e.Cmds["mcp-shadow"] = mcpShadowCmd
+	e.Cmds["mcp-probe"] = mcpProbeCmd
+
 	// Add utility commands
 	e.Cmds["stdout"] = stdoutVerifyCmd
+	e.Cmds["setstdin"] = setStdinCmd
+	e.Cmds["cat"] = catCmd
+	e.Cmds["bash"] = bashCmd // Add bash command
+
+	// Add shell-like variable assignment support
+	e.Cmds["server_command"] = variableAssignCmd("server_command")
 }
 
 // Command definitions
@@ -237,6 +271,30 @@ var mcpDiffCmd = script.Command(
 		Args:    "file1 file2 [flags]",
 	},
 	execCmd("mcpdiff"),
+)
+
+var mcpcatCmd = script.Command(
+	script.CmdUsage{
+		Summary: "colorize MCP trace files",
+		Args:    "[flags] file",
+	},
+	execCmd("mcpcat"),
+)
+
+var mcpSortCmd = script.Command(
+	script.CmdUsage{
+		Summary: "sort MCP trace files by timestamp",
+		Args:    "[flags] file",
+	},
+	execCmd("mcp-sort"),
+)
+
+var mcpShadowCmd = script.Command(
+	script.CmdUsage{
+		Summary: "shadow MCP traffic to test server implementations",
+		Args:    "[flags] --primary cmd --shadow cmd",
+	},
+	execCmd("mcp-shadow"),
 )
 
 // stdoutVerifyCmd verifies stdout contains specific text or matches a pattern

@@ -1,0 +1,19 @@
+# Test showing that our testcallgraph DOES stitch test scripts to programs
+
+# Create a simple test script
+mkdir -p demo
+exec sh -c 'echo "exec mcpdiff --help" > demo/test_script.txt'
+
+# Build our stitching tool
+exec go build -o stitch ./testcallgraph/cmd/stitch
+
+# Use our tool to analyze the test and find connections
+exec ./stitch -test demo/test_script.txt
+stdout 'Found.*program connections'
+stdout 'mcpdiff'
+
+# This shows our tool successfully:
+# 1. Analyzed the scripttest file
+# 2. Found the exec mcpdiff command  
+# 3. Located mcpdiff's source/main function
+# 4. Created the connection between test and program

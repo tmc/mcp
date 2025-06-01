@@ -1,0 +1,95 @@
+# MCP Conformance Tests - Base Messaging (JSON-RPC 2.0)
+# This test validates the basic JSON-RPC message format requirements for MCP protocol
+
+# Get the server command from the environment
+server_command = $MCP_SERVER_COMMAND
+
+# If stdio is not supported, skip this test file
+[!stdio] skip "Server does not support stdio transport"
+
+# Start the test server with mcp-serve
+exec mcp-serve --workspace=. -- $server_command
+
+# TEST 1: Request Format Requirements
+# - Must include jsonrpc: "2.0"
+# - Must include a string or integer ID (not null)
+# - Must include a method field
+# - Params are optional
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ConformanceTestClient","version":"1.0.0"}}}
+exec mcp-send --workspace=.
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"result":'
+
+# Send initialized notification
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec mcp-send --workspace=.
+
+# TEST 2: Response Format Requirements
+# - Must include jsonrpc: "2.0"
+# - Must include the same ID as the request
+# - Must include either result or error, not both
+setstdin {"jsonrpc":"2.0","id":2,"method":"echo","params":{"message":"test response"}}
+exec mcp-send --workspace=.
+stdout '"jsonrpc":"2.0"'
+stdout '"id":2'
+stdout '"result":'
+! stdout '"error":'
+
+# TEST 3: Error Response Format
+setstdin {"jsonrpc":"2.0","id":3,"method":"unknown_method"}
+exec mcp-send --workspace=.
+stdout '"jsonrpc":"2.0"'
+stdout '"id":3'
+stdout '"error":'
+stdout '"code":'
+stdout '"message":'
+! stdout '"result":'
+
+# TEST 4: Notification Format (no ID)
+# - Must include jsonrpc: "2.0"
+# - Must include a method field
+# - Must NOT include an ID field
+# - Params are optional
+setstdin {"jsonrpc":"2.0","method":"notifications/test","params":{"value":"test notification"}}
+exec mcp-send --workspace=.
+# No response should be received for notifications
+
+# TEST 5: Invalid request - Missing jsonrpc version
+setstdin {"id":5,"method":"echo"}
+exec mcp-send --workspace=.
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 6: Invalid request - Missing method
+setstdin {"jsonrpc":"2.0","id":6}
+exec mcp-send --workspace=.
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 7: Invalid request - Null ID (not allowed in MCP)
+setstdin {"jsonrpc":"2.0","id":null,"method":"echo"}
+exec mcp-send --workspace=.
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 8: Batch request support
+[batch] setstdin [{"jsonrpc":"2.0","id":801,"method":"echo","params":{"message":"batch1"}},{"jsonrpc":"2.0","id":802,"method":"echo","params":{"message":"batch2"}}]
+[batch] exec mcp-send --workspace=.
+[batch] stdout '"id":801'
+[batch] stdout '"result":'
+[batch] stdout '"id":802'
+[batch] stdout '"result":'
+
+# TEST 9: Batch with mixed requests and notifications
+[batch] setstdin [{"jsonrpc":"2.0","id":901,"method":"echo","params":{"message":"batch_req"}},{"jsonrpc":"2.0","method":"notifications/test","params":{"value":"batch_notif"}}]
+[batch] exec mcp-send --workspace=.
+[batch] stdout '"id":901'
+[batch] stdout '"result":'
+# Only the request should get a response, not the notification
+
+# Clean up: Stop the server
+exec mcp-serve --workspace=. --stop

@@ -1,0 +1,89 @@
+# Test mcp2go with MCP tool descriptions
+#
+# This test generates Go code from MCP tool descriptions
+
+# Create a weather tool description
+-- weather_tool.json --
+{
+  "name": "get_weather",
+  "description": "Get the current weather for a location",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "The city name, e.g. 'New York, NY'"
+      },
+      "units": {
+        "type": "string",
+        "description": "Temperature units",
+        "enum": ["celsius", "fahrenheit"],
+        "default": "celsius"
+      }
+    },
+    "required": ["location"]
+  },
+  "returnType": {
+    "type": "object",
+    "properties": {
+      "temperature": {
+        "type": "number",
+        "description": "Current temperature"
+      },
+      "humidity": {
+        "type": "number",
+        "description": "Humidity percentage"
+      },
+      "conditions": {
+        "type": "string",
+        "description": "Weather conditions"
+      }
+    },
+    "required": ["temperature", "conditions"]
+  }
+}
+
+# Generate code from MCP tool
+exec go run .. -type mcp weather_tool.json
+stdout 'Auto-detected input type: mcp'
+stdout 'Generated: get_weather_tool.go'
+
+# Check the generated file
+exec cat get_weather_tool.go
+stdout 'package generated'
+stdout 'type GetWeatherTool interface'
+stdout 'Execute\(ctx context.Context, input \*GetWeatherInput\) \(\*GetWeatherOutput, error\)'
+
+# Check input type
+stdout 'type GetWeatherInput struct'
+stdout 'Location string `json:"location"`'
+stdout 'Units \*string `json:"units,omitempty"`'
+
+# Check output type  
+stdout 'type GetWeatherOutput struct'
+stdout 'Temperature float64 `json:"temperature"`'
+stdout 'Conditions string `json:"conditions"`'
+stdout 'Humidity \*float64 `json:"humidity,omitempty"`'
+
+# Check implementation stub
+stdout 'type GetWeatherImpl struct{}'
+stdout 'func \(t \*GetWeatherImpl\) Execute\(ctx context.Context'
+
+# Generate with custom package name
+exec go run .. -package weather weather_tool.json
+stdout 'Generated: get_weather_tool.go'
+exec cat get_weather_tool.go
+stdout 'package weather'
+
+# Generate with custom output directory
+mkdir generated
+exec go run .. -output generated weather_tool.json  
+stdout 'Generated: generated/get_weather_tool.go'
+exec cat generated/get_weather_tool.go
+stdout 'package generated'
+
+# Generate with custom filename
+exec go run .. -name custom_weather weather_tool.json
+stdout 'Generated: custom_weather.go'
+exec cat custom_weather.go
+stdout 'type GetWeatherTool interface'

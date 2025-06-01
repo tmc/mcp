@@ -1,0 +1,24 @@
+# Enhanced stitching: Handles custom commands beyond just exec
+
+# Regular exec command
+exec echo "test with exec"
+stdout 'test with exec'
+
+# Custom command that doesn't use exec
+# (Note: These would fail if actually run, but show the concept)
+# mcpdiff trace1.json trace2.json
+
+# MCP tool commands
+# mcp-spy -- mcpdiff file1 file2
+# mcp-test -- go run ./test/main.go
+
+# Server commands that start long-running processes
+# mcp-server-start myserver -- go run ./cmd/server/main.go
+# mcp-serve -- python mcp_server.py
+
+# The enhanced stitcher parses ALL these command types:
+# - exec commands (standard)
+# - Custom MCP commands without exec
+# - Server start commands
+# - Nested commands with multiple --
+# And creates complete call graph edges for all of them

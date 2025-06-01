@@ -1,0 +1,35 @@
+# Test cmd2mcpserver on real MCP binaries
+#
+# This test demonstrates analyzing actual binaries in the system
+
+# Use mcpspy as an example since it's already built
+# First, find mcpspy binary
+exec which mcpspy
+cp stdout mcpspy_path.txt
+
+# Test cmd2mcpserver with verbose output on mcpspy
+exec sh -c 'cmd2mcpserver -v -tool-def $(cat mcpspy_path.txt)'
+stdout 'Binary Analysis:'
+stdout 'Module: github.com/tmc/mcp/cmd/mcpspy'
+stdout 'Command mcpspy records MCP interactions'
+
+# Test the tool definition includes proper description
+stdout '"description":\s*"Command mcpspy records MCP interactions"'
+stdout '"name":\s*"mcpspy"'
+
+# Test with mcp-probe
+exec which mcp-probe
+cp stdout probe_path.txt
+
+exec sh -c 'cmd2mcpserver -v -tool-def $(cat probe_path.txt)'
+stdout 'Binary Analysis:'
+stdout 'Module: github.com/tmc/mcp/cmd/mcp-probe'
+
+# Test on mcpdiff
+exec which mcpdiff
+cp stdout diff_path.txt
+
+exec sh -c 'cmd2mcpserver -v -tool-def $(cat diff_path.txt)'
+stdout 'Binary Analysis:'
+stdout 'Module: github.com/tmc/mcp/cmd/mcpdiff'
+stdout '"name":\s*"mcpdiff"'

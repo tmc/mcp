@@ -1,0 +1,43 @@
+# Complete MCP tool generation test
+
+# Generate a full MCP tool description with hints for a complex function
+exec sourcereflect -func ComplexOperation -analyze-hints -pretty complex_func.go
+stdout '"name": "ComplexOperation"'
+stdout '"inputSchema"'
+stdout '"hints"'
+stdout '"readOnlyHint": false'
+stdout '"destructiveHint": true'
+stdout '"openWorldHint": true'
+
+-- complex_func.go --
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+)
+
+// ComplexOperation fetches data from a URL and saves it to a file
+func ComplexOperation(url string, outputFile string) error {
+	// Fetch data from network
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	// Parse JSON response
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return err
+	}
+	
+	// Write to file
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	
+	return os.WriteFile(outputFile, jsonData, 0644)
+}

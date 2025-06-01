@@ -1,0 +1,51 @@
+# Full cmd2mcpserver probe test using mcp-probe
+#
+# This test demonstrates the complete workflow of converting
+# a program to MCP server and probing it
+
+# Create a simple program
+-- greet/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var who = flag.String("who", "world", "who to greet")
+
+func main() {
+	flag.Parse()
+	fmt.Printf("Hello, %s!\n", *who)
+}
+
+-- greet/go.mod --
+module github.com/test/greet
+
+go 1.21
+
+# Use cmd2mcpserver to generate the MCP server
+exec go run ../../cmd/cmd2mcpserver greet
+stdout 'Server generated successfully'
+
+# Build the MCP server
+cd mcpserver
+exec go build -o greet-mcp main.go
+cd ..
+
+# Create a simple probe script that sends initialize
+-- probe_input.txt --
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"0.1.0","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}},"id":1}
+
+# Pipe the probe input to the MCP server and check response
+stdin probe_input.txt
+exec ./mcpserver/greet-mcp
+stdout '"jsonrpc":\s*"2.0"'
+stdout '"id":\s*1'
+stdout '"result"'
+stdout '"protocolVersion"'
+stdout '"capabilities"'
+
+# Check server info in response
+stdout '"serverInfo"'
+stdout '"name":\s*"greet-mcp"'

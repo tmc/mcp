@@ -1,0 +1,90 @@
+# Test mcp2go auto-detection of input types
+#
+# This test verifies that mcp2go correctly auto-detects input formats
+
+# Test MCP tool auto-detection
+-- calculator_tool.json --
+{
+  "name": "calculator",
+  "description": "Basic calculator operations",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "enum": ["add", "subtract", "multiply", "divide"]
+      },
+      "a": {
+        "type": "number"
+      },
+      "b": {
+        "type": "number"
+      }
+    },
+    "required": ["operation", "a", "b"]
+  },
+  "returnType": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "number"
+      }
+    }
+  }
+}
+
+# Run without explicit type
+exec go run .. calculator_tool.json
+stdout 'Auto-detected input type: mcp'
+stdout 'Generated: calculator_tool.go'
+
+# Check the generated code
+exec cat calculator_tool.go
+stdout 'type CalculatorTool interface'
+stdout 'Operation string `json:"operation"`'
+
+# Test JSON schema auto-detection
+-- config_schema.json --
+{
+  "type": "object",
+  "properties": {
+    "host": {
+      "type": "string",
+      "default": "localhost"
+    },
+    "port": {
+      "type": "integer",
+      "default": 8080
+    }
+  }
+}
+
+exec go run .. config_schema.json
+stdout 'Auto-detected input type: jsonschema'
+stdout 'Generated: configschema.go'
+
+# Test $schema field detection
+-- with_schema.json --
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "value": {
+      "type": "string"
+    }
+  }
+}
+
+exec go run .. with_schema.json
+stdout 'Auto-detected input type: jsonschema'
+stdout 'Generated: withschema.go'
+
+# Test ambiguous format (should fail to auto-detect)
+-- ambiguous.json --
+{
+  "something": "value"
+}
+
+! exec go run .. ambiguous.json
+stderr 'Could not auto-detect input type'
+stderr 'Please specify with -type flag'

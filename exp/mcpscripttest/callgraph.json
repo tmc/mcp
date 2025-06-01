@@ -1,0 +1,96 @@
+{
+  "edges": [
+    {
+      "From": "test1.txt",
+      "To": "echo",
+      "Type": "exec",
+      "Metadata": {
+        "command": "exec echo \"test\"",
+        "isServer": false,
+        "line": 1
+      }
+    },
+    {
+      "From": "test1.txt",
+      "To": "mcpdiff",
+      "Type": "exec",
+      "Metadata": {
+        "command": "exec mcpdiff file1 file2",
+        "isServer": false,
+        "line": 2
+      }
+    },
+    {
+      "From": "test2.txt",
+      "To": "echo",
+      "Type": "exec",
+      "Metadata": {
+        "command": "exec echo \"test2\"",
+        "isServer": false,
+        "line": 1
+      }
+    },
+    {
+      "From": "test2.txt",
+      "To": "grep",
+      "Type": "exec",
+      "Metadata": {
+        "command": "exec grep pattern file",
+        "isServer": false,
+        "line": 2
+      }
+    },
+    {
+      "From": "test2.txt",
+      "To": "mcpdiff",
+      "Type": "exec",
+      "Metadata": {
+        "command": "exec mcpdiff file3 file4",
+        "isServer": false,
+        "line": 3
+      }
+    }
+  ],
+  "nodes": {
+    "echo": {
+      "ID": "echo",
+      "Type": "program",
+      "Path": "cmd/echo/main.go:main",
+      "Metadata": {
+        "mainPath": "cmd/echo/main.go:main"
+      }
+    },
+    "grep": {
+      "ID": "grep",
+      "Type": "program",
+      "Path": "cmd/grep/main.go:main",
+      "Metadata": {
+        "mainPath": "cmd/grep/main.go:main"
+      }
+    },
+    "mcpdiff": {
+      "ID": "mcpdiff",
+      "Type": "program",
+      "Path": "cmd/mcpdiff/main.go:main",
+      "Metadata": {
+        "mainPath": "cmd/mcpdiff/main.go:main"
+      }
+    },
+    "test1.txt": {
+      "ID": "test1.txt",
+      "Type": "test",
+      "Path": "testdata/demo/test1.txt",
+      "Metadata": {
+        "fullPath": "testdata/demo/test1.txt"
+      }
+    },
+    "test2.txt": {
+      "ID": "test2.txt",
+      "Type": "test",
+      "Path": "testdata/demo/test2.txt",
+      "Metadata": {
+        "fullPath": "testdata/demo/test2.txt"
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="file-view">
+    <h1>{{.File.Path}}</h1>
+    
+    <div class="file-summary">
+        <div class="coverage-stats">
+            <span>Coverage: {{printf "%.1f%%" .File.Coverage.CoveragePercent}}</span>
+            <span>Lines: {{.File.Coverage.CoveredLines}}/{{.File.Coverage.TotalLines}}</span>
+        </div>
+        <div class="coverage-bar">
+            <div class="coverage-fill" style="width: {{.File.Coverage.CoveragePercent}}%"></div>
+        </div>
+    </div>
+    
+    <div class="code-viewer">
+        <table class="code-table">
+            {{range .File.Lines}}
+            <tr class="{{if .Covered}}covered{{else}}uncovered{{end}}">
+                <td class="line-number">{{.Number}}</td>
+                <td class="hit-count">{{if .Covered}}{{.HitCount}}{{end}}</td>
+                <td class="code-line">
+                    <pre>{{.Content}}</pre>
+                    {{if .Tests}}
+                    <div class="test-info">
+                        Covered by: {{range .Tests}}<span class="test-badge">{{.}}</span>{{end}}
+                    </div>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </table>
+    </div>
+    
+    {{if .File.TestImpact}}
+    <div class="test-impact">
+        <h2>Test Impact</h2>
+        <div class="impact-list">
+            {{range .File.TestImpact}}
+            <div class="impact-item">
+                <a href="/test/{{.TestID}}">{{.TestName}}</a>
+                <span class="impact-value">{{printf "%.1f%%" .Impact}} coverage</span>
+                <div class="impact-bar">
+                    <div class="impact-fill" style="width: {{.Impact}}%"></div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}

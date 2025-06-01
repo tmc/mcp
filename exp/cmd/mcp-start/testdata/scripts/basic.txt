@@ -1,0 +1,3 @@
+# Test MCP version command
+mcp-version
+stdout MCP

@@ -1,0 +1,22 @@
+# Test demonstrating callgraph limitation: doesn't connect test scripts to called programs
+
+# First, create a simple program that calls another program
+# This simulates what happens in script tests
+exec go build -o test_runner ./testdata/callgraph_test/test_runner.go
+exec go build -o simple_program ./testdata/callgraph_test/simple_program.go
+
+# Run callgraph on the test runner
+exec callgraph -algo static test_runner
+cp stdout callgraph_output.txt
+
+# Try to find the main function of the program it calls
+# This should fail - callgraph doesn't see this connection
+exec grep 'simple_program.main' callgraph_output.txt
+! stdout .
+
+# Run callgraph on the actual program to show it has a main
+exec callgraph -algo static simple_program  
+stdout 'main'
+
+# This demonstrates the gap: callgraph sees the internals of each program
+# but doesn't connect test scripts to the programs they execute

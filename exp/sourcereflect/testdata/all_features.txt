@@ -1,0 +1,25 @@
+# Test all features of sourcereflect
+
+# 1. Show help
+exec sourcereflect -help
+stderr 'Usage of'
+
+# 2. Generate basic schema
+exec sourcereflect -type Person person.go
+stdout '{"type":"object",'
+
+# 3. Generate pretty schema
+exec sourcereflect -pretty -type Person person.go
+stdout '{\n  "type": "object",'
+
+# 4. Generate schema with caller info
+exec sourcereflect -pretty -type Person -caller person.go
+stdout '"file":'
+
+-- person.go --
+package main
+
+type Person struct {
+	Name string `json:"name"`
+	Age  int    `json:"age,omitempty"`
+}

@@ -1,0 +1,29 @@
+# Test JSON-RPC message parsing
+cat > jsonrpc_call.json << 'EOF'
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "calculator",
+    "arguments": {
+      "operation": "add",
+      "a": 5,
+      "b": 3
+    }
+  }
+}
+EOF
+
+# Process JSON-RPC request
+exec jsonrpc2gostruct -package rpc jsonrpc_call.json
+stdout 'package rpc'
+stdout 'ToolsCallRequest struct'
+stdout 'Arguments map\[string\]interface{}'
+stdout 'Name string'
+! stderr 'ERROR'
+
+# Process with custom struct name
+exec jsonrpc2gostruct -package rpc -struct CalculatorCall jsonrpc_call.json
+stdout 'package rpc'
+stdout 'CalculatorCall struct'

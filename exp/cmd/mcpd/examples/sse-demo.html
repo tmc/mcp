@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mcpd SSE Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .connected {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        #status {
+            font-weight: bold;
+        }
+        #events {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .event {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-left: 3px solid #007bff;
+            background-color: #f0f8ff;
+        }
+        .event-time {
+            color: #6c757d;
+            font-size: 0.8em;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>mcpd Server-Sent Events Demo</h1>
+    
+    <div class="card" id="statusCard">
+        <h2>Connection Status</h2>
+        <p>Status: <span id="status">Disconnected</span></p>
+        <p>Client ID: <span id="clientId">None</span></p>
+        <button id="connectBtn">Connect</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+
+    <div class="card">
+        <h2>Events</h2>
+        <div id="events"></div>
+    </div>
+
+    <script>
+        // Elements
+        const statusEl = document.getElementById('status');
+        const clientIdEl = document.getElementById('clientId');
+        const eventsEl = document.getElementById('events');
+        const statusCardEl = document.getElementById('statusCard');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        
+        // EventSource instance
+        let eventSource = null;
+        
+        // Connect to SSE
+        function connect() {
+            // Use the appropriate URL for your mcpd server
+            const sseUrl = 'http://localhost:8081/sse';
+            
+            // Create EventSource
+            eventSource = new EventSource(sseUrl);
+            
+            // Set status to connecting
+            updateStatus('Connecting...', null, 'warning');
+            
+            // Connected event
+            eventSource.addEventListener('connected', (event) => {
+                const data = JSON.parse(event.data);
+                updateStatus('Connected', data.client_id, 'connected');
+                logEvent('Connected', data);
+            });
+            
+            // Message event
+            eventSource.addEventListener('message', (event) => {
+                const data = JSON.parse(event.data);
+                logEvent('Message', data);
+            });
+            
+            // Error handling
+            eventSource.onerror = (err) => {
+                console.error('EventSource error:', err);
+                updateStatus('Error: Connection failed', null, 'disconnected');
+                disconnect();
+            };
+            
+            // Update buttons
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+        }
+        
+        // Disconnect from SSE
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateStatus('Disconnected', null, 'disconnected');
+            }
+            
+            // Update buttons
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+        }
+        
+        // Update status display
+        function updateStatus(status, clientId, className) {
+            statusEl.textContent = status;
+            
+            if (clientId) {
+                clientIdEl.textContent = clientId;
+            }
+            
+            // Update status card class
+            statusCardEl.className = 'card';
+            if (className) {
+                statusCardEl.classList.add(className);
+            }
+        }
+        
+        // Log event to the events panel
+        function logEvent(type, data) {
+            const eventEl = document.createElement('div');
+            eventEl.className = 'event';
+            
+            const time = new Date().toLocaleTimeString();
+            const dataStr = JSON.stringify(data, null, 2);
+            
+            eventEl.innerHTML = `
+                <div class="event-time">${time}</div>
+                <strong>${type}</strong>
+                <pre>${dataStr}</pre>
+            `;
+            
+            eventsEl.appendChild(eventEl);
+            eventsEl.scrollTop = eventsEl.scrollHeight;
+        }
+        
+        // Event listeners
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Test testcallgraph integration with bash coverage
+env MCP_BASH_COVERAGE=1
+env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
+
+# Run testcallgraph on a file with bash scripts
+testcallgraph -format json testdata/bash_integration_demo.txt
+
+# Check that the output includes bash script edges
+stdout 'bash:bash'
+
+-- testdata/bash_integration_demo.txt --
+# Demo test with bash scripts
+bash 'echo "Running from test"'
+
+exec chmod +x ./demo.sh
+bash './demo.sh arg1'
+
+-- demo.sh --
+#!/bin/bash
+echo "Hello from demo.sh"
+echo "Arg: $1"
+
+# Call another script
+if [ -x helper.sh ]; then
+    bash ./helper.sh
+fi
+
+mcpdiff file1.mcp file2.mcp || echo "mcpdiff not found"
+
+-- helper.sh --
+#!/bin/bash  
+echo "Helper script running"

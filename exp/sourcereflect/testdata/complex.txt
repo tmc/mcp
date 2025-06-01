@@ -1,0 +1,95 @@
+# Test complex struct with various field types
+
+exec sourcereflect -pretty -type ComplexType complex.go
+cmp stdout expected.json
+
+-- complex.go --
+package main
+
+import "time"
+
+type ComplexType struct {
+	ID          string            `json:"id"`
+	Created     time.Time         `json:"created_at"`
+	Updated     *time.Time        `json:"updated_at,omitempty"`
+	Status      Status            `json:"status"`
+	Tags        []string          `json:"tags,omitempty"`
+	Attributes  map[string]any    `json:"attributes"`
+	Children    []*ComplexType    `json:"children,omitempty"`
+	Parent      *ComplexType      `json:"parent,omitempty"`
+	IsActive    bool              `json:"is_active"`
+	Score       float64           `json:"score"`
+	Data        interface{}       `json:"data,omitempty"`
+}
+
+type Status int
+
+const (
+	StatusPending Status = iota
+	StatusActive
+	StatusInactive
+)
+
+-- expected.json --
+{
+  "type": "object",
+  "title": "ComplexType",
+  "properties": {
+    "attributes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "title": "any"
+      }
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "title": "ComplexType"
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "data": {
+      "type": "object"
+    },
+    "id": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "parent": {
+      "type": "object",
+      "title": "ComplexType"
+    },
+    "score": {
+      "type": "number"
+    },
+    "status": {
+      "type": "object",
+      "title": "Status"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "id",
+    "created_at",
+    "status",
+    "attributes",
+    "is_active",
+    "score"
+  ]
+}

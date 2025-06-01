@@ -1,0 +1,31 @@
+# Test basic fuzzing functionality without external servers
+# This tests the core fuzzing components
+
+# Test that fuzzing packages exist and can be imported
+exec go list ./fuzzing
+stdout 'github.com/tmc/mcp/exp/mcpscripttest/fuzzing'
+
+# Test basic fuzzing generator
+exec go test -v -run TestFuzzGenerator ./fuzzing
+stdout 'TestFuzzGenerator'
+stdout 'PASS'
+
+# Test coverage feedback mechanism
+exec go test -v -run TestCoverageFeedback ./fuzzing
+stdout 'TestCoverageFeedback'
+stdout 'PASS'
+
+# Test specialized generators
+exec go test -v -run TestSpecializedGenerators ./fuzzing
+stdout 'TestSpecializedGenerators'
+stdout 'PASS'
+
+# Test smart generator
+exec go test -v -run TestSmartGenerator ./fuzzing
+stdout 'TestSmartGenerator'
+stdout 'PASS'
+
+# Test visualization
+exec go test -v -run TestVisualization ./fuzzing
+stdout 'TestVisualization'
+stdout 'PASS'

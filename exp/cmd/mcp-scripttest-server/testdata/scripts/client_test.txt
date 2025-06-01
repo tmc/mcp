@@ -1,0 +1,196 @@
+# Client test for mcp-scripttest-server
+# This tests MCP client code against a mock server
+
+# Start the scripttest server with the filesystem server script
+mcp-scripttest-server -script testdata/server_scripts/filesystem.txt -port 8082 &
+sleep 1
+
+# Create a simple mcp-client to test with
+cd ${WORK}
+cat > mcp_client_test.go << 'EOF'
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func main() {
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: mcp_client_test <method> <path>")
+		os.Exit(1)
+	}
+
+	method := os.Args[1]
+	path := os.Args[2]
+
+	// Initialize client
+	initRequest := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]interface{}{
+			"protocolVersion": "2024-11-05",
+		},
+	}
+
+	initResponse, err := sendRequest("http://localhost:8082/mcp", initRequest)
+	if err != nil {
+		fmt.Printf("Error initializing: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Initialized with server: %v\n", 
+		initResponse["result"].(map[string]interface{})["serverInfo"])
+
+	// Execute the requested method
+	var request map[string]interface{}
+	
+	if method == "read" {
+		request = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      2,
+			"method":  "read",
+			"params": map[string]interface{}{
+				"path": path,
+			},
+		}
+	} else if method == "write" {
+		content := "Test content from client"
+		if len(os.Args) > 3 {
+			content = os.Args[3]
+		}
+		
+		request = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      2,
+			"method":  "write",
+			"params": map[string]interface{}{
+				"path":    path,
+				"content": content,
+			},
+		}
+	} else if method == "delete" {
+		request = map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      2,
+			"method":  "delete",
+			"params": map[string]interface{}{
+				"path": path,
+			},
+		}
+	} else {
+		fmt.Printf("Unsupported method: %s\n", method)
+		os.Exit(1)
+	}
+
+	response, err := sendRequest("http://localhost:8082/mcp", request)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Pretty print the response
+	prettyJSON, _ := json.MarshalIndent(response, "", "  ")
+	fmt.Println(string(prettyJSON))
+}
+
+func sendRequest(url string, request map[string]interface{}) (map[string]interface{}, error) {
+	// Marshal request to JSON
+	requestJSON, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse response
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+EOF
+
+# Build the test client
+go build -o mcp_client_test mcp_client_test.go
+
+# Run tests against the mock server
+./mcp_client_test write test.txt "Hello from test client"
+stdout '"status":"success"'
+
+./mcp_client_test read test.txt
+stdout '"content":"Hello from test client"'
+
+./mcp_client_test delete test.txt
+stdout '"status":"success"'
+
+./mcp_client_test read test.txt
+stdout '"error"'
+stdout '"message":"File not found: test.txt"'
+
+# Stop the server
+killall mcp-scripttest-server
+
+# Tests completed successfully
+
+-- testdata/server_scripts/filesystem.txt --
+# Mock filesystem server for client testing
+
+# Initialize response
+expect-recv {"jsonrpc":"2.0","method":"initialize"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"mcp-filesystem-test-server","version":"1.0.0"},"capabilities":{}}}
+
+# Write file
+expect-recv {"jsonrpc":"2.0","method":"write","params":{"path":"*","content":"*"}}
+exec mkdir -p $(dirname ${WORKDIR}/${REQUEST.params.path})
+exec echo "${REQUEST.params.content}" > ${WORKDIR}/${REQUEST.params.path}
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","size":${#REQUEST.params.content},"message":"File written successfully"}}
+
+# Read file
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"*"}}
+# Check if the file exists
+exec test -f ${WORKDIR}/${REQUEST.params.path}
+if ERRORLEVEL != 0
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"File not found: ${REQUEST.params.path}"}}
+else
+  set-var FILE_CONTENT = $(cat ${WORKDIR}/${REQUEST.params.path})
+  set-var FILE_SIZE = $(wc -c < ${WORKDIR}/${REQUEST.params.path} | tr -d ' ')
+  send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","content":"${FILE_CONTENT}","size":${FILE_SIZE},"encoding":"utf-8"}}
+endif
+
+# Delete file
+expect-recv {"jsonrpc":"2.0","method":"delete","params":{"path":"*"}}
+exec test -f ${WORKDIR}/${REQUEST.params.path}
+if ERRORLEVEL != 0
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"File not found: ${REQUEST.params.path}"}}
+else
+  exec rm ${WORKDIR}/${REQUEST.params.path}
+  send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","message":"File deleted successfully"}}
+endif

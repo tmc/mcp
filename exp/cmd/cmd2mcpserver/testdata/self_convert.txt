@@ -1,0 +1,77 @@
+# Test converting cmd2mcpserver itself to an MCP server
+
+# Create a minimal cmd2mcpserver-like binary for testing
+cp cmd2mcpserver.go main.go
+exec go build -o cmd2mcpserver main.go
+! stderr .
+
+# Run cmd2mcpserver on itself with dry-run to see what it generates
+exec cmd2mcpserver -dry-run -source . ./cmd2mcpserver
+stdout '# Generated MCP server for cmd2mcpserver'
+stdout '-- go.mod --'
+stdout '-- main.go --'
+stdout '-- README.md --'
+stdout 'type Cmd2McpserverTool struct'
+stdout '"output"'
+stdout '"module"'
+stdout '"server"'
+stdout '"tool"'
+stdout '"desc"'
+stdout '"source"'
+stdout '"dry-run"'
+stdout '"v"'
+stdout 'MCP wrapper for cmd2mcpserver command'
+
+# Check that the generated server has all our flags
+stdout '"type": "string"'
+stdout '"type": "boolean"'
+
+# Now actually generate the server (not just dry-run)
+exec cmd2mcpserver -output ./server -module github.com/test/cmd2mcpserver-mcp ./cmd2mcpserver
+! stderr 'error'
+exists server/go.mod
+exists server/main.go
+exists server/bin/cmd2mcpserver
+
+# Verify the generated go.mod has the right module name
+exec cat server/go.mod
+stdout 'module github.com/test/cmd2mcpserver-mcp'
+
+# Verify the main.go has correct structure
+exec cat server/main.go
+stdout 'type Cmd2McpserverTool struct'
+stdout 'func.*Execute.*context.Context'
+
+-- cmd2mcpserver.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+	output := flag.String("output", "", "Output directory")
+	module := flag.String("module", "", "Module name")
+	server := flag.String("server", "", "Server name")
+	tool := flag.String("tool", "", "Tool name")
+	desc := flag.String("desc", "", "Description")
+	source := flag.String("source", "", "Source directory")
+	dryRun := flag.Bool("dry-run", false, "Dry run mode")
+	verbose := flag.Bool("v", false, "Verbose")
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Usage: cmd2mcpserver [flags] <binary>\n")
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
+
+	fmt.Printf("Converting %s\n", flag.Arg(0))
+}
+
+-- go.mod --
+module test
+
+go 1.22

@@ -1,0 +1,291 @@
+# Example of running Go tests with scripttest
+#
+# This script shows how to use Go's testing framework within scripttest
+
+# Create a temporary working directory for our test
+cd ${WORK}
+
+# Create a simple Go module
+exec go mod init example.com/mcptest
+
+# Create a function to test
+cat > mcp_client.go << 'EOF'
+package mcptest
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+)
+
+// MCPClient represents a client for MCP servers
+type MCPClient struct {
+	ServerURL string
+	NextID    int
+}
+
+// NewClient creates a new MCP client
+func NewClient(serverURL string) *MCPClient {
+	return &MCPClient{
+		ServerURL: serverURL,
+		NextID:    1,
+	}
+}
+
+// Initialize connects to the server and performs initialization
+func (c *MCPClient) Initialize() (map[string]interface{}, error) {
+	request := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      c.NextID,
+		"method":  "initialize",
+		"params": map[string]interface{}{
+			"protocolVersion": "2024-11-05",
+			"capabilities":    map[string]interface{}{},
+			"clientInfo": map[string]interface{}{
+				"name":    "mcp-test-client",
+				"version": "1.0.0",
+			},
+		},
+	}
+	c.NextID++
+	
+	return c.SendRequest(request)
+}
+
+// Write writes content to a file
+func (c *MCPClient) Write(path, content string) (map[string]interface{}, error) {
+	request := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      c.NextID,
+		"method":  "write",
+		"params": map[string]interface{}{
+			"path":    path,
+			"content": content,
+		},
+	}
+	c.NextID++
+	
+	return c.SendRequest(request)
+}
+
+// Read reads a file
+func (c *MCPClient) Read(path string) (map[string]interface{}, error) {
+	request := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      c.NextID,
+		"method":  "read",
+		"params": map[string]interface{}{
+			"path": path,
+		},
+	}
+	c.NextID++
+	
+	return c.SendRequest(request)
+}
+
+// SendRequest sends a request to the MCP server
+func (c *MCPClient) SendRequest(request map[string]interface{}) (map[string]interface{}, error) {
+	// Marshal request to JSON
+	requestJSON, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling request: %w", err)
+	}
+	
+	// Create HTTP request
+	req, err := http.NewRequest("POST", c.ServerURL, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	
+	// Send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error sending request: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response: %w", err)
+	}
+	
+	// Parse response
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing response: %w", err)
+	}
+	
+	// Check for JSON-RPC error
+	if errObj, ok := response["error"].(map[string]interface{}); ok {
+		errCode := 0
+		if code, ok := errObj["code"].(float64); ok {
+			errCode = int(code)
+		}
+		errMsg := "unknown error"
+		if msg, ok := errObj["message"].(string); ok {
+			errMsg = msg
+		}
+		return response, fmt.Errorf("MCP error %d: %s", errCode, errMsg)
+	}
+	
+	return response, nil
+}
+EOF
+
+# Create a Go test file that tests the client against a mock server
+cat > mcp_client_test.go << 'EOF'
+package mcptest
+
+import (
+	"os"
+	"os/exec"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestMCPClient(t *testing.T) {
+	// Start the scripttest server
+	serverCmd := exec.Command("mcp-scripttest-server", 
+		"-script", "server_script.txt", 
+		"-port", "8085",
+		"-workdir", "test_workdir")
+	
+	err := serverCmd.Start()
+	if err != nil {
+		t.Fatalf("Failed to start script server: %v", err)
+	}
+	
+	// Ensure server is killed when test completes
+	defer func() {
+		serverCmd.Process.Kill()
+		serverCmd.Wait()
+	}()
+	
+	// Give the server time to start
+	time.Sleep(1 * time.Second)
+	
+	// Create client
+	client := NewClient("http://localhost:8085/mcp")
+	
+	// Test initialization
+	t.Run("Initialize", func(t *testing.T) {
+		resp, err := client.Initialize()
+		if err != nil {
+			t.Fatalf("Initialize failed: %v", err)
+		}
+		
+		result, ok := resp["result"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Invalid response format")
+		}
+		
+		serverInfo, ok := result["serverInfo"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Missing serverInfo")
+		}
+		
+		name, ok := serverInfo["name"].(string)
+		if !ok || name != "mcp-scripttest-server" {
+			t.Errorf("Expected server name 'mcp-scripttest-server', got '%s'", name)
+		}
+	})
+	
+	// Test write operation
+	t.Run("Write", func(t *testing.T) {
+		resp, err := client.Write("test.txt", "Test content")
+		if err != nil {
+			t.Fatalf("Write failed: %v", err)
+		}
+		
+		result, ok := resp["result"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Invalid response format")
+		}
+		
+		status, ok := result["status"].(string)
+		if !ok || status != "success" {
+			t.Errorf("Expected status 'success', got '%s'", status)
+		}
+	})
+	
+	// Test read operation
+	t.Run("Read", func(t *testing.T) {
+		resp, err := client.Read("test.txt")
+		if err != nil {
+			t.Fatalf("Read failed: %v", err)
+		}
+		
+		result, ok := resp["result"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Invalid response format")
+		}
+		
+		content, ok := result["content"].(string)
+		if !ok || content != "Test content" {
+			t.Errorf("Expected content 'Test content', got '%s'", content)
+		}
+	})
+	
+	// Test read non-existent file
+	t.Run("ReadNonExistent", func(t *testing.T) {
+		_, err := client.Read("nonexistent.txt")
+		if err == nil {
+			t.Fatal("Expected error when reading non-existent file")
+		}
+		
+		if !strings.Contains(err.Error(), "File not found") {
+			t.Errorf("Expected 'File not found' error, got: %v", err)
+		}
+	})
+}
+EOF
+
+# Create the script for the mock server
+mkdir -p test_workdir
+cat > server_script.txt << 'EOF'
+# Mock filesystem server for testing
+
+# Initialize response
+expect-recv {"jsonrpc":"2.0","method":"initialize"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"mcp-scripttest-server","version":"1.0.0"},"capabilities":{}}}
+
+# Write file
+expect-recv {"jsonrpc":"2.0","method":"write","params":{"path":"*","content":"*"}}
+exec mkdir -p $(dirname ${WORKDIR}/${REQUEST.params.path})
+exec echo "${REQUEST.params.content}" > ${WORKDIR}/${REQUEST.params.path}
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","size":${#REQUEST.params.content},"message":"File written successfully"}}
+
+# Read file
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"*"}}
+# Check if the file exists
+exec test -f ${WORKDIR}/${REQUEST.params.path}
+if ERRORLEVEL != 0
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"File not found: ${REQUEST.params.path}"}}
+else
+  set-var FILE_CONTENT = $(cat ${WORKDIR}/${REQUEST.params.path})
+  set-var FILE_SIZE = $(wc -c < ${WORKDIR}/${REQUEST.params.path} | tr -d ' ')
+  send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","content":"${FILE_CONTENT}","size":${FILE_SIZE},"encoding":"utf-8"}}
+endif
+EOF
+
+# Run the tests
+! stdout "FAIL"
+go test -v
+stdout "=== RUN   TestMCPClient"
+stdout "=== RUN   TestMCPClient/Initialize"
+stdout "=== RUN   TestMCPClient/Write"
+stdout "=== RUN   TestMCPClient/Read"
+stdout "=== RUN   TestMCPClient/ReadNonExistent"
+stdout "PASS"
+
+# Check that the test actually created the file
+exists test_workdir/test.txt
+cat test_workdir/test.txt
+stdout "Test content"

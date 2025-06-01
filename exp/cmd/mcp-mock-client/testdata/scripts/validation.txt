@@ -1,0 +1,102 @@
+# Test validation functionality with mock responses
+# Create a mock scenario for validation testing
+-- validation_scenario.json --
+{
+  "name": "Validation Test",
+  "description": "Test response validation",
+  "steps": [
+    {
+      "name": "Simple Equality",
+      "description": "Test simple equality matching",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "test",
+        "params": {},
+        "id": 1
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "success": true
+            },
+            "id": 1
+          }
+        }
+      ]
+    }
+  ]
+}
+
+# Create a mock responder script
+-- mock_responder.sh --
+#!/bin/bash
+# Read input line by line
+while read line; do
+  # For any request, respond with success
+  echo '{"jsonrpc":"2.0","result":{"success":true},"id":1}'
+done
+
+# Test validation with mock responder
+! mcp-mock-client -scenario -validate validation_scenario.json | bash mock_responder.sh
+stdout 'Running scenario: Validation Test
+Description: Test response validation
+Steps: 1
+Step 1: Simple Equality'
+
+# Test with verbose output to see validation success
+chmod +x mock_responder.sh
+mcp-mock-client -scenario -validate -v validation_scenario.json | ./mock_responder.sh
+stdout 'Running scenario: Validation Test
+Description: Test response validation
+Steps: 1
+Step 1: Simple Equality
+  Description: Test simple equality matching
+  Validating expectation 1: response
+  Validation successful
+Scenario completed successfully'
+
+# Create a negative test scenario that should fail
+-- failing_scenario.json --
+{
+  "name": "Failing Test",
+  "description": "Test validation failure",
+  "steps": [
+    {
+      "name": "Failing Match",
+      "description": "This expectation should fail",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "test",
+        "params": {},
+        "id": 1
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "success": false
+            },
+            "id": 1
+          },
+          "fail_fast": true
+        }
+      ]
+    }
+  ]
+}
+
+# Test failing validation (should exit with non-zero status)
+! mcp-mock-client -scenario -validate -v failing_scenario.json | ./mock_responder.sh
+stdout 'Running scenario: Failing Test
+Description: Test validation failure
+Steps: 1
+Step 1: Failing Match
+  Description: This expectation should fail
+  Validating expectation 1: response
+  Validation failed'
+! stdout 'Scenario completed successfully'

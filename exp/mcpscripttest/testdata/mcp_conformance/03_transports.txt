@@ -1,0 +1,214 @@
+# MCP Conformance Tests - Transports
+# Tests for transport mechanisms: stdio and HTTP
+
+# ============================
+# STDIO TRANSPORT TESTS
+# ============================
+
+# TEST 1: STDIO Basic Functionality
+# Start the test server with stdio transport
+[stdio] exec mcp-scripttest-server --stdio
+[stdio] cmp stderr "MCP server listening on stdio"
+
+# Initialize the connection
+[stdio] setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[stdio] exec cat | mcp-send --stdio
+[stdio] stdout '"result":'
+
+[stdio] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[stdio] exec cat | mcp-send --stdio
+
+# Test basic request-response
+[stdio] setstdin {"jsonrpc":"2.0","id":2,"method":"echo","params":{"message":"stdio test"}}
+[stdio] exec cat | mcp-send --stdio
+[stdio] stdout '"result":'
+[stdio] stdout '"stdio test"'
+
+# TEST 2: STDIO Message Encoding
+# Messages must be UTF-8 encoded
+setstdin {"jsonrpc":"2.0","id":3,"method":"echo","params":{"message":"UTF-8 test: 你好, привет, こんにちは, 안녕하세요"}}
+exec cat | mcp-send --stdio
+stdout '"UTF-8 test: 你好, привет, こんにちは, 안녕하세요"'
+
+# TEST 3: STDIO Message Delimiters
+# Messages must be delimited by newlines
+setstdin {"jsonrpc":"2.0","id":4,"method":"echo","params":{"message":"line 1"}}\n{"jsonrpc":"2.0","id":5,"method":"echo","params":{"message":"line 2"}}
+exec cat | mcp-send --stdio
+stdout '"id":4'
+stdout '"line 1"'
+stdout '"id":5'
+stdout '"line 2"'
+
+# TEST 4: STDIO Output Validation
+# Server must not write anything to stdout that is not a valid MCP message
+exec mcp-scripttest-server --stdio --validate-stdout
+cmp stderr "MCP server listening on stdio"
+
+# Initialize and make a request
+setstdin {"jsonrpc":"2.0","id":6,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+setstdin {"jsonrpc":"2.0","id":7,"method":"echo","params":{"message":"validate stdout"}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+! stdout 'Invalid MCP message'
+
+# TEST 5: STDIO Error Logging
+# Server may write to stderr for logging
+exec mcp-scripttest-server --stdio --verbose
+cmp stderr "MCP server listening on stdio"
+cmp stderr "Verbose logging enabled"
+
+# Initialize and make a request
+setstdin {"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+setstdin {"jsonrpc":"2.0","id":9,"method":"echo","params":{"message":"test stderr logging"}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+cmp stderr "Received request: echo"
+
+# ============================
+# HTTP TRANSPORT TESTS
+# ============================
+
+# TEST 6: HTTP Basic Functionality
+# Start the test server with HTTP transport
+[http] exec mcp-scripttest-server --http=localhost:8765
+[http] cmp stderr "MCP server listening on http://localhost:8765"
+
+# Initialize the connection via HTTP
+[http] setstdin {"jsonrpc":"2.0","id":10,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[http] exec cat | mcp-send --http=http://localhost:8765
+[http] stdout '"result":'
+
+[http] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[http] exec cat | mcp-send --http=http://localhost:8765
+# No response expected for notifications
+
+# Test basic request-response over HTTP
+[http] setstdin {"jsonrpc":"2.0","id":11,"method":"echo","params":{"message":"http test"}}
+[http] exec cat | mcp-send --http=http://localhost:8765
+[http] stdout '"result":'
+[http] stdout '"http test"'
+
+# TEST 7: HTTP Headers
+# Client must include Accept header with application/json
+exec mcp-spy --http=http://localhost:8765 --capture-headers
+cmp stderr "MCP spy listening on http://localhost:8765"
+
+setstdin {"jsonrpc":"2.0","id":12,"method":"echo","params":{"message":"header test"}}
+exec cat | mcp-send --http=http://localhost:8765
+stdout '"result":'
+cmp stderr "Received headers: Accept: application/json, text/event-stream"
+
+# TEST 8: HTTP Response Codes
+# Responses containing only JSON-RPC notifications should return 202 Accepted
+setstdin {"jsonrpc":"2.0","method":"notifications/test"}
+exec cat | mcp-send --http=http://localhost:8765 --show-status-code
+stdout "Status: 202 Accepted"
+
+# Responses for JSON-RPC requests should return 200 OK
+setstdin {"jsonrpc":"2.0","id":13,"method":"echo","params":{"message":"status test"}}
+exec cat | mcp-send --http=http://localhost:8765 --show-status-code
+stdout "Status: 200 OK"
+
+# TEST 9: Server-Sent Events (SSE)
+# Start server with SSE support
+[sse] exec mcp-scripttest-server --http=localhost:8766 --sse
+[sse] cmp stderr "MCP server listening on http://localhost:8766 with SSE enabled"
+
+# Initialize the connection
+[sse] setstdin {"jsonrpc":"2.0","id":14,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[sse] exec cat | mcp-send --http=http://localhost:8766
+[sse] stdout '"result":'
+
+[sse] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[sse] exec cat | mcp-send --http=http://localhost:8766
+
+# Open an SSE stream to receive server messages
+[sse] exec mcp-send --http=http://localhost:8766 --sse-listen &
+
+# Send a request to trigger SSE messages
+[sse] setstdin {"jsonrpc":"2.0","id":15,"method":"progress_echo","params":{"message":"sse test","progress_updates":3}}
+[sse] exec cat | mcp-send --http=http://localhost:8766
+
+# Verify we receive progress notifications and final result via SSE
+[sse] stdout 'event: message'
+[sse] stdout 'data: {"jsonrpc":"2.0","method":"notifications/progress"'
+[sse] stdout 'data: {"jsonrpc":"2.0","id":15,"result":'
+[sse] stdout '"sse test"'
+
+# TEST 10: HTTP Session Management
+# Start server with session support
+exec mcp-scripttest-server --http=localhost:8767 --session
+cmp stderr "MCP server listening on http://localhost:8767 with session support"
+
+# Initialize to get a session ID
+setstdin {"jsonrpc":"2.0","id":16,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8767 --capture-headers
+stdout '"result":'
+cmp stderr "Response headers: Mcp-Session-Id:"
+# Extract session ID from response headers
+session_id=$(grep "Mcp-Session-Id:" stderr | awk '{print $3}')
+
+# Use session ID in subsequent requests
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8767 --header="Mcp-Session-Id: $session_id"
+
+# Missing session ID should result in 400 Bad Request
+setstdin {"jsonrpc":"2.0","id":17,"method":"echo","params":{"message":"session test"}}
+exec cat | mcp-send --http=http://localhost:8767
+stdout "Status: 400 Bad Request"
+
+# Including session ID should work
+setstdin {"jsonrpc":"2.0","id":18,"method":"echo","params":{"message":"session test"}}
+exec cat | mcp-send --http=http://localhost:8767 --header="Mcp-Session-Id: $session_id"
+stdout '"result":'
+stdout '"session test"'
+
+# TEST 11: Multiple Connections
+# Server should handle multiple concurrent connections
+exec mcp-scripttest-server --http=localhost:8768 --sse
+cmp stderr "MCP server listening on http://localhost:8768 with SSE enabled"
+
+# Initialize first connection
+setstdin {"jsonrpc":"2.0","id":19,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"Connection1","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8768
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8768
+
+# Open first SSE stream
+exec mcp-send --http=http://localhost:8768 --sse-listen --client-id=client1 &
+
+# Initialize second connection
+setstdin {"jsonrpc":"2.0","id":20,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"Connection2","version":"1.0.0"}}}
+exec cat | mcp-send --http=http://localhost:8768
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --http=http://localhost:8768
+
+# Open second SSE stream
+exec mcp-send --http=http://localhost:8768 --sse-listen --client-id=client2 &
+
+# Each message should only be delivered to one stream
+setstdin {"jsonrpc":"2.0","id":21,"method":"broadcast_to_one","params":{"message":"connection test"}}
+exec cat | mcp-send --http=http://localhost:8768
+stdout '"result":'
+
+# Each client should receive different messages
+stdout 'client1: Received message'
+stdout 'client2: Received message'
+# But they should not receive the same message (no broadcasting)
+! stdout 'client1 and client2: Received the same message'

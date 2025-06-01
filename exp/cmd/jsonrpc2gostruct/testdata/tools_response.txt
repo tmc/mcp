@@ -1,0 +1,41 @@
+# Test tools response parsing
+cat > tools_response.json << 'EOF'
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "tools": [
+      {
+        "name": "calculator",
+        "description": "A simple calculator tool",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "type": "string",
+              "description": "The operation to perform"
+            },
+            "a": {
+              "type": "number",
+              "description": "First operand"
+            },
+            "b": {
+              "type": "number",
+              "description": "Second operand"
+            }
+          },
+          "required": ["operation", "a", "b"]
+        }
+      }
+    ]
+  }
+}
+EOF
+
+# Process tools response
+exec jsonrpc2gostruct -package tools tools_response.json
+stdout 'package tools'
+stdout 'CalculatorInput struct'
+stdout 'A float64'
+stdout 'Operation string'
+stdout 'B float64'
+! stderr 'ERROR'

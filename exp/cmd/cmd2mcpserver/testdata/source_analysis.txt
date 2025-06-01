@@ -1,0 +1,45 @@
+# Test source code analysis for flag extraction
+
+# First build the test CLI to have a binary
+exec go build -o testcli testcli.go
+! stderr .
+
+# Create a simple CLI program with various flag types
+exec cmd2mcpserver -dry-run -source . ./testcli
+stdout '# Generated MCP server for testcli'
+stdout '"format"'
+stdout '"verbose"'
+stdout '"count"'
+stdout '"timeout"'
+
+# Verify flag types are correctly identified
+stdout '"type": "string".*format'
+stdout '"type": "boolean".*verbose'
+stdout '"type": "integer".*count'
+stdout '"type": "number".*timeout'
+
+# Verify descriptions are extracted
+stdout '"description": "Output format"'
+stdout '"description": "Enable verbose output"'
+stdout '"description": "Number of iterations"'
+stdout '"description": "Timeout in seconds"'
+
+-- testcli.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+func main() {
+	format := flag.String("format", "text", "Output format")
+	verbose := flag.Bool("verbose", false, "Enable verbose output")
+	count := flag.Int("count", 1, "Number of iterations")
+	timeout := flag.Float64("timeout", 30.0, "Timeout in seconds")
+
+	flag.Parse()
+
+	fmt.Printf("Format: %s, Verbose: %v, Count: %d, Timeout: %f\n",
+		*format, *verbose, *count, *timeout)
+}

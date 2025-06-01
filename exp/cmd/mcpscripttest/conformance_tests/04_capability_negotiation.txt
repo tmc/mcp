@@ -1,0 +1,196 @@
+# MCP Conformance Tests - Capability Negotiation
+# Tests for client and server capability negotiation during initialization
+
+# Get the server command from the environment
+server_command = $MCP_SERVER_COMMAND
+
+# If stdio is not supported, skip this test file
+[!stdio] skip "Server does not support stdio transport"
+
+# ============================
+# CLIENT CAPABILITIES
+# ============================
+
+# TEST 1: Client Declares Capabilities in Initialize Request
+exec $server_command
+
+# Client declares root and sampling capabilities
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{"roots":{"listChanged":true},"sampling":{}},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# TEST 2: Server Must Respect Client Capabilities - Roots
+# This test requires a server that supports the roots capability
+[!test_roots] skip "Server does not support the roots capability"
+
+# Server should recognize and use client's roots capability
+setstdin {"jsonrpc":"2.0","id":2,"method":"roots/list"}
+exec cat
+stdout '"result":'
+# The exact response format may vary, but should indicate roots capability working
+
+# TEST 3: Server Must Respect Client Capabilities - Sampling
+# This test requires a server that supports the sampling capability
+[!test_sampling] skip "Server does not support the sampling capability"
+
+# Server should recognize and use client's sampling capability
+setstdin {"jsonrpc":"2.0","id":3,"method":"sampling/sample","params":{"prompt":"Test prompt","options":{"maxTokens":10}}}
+exec cat
+stdout '"result":'
+# The exact response format may vary, but should indicate sampling capability working
+
+# TEST 4: Server Must Respect Absence of Client Capabilities
+# This test requires a fresh server instance
+exec $server_command
+
+# Client declares no capabilities
+setstdin {"jsonrpc":"2.0","id":4,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# Request roots capability that wasn't declared (should result in an error)
+[test_roots] setstdin {"jsonrpc":"2.0","id":5,"method":"roots/list"}
+[test_roots] exec cat
+[test_roots] stdout '"error":'
+# The exact error message may vary by implementation
+
+# ============================
+# SERVER CAPABILITIES
+# ============================
+
+# TEST 5: Server Declares Capabilities in Initialize Response
+# This test requires a server that declares specific capabilities
+# Let's use our standard server instance
+exec $server_command
+
+# Send initialization request
+setstdin {"jsonrpc":"2.0","id":6,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+# The server should return its supported capabilities, but the exact list will vary
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# TEST 6: Client Must Respect Server Capabilities - Tools
+# This test requires a server that supports the tools capability
+[!test_tools] skip "Server does not support the tools capability"
+
+# Server supports tools capability, so this should work
+setstdin {"jsonrpc":"2.0","id":7,"method":"tools/list"}
+exec cat
+stdout '"result":'
+# The exact response format may vary, but should include tools information
+
+# TEST 7: Client Must Respect Server Capabilities - Prompts
+# This test requires a server that supports the prompts capability
+[!test_prompts] skip "Server does not support the prompts capability"
+
+# Server supports prompts capability, so this should work
+setstdin {"jsonrpc":"2.0","id":8,"method":"prompts/list"}
+exec cat
+stdout '"result":'
+# The exact response format may vary, but should include prompts information
+
+# TEST 8: Client Must Respect Server Capabilities - Resources
+# This test requires a server that supports the resources capability
+[!test_resources] skip "Server does not support the resources capability"
+
+# Server supports resources capability, so this should work
+setstdin {"jsonrpc":"2.0","id":9,"method":"resources/list"}
+exec cat
+stdout '"result":'
+# The exact response format may vary, but should include resources information
+
+# TEST 9: Server List Changed Capability
+# This test requires a server that supports listChanged for various capabilities
+[!test_list_changed] skip "Server doesn't support listChanged capability testing"
+
+# Start a server with list changed support
+exec $server_command
+
+# Send initialization request
+setstdin {"jsonrpc":"2.0","id":10,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+# The server should include listChanged capability information
+# The exact format may vary by implementation
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# TEST 10: Server Resource Subscribe Capability
+# This test requires a server that supports resource subscription
+[!test_resource_subscribe] skip "Server doesn't support resource subscription"
+
+# Start a server with resource subscription support
+exec $server_command
+
+# Send initialization request
+setstdin {"jsonrpc":"2.0","id":11,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+# The server should include resource subscription capability information
+# The exact format may vary by implementation
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# TEST 11: Client Must Respect Absence of Server Capabilities
+# This test validates behavior when capabilities are missing
+[!test_capability_absence] skip "Server doesn't support capability absence testing"
+
+# Start a server with limited capabilities
+exec $server_command
+
+# Send initialization request
+setstdin {"jsonrpc":"2.0","id":12,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+# The server should report a limited set of capabilities
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# Request a capability that isn't supported (should result in an error)
+# This part of the test depends on the specific server implementation
+# We'll skip it unless server specifically supports this test
+
+# TEST 12: Experimental Capabilities
+# This test requires a server that supports experimental capabilities
+[!test_experimental] skip "Server doesn't support experimental capabilities"
+
+# Start a server with experimental capabilities
+exec $server_command
+
+# Send initialization request with client experimental capabilities
+setstdin {"jsonrpc":"2.0","id":14,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{"experimental":{"clientFeature":{"enabled":true}}},"clientInfo":{"name":"CapabilityClient","version":"1.0.0"}}}
+exec cat
+stdout '"result":'
+stdout '"capabilities":'
+# The server should include information about its experimental capabilities
+# The exact format depends on the server implementation
+
+# Complete initialization
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat
+
+# Use experimental capability
+# This depends on the specific experimental features supported by the server

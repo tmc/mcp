@@ -1,0 +1,60 @@
+# Test basic struct to JSON schema conversion
+
+exec sourcereflect -pretty -type User user.go
+cmp stdout expected.json
+
+-- user.go --
+package main
+
+type User struct {
+	ID        int               `json:"id"`
+	Username  string            `json:"username"`
+	Email     string            `json:"email"`
+	Age       int               `json:"age,omitempty"`
+	IsActive  bool              `json:"is_active"`
+	Tags      []string          `json:"tags"`
+	Settings  map[string]string `json:"settings"`
+}
+
+-- expected.json --
+{
+  "type": "object",
+  "title": "User",
+  "properties": {
+    "age": {
+      "type": "integer"
+    },
+    "email": {
+      "type": "string"
+    },
+    "id": {
+      "type": "integer"
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "username": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "username",
+    "email",
+    "is_active",
+    "tags",
+    "settings"
+  ]
+}

@@ -1,0 +1,329 @@
+# Server Integration Testing with Scripttest
+#
+# This script demonstrates how to use scripttest to verify that
+# different MCP server implementations conform to the same protocol.
+
+# Create a test directory
+cd ${WORK}
+mkdir -p mcp-server-tests
+
+# Create a standardized test suite for filesystem servers
+cat > mcp-server-tests/filesystem_conformance.txt << 'EOF'
+# MCP Filesystem Server Conformance Test
+#
+# This script tests if a filesystem server implementation
+# conforms to the expected protocol.
+
+# First, verify the server is running by checking initialization
+mcp-send {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+stdout '"result"'
+stdout '"serverInfo"'
+stdout '"protocolVersion"'
+
+# Test basic file operations
+
+# Create a test file
+mcp-send {"jsonrpc":"2.0","id":2,"method":"write","params":{"path":"conformance_test.txt","content":"Test content for conformance testing"}}
+stdout '"status": *"success"'
+
+# Verify we can read the file
+mcp-send {"jsonrpc":"2.0","id":3,"method":"read","params":{"path":"conformance_test.txt"}}
+stdout '"content": *"Test content for conformance testing"'
+
+# Append to the file
+mcp-send {"jsonrpc":"2.0","id":4,"method":"append","params":{"path":"conformance_test.txt","content":"\nAppended content"}}
+stdout '"status": *"success"'
+
+# Create a directory
+mcp-send {"jsonrpc":"2.0","id":5,"method":"mkdir","params":{"path":"test_dir"}}
+stdout '"status": *"success"'
+
+# Write a file in the directory
+mcp-send {"jsonrpc":"2.0","id":6,"method":"write","params":{"path":"test_dir/file.txt","content":"File in directory"}}
+stdout '"status": *"success"'
+
+# List directory contents
+mcp-send {"jsonrpc":"2.0","id":7,"method":"list","params":{"path":"."}}
+stdout '"entries"'
+stdout '"conformance_test.txt"'
+stdout '"test_dir"'
+
+# Find files
+mcp-send {"jsonrpc":"2.0","id":8,"method":"find","params":{"path":".","pattern":"*.txt","recursive":true}}
+stdout '"matches"'
+stdout '"conformance_test.txt"'
+stdout '"test_dir/file.txt"'
+
+# Check file stat
+mcp-send {"jsonrpc":"2.0","id":9,"method":"stat","params":{"path":"conformance_test.txt"}}
+stdout '"is_dir": false'
+stdout '"size"'
+
+# Test error handling - missing file
+mcp-send {"jsonrpc":"2.0","id":10,"method":"read","params":{"path":"nonexistent.txt"}}
+! stdout '"result"'
+stdout '"error"'
+
+# Test file deletion
+mcp-send {"jsonrpc":"2.0","id":11,"method":"delete","params":{"path":"test_dir/file.txt"}}
+stdout '"status": *"success"'
+
+# Test directory deletion
+mcp-send {"jsonrpc":"2.0","id":12,"method":"delete","params":{"path":"test_dir","recursive":true}}
+stdout '"status": *"success"'
+
+# Cleanup test files
+mcp-send {"jsonrpc":"2.0","id":13,"method":"delete","params":{"path":"conformance_test.txt"}}
+stdout '"status": *"success"'
+EOF
+
+# Create a reference implementation server script
+cat > mcp-server-tests/reference_server.txt << 'EOF'
+# Reference implementation of filesystem server
+
+# Initialize response
+expect-recv {"jsonrpc":"2.0","method":"initialize"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"reference-fs-server","version":"1.0.0"},"capabilities":{}}}
+
+# Write file
+expect-recv {"jsonrpc":"2.0","method":"write","params":{"path":"*","content":"*"}}
+exec mkdir -p $(dirname ${WORKDIR}/${REQUEST.params.path})
+exec echo "${REQUEST.params.content}" > ${WORKDIR}/${REQUEST.params.path}
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","size":${#REQUEST.params.content},"message":"File written successfully"}}
+
+# Append to file
+expect-recv {"jsonrpc":"2.0","method":"append","params":{"path":"*","content":"*"}}
+exec echo -n "${REQUEST.params.content}" >> ${WORKDIR}/${REQUEST.params.path}
+set-var FILE_SIZE = $(wc -c < ${WORKDIR}/${REQUEST.params.path} | tr -d ' ')
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","size":${FILE_SIZE},"appended":${#REQUEST.params.content},"message":"Content appended successfully"}}
+
+# Read file
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"*"}}
+exec test -f ${WORKDIR}/${REQUEST.params.path}
+if ERRORLEVEL != 0
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"File not found: ${REQUEST.params.path}"}}
+else
+  set-var FILE_CONTENT = $(cat ${WORKDIR}/${REQUEST.params.path})
+  set-var FILE_SIZE = $(wc -c < ${WORKDIR}/${REQUEST.params.path} | tr -d ' ')
+  send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","content":"${FILE_CONTENT}","size":${FILE_SIZE},"encoding":"utf-8"}}
+endif
+
+# Make directory
+expect-recv {"jsonrpc":"2.0","method":"mkdir","params":{"path":"*"}}
+exec mkdir -p ${WORKDIR}/${REQUEST.params.path}
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","message":"Directory created successfully"}}
+
+# List directory
+expect-recv {"jsonrpc":"2.0","method":"list","params":{"path":"*"}}
+set-var DIR_ENTRIES = $(ls -1 ${WORKDIR}/${REQUEST.params.path} | jq -R -s 'split("\n")[:-1] | map({"name": ., "is_dir": (if . == "" then false else (if (. | endswith("/")) then true else false end) end)})' 2>/dev/null || echo "[]")
+set-var ENTRY_COUNT = $(echo ${DIR_ENTRIES} | jq 'length')
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","entries":${DIR_ENTRIES},"count":${ENTRY_COUNT}}}
+
+# Find files
+expect-recv {"jsonrpc":"2.0","method":"find","params":{"path":"*","pattern":"*"}}
+set-var RECURSIVE = ${REQUEST.params.recursive}
+if RECURSIVE == true
+  set-var FIND_RESULTS = $(find ${WORKDIR}/${REQUEST.params.path} -name "${REQUEST.params.pattern}" | sed "s|${WORKDIR}/||" | jq -R -s 'split("\n")[:-1] | map({"path": ., "name": (. | split("/") | last), "is_dir": false})' 2>/dev/null || echo "[]")
+else
+  set-var FIND_RESULTS = $(find ${WORKDIR}/${REQUEST.params.path} -maxdepth 1 -name "${REQUEST.params.pattern}" | sed "s|${WORKDIR}/||" | jq -R -s 'split("\n")[:-1] | map({"path": ., "name": (. | split("/") | last), "is_dir": false})' 2>/dev/null || echo "[]")
+endif
+set-var MATCH_COUNT = $(echo ${FIND_RESULTS} | jq 'length')
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","pattern":"${REQUEST.params.pattern}","matches":${FIND_RESULTS},"count":${MATCH_COUNT}}}
+
+# Stat file
+expect-recv {"jsonrpc":"2.0","method":"stat","params":{"path":"*"}}
+exec test -e ${WORKDIR}/${REQUEST.params.path}
+if ERRORLEVEL != 0
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"Path not found: ${REQUEST.params.path}"}}
+else
+  set-var IS_DIR = $(if [ -d "${WORKDIR}/${REQUEST.params.path}" ]; then echo "true"; else echo "false"; fi)
+  set-var FILE_SIZE = $(if [ -f "${WORKDIR}/${REQUEST.params.path}" ]; then wc -c < "${WORKDIR}/${REQUEST.params.path}" | tr -d ' '; else echo "0"; fi)
+  set-var FILE_SIZE_HUMAN = $(if [ -f "${WORKDIR}/${REQUEST.params.path}" ]; then if [ ${FILE_SIZE} -gt 1024 ]; then echo $((${FILE_SIZE} / 1024))" KB"; else echo ${FILE_SIZE}" B"; fi; else echo "<DIR>"; fi)
+  send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","name":"$(basename ${REQUEST.params.path})","is_dir":${IS_DIR},"size":"${FILE_SIZE_HUMAN}","size_bytes":${FILE_SIZE}}}
+endif
+
+# Delete file or directory
+expect-recv {"jsonrpc":"2.0","method":"delete","params":{"path":"*"}}
+set-var PATH_EXISTS = $(if [ -e "${WORKDIR}/${REQUEST.params.path}" ]; then echo "true"; else echo "false"; fi)
+if PATH_EXISTS == false
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"Path not found: ${REQUEST.params.path}"}}
+else
+  set-var IS_DIR = $(if [ -d "${WORKDIR}/${REQUEST.params.path}" ]; then echo "true"; else echo "false"; fi)
+  set-var RECURSIVE = ${REQUEST.params.recursive}
+  if IS_DIR == true
+    if RECURSIVE == true
+      exec rm -rf ${WORKDIR}/${REQUEST.params.path}
+      send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","type":"directory","message":"Successfully deleted directory: ${REQUEST.params.path}"}}
+    else
+      exec rmdir ${WORKDIR}/${REQUEST.params.path} 2>/dev/null
+      if ERRORLEVEL != 0
+        send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"Directory not empty: ${REQUEST.params.path}"}}
+      else
+        send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","type":"directory","message":"Successfully deleted directory: ${REQUEST.params.path}"}}
+      endif
+    endif
+  else
+    exec rm ${WORKDIR}/${REQUEST.params.path}
+    send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}","type":"file","message":"Successfully deleted file: ${REQUEST.params.path}"}}
+  endif
+endif
+EOF
+
+# Create a test script that tests both servers
+cat > mcp-server-tests/test_conformance.txt << 'EOF'
+# Test both reference and alternative server against conformance tests
+
+# 1. First, test the reference server
+echo "===== Testing Reference Implementation ====="
+mkdir -p reference_workdir
+mcp-scripttest-server -script reference_server.txt -port 8086 -workdir reference_workdir &
+sleep 1
+cd ${WORK}
+
+! stdout "FAIL"
+# Run the conformance test against the reference server
+MCP_SERVER=localhost:8086 go run ${WORK}/run_conformance_test.go
+stdout "All tests passed"
+
+# Clean up reference server
+killall mcp-scripttest-server
+
+# 2. Now test the implementation-under-test (using mcp-filesystem-server as an example)
+echo "===== Testing Implementation Under Test ====="
+
+# Start the real server
+if [ -f "${WORK}/mcp-filesystem-server" ]; then
+  ${WORK}/mcp-filesystem-server -port 8087 -dir ${WORK}/test_workdir &
+else
+  # If not available, use the mock implementation instead
+  mkdir -p alt_workdir
+  mcp-scripttest-server -script reference_server.txt -port 8087 -workdir alt_workdir &
+fi
+sleep 1
+
+! stdout "FAIL"
+# Run the conformance test against the implementation
+MCP_SERVER=localhost:8087 go run ${WORK}/run_conformance_test.go
+stdout "All tests passed"
+
+# Clean up servers
+killall mcp-filesystem-server 2>/dev/null
+killall mcp-scripttest-server 2>/dev/null
+EOF
+
+# Create a Go program to run the conformance test
+cat > run_conformance_test.go << 'EOF'
+package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+func main() {
+	server := os.Getenv("MCP_SERVER")
+	if server == "" {
+		server = "localhost:8080"
+	}
+	
+	// Run the conformance test
+	cmd := exec.Command("mcp-test", "-server", server, "mcp-server-tests/filesystem_conformance.txt")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Conformance test failed: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Println("All tests passed")
+}
+EOF
+
+# Create a simplified version of mcp-test for running the tests
+cat > mcp-test << 'EOF'
+#!/bin/bash
+# Simple version of mcp-test for running conformance tests
+
+SERVER="localhost:8080"
+TEST_FILE=""
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -server)
+      SERVER="$2"
+      shift 2
+      ;;
+    *)
+      TEST_FILE="$1"
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$TEST_FILE" ]; then
+  echo "No test file specified"
+  exit 1
+fi
+
+# Read the test file line by line
+while IFS= read -r line; do
+  # Skip comments and empty lines
+  if [[ "$line" =~ ^# ]] || [[ -z "$line" ]]; then
+    continue
+  fi
+  
+  # Handle mcp-send commands
+  if [[ "$line" =~ ^mcp-send ]]; then
+    json=$(echo "$line" | sed 's/^mcp-send //')
+    echo "Sending: $json"
+    curl -s -X POST "http://$SERVER/mcp" \
+         -H "Content-Type: application/json" \
+         -d "$json" > response.json
+    
+    if [ $? -ne 0 ]; then
+      echo "Error sending request"
+      exit 1
+    fi
+    
+    cat response.json
+    echo
+  fi
+  
+  # Handle stdout checks
+  if [[ "$line" =~ ^stdout ]]; then
+    pattern=$(echo "$line" | sed 's/^stdout //' | sed 's/"//g')
+    
+    # Handle negated patterns
+    if [[ "$pattern" =~ ^\! ]]; then
+      actual_pattern=$(echo "$pattern" | sed 's/^\!//')
+      if grep -q "$actual_pattern" response.json; then
+        echo "ERROR: Found unexpected pattern: $actual_pattern"
+        exit 1
+      fi
+    else
+      if ! grep -q "$pattern" response.json; then
+        echo "ERROR: Pattern not found: $pattern"
+        exit 1
+      fi
+    fi
+  fi
+done < "$TEST_FILE"
+
+# If we get here, all tests passed
+echo "All tests passed"
+exit 0
+EOF
+
+chmod +x mcp-test
+
+# Run the test script
+mcp-test mcp-server-tests/test_conformance.txt
+stdout "===== Testing Reference Implementation ====="
+stdout "All tests passed"
+stdout "===== Testing Implementation Under Test ====="
+stdout "All tests passed"

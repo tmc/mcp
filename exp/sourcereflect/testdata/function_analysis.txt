@@ -1,0 +1,60 @@
+# Test function analysis for MCP tool description
+
+# 1. Basic function without hints analysis
+exec sourcereflect -func ProcessData functions.go
+stdout '"name":"ProcessData"'
+stdout '"inputSchema":'
+
+# 2. Function with hints analysis
+exec sourcereflect -func ProcessData -analyze-hints functions.go
+stdout '"readOnlyHint":true'
+stdout '"openWorldHint":false'
+
+# 3. Network function analysis
+exec sourcereflect -func FetchData -analyze-hints -pretty functions.go
+stdout '"openWorldHint": true'
+
+# 4. Disk function analysis
+exec sourcereflect -func WriteFile -analyze-hints -pretty functions.go
+stdout '"readOnlyHint": false'
+stdout '"destructiveHint": true'
+
+# 5. Pretty output test
+exec sourcereflect -func SimpleFunc -pretty functions.go
+stdout '{\n  "name": "SimpleFunc"'
+
+-- functions.go --
+package main
+
+import (
+	"io/ioutil"
+	"net/http"
+)
+
+// ProcessData is a read-only function
+func ProcessData(input string) string {
+	// Just process the data without any side effects
+	return input + "_processed"
+}
+
+// FetchData makes network calls
+func FetchData(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	
+	body, err := ioutil.ReadAll(resp.Body)
+	return string(body), err
+}
+
+// WriteFile performs disk operations
+func WriteFile(filename string, data []byte) error {
+	return ioutil.WriteFile(filename, data, 0644)
+}
+
+// SimpleFunc is a simple function
+func SimpleFunc(x int, y int) int {
+	return x + y
+}

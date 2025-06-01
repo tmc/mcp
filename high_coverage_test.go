@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
-	"time"
 )
 
 func TestAdvancedClientFeatures(t *testing.T) {
@@ -353,9 +353,12 @@ func TestClientServerConnectionFailures(t *testing.T) {
 
 	// Create client with failing transport
 	transport := &mockFailingTransport{}
-	client, err := NewClient(transport)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+	_, err := NewClient(transport)
+	if err == nil {
+		t.Fatal("Expected client creation to fail with failing transport")
+	}
+	if !strings.Contains(err.Error(), "mock transport failure") {
+		t.Fatalf("Expected mock transport failure error, got: %v", err)
 	}
 
 	// Test initialization with failing transport should fail gracefully

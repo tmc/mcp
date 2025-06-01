@@ -1,6 +1,7 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/gorilla/websocket v1.4.1 h1:q7AeDBpnBk8AogcD4DSag/Ukw/KV+YhzLj2bP5HvKCM=
+github.com/gorilla/websocket v1.4.1/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 golang.org/x/exp/event v0.0.0-20220217172124-1812c5b45e43 h1:Yn6OLQDombmcne/0Jf2GiY4qPS5ML2W4KYFyx2uYxGY=
 golang.org/x/exp/event v0.0.0-20220217172124-1812c5b45e43/go.mod h1:AVlZHjhWbW/3yOcmKMtJiObwBPJajBlUpQXRijFNrNc=
 golang.org/x/exp/jsonrpc2 v0.0.0-20250506013437-ce4c2cf36ca6 h1:A5B/lsJeRTSnFRQ/vPa+6TZnBZtQbaVyDAlaaAbn1CE=

@@ -12,7 +12,10 @@ import (
 
 // TestSingleConnListener tests the singleConnListener
 func TestSingleConnListenerInternal(t *testing.T) {
-	mockConn := &mockReadWriteCloser{}
+	mockConn := &mockReadWriteCloser{
+		readData:    []byte{},
+		writtenData: []byte{},
+	}
 	listener := &singleConnListener{
 		conn:   mockConn,
 		done:   make(chan struct{}),
@@ -87,7 +90,10 @@ func TestStdioTransportInternal(t *testing.T) {
 func TestDialerInternal(t *testing.T) {
 	// Test a mock dialer
 	mockDialer := &mockDialer{
-		conn: &mockReadWriteCloser{},
+		conn: &mockReadWriteCloser{
+			readData:    []byte{},
+			writtenData: []byte{},
+		},
 	}
 
 	ctx := context.Background()
@@ -123,17 +129,6 @@ func (m *mockDialer) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 		return nil, m.err
 	}
 	return m.conn, nil
-}
-
-// mockReadWriteCloser for testing
-type mockReadWriteCloser struct {
-	*bytes.Buffer
-	closed bool
-}
-
-func (m *mockReadWriteCloser) Close() error {
-	m.closed = true
-	return nil
 }
 
 // testWriter adapts testing.T to io.Writer

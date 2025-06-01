@@ -49,6 +49,29 @@ type JSONRPCNotification struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
+// JSONRPCRequest represents a request message in the JSON-RPC protocol.
+type JSONRPCRequest struct {
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
+}
+
+// JSONRPCResponse represents a response message in the JSON-RPC protocol.
+type JSONRPCResponse struct {
+	JSONRPC string        `json:"jsonrpc"`
+	ID      interface{}   `json:"id"`
+	Result  interface{}   `json:"result,omitempty"`
+	Error   *JSONRPCError `json:"error,omitempty"`
+}
+
+// JSONRPCError represents an error in a JSON-RPC response.
+type JSONRPCError struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data,omitempty"`
+}
+
 // Implementation describes the name and version of an MCP client or server.
 type Implementation struct {
 	Name    string `json:"name"`
@@ -67,6 +90,13 @@ type ServerCapabilities struct {
 	Tools        *struct {
 		ListChanged bool `json:"listChanged,omitempty"`
 	} `json:"tools,omitempty"`
+	Resources *struct {
+		Subscribe   bool `json:"subscribe,omitempty"`
+		ListChanged bool `json:"listChanged,omitempty"`
+	} `json:"resources,omitempty"`
+	Prompts *struct {
+		ListChanged bool `json:"listChanged,omitempty"`
+	} `json:"prompts,omitempty"`
 }
 
 // InitializeRequest is the client's request to initialize the connection.
@@ -212,6 +242,24 @@ type ReadResourceResult struct {
 type ResourceContents interface {
 	resourceContents()
 }
+
+// TextResourceContents represents text content for a resource.
+type TextResourceContents struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Text     string `json:"text"`
+}
+
+func (TextResourceContents) resourceContents() {}
+
+// BlobResourceContents represents binary content for a resource.
+type BlobResourceContents struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Blob     string `json:"blob"` // base64 encoded
+}
+
+func (BlobResourceContents) resourceContents() {}
 
 // ListResourceTemplatesRequest is the client's request to list available resource templates.
 type ListResourceTemplatesRequest struct {

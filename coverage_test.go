@@ -77,7 +77,7 @@ func TestServerResourceRegistration(t *testing.T) {
 				Description: "Test resource",
 			},
 			handler: func(ctx context.Context, req ReadResourceRequest) ([]ResourceContents, error) {
-				return []ResourceContents{&TextResourceContents{Text: "content"}}, nil
+				return []ResourceContents{TextResourceContents{Text: "content"}}, nil
 			},
 			wantErr: false,
 		},
@@ -184,7 +184,7 @@ func TestResourceTemplateRegistration(t *testing.T) {
 	}
 
 	handler := func(ctx context.Context, req ReadResourceRequest) ([]ResourceContents, error) {
-		return []ResourceContents{&TextResourceContents{Text: "content"}}, nil
+		return []ResourceContents{TextResourceContents{Text: "content"}}, nil
 	}
 
 	err := server.RegisterResourceTemplate(template, handler)
@@ -372,13 +372,6 @@ type mockWriter struct{}
 func (m *mockWriter) Read(p []byte) (n int, err error)  { return 0, nil }
 func (m *mockWriter) Write(p []byte) (n int, err error) { return len(p), nil }
 func (m *mockWriter) Close() error                      { return nil }
-
-// TextResourceContents implements ResourceContents for text data
-type TextResourceContents struct {
-	Text string
-}
-
-func (t *TextResourceContents) resourceContents() {}
 
 // Test options functions
 func TestLogLevelOption(t *testing.T) {

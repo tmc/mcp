@@ -33,9 +33,7 @@ func TestSSEClientTransport(t *testing.T) {
 // TestSSEServerTransport tests the SSE server transport
 func TestSSEServerTransport(t *testing.T) {
 	// Create a mock ReadWriteCloser
-	mockRWC := &mockReadWriteCloser{
-		Buffer: bytes.NewBuffer(nil),
-	}
+	mockRWC := &mockReadWriteCloser{}
 
 	transport := mcp.NewSSEServerTransport(mockRWC, slog.Default())
 	if transport == nil {

@@ -1,0 +1,122 @@
+{
+  "name": "Advanced MCP Server Test",
+  "description": "Tests advanced features of an MCP server with sophisticated pattern matching",
+  "steps": [
+    {
+      "name": "Initialize",
+      "description": "Initialize the connection with advanced pattern matching",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "params": {
+          "clientInfo": {
+            "name": "test-client",
+            "version": "0.1.0"
+          }
+        },
+        "id": 1
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "serverInfo": {
+                "name": "/^[a-zA-Z\\-]+$/",
+                "version": "/^[0-9]+\\.[0-9]+\\.[0-9]+$/"
+              },
+              "capabilities": {
+                "{{partial}}": true
+              }
+            },
+            "id": 1
+          },
+          "fail_fast": true
+        }
+      ]
+    },
+    {
+      "name": "Execute Tool",
+      "description": "Execute a tool with complex input and validate response",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "executeTool",
+        "params": {
+          "toolName": "calculator",
+          "input": {
+            "operation": "add",
+            "a": 5,
+            "b": 7
+          }
+        },
+        "id": 2
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "output": {
+                "result": 12
+              }
+            },
+            "id": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Resources",
+      "description": "List available resources with array pattern matching",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "listResources",
+        "params": {},
+        "id": 3
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "resources": [
+                {
+                  "{{items}}": true,
+                  "name": "{{string}}",
+                  "type": "{{string}}"
+                }
+              ]
+            },
+            "id": 3
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deliberate Error",
+      "description": "Test error handling with invalid method",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "invalidMethod",
+        "params": {},
+        "id": 4
+      },
+      "expectations": [
+        {
+          "type": "error",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "error": {
+              "code": -32601,
+              "message": "{{string}}"
+            },
+            "id": 4
+          }
+        }
+      ]
+    }
+  ]
+}

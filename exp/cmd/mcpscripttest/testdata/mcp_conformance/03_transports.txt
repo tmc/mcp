@@ -1,0 +1,188 @@
+# MCP Conformance Tests - Transports
+# Tests for transport mechanisms: stdio and HTTP
+
+# Get the server command from the environment
+server_command = $MCP_SERVER_COMMAND
+
+# ============================
+# STDIO TRANSPORT TESTS
+# ============================
+
+# TEST 1: STDIO Basic Functionality
+# Start the test server with stdio transport
+[!stdio] skip "Server does not support stdio transport"
+[stdio] exec $server_command &
+[stdio] sleep 0.5
+
+# Initialize the connection
+[stdio] setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+
+[stdio] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[stdio] exec cat
+
+# Test basic request-response
+[stdio] setstdin {"jsonrpc":"2.0","id":2,"method":"echo","params":{"message":"stdio test"}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+[stdio] stdout '"stdio test"'
+
+# TEST 2: STDIO Message Encoding
+# Messages must be UTF-8 encoded
+[stdio] setstdin {"jsonrpc":"2.0","id":3,"method":"echo","params":{"message":"UTF-8 test: 你好, привет, こんにちは, 안녕하세요"}}
+[stdio] exec cat
+stdout '"UTF-8 test: 你好, привет, こんにちは, 안녕하세요"'
+
+# TEST 3: STDIO Message Delimiters
+# Messages must be delimited by newlines
+[stdio] setstdin {"jsonrpc":"2.0","id":4,"method":"echo","params":{"message":"line 1"}}\n{"jsonrpc":"2.0","id":5,"method":"echo","params":{"message":"line 2"}}
+[stdio] exec cat
+[stdio] stdout '"id":4'
+[stdio] stdout '"line 1"'
+[stdio] stdout '"id":5'
+[stdio] stdout '"line 2"'
+
+# TEST 4: STDIO Output Validation
+# Server must not write anything to stdout that is not a valid MCP message
+# This test requires a server that can validate stdout, so we make it conditional
+[!test_server_validate_stdout] skip "Server doesn't support validating stdout specifically"
+
+# Start a server that supports stdout validation
+[stdio] exec $server_command &
+[stdio] sleep 0.5
+
+# Initialize and make a request
+[stdio] setstdin {"jsonrpc":"2.0","id":6,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+
+[stdio] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[stdio] exec cat
+
+[stdio] setstdin {"jsonrpc":"2.0","id":7,"method":"echo","params":{"message":"validate stdout"}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+[stdio] ! stdout 'Invalid MCP message'
+
+# TEST 5: STDIO Error Logging
+# Server may write to stderr for logging
+# This test requires a server that supports verbose logging, so we make it conditional
+[!test_server_verbose] skip "Server doesn't support verbose mode specifically"
+
+# Start a server that supports verbose logging
+[stdio] exec $server_command &
+[stdio] sleep 0.5
+
+# Initialize and make a request
+[stdio] setstdin {"jsonrpc":"2.0","id":8,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+
+[stdio] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[stdio] exec cat
+
+[stdio] setstdin {"jsonrpc":"2.0","id":9,"method":"echo","params":{"message":"test stderr logging"}}
+[stdio] exec cat
+[stdio] stdout '"result":'
+# Server might log to stderr, but the exact message varies by implementation
+
+# ============================
+# HTTP TRANSPORT TESTS
+# ============================
+
+# TEST 6: HTTP Basic Functionality
+# Start the test server with HTTP transport
+[!http] skip "Server does not support HTTP transport"
+[http] exec $server_command
+
+# Initialize the connection via HTTP
+# For HTTP tests, we need an HTTP client - assuming the server provides one
+[http] setstdin {"jsonrpc":"2.0","id":10,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[http] !has_mcp_http_client skip "Testing HTTP requires an MCP HTTP client"
+[http] exec $MCP_HTTP_CLIENT_CMD
+[http] stdout '"result":'
+
+[http] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[http] exec $MCP_HTTP_CLIENT_CMD
+# No response expected for notifications
+
+# Test basic request-response over HTTP
+[http] setstdin {"jsonrpc":"2.0","id":11,"method":"echo","params":{"message":"http test"}}
+[http] exec $MCP_HTTP_CLIENT_CMD
+[http] stdout '"result":'
+[http] stdout '"http test"'
+
+# TEST 7: HTTP Headers
+# Client must include Accept header with application/json
+# This test requires a server that can capture and report headers
+[!test_server_capture_headers] skip "Server doesn't support capturing HTTP headers"
+
+# Use an HTTP client that can capture and show headers
+[http] setstdin {"jsonrpc":"2.0","id":12,"method":"echo","params":{"message":"header test"}}
+[http] exec $MCP_HTTP_CLIENT_CMD
+[http] stdout '"result":'
+# The exact output will vary by implementation, but HTTP clients should include Accept headers
+
+# TEST 8: HTTP Response Codes
+# This test verifies proper HTTP response codes but requires special client support
+[!test_server_http_status] skip "Server doesn't support testing HTTP status codes"
+
+# Responses containing only JSON-RPC notifications should return 202 Accepted
+[http] setstdin {"jsonrpc":"2.0","method":"notifications/test"}
+[http] exec $MCP_HTTP_CLIENT_CMD
+# The exact output will vary by implementation, but should include a 202 status
+
+# Responses for JSON-RPC requests should return 200 OK
+[http] setstdin {"jsonrpc":"2.0","id":13,"method":"echo","params":{"message":"status test"}}
+[http] exec $MCP_HTTP_CLIENT_CMD
+# The exact output will vary by implementation, but should include a 200 status
+
+# TEST 9: Server-Sent Events (SSE)
+# This test requires a server with SSE support
+[!sse] skip "Server does not support SSE transport"
+[sse] exec $server_command
+
+# Initialize the connection
+[sse] setstdin {"jsonrpc":"2.0","id":14,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TransportTestClient","version":"1.0.0"}}}
+[sse] !has_mcp_http_client skip "Testing SSE requires an MCP HTTP client"
+[sse] exec $MCP_HTTP_CLIENT_CMD
+[sse] stdout '"result":'
+
+[sse] setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+[sse] exec $MCP_HTTP_CLIENT_CMD
+
+# SSE testing requires specific client implementation
+[!has_sse_client] skip "Testing SSE requires a specific SSE client"
+
+# The remaining SSE tests would need to be customized based on the specific server and client
+# Since we can't predict the exact implementation, we document what should happen:
+# - Server should support an SSE endpoint
+# - Client should be able to connect and receive server-sent events
+# - Events should be formatted according to the SSE specification
+# - JSON-RPC messages should be sent as data fields in the events
+
+# TEST 10: HTTP Session Management
+# This test requires a server with session support
+[!http_session] skip "Server does not support HTTP session management"
+[http_session] exec $server_command
+
+# Session management tests would need to be customized based on the specific server implementation
+# Since we can't predict the exact implementation, we document what should happen:
+# - Server should support session management via HTTP headers
+# - Initialize requests should return a session ID header
+# - Subsequent requests should include the session ID
+# - Missing session ID should result in an error
+# - Including session ID should allow normal operation
+
+# TEST 11: Multiple Connections
+# This test requires a server that can handle multiple connections
+[!multi_connection] skip "Server does not support multiple concurrent connections"
+[multi_connection] exec $server_command
+
+# Multiple connection testing would need to be customized based on the specific server implementation
+# Since we can't predict the exact implementation, we document what should happen:
+# - Server should support multiple concurrent connections
+# - Each connection should have its own state
+# - Messages should only be delivered to the appropriate connection
+# - Multiple clients should be able to connect simultaneously

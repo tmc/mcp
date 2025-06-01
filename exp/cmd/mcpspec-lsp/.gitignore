@@ -1,0 +1,25 @@
+# Binaries
+mcpspec-lsp
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Output of go coverage tool
+*.out
+
+# Log files
+*.log
+
+# Dependency directories
+/vendor/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db 

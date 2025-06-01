@@ -1,0 +1,50 @@
+{
+  "name": "Basic API Test",
+  "description": "Tests basic API functionality",
+  "steps": [
+    {
+      "name": "Initialize",
+      "description": "Initialize the connection",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "initialize",
+        "params": {},
+        "id": 1
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "capabilities": {}
+            },
+            "id": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Tools",
+      "description": "List available tools",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "listTools",
+        "params": {},
+        "id": 2
+      },
+      "expectations": [
+        {
+          "type": "response",
+          "pattern": {
+            "jsonrpc": "2.0",
+            "result": {
+              "tools": []
+            },
+            "id": 2
+          }
+        }
+      ]
+    }
+  ]
+}

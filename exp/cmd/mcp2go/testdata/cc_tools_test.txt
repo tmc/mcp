@@ -1,0 +1,72 @@
+# Test conversion of specific tools from cc-tools.json  
+# This tests the actual tool definitions from Claude Chat
+
+# Set up a small extract from cc-tools.json for testing
+-- cc_tools_subset.json --
+{
+  "result": {
+    "tools": [
+      {
+        "name": "Task",
+        "description": "Launch a new task",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "A short (3-5 word) description of the task"
+            },
+            "prompt": {
+              "type": "string",
+              "description": "The task for the agent to perform"
+            }
+          },
+          "required": ["description", "prompt"],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      },
+      {
+        "name": "Bash",
+        "description": "Run shell command",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The command to execute"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Optional timeout in milliseconds (max 600000)"
+            },
+            "description": {
+              "type": "string",
+              "description": "Clear, concise description of what this command does in 5-10 words"
+            }
+          },
+          "required": ["command"],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    ]
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+# Test conversion from stdin
+exec go run .. < cc_tools_subset.json
+stdout 'type TaskTool interface'
+stdout 'type BashTool interface'
+
+# Verify Task tool structure
+stdout 'type TaskInput struct'
+stdout 'Description string.*json:"description"'
+stdout 'Prompt string.*json:"prompt"'
+
+# Verify Bash tool structure
+stdout 'type BashInput struct'
+stdout 'Command string.*json:"command"'
+stdout 'Timeout.*float64.*json:"timeout,omitempty"'

@@ -1,0 +1,10 @@
+# Test basic server interaction with proper piping
+
+# Create the initialization request in a file
+stdin init.json
+exec npx @modelcontextprotocol/server-everything stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"result"'
+
+-- init.json --
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}

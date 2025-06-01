@@ -1,0 +1,13 @@
+# Demonstration of the stitching concept
+
+# First, we have a test that executes mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# The concept: Standard callgraph can't connect this test to mcpdiff's main()
+# But our testcallgraph can make that connection by:
+# 1. Parsing the test to find "exec mcpdiff" commands
+# 2. Looking up mcpdiff's source code location
+# 3. Creating an edge in the call graph
+
+# This is implemented in testcallgraph/stitcher.go

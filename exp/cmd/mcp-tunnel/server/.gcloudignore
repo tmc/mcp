@@ -1,0 +1,32 @@
+# This file specifies files that are *not* uploaded to Google Cloud Platform
+# using gcloud. It follows the same syntax as .gitignore, with the addition of
+# "#!include" directives (which insert the entries of the given .gitignore-style
+# file at that point).
+
+.gcloudignore
+.git
+.gitignore
+README.md
+*.md
+*.yaml
+*.yml
+Dockerfile
+.dockerignore
+
+# Go specific
+*.test
+*_test.go
+vendor/
+.idea/
+.vscode/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Build artifacts (not needed, we build in Cloud Build)
+mcp-tunnel-server
+*.exe
+*.dll
+*.so
+*.dylib

@@ -1,0 +1,127 @@
+# Test mcp2go edge cases
+#
+# This test covers edge cases and error conditions
+
+# Test empty tool description
+-- empty_tool.json --
+{
+  "name": "empty",
+  "description": "Empty tool"
+}
+
+exec go run .. -type mcp empty_tool.json
+stdout 'Generated: empty_tool.go'
+exec cat empty_tool.go
+stdout 'type EmptyTool interface'
+# Should still have Execute method even with no schemas
+stdout 'Execute\(ctx context.Context'
+
+# Test tool with no required fields
+-- optional_tool.json --
+{
+  "name": "optional",
+  "description": "Tool with all optional fields",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "param1": {
+        "type": "string"
+      },
+      "param2": {
+        "type": "integer"
+      }
+    }
+  }
+}
+
+exec go run .. optional_tool.json
+stdout 'Generated: optional_tool.go'
+exec cat optional_tool.go
+stdout 'Param1 \*string `json:"param1,omitempty"`'
+stdout 'Param2 \*int `json:"param2,omitempty"`'
+
+# Test invalid JSON
+-- invalid.json --
+{
+  "name": "broken"
+  "missing comma"
+}
+
+! exec go run .. invalid.json
+stderr 'Error parsing'
+
+# Test missing file
+! exec go run .. nonexistent.json
+stderr 'Error reading file'
+
+# Test with no arguments
+! exec go run ..
+stderr 'Usage:'
+
+# Test schema with no type (should default to object)
+-- no_type.json --
+{
+  "properties": {
+    "field": {
+      "type": "string"
+    }
+  }
+}
+
+exec go run .. no_type.json
+stdout 'Generated: notype.go'
+exec cat notype.go
+stdout 'type NoType struct'
+stdout 'Field \*string'
+
+# Test string format types
+-- formats.json --
+{
+  "type": "object",
+  "properties": {
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri"
+    }
+  }
+}
+
+exec go run .. formats.json
+stdout 'Generated: formats.go'
+exec cat formats.go
+stdout 'Created \*time.Time'
+stdout 'Email \*string' # Just string for now
+stdout 'URL \*string'   # Just string for now
+
+# Test hyphenated/underscored names
+-- naming_test.json --
+{
+  "name": "user-profile",
+  "description": "User profile tool",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "first_name": {
+        "type": "string"
+      },
+      "last-name": {
+        "type": "string"
+      }
+    }
+  }
+}
+
+exec go run .. naming_test.json
+stdout 'Generated: user-profile_tool.go'
+exec cat user-profile_tool.go
+stdout 'type UserProfileTool interface'
+stdout 'FirstName'
+stdout 'LastName'

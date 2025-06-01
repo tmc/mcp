@@ -1,0 +1,38 @@
+# Regression test example for MCP servers
+#
+# This file demonstrates how to create a scripttest server that replays
+# previously recorded requests and responses for regression testing.
+# It can be generated automatically from mcp-replay recordings.
+
+# Sequence 1: Initialize
+expect-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"mcp-test-client","version":"1.0.0"}}}
+send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"mcp-filesystem-server","version":"1.0.0"},"capabilities":{}}}
+
+# Sequence 2: Write file
+expect-recv {"jsonrpc":"2.0","id":2,"method":"write","params":{"path":"test.txt","content":"Test content"}}
+exec mkdir -p $(dirname ${WORKDIR}/test.txt)
+exec echo "Test content" > ${WORKDIR}/test.txt
+send {"jsonrpc":"2.0","id":2,"result":{"status":"success","path":"test.txt","abs_path":"${WORKDIR}/test.txt","size":12,"message":"File written successfully: test.txt (12 bytes)"}}
+
+# Sequence 3: Read file
+expect-recv {"jsonrpc":"2.0","id":3,"method":"read","params":{"path":"test.txt"}}
+send {"jsonrpc":"2.0","id":3,"result":{"path":"test.txt","abs_path":"${WORKDIR}/test.txt","size":12,"modified":"2024-11-26T10:30:00Z","encoding":"utf-8","content":"Test content"}}
+
+# Sequence 4: List directory
+expect-recv {"jsonrpc":"2.0","id":4,"method":"list","params":{"path":"."}}
+send {"jsonrpc":"2.0","id":4,"result":{"path":".","abs_path":"${WORKDIR}","entries":[{"name":"test.txt","is_dir":false,"size":"12 B","size_bytes":12,"mode":"-rw-r--r--","permissions":"644","modified":"2024-11-26T10:30:00Z","modified_unix":1732651800}],"count":1}}
+
+# Sequence 5: Delete file
+expect-recv {"jsonrpc":"2.0","id":5,"method":"delete","params":{"path":"test.txt"}}
+exec rm ${WORKDIR}/test.txt
+send {"jsonrpc":"2.0","id":5,"result":{"status":"success","path":"test.txt","abs_path":"${WORKDIR}/test.txt","type":"file","message":"Successfully deleted file: test.txt"}}
+
+# Sequence 6: Read deleted file (should return error)
+expect-recv {"jsonrpc":"2.0","id":6,"method":"read","params":{"path":"test.txt"}}
+send {"jsonrpc":"2.0","id":6,"error":{"code":-32500,"message":"failed to read file: open ${WORKDIR}/test.txt: no such file or directory"}}
+
+# Sequence 7: Test error handling with properly formatted error
+expect-recv {"jsonrpc":"2.0","id":7,"method":"read","params":{"path":"non_existent_file.txt"}}
+send {"jsonrpc":"2.0","id":7,"error":{"code":-32500,"message":"failed to read file: open ${WORKDIR}/non_existent_file.txt: no such file or directory"}}
+
+# This test file doesn't need initial files since the test creates and deletes everything it needs

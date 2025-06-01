@@ -1,0 +1,30 @@
+# Test specialized generators
+# Verifies that specialized generators create valid targeted scripts
+
+# Start a test server
+mcp-server-start timeserver -- go run ./examples/servers/mcp-time-server
+
+# Test MCP-focused generator
+exec go test -v -run TestMCPTraceGenerator ./fuzzing
+stdout 'mcp-trace save'
+stdout 'mcp-send notification'
+stdout 'mcp-recv'
+stdout 'PASS'
+
+# Test safe file operations generator
+exec go test -v -run TestSafeFileOperationsGenerator ./fuzzing
+stdout 'echo'
+stdout 'cat'
+stdout '! cmp'
+stdout 'PASS'
+
+# Test custom generator creation
+exec go test -v -run TestCustomGeneratorConfiguration ./fuzzing
+stdout 'Custom command weights applied'
+stdout 'Focused area: testing'
+stdout 'PASS'
+
+# Test generator validation
+exec go test -v -run TestGeneratorValidation ./fuzzing
+stdout 'Generated valid commands'
+stdout 'PASS'

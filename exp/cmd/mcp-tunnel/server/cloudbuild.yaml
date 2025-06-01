@@ -1,0 +1,49 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'cmd/mcp-tunnel/server/Dockerfile'
+      - '.'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region'
+      - '${_DEPLOY_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--set-env-vars'
+      - 'GIN_MODE=release'
+      - '--max-instances'
+      - '100'
+      - '--min-instances'
+      - '1'
+      - '--allow-unauthenticated'
+
+substitutions:
+  _GCR_HOSTNAME: gcr.io
+  _SERVICE_NAME: mcp-tunnel
+  _DEPLOY_REGION: us-central1
+
+# Store images in Container Registry
+images:
+  - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - '${_GCR_HOSTNAME}/${PROJECT_ID}/${_SERVICE_NAME}:latest'

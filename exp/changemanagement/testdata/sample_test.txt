@@ -1,0 +1,28 @@
+# Sample scripttest file for OAuth2 testing
+
+# Start the server
+exec mcp-server start
+stdout 'Server started'
+
+# Test basic authentication
+exec mcp-tool call authenticate '{"username": "test", "password": "pass"}'
+stdout '{"token": "'
+
+# Wait for initialization
+exec sleep 1
+
+# Test API access
+exec mcp-tool call api_get '{"endpoint": "/users"}'
+stdout '{"users": ['
+
+# Test with invalid token
+exec mcp-tool call api_get '{"endpoint": "/users", "token": "invalid"}'
+stderr 'Unauthorized'
+
+# Test token refresh
+exec mcp-tool call refresh_token '{"refresh": "token123"}'
+stdout '{"access_token": "'
+
+# Cleanup
+exec mcp-server stop
+stdout 'Server stopped'

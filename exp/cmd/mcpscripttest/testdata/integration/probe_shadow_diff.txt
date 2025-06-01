@@ -1,0 +1,42 @@
+# Test mcp-probe + mcp-shadow + mcpdiff integration
+# This integration test verifies the tools work together correctly
+
+# Build all the required tools
+exec go build -o probe ../../../../cmd/mcp-probe/main.go
+exec go build -o shadow ../../../../cmd/mcp-shadow
+exec go build -o diff ../../../../cmd/mcpdiff
+exec go build -o server ../../../../cmd/mcp-probe/minimal_server.go
+
+# Test 1: Get sample requests from mcp-probe
+exec ./probe
+stdout '{"ID":{},"Method":"initialize"'
+stdout '{"ID":{},"Method":"tools/call"'
+
+# Test 2: Run a simple echo through shadow
+exec sh -c 'echo ''{"jsonrpc":"2.0","id":1,"method":"test","params":{}}'' | ./shadow -primary "cat" -shadow "cat" -o trace.mcp -compare'
+exec test -f trace.mcp
+
+# Test 3: Test with actual servers
+# Create a simple request
+exec sh -c 'echo ''{"ID":{},"Method":"initialize","Params":{"protocolVersion":"2025-03-26"}}'' > request.json'
+
+# Run through shadow with servers
+exec sh -c 'cat request.json | ./shadow -primary "./server" -shadow "./server" -o server-trace.mcp -timeout 3s -compare -v'
+stdout 'Started primary and shadow servers'
+
+# Test 4: Test mcpdiff with the trace
+# Since mcpdiff needs two files, create a second trace
+exec cp trace.mcp trace2.mcp
+exec ./diff trace.mcp trace2.mcp
+! stderr 'error:'
+
+# Test 5: Full pipeline
+exec sh -c './probe | head -1 | ./shadow -primary "./server" -shadow "./server" -o pipeline.mcp -timeout 2s -v'
+exec test -f pipeline.mcp
+
+# Test 6: Compare mode validation
+exec ./diff --help
+stdout 'Usage:'
+
+# Cleanup
+exec rm -f probe shadow diff server *.mcp *.json

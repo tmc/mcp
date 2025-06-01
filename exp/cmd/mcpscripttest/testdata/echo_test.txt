@@ -1,0 +1,11 @@
+# Test basic server interaction
+# Use the actual command directly
+
+# Send initialization request to the server
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+
+# Run the server directly
+exec npx @modelcontextprotocol/server-everything stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"result":'

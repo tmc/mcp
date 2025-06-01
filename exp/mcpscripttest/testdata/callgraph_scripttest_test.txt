@@ -1,0 +1,36 @@
+# Test showing callgraph doesn't connect scripttest to programs it executes
+# This is self-referential - using mcpscripttest to test mcpscripttest's callgraph limitation
+
+# Create a simple test that calls a program
+mkdir testdir
+exec cat > testdir/simple.txt << 'EOF'
+exec echo "Hello from test"
+stdout 'Hello'
+EOF
+
+# Run mcpscripttest on our simple test
+exec mcpscripttest -- echo "dummy server"
+grep 'simple.txt'
+stdout 'simple.txt.*PASS'
+
+# Now run callgraph on mcpscripttest itself
+exec which mcpscripttest
+cp stdout scripttest_path.txt
+exec callgraph -algo static $(cat scripttest_path.txt)
+cp stdout callgraph_output.txt
+
+# Try to find echo's main function - this will fail
+exec grep 'echo.*main' callgraph_output.txt
+! stdout .
+
+# Try to find any exec.Command calls (how tests execute programs)
+exec grep 'exec\.Command' callgraph_output.txt
+grep 'exec\.Command'
+stdout 'exec\.Command'
+
+# But we can't see what specific programs it calls (like echo)
+exec grep 'echo' callgraph_output.txt
+! stdout 'echo.*main'
+
+# This shows the gap: callgraph sees that mcpscripttest uses exec.Command
+# but doesn't know which specific programs it executes

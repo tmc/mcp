@@ -1,0 +1,59 @@
+{
+  "type": "object",
+  "description": "User account information",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique user identifier"
+    },
+    "username": {
+      "type": "string",
+      "description": "User's username",
+      "minLength": 3,
+      "maxLength": 20
+    },
+    "email": {
+      "type": "string",
+      "description": "User's email address",
+      "format": "email"
+    },
+    "age": {
+      "type": "integer",
+      "description": "User's age",
+      "minimum": 13,
+      "maximum": 150
+    },
+    "roles": {
+      "type": "array",
+      "description": "User's roles",
+      "items": {
+        "type": "string",
+        "enum": ["admin", "user", "moderator"]
+      }
+    },
+    "profile": {
+      "type": "object",
+      "description": "User profile information",
+      "properties": {
+        "bio": {
+          "type": "string",
+          "description": "User biography"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar URL"
+        },
+        "location": {
+          "type": "string",
+          "description": "User location"
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Account creation timestamp"
+    }
+  },
+  "required": ["id", "username", "email"]
+}

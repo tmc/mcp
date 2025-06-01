@@ -1,0 +1,93 @@
+# Example scripttest file for MCP filesystem operations
+#
+# This file demonstrates how to create a mock filesystem server that
+# responds to common filesystem operations using mcp-scripttest-server.
+
+# Initialize response
+expect-recv {"jsonrpc":"2.0","method":"initialize"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"mcp-scripttest-server","version":"1.0.0"},"capabilities":{},"instructions":"Test filesystem server defined by scripttest"}}
+
+# List directory contents - returns the content of the test directory
+expect-recv {"jsonrpc":"2.0","method":"list"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":".","entries":[{"name":"test.txt","is_dir":false,"size":"13 B","size_bytes":13},{"name":"config.json","is_dir":false,"size":"42 B","size_bytes":42},{"name":"data","is_dir":true,"size":"<DIR>"}],"count":3}}
+
+# Read test.txt file
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"test.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"test.txt","content":"Hello World!\n","size":13,"encoding":"utf-8"}}
+
+# Read config.json file
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"config.json"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"config.json","content":"{\n  \"setting\": \"value\",\n  \"enabled\": true\n}\n","size":42,"encoding":"utf-8"}}
+
+# Write to a file - we'll actually create the file in the workdir
+expect-recv {"jsonrpc":"2.0","method":"write","params":{"path":"output.txt","content":"New content"}}
+exec mkdir -p $(dirname ${WORKDIR}/output.txt)
+exec echo "New content" > ${WORKDIR}/output.txt
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"output.txt","abs_path":"${WORKDIR}/output.txt","size":11,"message":"File written successfully: output.txt (11 bytes)"}}
+
+# Read the file we just wrote
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"output.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"output.txt","content":"New content","size":11,"encoding":"utf-8"}}
+
+# Try to read a missing file - return error
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"missing.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32500,"message":"failed to read file: open ${WORKDIR}/missing.txt: no such file or directory"}}
+
+# Append to a file
+expect-recv {"jsonrpc":"2.0","method":"append","params":{"path":"output.txt","content":"\nAppended line"}}
+exec echo -e "\nAppended line" >> ${WORKDIR}/output.txt
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"output.txt","abs_path":"${WORKDIR}/output.txt","size":25,"appended":14,"message":"Content appended successfully: output.txt (14 bytes)"}}
+
+# Read file after append
+expect-recv {"jsonrpc":"2.0","method":"read","params":{"path":"output.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"output.txt","content":"New content\nAppended line","size":25,"encoding":"utf-8"}}
+
+# Create a directory
+expect-recv {"jsonrpc":"2.0","method":"mkdir","params":{"path":"new_dir"}}
+exec mkdir -p ${WORKDIR}/new_dir
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"new_dir","abs_path":"${WORKDIR}/new_dir","message":"Directory created successfully: new_dir"}}
+
+# Find files
+expect-recv {"jsonrpc":"2.0","method":"find","params":{"path":".","pattern":"*.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":".","pattern":"*.txt","matches":[{"path":"test.txt","name":"test.txt","is_dir":false,"size":"13 B"},{"path":"output.txt","name":"output.txt","is_dir":false,"size":"25 B"}],"count":2}}
+
+# Move a file
+expect-recv {"jsonrpc":"2.0","method":"move","params":{"source":"output.txt","destination":"new_dir/moved.txt"}}
+exec mv ${WORKDIR}/output.txt ${WORKDIR}/new_dir/moved.txt
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","source":"output.txt","destination":"new_dir/moved.txt","type":"file","message":"Successfully moved file from output.txt to new_dir/moved.txt"}}
+
+# Copy a file
+expect-recv {"jsonrpc":"2.0","method":"copy","params":{"source":"test.txt","destination":"new_dir/test_copy.txt"}}
+exec cp ${WORKDIR}/test.txt ${WORKDIR}/new_dir/test_copy.txt
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","source":"test.txt","destination":"new_dir/test_copy.txt","type":"file","message":"Successfully copied file from test.txt to new_dir/test_copy.txt"}}
+
+# Delete a file
+expect-recv {"jsonrpc":"2.0","method":"delete","params":{"path":"new_dir/test_copy.txt"}}
+exec rm ${WORKDIR}/new_dir/test_copy.txt
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"new_dir/test_copy.txt","abs_path":"${WORKDIR}/new_dir/test_copy.txt","type":"file","message":"Successfully deleted file: new_dir/test_copy.txt"}}
+
+# Get file info/stat
+expect-recv {"jsonrpc":"2.0","method":"stat","params":{"path":"test.txt"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"test.txt","abs_path":"${WORKDIR}/test.txt","name":"test.txt","is_dir":false,"size":"13 B","size_bytes":13,"mode":"-rw-r--r--","permissions":"644","modified":"2024-11-25T12:00:00Z"}}
+
+# Rate limiting example - after 3 calls, return error
+expect-recv {"jsonrpc":"2.0","method":"rate_limited_operation"}
+counter RATE_LIMIT_CALLS
+if RATE_LIMIT_CALLS > 3
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32429,"message":"Rate limit exceeded. Try again later."}}
+else
+  send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","call_count":${RATE_LIMIT_CALLS},"message":"Operation successful"}}
+endif
+
+# Initialize the directory structure and files for testing
+-- test.txt --
+Hello World!
+
+-- config.json --
+{
+  "setting": "value",
+  "enabled": true
+}
+
+-- data/sample.dat --
+Sample binary data

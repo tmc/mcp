@@ -1,0 +1,50 @@
+# Test handling of format specifiers
+cat > format_schema.json << 'EOF'
+{
+  "type": "object",
+  "description": "Schema with various format specifiers",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp"
+    },
+    "updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Website URL"
+    },
+    "data": {
+      "type": "string",
+      "format": "byte",
+      "description": "Binary data"
+    }
+  }
+}
+EOF
+
+# Process with formats
+exec jsonrpc2gostruct -package formats format_schema.json
+stdout 'package formats'
+# Check that time.Time is used for date-time format
+stdout 'Created time.Time'
+stdout 'Updated time.Time'
+stdout 'import \(\n\t"encoding/json"\n\t"time"\n\)'
+# Check that []byte is used for byte format
+stdout 'Data \[\]byte'
+! stderr 'ERROR'

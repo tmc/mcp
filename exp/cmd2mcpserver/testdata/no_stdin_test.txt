@@ -1,0 +1,194 @@
+# Test cmd2mcpserver on programs that don't use stdin
+#
+# This test verifies that programs that don't use stdin
+# don't get an unnecessary stdin parameter
+
+# Test a program that only uses command-line flags
+-- flagonly/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"strings"
+)
+
+var (
+	name = flag.String("name", "world", "name to greet")
+	age  = flag.Int("age", 0, "age of person")
+	loud = flag.Bool("loud", false, "shout the greeting")
+)
+
+func main() {
+	flag.Parse()
+	
+	greeting := fmt.Sprintf("Hello, %s!", *name)
+	if *age > 0 {
+		greeting = fmt.Sprintf("%s You are %d years old.", greeting, *age)
+	}
+	
+	if *loud {
+		greeting = strings.ToUpper(greeting)
+	}
+	
+	fmt.Println(greeting)
+}
+
+-- flagonly/go.mod --
+module github.com/test/flagonly
+
+go 1.21
+
+# Verify no stdin parameter is added
+exec go run ../../cmd/cmd2mcpserver -tool-def -source flagonly flagonly
+! stdout '"stdin"'
+stdout '"name"'
+stdout '"age"'
+stdout '"loud"'
+
+# Test a program that uses environment variables
+-- envprog/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+var prefix = flag.String("prefix", "", "prefix for output")
+
+func main() {
+	flag.Parse()
+	
+	user := os.Getenv("USER")
+	if user == "" {
+		user = "unknown"
+	}
+	
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = "unknown"
+	}
+	
+	fmt.Printf("%sUser: %s\n", *prefix, user)
+	fmt.Printf("%sHome: %s\n", *prefix, home)
+}
+
+-- envprog/go.mod --
+module github.com/test/envprog
+
+go 1.21
+
+# Verify environment variable usage doesn't trigger stdin
+exec go run ../../cmd/cmd2mcpserver -tool-def -source envprog envprog
+! stdout '"stdin"'
+stdout '"prefix"'
+
+# Test a pure computation program
+-- calc/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"math"
+)
+
+var (
+	num1 = flag.Float64("num1", 0, "first number")
+	num2 = flag.Float64("num2", 0, "second number")
+	op   = flag.String("op", "add", "operation: add, sub, mul, div, pow")
+)
+
+func main() {
+	flag.Parse()
+	
+	var result float64
+	switch *op {
+	case "add":
+		result = *num1 + *num2
+	case "sub":
+		result = *num1 - *num2
+	case "mul":
+		result = *num1 * *num2
+	case "div":
+		result = *num1 / *num2
+	case "pow":
+		result = math.Pow(*num1, *num2)
+	default:
+		fmt.Printf("Unknown operation: %s\n", *op)
+		return
+	}
+	
+	fmt.Printf("Result: %f\n", result)
+}
+
+-- calc/go.mod --
+module github.com/test/calc
+
+go 1.21
+
+# Verify calculator doesn't get stdin
+exec go run ../../cmd/cmd2mcpserver -tool-def -source calc calc
+! stdout '"stdin"'
+stdout '"num1"'
+stdout '"num2"'
+stdout '"op"'
+
+# Test a program that writes to stdout/stderr but doesn't read stdin
+-- logger/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+)
+
+var (
+	message  = flag.String("message", "", "message to log")
+	severity = flag.String("severity", "info", "severity level")
+	toStderr = flag.Bool("stderr", false, "log to stderr")
+)
+
+func main() {
+	flag.Parse()
+	
+	if *toStderr {
+		log.SetOutput(os.Stderr)
+	}
+	
+	switch *severity {
+	case "error":
+		log.Printf("ERROR: %s", *message)
+		os.Exit(1)
+	case "warn":
+		log.Printf("WARN: %s", *message)
+	case "info":
+		log.Printf("INFO: %s", *message)
+	default:
+		fmt.Printf("%s: %s\n", *severity, *message)
+	}
+}
+
+-- logger/go.mod --
+module github.com/test/logger
+
+go 1.21
+
+# Verify logging program doesn't get stdin
+exec go run ../../cmd/cmd2mcpserver -tool-def -source logger logger
+! stdout '"stdin"'
+stdout '"message"'
+stdout '"severity"'
+stdout '"stderr"'
+
+# Test the generated code doesn't include stdin handling for non-stdin programs
+exec go run ../../cmd/cmd2mcpserver -dry-run -source flagonly flagonly
+! stdout 'cmd.Stdin'
+! stdout 'stdinData'
+stdout '"name"'
+stdout '"age"'
+stdout '"loud"'

@@ -1,0 +1,50 @@
+# Test basic JSON Schema conversion
+! exec jsonrpc2gostruct -help
+stdout 'Usage'
+stdout 'Options:'
+
+# Create a simple schema file
+cat > simple_schema.json << 'EOF'
+{
+  "type": "object",
+  "description": "A simple test schema",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the item"
+    },
+    "count": {
+      "type": "integer",
+      "description": "The count of items"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the item is active"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tags associated with the item",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["name", "active"]
+}
+EOF
+
+# Process the schema file
+exec jsonrpc2gostruct -package test simple_schema.json
+stdout 'package test'
+stdout 'Schema - A simple test schema'
+stdout 'Active bool `json:"active"`'
+stdout 'Name string `json:"name"`'
+! stderr 'ERROR'
+
+# Test with output file
+exec jsonrpc2gostruct -package custom -out output.go simple_schema.json
+! stdout .
+stderr 'Output written to output.go'
+exists output.go
+grep 'package custom' output.go
+grep 'Schema - A simple test schema' output.go

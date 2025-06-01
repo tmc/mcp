@@ -1,0 +1,131 @@
+# Integration test for MCP tools: mcpspy, mcp-shadow, mcpcat, mcpdiff, and mcp-replay
+# This test demonstrates the comprehensive workflow of using these tools together
+
+# Start by creating a test server command
+echo '#!/bin/bash' > test_server.sh
+echo 'echo "Server started" >&2' >> test_server.sh
+echo 'while IFS= read -r line; do' >> test_server.sh
+echo '  request=$(echo "$line" | jq -r .method 2>/dev/null || echo "")' >> test_server.sh
+echo '  id=$(echo "$line" | jq -r .id 2>/dev/null || echo "")' >> test_server.sh
+echo '  if [[ "$request" == "initialize" ]]; then' >> test_server.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"serverInfo\":{\"name\":\"test-server\",\"version\":\"v1\"},\"capabilities\":{}}}"' >> test_server.sh
+echo '  elif [[ "$request" == "ping" ]]; then' >> test_server.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"message\":\"pong\",\"timestamp\":$(date +%s)}}"' >> test_server.sh
+echo '  elif [[ "$request" == "tools/list" ]]; then' >> test_server.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":[{\"name\":\"echo\",\"description\":\"Echo tool\"}]}"' >> test_server.sh
+echo '  fi' >> test_server.sh
+echo 'done' >> test_server.sh
+chmod +x test_server.sh
+
+# Create an alternative server for shadow testing (v2)
+echo '#!/bin/bash' > test_server_v2.sh
+echo 'echo "Server v2 started" >&2' >> test_server_v2.sh
+echo 'while IFS= read -r line; do' >> test_server_v2.sh
+echo '  request=$(echo "$line" | jq -r .method 2>/dev/null || echo "")' >> test_server_v2.sh
+echo '  id=$(echo "$line" | jq -r .id 2>/dev/null || echo "")' >> test_server_v2.sh
+echo '  if [[ "$request" == "initialize" ]]; then' >> test_server_v2.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"serverInfo\":{\"name\":\"test-server\",\"version\":\"v2\"},\"capabilities\":{\"tools\":true}}}"' >> test_server_v2.sh
+echo '  elif [[ "$request" == "ping" ]]; then' >> test_server_v2.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"message\":\"pong from v2\",\"timestamp\":$(date +%s),\"extra\":\"v2 feature\"}}"' >> test_server_v2.sh
+echo '  elif [[ "$request" == "tools/list" ]]; then' >> test_server_v2.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":[{\"name\":\"echo\",\"description\":\"Echo tool v2\"},{\"name\":\"calc\",\"description\":\"Calculator tool\"}]}"' >> test_server_v2.sh
+echo '  fi' >> test_server_v2.sh
+echo 'done' >> test_server_v2.sh
+chmod +x test_server_v2.sh
+
+# Test 1: Use mcpspy to monitor and record MCP traffic
+exec mcpspy -v -f trace1.mcp -- ./test_server.sh 2>/dev/null &
+sleep 1
+
+# Send some test requests
+echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | nc localhost 7000 > response1.json 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"ping","params":{},"id":2}' | nc localhost 7000 > response2.json 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":3}' | nc localhost 7000 > response3.json 2>/dev/null
+
+# Stop mcpspy
+pkill -f mcpspy > /dev/null 2>&1
+sleep 1
+
+# Test 2: Use mcp-shadow to compare two server implementations
+exec mcp-shadow --primary "./test_server.sh" --shadow "./test_server_v2.sh" --compare -o shadow_trace.mcp << EOF
+{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":3}
+EOF
+
+# Test 3: Use mcpcat to colorize and view the traces
+# This would normally show colored output but we'll just verify it works
+exec mcpcat trace1.mcp > colorized1.txt
+exec mcpcat -color=never shadow_trace.mcp > colorized2.txt
+
+# Verify mcpcat processed the files
+grep -q 'mcp-recv' colorized1.txt
+grep -q 'mcp-send' colorized1.txt
+grep -q 'mcp-send-shadow' colorized2.txt
+
+# Test 4: Use mcpdiff to compare the traces
+exec mcpdiff -t -s trace1.mcp shadow_trace.mcp > diff_output.txt
+
+# Verify mcpdiff found differences
+grep -q 'version' diff_output.txt
+
+# Test 5: Use mcpdiff in compare mode for shadow trace
+exec mcpdiff -compare -s shadow_trace.mcp > shadow_diff.txt
+
+# Verify compare mode found differences between primary and shadow
+grep -q 'v2' shadow_diff.txt
+
+# Test 6: Use mcp-replay to replay recorded sessions
+# Create a simple mock client script
+echo '#!/bin/bash' > mock_client.sh
+echo 'echo "Client ready" >&2' >> mock_client.sh
+echo 'while IFS= read -r line; do' >> mock_client.sh
+echo '  echo "Received: $line" >&2' >> mock_client.sh
+echo '  if echo "$line" | grep -q "initialize"; then' >> mock_client.sh
+echo '    echo "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"params\":{},\"id\":10}"' >> mock_client.sh
+echo '  fi' >> mock_client.sh
+echo 'done' >> mock_client.sh
+chmod +x mock_client.sh
+
+# Replay as mock server
+exec mcp-replay -mock-server -f trace1.mcp -o replay_output.mcp &
+sleep 1
+
+# Send a request to the mock server
+echo '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}' | nc localhost 8080 > mock_response.json 2>/dev/null
+
+# Stop the mock server
+pkill -f mcp-replay > /dev/null 2>&1
+
+# Test 7: Use mcp-sort to normalize timestamps for comparison
+exec mcp-sort -strip trace1.mcp > trace1_normalized.mcp
+exec mcp-sort -strip shadow_trace.mcp > shadow_trace_normalized.mcp
+
+# Compare normalized traces
+exec mcpdiff trace1_normalized.mcp shadow_trace_normalized.mcp > normalized_diff.txt
+
+# Test 8: Chain tools together in a pipeline
+# mcpspy to record -> mcpcat to view -> mcp-sort to normalize -> mcpdiff to compare
+exec mcpspy -f pipeline.mcp -- ./test_server.sh << EOF | mcpcat -color=never | tee pipeline_view.txt
+{"jsonrpc":"2.0","method":"initialize","params":{},"id":100}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":101}
+EOF
+
+# Clean up temporary files
+rm -f test_server.sh test_server_v2.sh mock_client.sh
+
+# Verify all tools produced output
+test -s trace1.mcp
+test -s shadow_trace.mcp
+test -s colorized1.txt
+test -s colorized2.txt
+test -s diff_output.txt
+test -s shadow_diff.txt
+test -s replay_output.mcp
+test -s trace1_normalized.mcp
+test -s shadow_trace_normalized.mcp
+test -s normalized_diff.txt
+test -s pipeline.mcp
+test -s pipeline_view.txt
+
+echo "All MCP tools integration tests passed!"

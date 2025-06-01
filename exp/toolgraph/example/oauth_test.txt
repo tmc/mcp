@@ -1,0 +1,50 @@
+# OAuth2 Authentication Test
+
+# Start the MCP server
+exec mcp-server start --port 8080
+stdout 'Server started'
+
+# Initialize the server
+exec mcp-client initialize
+stdin '{"jsonrpc": "2.0", "method": "initialize", "params": {"name": "test-client"}, "id": 1}'
+stdout '"result"'
+
+# List available tools
+exec mcp-client list-tools
+stdin '{"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2}'
+stdout '"authenticate"'
+stdout '"refresh_token"'
+
+# Test OAuth2 authentication
+exec mcp-tool call authenticate '{"username": "testuser", "password": "testpass"}'
+stdout '"access_token"'
+stdout '"refresh_token"'
+
+# Store tokens in file
+exec sh -c 'echo $TOKEN > token.txt'
+
+# Use authenticated API call
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "$TOKEN"}'
+stdout '"users"'
+
+# Test token refresh
+exec sleep 2
+exec mcp-tool call refresh_token '{"refresh": "$REFRESH_TOKEN"}'
+stdout '"access_token"'
+
+# Test with invalid token
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "invalid"}'
+stderr 'Unauthorized'
+! stdout '"users"'
+
+# Test rate limiting
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "$TOKEN"}'
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "$TOKEN"}'
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "$TOKEN"}'
+exec mcp-tool call api_request '{"endpoint": "/users", "token": "$TOKEN"}'
+stderr 'Rate limit exceeded'
+
+# Cleanup
+exec rm token.txt
+exec mcp-server stop
+stdout 'Server stopped'

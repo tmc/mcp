@@ -1,0 +1,93 @@
+# Self-test for mcp-scripttest-server
+# This test verifies that the scripttest server correctly handles basic operations
+
+# Start the scripttest server with basic configuration
+mcp-scripttest-server -script testdata/server_scripts/basic.txt -port 8081 &
+sleep 1
+
+# Test initialization
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+stdout '"name":"mcp-scripttest-server"'
+stdout '"version":"1.0.0"'
+
+# Test echo functionality
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":2,"method":"echo","params":{"message":"Hello, World!"}}
+stdout '"message":"Hello, World!"'
+
+# Test variable substitution
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":3,"method":"echo_id","params":{"message":"Test"}}
+stdout '"message":"Echo ID: 3"'
+
+# Test counter functionality
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":4,"method":"counter_test"}
+stdout '"count":1'
+
+# Test counter again - should increment
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":5,"method":"counter_test"}
+stdout '"count":2'
+
+# Test conditional response based on counter
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":6,"method":"rate_limited"}
+stdout '"status":"success"'
+
+# Hit the rate limit
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":7,"method":"rate_limited"}
+stdout '"error"'
+stdout '"code":-32429'
+stdout '"message":"Rate limit exceeded"'
+
+# Test unmatched request handling
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":8,"method":"unknown_method"}
+stdout '"error"'
+stdout '"message":"Unexpected request: no matching pattern in script"'
+
+# Test file creation via exec commands
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":9,"method":"create_file","params":{"path":"test.txt","content":"File content"}}
+stdout '"status":"success"'
+
+# Verify file was created correctly
+mcp-send -addr localhost:8081 {"jsonrpc":"2.0","id":10,"method":"read_file","params":{"path":"test.txt"}}
+stdout '"content":"File content"'
+
+# Stop the server
+killall mcp-scripttest-server
+
+-- testdata/server_scripts/basic.txt --
+# Basic test script for the scripttest server
+
+# Initialize response
+expect-recv {"jsonrpc":"2.0","method":"initialize"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"mcp-scripttest-server","version":"1.0.0"},"capabilities":{}}}
+
+# Echo service
+expect-recv {"jsonrpc":"2.0","method":"echo","params":{"message":"*"}}
+send {"jsonrpc":"2.0","id":${ID},"result":{"message":"${REQUEST.params.message}"}}
+
+# Echo with ID substitution
+expect-recv {"jsonrpc":"2.0","method":"echo_id"}
+send {"jsonrpc":"2.0","id":${ID},"result":{"message":"Echo ID: ${ID}"}}
+
+# Counter test
+expect-recv {"jsonrpc":"2.0","method":"counter_test"}
+counter TEST_COUNTER
+send {"jsonrpc":"2.0","id":${ID},"result":{"count":${TEST_COUNTER}}}
+
+# Rate limiting example
+expect-recv {"jsonrpc":"2.0","method":"rate_limited"}
+counter RATE_LIMIT
+if RATE_LIMIT > 1
+  send {"jsonrpc":"2.0","id":${ID},"error":{"code":-32429,"message":"Rate limit exceeded"}}
+else
+  send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success"}}
+endif
+
+# File creation
+expect-recv {"jsonrpc":"2.0","method":"create_file","params":{"path":"*","content":"*"}}
+exec mkdir -p $(dirname ${WORKDIR}/${REQUEST.params.path})
+exec echo "${REQUEST.params.content}" > ${WORKDIR}/${REQUEST.params.path}
+send {"jsonrpc":"2.0","id":${ID},"result":{"status":"success","path":"${REQUEST.params.path}"}}
+
+# File reading
+expect-recv {"jsonrpc":"2.0","method":"read_file","params":{"path":"*"}}
+set-var FILE_CONTENT = $(cat ${WORKDIR}/${REQUEST.params.path})
+send {"jsonrpc":"2.0","id":${ID},"result":{"path":"${REQUEST.params.path}","content":"${FILE_CONTENT}"}}

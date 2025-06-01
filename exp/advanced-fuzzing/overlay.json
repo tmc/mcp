@@ -1,0 +1,16 @@
+{
+  "Replace": {
+    "/usr/local/go/src/runtime/coverage/coverage.go": "overlays/runtime/coverage/coverage.go",
+    "/usr/local/go/src/runtime/coverage/callgraph.go": "overlays/runtime/coverage/callgraph.go",
+    "/usr/local/go/src/internal/fuzz/coordinator.go": "overlays/internal/fuzz/coordinator.go",
+    "/usr/local/go/src/internal/fuzz/guidance.go": "overlays/internal/fuzz/guidance.go",
+    "/usr/local/go/src/internal/fuzz/grammar.go": "overlays/internal/fuzz/grammar.go",
+    "/usr/local/go/src/internal/fuzz/rubrics.go": "overlays/internal/fuzz/rubrics.go",
+    "/usr/local/go/src/internal/fuzz/llm_oracle.go": "overlays/internal/fuzz/llm_oracle.go",
+    "/usr/local/go/src/internal/fuzz/webui.go": "overlays/internal/fuzz/webui.go",
+    "/usr/local/go/src/internal/fuzz/training.go": "overlays/internal/fuzz/training.go",
+    "/usr/local/go/src/testing/coverage_enhanced.go": "overlays/testing/coverage_enhanced.go",
+    "/usr/local/go/src/cmd/internal/script/scriptfuzz.go": "overlays/cmd/internal/script/scriptfuzz.go",
+    "/usr/local/go/src/cmd/internal/script/scripttest/enhanced_fuzzing.go": "overlays/cmd/internal/script/scripttest/enhanced_fuzzing.go"
+  }
+}

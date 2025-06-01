@@ -1,0 +1,45 @@
+# Test mcp-probe + mcp-shadow + mcpdiff integration
+# This test verifies that mcp-shadow can properly forward traffic between probe and servers,
+# and that mcpdiff can analyze the resulting trace
+
+# Build required tools
+exec go build -o mcp-probe ../../../cmd/mcp-probe
+exec go build -o mcp-shadow ../../../cmd/mcp-shadow  
+exec go build -o mcpdiff ../../../cmd/mcpdiff
+exec go build -o minimal_server ../../../cmd/mcp-probe/minimal_server.go
+
+# Create a temporary trace file
+exec mkdir -p tmp
+setenv TRACE_FILE tmp/shadow-test.mcp
+
+# Test 1: Run mcp-probe through mcp-shadow to generate trace
+# mcp-probe will output sample requests which we'll pipe through shadow
+exec ./mcp-probe
+stdout '{"ID":{},"Method":"initialize"'
+stdout '{"ID":{},"Method":"tools/call"'
+
+# Now run the same output through mcp-shadow with primary and shadow servers
+exec sh -c './mcp-probe | ./mcp-shadow -primary "./minimal_server" -shadow "./minimal_server" -compare -o $TRACE_FILE -v'
+stdout 'Server initialized successfully'
+stdout 'minimal-server'
+
+# Verify trace file was created
+exec test -f tmp/shadow-test.mcp
+
+# Test 2: Use mcpdiff to analyze the trace
+exec ./mcpdiff -v tmp/shadow-test.mcp
+stdout 'Primary'
+! stderr 'error'
+
+# Test 3: Check compare mode output
+exec sh -c 'echo ''{"ID":{},"Method":"initialize","Params":{}}'' | ./mcp-shadow -primary "./minimal_server" -shadow "./minimal_server" -compare -o tmp/compare.mcp'
+
+# Verify mcpdiff can parse the compare output  
+exec ./mcpdiff tmp/compare.mcp
+! stderr 'error'
+
+# Test 4: Test with timeout scenarios
+exec sh -c 'echo ''{"ID":{},"Method":"test"}'' | ./mcp-shadow -primary "./minimal_server" -shadow "sleep 10" -timeout=100ms -o tmp/timeout.mcp'
+
+# Cleanup
+exec rm -rf tmp

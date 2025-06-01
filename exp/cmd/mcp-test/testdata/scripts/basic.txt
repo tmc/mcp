@@ -1,0 +1,3 @@
+# Test basic functionality
+mcp-test --help
+stdout 'Usage: mcp-test [options]'

@@ -1,0 +1,10 @@
+# Test showing that standard callgraph does NOT stitch test scripts to programs
+
+# This test executes mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# If we could run standard callgraph on this test, it would NOT show:
+# - That this test calls mcpdiff
+# - The connection to mcpdiff's main() function
+# Standard callgraph only analyzes static Go code, not dynamic execution

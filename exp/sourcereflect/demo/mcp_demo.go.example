@@ -1,0 +1,92 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+
+	"github.com/tmc/mcp/exp/sourcereflect"
+)
+
+// ExampleFunction is a sample function that we'll analyze
+func ExampleFunction(filename string, data []byte) error {
+	// This function writes data to a file
+	return os.WriteFile(filename, data, 0644)
+}
+
+func main() {
+	// Analyze the current file
+	currentFile := "mcp_demo.go"
+	dir, _ := os.Getwd()
+	filePath := filepath.Join(dir, currentFile)
+
+	// Analyze the ExampleFunction
+	fmt.Println("=== MCP Tool Analysis Demo ===")
+	fmt.Printf("Analyzing function 'ExampleFunction' in %s\n\n", currentFile)
+
+	hints, err := sourcereflect.AnalyzeSourceHints(filePath, "ExampleFunction")
+	if err != nil {
+		log.Fatalf("Error analyzing hints: %v", err)
+	}
+
+	// Display the analysis results
+	fmt.Println("Analysis Results:")
+	fmt.Println("================")
+	
+	if hints.ReadOnlyHint != nil {
+		fmt.Printf("Read-only: %v\n", *hints.ReadOnlyHint)
+	}
+	
+	if hints.DestructiveHint != nil {
+		fmt.Printf("Destructive: %v\n", *hints.DestructiveHint)
+	}
+	
+	if hints.IdempotentHint != nil {
+		fmt.Printf("Idempotent: %v\n", *hints.IdempotentHint)
+	}
+	
+	if hints.OpenWorldHint != nil {
+		fmt.Printf("Open World: %v\n", *hints.OpenWorldHint)
+	}
+
+	fmt.Println("\nInterpretation:")
+	fmt.Println("===============")
+	
+	if hints.ReadOnlyHint != nil && !*hints.ReadOnlyHint {
+		fmt.Println("- This function modifies state (not read-only)")
+	}
+	
+	if hints.DestructiveHint != nil && *hints.DestructiveHint {
+		fmt.Println("- This function performs destructive operations (file writes)")
+	}
+	
+	if hints.OpenWorldHint != nil && !*hints.OpenWorldHint {
+		fmt.Println("- This function does not interact with external systems")
+	}
+
+	// Also demonstrate programmatic MCP tool creation
+	fmt.Println("\n=== Programmatic MCP Tool Creation ===")
+	
+	tool := &sourcereflect.MCPToolDescription{
+		Name:        "ExampleFunction",
+		Description: "Writes data to a file",
+		InputSchema: &sourcereflect.Schema{
+			Type: "object",
+			Properties: map[string]*sourcereflect.Schema{
+				"filename": {Type: "string"},
+				"data":     {Type: "string"},
+			},
+			Required: []string{"filename", "data"},
+		},
+		Hints: hints,
+	}
+
+	json, err := tool.ToJSON()
+	if err != nil {
+		log.Fatalf("Error converting to JSON: %v", err)
+	}
+
+	fmt.Println("MCP Tool JSON:")
+	fmt.Println(json)
+}

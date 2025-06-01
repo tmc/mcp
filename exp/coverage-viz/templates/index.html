@@ -1,0 +1,78 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="dashboard">
+    <h1>Coverage Dashboard</h1>
+    
+    <div class="summary-grid">
+        <div class="summary-card">
+            <h3>Test Results</h3>
+            <div class="stat">
+                <span class="label">Total Tests:</span>
+                <span class="value">{{.Summary.TotalTests}}</span>
+            </div>
+            <div class="stat">
+                <span class="label">Passed:</span>
+                <span class="value success">{{.Summary.PassedTests}}</span>
+            </div>
+            <div class="stat">
+                <span class="label">Failed:</span>
+                <span class="value error">{{.Summary.FailedTests}}</span>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <h3>Coverage Summary</h3>
+            <div class="stat">
+                <span class="label">Line Coverage:</span>
+                <span class="value">{{printf "%.1f%%" .Summary.Coverage.Line}}</span>
+            </div>
+            <div class="stat">
+                <span class="label">Files:</span>
+                <span class="value">{{.Summary.CoveredFiles}}/{{.Summary.TotalFiles}}</span>
+            </div>
+            <div class="coverage-bar">
+                <div class="coverage-fill" style="width: {{.Summary.Coverage.Line}}%"></div>
+            </div>
+        </div>
+        
+        <div class="summary-card">
+            <h3>Package Coverage</h3>
+            <div class="package-list">
+                {{range $pkg, $stats := .Summary.ByPackage}}
+                <div class="package-item">
+                    <span class="package-name">{{$pkg}}</span>
+                    <span class="package-coverage">{{printf "%.1f%%" $stats.Line}}</span>
+                    <div class="mini-coverage-bar">
+                        <div class="coverage-fill" style="width: {{$stats.Line}}%"></div>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    
+    <div class="sessions-section">
+        <h2>Test Sessions</h2>
+        <div class="sessions-list">
+            {{range .Sessions}}
+            <div class="session-card">
+                <h4>{{.Name}} ({{.ID}})</h4>
+                <div class="session-meta">
+                    <span>Started: {{.StartTime.Format "15:04:05"}}</span>
+                    <span>Duration: {{.EndTime.Sub .StartTime}}</span>
+                    <span>Tests: {{len .Tests}}</span>
+                </div>
+                <div class="tests-preview">
+                    {{range .Tests}}
+                    <a href="/test/{{.TestName}}" class="test-link {{.Result}}">
+                        {{.TestName}}
+                    </a>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</div>
+{{end}}

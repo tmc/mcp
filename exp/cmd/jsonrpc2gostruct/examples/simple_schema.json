@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "description": "A simple test schema",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the item"
+    },
+    "count": {
+      "type": "integer",
+      "description": "The count of items"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the item is active"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tags associated with the item",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      }
+    }
+  },
+  "required": ["name", "active"]
+}

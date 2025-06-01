@@ -1,0 +1,16 @@
+# Simple test to verify server execution
+# Test that we can successfully start the server
+
+# Get the server command from the environment
+exec printenv MCP_SERVER_COMMAND
+stdout '@modelcontextprotocol/server-everything'
+
+# Start the server and send a basic initialize request
+# Create initialization request
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+
+# Start the server with the command
+exec npx @modelcontextprotocol/server-everything stdio
+stdin setstdin
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'

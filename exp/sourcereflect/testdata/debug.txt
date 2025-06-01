@@ -1,0 +1,7 @@
+# Debug test
+
+exec sourcereflect -help
+stderr 'Usage of'
+
+-- dummy.go --
+package main

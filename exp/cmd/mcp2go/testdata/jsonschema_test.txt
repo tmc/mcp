@@ -1,0 +1,134 @@
+# Test mcp2go with JSON schemas
+#
+# This test generates Go code from JSON schemas
+
+# Create a user schema
+-- user_schema.json --
+{
+  "type": "object",
+  "description": "User account information",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique user identifier"
+    },
+    "username": {
+      "type": "string",
+      "description": "User's username",
+      "minLength": 3,
+      "maxLength": 20
+    },
+    "email": {
+      "type": "string",
+      "description": "User's email address"
+    },
+    "age": {
+      "type": "integer",
+      "description": "User's age"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the user is active"
+    },
+    "roles": {
+      "type": "array",
+      "description": "User's roles",
+      "items": {
+        "type": "string"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Account creation timestamp"
+    }
+  },
+  "required": ["id", "username", "email"]
+}
+
+# Generate code from JSON schema
+exec go run .. -type jsonschema user_schema.json
+stdout 'Auto-detected input type: jsonschema'
+stdout 'Generated: userschema.go'
+
+# Check the generated file structure
+exec cat userschema.go
+stdout 'package generated'
+stdout 'type UserSchema struct'
+stdout 'ID string `json:"id"`'
+stdout 'Username string `json:"username"`'
+stdout 'Email string `json:"email"`'
+stdout 'Age \*int `json:"age,omitempty"`'
+stdout 'Active \*bool `json:"active,omitempty"`'
+stdout 'Roles \[\]string `json:"roles,omitempty"`'
+stdout 'CreatedAt \*time.Time `json:"createdAt,omitempty"`'
+
+# Check time import is added for date-time format
+stdout 'import \('
+stdout '"time"'
+
+# Test enum schema
+-- status_schema.json --
+{
+  "type": "string",
+  "description": "Order status",
+  "enum": ["pending", "processing", "completed", "cancelled"]
+}
+
+exec go run .. status_schema.json
+stdout 'Generated: statusschema.go'
+exec cat statusschema.go
+stdout 'type StatusSchema string'
+stdout 'const \('
+stdout 'StatusSchemaPending StatusSchema = "pending"'
+stdout 'StatusSchemaProcessing = "processing"'
+stdout 'StatusSchemaCompleted = "completed"'
+stdout 'StatusSchemaCancelled = "cancelled"'
+
+# Test array schema
+-- tags_schema.json --
+{
+  "type": "array",
+  "description": "List of tags",
+  "items": {
+    "type": "string"
+  }
+}
+
+exec go run .. tags_schema.json
+stdout 'Generated: tagsschema.go'
+exec cat tagsschema.go
+stdout 'type TagsSchema \[\]string'
+
+# Test nested object schema
+-- address_schema.json --
+{
+  "type": "object",
+  "properties": {
+    "street": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}
+
+exec go run .. address_schema.json
+stdout 'Generated: addressschema.go'
+exec cat addressschema.go
+stdout 'type AddressSchema struct'
+stdout 'Street \*string'
+stdout 'City \*string'
+! stdout 'Location.*struct' # Should not generate inline structs for now

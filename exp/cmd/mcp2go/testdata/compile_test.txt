@@ -1,0 +1,50 @@
+# Test that generated code compiles and can be used
+# This ensures the generated Go code is syntactically valid
+
+# Create a tool for testing
+-- compile_test_tool.json --
+{
+  "result": {
+    "tools": [
+      {
+        "name": "Task",
+        "description": "Launch a new task",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "A short (3-5 word) description of the task"
+            },
+            "prompt": {
+              "type": "string",
+              "description": "The task for the agent to perform"
+            }
+          },
+          "required": ["description", "prompt"],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    ]
+  },
+  "jsonrpc": "2.0",
+  "id": 1
+}
+
+exec go run .. < compile_test_tool.json
+cp stdout generated.go
+
+# The output should have valid Go syntax
+stdout 'package main'
+stdout 'type TaskTool interface'
+stdout 'type TaskInput struct'
+stdout 'Execute\(ctx context.Context'
+
+# Verify that required imports are present
+stdout 'import \('
+stdout '"context"'
+
+# Verify structure fields have proper types and tags
+stdout 'Description string.*json:"description"'
+stdout 'Prompt string.*json:"prompt"'

@@ -64,7 +64,7 @@ func TestServerResourceRegistrationBasic(t *testing.T) {
 
 	handler := func(ctx context.Context, req ReadResourceRequest) ([]ResourceContents, error) {
 		return []ResourceContents{
-			&TextResourceContents{Text: "test content"},
+			&testResourceContents{Text: "test content"},
 		}, nil
 	}
 

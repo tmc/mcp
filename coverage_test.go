@@ -225,7 +225,7 @@ func TestToolRegistration(t *testing.T) {
 	}
 }
 
-func TestWithNotificationHandler(t *testing.T) {
+func TestWithNotificationHandlerCoverage(t *testing.T) {
 	called := false
 	handler := func(n JSONRPCNotification) {
 		called = true

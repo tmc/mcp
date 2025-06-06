@@ -5,6 +5,7 @@ package mcp
 import (
 	"runtime"
 	"testing"
+	"log/slog"
 )
 
 func TestGetApplePlatformInfo(t *testing.T) {
@@ -314,7 +315,7 @@ func TestWithAppleOptimizations(t *testing.T) {
 	}
 
 	// Test applying the option to a server
-	server := NewServer("test-server", "1.0.0")
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	originalServer := *server // Copy for comparison
 
 	// Apply the option

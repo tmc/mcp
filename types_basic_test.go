@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"log/slog"
 )
 
 // TestResourceContentsMethods tests the content() methods
@@ -24,7 +25,7 @@ func TestRegisterTypedTool(t *testing.T) {
 	}
 
 	// Create a test server
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Register a typed tool
 	handler := func(ctx context.Context, input TestInput) (TestOutput, error) {

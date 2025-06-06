@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"log/slog"
 )
 
 // TestServerInitialization tests server creation and configuration
@@ -71,7 +72,7 @@ func TestServerInitialization(t *testing.T) {
 
 // TestServerToolManagement tests tool registration and retrieval
 func TestServerToolManagement(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Define test tools
 	tool1Schema, _ := json.Marshal(map[string]interface{}{
@@ -146,7 +147,7 @@ func TestServerToolManagement(t *testing.T) {
 
 // TestServerResourceManagement tests resource registration and handling
 func TestServerResourceManagement(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Define test resources
 	resource1 := Resource{
@@ -208,7 +209,7 @@ func TestServerResourceManagement(t *testing.T) {
 
 // TestServerResourceTemplateManagement tests resource template functionality
 func TestServerResourceTemplateManagement(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	template := ResourceTemplate{
 		Template:    "test://files/{id}",
@@ -254,7 +255,7 @@ func TestServerResourceTemplateManagement(t *testing.T) {
 
 // TestServerPromptManagement tests prompt registration and handling
 func TestServerPromptManagement(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	prompt := Prompt{
 		Name:        "test-prompt",
@@ -376,7 +377,7 @@ func TestServerCapabilitiesReporting(t *testing.T) {
 
 // TestServerErrorHandling tests various error conditions
 func TestServerErrorHandling(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Note: The current implementation doesn't validate empty names/URIs during registration
 	// This test verifies the current behavior rather than expected validation
@@ -434,7 +435,7 @@ func TestServerErrorHandling(t *testing.T) {
 
 // TestServerJSONSerialization tests that server data structures serialize correctly
 func TestServerJSONSerialization(t *testing.T) {
-	server := NewServer("test-server", "1.0.0")
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Register some test items
 	toolSchema, _ := json.Marshal(map[string]interface{}{
@@ -484,7 +485,7 @@ func TestServerJSONSerialization(t *testing.T) {
 
 // TestServerConcurrentAccess tests thread safety of server operations
 func TestServerConcurrentAccess(t *testing.T) {
-	server := NewServer("test", "1.0")
+	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Test concurrent tool registration
 	done := make(chan bool, 10)

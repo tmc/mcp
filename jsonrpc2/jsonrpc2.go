@@ -44,6 +44,44 @@ type ID struct {
 	raw json.RawMessage
 }
 
+// MarshalJSON implements json.Marshaler for ID
+func (id ID) MarshalJSON() ([]byte, error) {
+	if id.Str != "" {
+		return json.Marshal(id.Str)
+	}
+	if id.Num != 0 {
+		return json.Marshal(id.Num)
+	}
+	if len(id.raw) > 0 {
+		return id.raw, nil
+	}
+	return []byte("null"), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler for ID
+func (id *ID) UnmarshalJSON(data []byte) error {
+	id.raw = data
+	
+	// Try to unmarshal as string first
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		id.Str = s
+		id.Num = 0
+		return nil
+	}
+	
+	// Try to unmarshal as number
+	var n int64
+	if err := json.Unmarshal(data, &n); err == nil {
+		id.Num = n
+		id.Str = ""
+		return nil
+	}
+	
+	// If neither works, keep the raw data for null or other values
+	return nil
+}
+
 // IsValid returns true if the ID is valid
 func (id ID) IsValid() bool {
 	return id.Str != "" || id.Num != 0 || string(id.raw) == "null"

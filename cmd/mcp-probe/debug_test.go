@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"golang.org/x/exp/jsonrpc2"
+	"github.com/tmc/mcp/jsonrpc2"
 )
 
 func TestJSONRPC2MessageTypes(t *testing.T) {

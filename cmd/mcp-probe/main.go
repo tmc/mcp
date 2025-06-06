@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/jsonrpc2"
+	"github.com/tmc/mcp/jsonrpc2"
 )
 
 var (
@@ -313,6 +313,26 @@ func main() {
 }
 
 func printSampleRequests() {
+	// Helper function to print a properly framed JSON-RPC message
+	printFramedMessage := func(req *jsonrpc2.Request) {
+		// Create a JSON-RPC 2.0 message with the jsonrpc field
+		msg := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      req.ID,
+			"method":  req.Method,
+			"params":  req.Params,
+		}
+
+		data, err := json.Marshal(msg)
+		if err != nil {
+			return
+		}
+
+		// Add Content-Length framing like the transport does
+		framedMsg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s\r\n", len(data), data)
+		fmt.Print(framedMsg)
+	}
+
 	// Print initialize request
 	initReq := &jsonrpc2.Request{
 		ID:     jsonrpc2.Int64ID(1),
@@ -327,15 +347,14 @@ func printSampleRequests() {
 		}`),
 	}
 
-	initData, _ := json.Marshal(initReq)
-	fmt.Println(string(initData))
+	printFramedMessage(initReq)
 
 	// Print sample tool call
 	toolReq := &jsonrpc2.Request{
 		ID:     jsonrpc2.Int64ID(2),
 		Method: "tools/call",
 		Params: json.RawMessage(`{
-			"name": "example-tool",
+			"name": "echo",
 			"arguments": {
 				"message": "Hello, MCP!"
 			}

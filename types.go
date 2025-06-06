@@ -14,9 +14,10 @@ const (
 
 // Common error values
 var (
-	ErrInvalidParams = errors.New("mcp: invalid parameters")
-	ErrNotFound      = errors.New("mcp: not found")
-	ErrUnsupported   = errors.New("mcp: operation or capability not supported")
+	ErrInvalidParams   = errors.New("mcp: invalid parameters")
+	ErrNotFound        = errors.New("mcp: not found")
+	ErrUnsupported     = errors.New("mcp: operation or capability not supported")
+	ErrTransportClosed = errors.New("mcp: transport closed")
 )
 
 // Role represents the sender or recipient of messages.
@@ -41,6 +42,13 @@ const (
 	MethodToolsList              MCPMethod = "tools/list"
 	MethodToolsCall              MCPMethod = "tools/call"
 	MethodNotificationCancelled  MCPMethod = "notifications/cancelled"
+	
+	// Notification methods
+	MethodProgress            MCPMethod = "notifications/progress"
+	MethodLogging             MCPMethod = "notifications/message"
+	MethodResourceListChanged MCPMethod = "notifications/resources/list_changed"
+	MethodPromptListChanged   MCPMethod = "notifications/prompts/list_changed"
+	MethodToolListChanged     MCPMethod = "notifications/tools/list_changed"
 )
 
 // JSONRPCNotification represents a notification message in the JSON-RPC protocol.
@@ -291,6 +299,9 @@ const (
 	LogLevelWarning LoggingLevel = "warning"
 	LogLevelError   LoggingLevel = "error"
 )
+
+// NotificationHandler handles MCP notifications.
+type NotificationHandler func(method string, params json.RawMessage) error
 
 // ToolHandlerFunc defines the signature for functions handling tools/call requests.
 type ToolHandlerFunc func(ctx context.Context, request CallToolRequest) (*CallToolResult, error)

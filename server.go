@@ -238,12 +238,13 @@ func StdioTransport() Transport {
 // handleRequest implements the core JSON-RPC request handler
 func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 	// Debug log the entire request for troubleshooting
-	reqJSON, _ := json.Marshal(req)
-	fmt.Fprintf(os.Stderr, "DEBUG GOT REQUEST: %s\n", reqJSON)
-
-	s.logger.Debug("Handling request",
-		"method", req.Method,
-		"id", req.ID)
+	if s.logger.Enabled(ctx, slog.LevelDebug) {
+		reqJSON, _ := json.Marshal(req)
+		s.logger.Debug("Got request",
+			"request", string(reqJSON),
+			"method", req.Method,
+			"id", req.ID)
+	}
 
 	s.mu.RLock()
 	handler, exists := s.handlers[req.Method]
@@ -265,8 +266,10 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 			"method", req.Method)
 
 		// Debug log the result
-		resultJSON, _ := json.Marshal(result)
-		fmt.Fprintf(os.Stderr, "DEBUG RESULT: %s\n", resultJSON)
+		if s.logger.Enabled(ctx, slog.LevelDebug) {
+			resultJSON, _ := json.Marshal(result)
+			s.logger.Debug("Got result", "result", string(resultJSON))
+		}
 	}
 
 	return result, err
@@ -515,7 +518,7 @@ func (s *Server) RegisterTool(tool Tool, handler ToolHandlerFunc) error {
 
 	if s.capabilities.Tools != nil && s.capabilities.Tools.ListChanged {
 		s.logger.Debug("Sending tool list changed notification")
-		go s.dispatch.NotifyListChanged(MethodToolListChanged)
+		go s.dispatch.NotifyListChanged(context.Background(), MethodToolListChanged)
 	}
 
 	return nil
@@ -540,7 +543,7 @@ func (s *Server) RegisterPrompt(prompt Prompt, handler GetPromptHandlerFunc) err
 
 	s.logger.Info("Prompt registered successfully", "name", prompt.Name)
 	s.logger.Debug("Sending prompt list changed notification")
-	go s.dispatch.NotifyListChanged(MethodPromptListChanged)
+	go s.dispatch.NotifyListChanged(context.Background(), MethodPromptListChanged)
 
 	return nil
 }
@@ -564,7 +567,7 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 
 	s.logger.Info("Resource registered successfully", "uri", resource.URI)
 	s.logger.Debug("Sending resource list changed notification")
-	go s.dispatch.NotifyListChanged(MethodResourceListChanged)
+	go s.dispatch.NotifyListChanged(context.Background(), MethodResourceListChanged)
 
 	return nil
 }
@@ -588,7 +591,7 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 
 	s.logger.Info("Resource template registered successfully", "template", template.Template)
 	s.logger.Debug("Sending resource list changed notification")
-	go s.dispatch.NotifyListChanged(MethodResourceListChanged)
+	go s.dispatch.NotifyListChanged(context.Background(), MethodResourceListChanged)
 
 	return nil
 }

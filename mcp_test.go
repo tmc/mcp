@@ -8,6 +8,7 @@ import (
 	"net"
 	"testing"
 	"time"
+	"log/slog"
 )
 
 type testInput struct {
@@ -21,7 +22,7 @@ type testOutput struct {
 // TestCancellation tests that context cancellation works through the JSON-RPC layer
 func TestCancellation(t *testing.T) {
 	// Create a server with a long-running tool
-	server := NewServer("test-server", "1.0.0")
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Track if the tool was cancelled
 	toolCancelled := make(chan bool, 1)
@@ -126,7 +127,7 @@ func TestCancellation(t *testing.T) {
 // automatically sends the cancellation notification
 func TestCancellationWithCause(t *testing.T) {
 	// Create a server
-	server := NewServer("test-server", "1.0.0")
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Track cancellation notification
 	notificationReceived := make(chan string, 1)
@@ -212,7 +213,7 @@ func TestCancellationWithCause(t *testing.T) {
 // A very simple test that just confirms we can create a server and client
 func TestServerClientCreation(t *testing.T) {
 	// Create a new server
-	server := NewServer("test-server", "1.0.0")
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
 	if server.name != "test-server" {
 		t.Errorf("Expected server name 'test-server', got %s", server.name)

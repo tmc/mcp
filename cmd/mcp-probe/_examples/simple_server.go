@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package main
@@ -5,20 +6,19 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/tmc/mcp"
 )
 
 func main() {
 	server := mcp.NewServer("test-server", "1.0.0")
-	
+
 	// Add a simple tool for testing
 	server.AddTool("echo", "Echo back the input", map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
 			"message": map[string]interface{}{
-				"type": "string",
+				"type":        "string",
 				"description": "Message to echo",
 			},
 		},
@@ -37,7 +37,7 @@ func main() {
 			},
 		}, nil
 	})
-	
+
 	// Run the server
 	if err := mcp.ServeStdio(context.Background(), server); err != nil {
 		log.Fatal(err)

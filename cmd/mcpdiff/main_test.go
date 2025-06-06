@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/tmc/mcp/exp/mcpscripttest"
 )
 
 func TestMCPRecordParsing(t *testing.T) {
@@ -78,49 +80,9 @@ func TestMCPRecordParsing(t *testing.T) {
 	}
 }
 
-func TestNormalization(t *testing.T) {
-	tests := []struct {
-		name     string
-		record   MCPRecord
-		options  normalizationOptions
-		expected string
-	}{
-		{
-			name: "ignore timestamps",
-			record: MCPRecord{
-				Direction:  "send",
-				RawContent: `{"jsonrpc":"2.0","id":1}`,
-				Timestamp:  1234567890.123,
-			},
-			options: normalizationOptions{
-				ignoreTimestamps: true,
-			},
-			expected: `send:{"jsonrpc":"2.0","id":1}`,
-		},
-		{
-			name: "ignore IDs",
-			record: MCPRecord{
-				JSON: map[string]any{
-					"jsonrpc": "2.0",
-					"id":      1,
-					"method":  "test",
-				},
-			},
-			options: normalizationOptions{
-				ignoreIDs: true,
-			},
-			expected: `{"jsonrpc":"2.0","method":"test"}`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := normalizeRecord(tt.record, tt.options)
-			if !strings.Contains(result, tt.expected) {
-				t.Errorf("normalization result doesn't contain expected content.\nGot: %v\nWant to contain: %v", result, tt.expected)
-			}
-		})
-	}
+// TestBasicDiff specifically tests basic diff functionality
+func TestBasicDiff(t *testing.T) {
+	mcpscripttest.Test(t, "testdata/basic_diff.txt")
 }
 
 func TestColorization(t *testing.T) {

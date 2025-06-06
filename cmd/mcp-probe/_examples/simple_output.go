@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package main
@@ -5,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+
 	"golang.org/x/exp/jsonrpc2"
 )
 
@@ -22,10 +24,10 @@ func printSampleRequests() {
 			"capabilities": {}
 		}`),
 	}
-	
+
 	initData, _ := json.Marshal(initReq)
 	fmt.Println(string(initData))
-	
+
 	// Sample tool call
 	toolReq := &jsonrpc2.Request{
 		ID:     jsonrpc2.Int64ID(2),
@@ -37,7 +39,7 @@ func printSampleRequests() {
 			}
 		}`),
 	}
-	
+
 	toolData, _ := json.Marshal(toolReq)
 	fmt.Println(string(toolData))
 }

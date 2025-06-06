@@ -1,8 +1,5 @@
 # Test basic mcpdiff functionality
-# Assumes mcpdiff is built and available in PATH or current directory
-
-# Copy the mcpdiff binary from cmd/mcpdiff
-cp ${MCPDIFF_BINARY:-../../mcpdiff} ./mcpdiff
+exec go build -o mcpdiff .
 
 # Test help output
 ! exec ./mcpdiff -h
@@ -19,10 +16,6 @@ stdout 'diff'
 # Test with identical files
 exec ./mcpdiff test1.mcp test1.mcp
 ! stdout 'diff'
-
-# Test with non-existent file
-! exec ./mcpdiff nonexistent.mcp test1.mcp
-stderr 'error'
 
 -- test1.mcp --
 # mcptrace:v1

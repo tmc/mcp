@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	
+	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
 
 // TestScripttestCoverageAcrossBinaries demonstrates coverage collection
@@ -32,7 +34,8 @@ func TestScripttestCoverageAcrossBinaries(t *testing.T) {
 
 	// Set up tools directory and install coverage-enabled tools
 	toolsDir := filepath.Join(tmpDir, "tools")
-	toolOpts := &ToolsOptions{
+	toolOpts := &tools.ToolsOptions{
+		CoverMode:          tools.ToolCoverModeOn, // Explicitly enable coverage
 		AutoDetectCoverage: true,
 		ToolsDir:           toolsDir,
 		Tools:              []string{"mcpdiff", "mcpspy", "mcpcat"},
@@ -105,7 +108,8 @@ func TestScripttestCoverageMultipleTools(t *testing.T) {
 	os.Setenv("GOCOVERDIR", coverDir)
 
 	// Install coverage-enabled tools
-	toolOpts := &ToolsOptions{
+	toolOpts := &tools.ToolsOptions{
+		CoverMode:          tools.ToolCoverModeOn, // Explicitly enable coverage
 		AutoDetectCoverage: true,
 		ToolsDir:           filepath.Join(tmpDir, "tools"),
 		Tools:              []string{"mcpdiff", "mcpspy", "mcpcat"},

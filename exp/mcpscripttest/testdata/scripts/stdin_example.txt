@@ -4,14 +4,14 @@
 
 # Set stdin content directly
 setstdin "Hello from stdin"
-exec cat
+cat
 stdout 'Hello from stdin'
 
 # Verify that stdin is cleared after the command
-exec cat
+cat
 ! stdout 'Hello from stdin'
 
 # Use explicit JSON content
 setstdin {"name":"example","value":123}
-exec cat
+cat
 stdout '{"name":"example","value":123}'

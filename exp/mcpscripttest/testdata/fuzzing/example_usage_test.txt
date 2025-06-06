@@ -2,7 +2,7 @@
 # This shows how to integrate fuzzing into your test workflow
 
 # Start a test server
-mcp-server-start timeserver -- go run ./examples/servers/mcp-time-server
+mcp-server-start timeserver go run ./examples/servers/mcp-time-server
 
 # Run a simple fuzzing test
 exec go test -v -run TestSimpleFuzzing -fuzz=Fuzz -fuzztime=5s ./fuzzing/examples

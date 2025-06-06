@@ -1,6 +1,7 @@
 package fuzzing
 
 import (
+	"github.com/tmc/mcp/exp/mcpscripttest"
 	"testing"
 	"strings"
 )

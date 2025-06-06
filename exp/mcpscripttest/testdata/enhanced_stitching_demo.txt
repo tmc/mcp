@@ -12,7 +12,7 @@ mcp-spy -- mcpdiff file1 file2
 mcp-test -- go run ./test/main.go
 
 # Server commands that start long-running processes
-mcp-server-start myserver -- go run ./cmd/server/main.go
+mcp-server-start myserver go run ./cmd/server/main.go
 mcp-serve -- python mcp_server.py
 
 # Commands that interact with existing servers

@@ -2,7 +2,7 @@
 # This tests that the fuzzing system can generate and execute scripttest scripts
 
 # Set up a test server
-mcp-server-start testserver -- go run ./testdata/test_servers/echo_server.go
+mcp-server-start testserver go run ./testdata/test_servers/echo_server.go
 
 # Enable fuzzing mode
 env FUZZING_ENABLED=1

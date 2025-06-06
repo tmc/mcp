@@ -4,7 +4,7 @@
 mkdir -p testdata/demo
 exec sh -c 'echo "exec echo test" > testdata/demo/test1.txt'
 exec sh -c 'echo "exec mcpdiff file1 file2" >> testdata/demo/test1.txt'
-exec sh -c 'echo "mcp-server-start demo -- go run server.go" >> testdata/demo/test1.txt'
+exec sh -c 'echo "mcp-server-start demo go run server.go" >> testdata/demo/test1.txt'
 
 exec sh -c 'echo "exec echo test2" > testdata/demo/test2.txt'
 exec sh -c 'echo "exec grep pattern file" >> testdata/demo/test2.txt'

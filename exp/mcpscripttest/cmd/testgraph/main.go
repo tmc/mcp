@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tmc/mcp/exp/mcpscripttest/testcallgraph"
+	"github.com/tmc/mcp/exp/callgraph/testcallgraph"
 )
 
 var (

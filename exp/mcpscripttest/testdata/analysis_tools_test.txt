@@ -4,7 +4,7 @@
 mkdir -p testdata
 exec sh -c 'echo "exec echo test" > testdata/simple.txt'
 exec sh -c 'echo "mcpdiff file1 file2" >> testdata/simple.txt'
-exec sh -c 'echo "mcp-server-start demo -- go run server.go" >> testdata/simple.txt'
+exec sh -c 'echo "mcp-server-start demo go run server.go" >> testdata/simple.txt'
 
 # Test testgraph - digraph integration
 exec testgraph testdata/simple.txt

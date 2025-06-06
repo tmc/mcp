@@ -153,7 +153,7 @@ func (mc *MountClient) AutoMount(path string, command string, args []string, tra
 		tunnelCmd := exec.Command("mcp-tunnel",
 			"-namespace", "ns://"+mc.nsServer+path+"-tunnel",
 			"--", "ns://"+mc.nsServer+path)
-		
+
 		if err := tunnelCmd.Start(); err != nil {
 			return fmt.Errorf("failed to start tunnel: %w", err)
 		}
@@ -189,12 +189,12 @@ func main() {
 	case "mount":
 		source := flag.Arg(0)
 		target := flag.Arg(1)
-		
+
 		options := make(map[string]string)
 		if *tunnel {
 			options["auto_tunnel"] = "true"
 		}
-		
+
 		if err := client.Mount(source, target, options); err != nil {
 			fmt.Fprintf(os.Stderr, "Mount failed: %v\n", err)
 			os.Exit(1)
@@ -204,7 +204,7 @@ func main() {
 	case "bind":
 		source := flag.Arg(0)
 		target := flag.Arg(1)
-		
+
 		if err := client.Bind(source, target); err != nil {
 			fmt.Fprintf(os.Stderr, "Bind failed: %v\n", err)
 			os.Exit(1)
@@ -216,10 +216,10 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Union mount requires at least 2 sources\n")
 			os.Exit(1)
 		}
-		
+
 		target := flag.Arg(0)
 		sources := flag.Args()[1:]
-		
+
 		if err := client.Union(sources, target); err != nil {
 			fmt.Fprintf(os.Stderr, "Union mount failed: %v\n", err)
 			os.Exit(1)
@@ -228,11 +228,11 @@ func main() {
 
 	case "auto":
 		target := flag.Arg(0)
-		
+
 		// Find the "--" separator
 		var command string
 		var args []string
-		
+
 		for i, arg := range os.Args {
 			if arg == "--" && i+1 < len(os.Args) {
 				command = os.Args[i+1]
@@ -242,16 +242,16 @@ func main() {
 				break
 			}
 		}
-		
+
 		if command == "" {
 			fmt.Fprintf(os.Stderr, "Auto mount requires command after --\n")
 			os.Exit(1)
 		}
-		
+
 		if *tunnel {
 			os.Setenv("MCP_AUTO_TUNNEL", "1")
 		}
-		
+
 		if err := client.AutoMount(target, command, args, *transport); err != nil {
 			fmt.Fprintf(os.Stderr, "Auto mount failed: %v\n", err)
 			os.Exit(1)

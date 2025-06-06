@@ -98,7 +98,7 @@ func main() {
 	if scanner.Scan() {
 		lineNumber++
 		line := scanner.Text()
-		
+
 		// If it's a header and we're preserving headers, write it and move on
 		if strings.HasPrefix(line, "# mcptrace:") {
 			if *verbose {
@@ -125,9 +125,9 @@ func main() {
 	if err := scanner.Err(); err != nil {
 		log.Fatalf("reading input: %v", err)
 	}
-	
+
 	if *verbose && firstOriginalTimestampMs != -1 {
-		log.Printf("processed %d lines, first timestamp: %d.%03d", 
+		log.Printf("processed %d lines, first timestamp: %d.%03d",
 			lineNumber, firstOriginalTimestampMs/1000, firstOriginalTimestampMs%1000)
 	}
 }
@@ -150,13 +150,13 @@ func processLine(line string, out io.Writer, firstOriginalTimestampMs *int64, ba
 	if *firstOriginalTimestampMs == -1 {
 		*firstOriginalTimestampMs = currentTimestampMs
 		if *verbose {
-			log.Printf("detected first timestamp: %d.%03d seconds", 
+			log.Printf("detected first timestamp: %d.%03d seconds",
 				currentTimestampMs/1000, currentTimestampMs%1000)
 		}
 	}
 
 	newTimestampMs := (currentTimestampMs - *firstOriginalTimestampMs) + baseTimestampMs
-	
+
 	dataEnd := strings.LastIndex(line, " # ")
 	if dataEnd < 0 { // Should not happen if regex matched
 		fmt.Fprintln(out, line)

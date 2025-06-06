@@ -36,32 +36,32 @@ func (tu *TypedUnion[T]) Register(typeValue string, handler UnmarshalFunc[T]) *T
 // Unmarshal unmarshals JSON data using the appropriate handler based on the type field.
 func (tu *TypedUnion[T]) Unmarshal(data json.RawMessage) (T, error) {
 	var zero T
-	
+
 	if string(data) == "null" || len(data) == 0 {
 		return zero, nil
 	}
-	
+
 	// Probe the type field
 	probe := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return zero, fmt.Errorf("probing %s field: %w", tu.typeField, err)
 	}
-	
+
 	typeRaw, ok := probe[tu.typeField]
 	if !ok {
 		return zero, fmt.Errorf("missing %s field in JSON", tu.typeField)
 	}
-	
+
 	var typeValue string
 	if err := json.Unmarshal(typeRaw, &typeValue); err != nil {
 		return zero, fmt.Errorf("unmarshaling %s field: %w", tu.typeField, err)
 	}
-	
+
 	handler, ok := tu.handlers[typeValue]
 	if !ok {
 		return zero, fmt.Errorf("unknown %s value: '%s'", tu.typeField, typeValue)
 	}
-	
+
 	return handler(data)
 }
 
@@ -122,28 +122,28 @@ func NewFieldUnmarshaler[T any](unmarshalFunc func(json.RawMessage) (T, error)) 
 // Unmarshal unmarshals a field using the custom function.
 func (fu *FieldUnmarshaler[T]) Unmarshal(data json.RawMessage) (T, error) {
 	var zero T
-	
+
 	if string(data) == "null" || len(data) == 0 {
 		return zero, nil
 	}
-	
+
 	return fu.unmarshalFunc(data)
 }
 
 // UnmarshalField is a helper method for unmarshaling a specific field from a struct.
 func UnmarshalField[T any](data []byte, fieldName string, unmarshalFunc func(json.RawMessage) (T, error)) (T, error) {
 	var zero T
-	
+
 	fields := make(map[string]json.RawMessage)
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return zero, fmt.Errorf("unmarshaling to map: %w", err)
 	}
-	
+
 	fieldData, ok := fields[fieldName]
 	if !ok {
 		return zero, nil // Field not present
 	}
-	
+
 	return unmarshalFunc(fieldData)
 }
 
@@ -156,42 +156,42 @@ func UnmarshalEmbeddedResourceGeneric(data []byte) error {
 		Resource    any    `json:"resource"`
 		Annotations any    `json:"annotations,omitempty"`
 	}
-	
+
 	resourceUnmarshaler := NewFieldUnmarshaler(func(data json.RawMessage) (any, error) {
 		// Simplified resource contents unmarshaling
 		var probe map[string]json.RawMessage
 		if err := json.Unmarshal(data, &probe); err != nil {
 			return nil, err
 		}
-		
+
 		if _, hasText := probe["text"]; hasText {
 			var tc struct {
-				URI  string  `json:"uri"`
-				Text string  `json:"text"`
+				URI      string  `json:"uri"`
+				Text     string  `json:"text"`
 				MimeType *string `json:"mimeType,omitempty"`
 			}
 			err := json.Unmarshal(data, &tc)
 			return tc, err
 		}
-		
+
 		if _, hasBlob := probe["blob"]; hasBlob {
 			var bc struct {
-				URI  string  `json:"uri"`
-				Blob string  `json:"blob"`
+				URI      string  `json:"uri"`
+				Blob     string  `json:"blob"`
 				MimeType *string `json:"mimeType,omitempty"`
 			}
 			err := json.Unmarshal(data, &bc)
 			return bc, err
 		}
-		
+
 		return nil, fmt.Errorf("resource contents has neither text nor blob field")
 	})
-	
+
 	resource, err := UnmarshalField(data, "resource", resourceUnmarshaler.Unmarshal)
 	if err != nil {
 		return fmt.Errorf("unmarshaling resource field: %w", err)
 	}
-	
+
 	_ = resource // Use the unmarshaled resource
 	return nil
 }

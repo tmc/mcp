@@ -110,10 +110,10 @@ func parseTextToJSON(textFile, jsonFile string, testInfo string) error {
 	for file, lineMap := range fileData {
 		maxLine := fileLines[file]
 		covArray := make([]interface{}, maxLine+1)
-		
+
 		// First element is always null
 		covArray[0] = nil
-		
+
 		// Fill in coverage data
 		for i := 1; i <= maxLine; i++ {
 			if count, exists := lineMap[i]; exists {
@@ -122,7 +122,7 @@ func parseTextToJSON(textFile, jsonFile string, testInfo string) error {
 				covArray[i] = nil
 			}
 		}
-		
+
 		coverage[file] = covArray
 	}
 
@@ -134,9 +134,9 @@ func parseTextToJSON(textFile, jsonFile string, testInfo string) error {
 
 	// Add metadata
 	report.Messages["_metadata"] = map[string]string{
-		"generated":  time.Now().Format(time.RFC3339),
-		"generator":  "cov2codecov",
-		"format":     "json",
+		"generated": time.Now().Format(time.RFC3339),
+		"generator": "cov2codecov",
+		"format":    "json",
 	}
 
 	if testInfo != "" {

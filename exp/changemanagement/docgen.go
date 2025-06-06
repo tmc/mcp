@@ -81,13 +81,13 @@ func (d *DocumentationGenerator) generateOverview(analysis *AnalysisResult, form
 	if format == "markdown" {
 		sb.WriteString(fmt.Sprintf("# %s Change Overview\n\n", strings.Title(string(analysis.Type))))
 		sb.WriteString(fmt.Sprintf("**Generated**: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
-		
+
 		sb.WriteString("## Summary\n\n")
 		sb.WriteString(fmt.Sprintf("- **Type**: %s\n", analysis.Type))
 		sb.WriteString(fmt.Sprintf("- **Category**: %s\n", analysis.Category))
 		sb.WriteString(fmt.Sprintf("- **Risk Level**: %s\n", analysis.RiskLevel))
 		sb.WriteString(fmt.Sprintf("- **Breaking Change**: %v\n\n", analysis.Breaking))
-		
+
 		if len(analysis.Components) > 0 {
 			sb.WriteString("## Affected Components\n\n")
 			for _, comp := range analysis.Components {
@@ -95,7 +95,7 @@ func (d *DocumentationGenerator) generateOverview(analysis *AnalysisResult, form
 			}
 			sb.WriteString("\n")
 		}
-		
+
 		if len(analysis.Requirements.Functional) > 0 {
 			sb.WriteString("## Functional Requirements\n\n")
 			for _, req := range analysis.Requirements.Functional {
@@ -103,7 +103,7 @@ func (d *DocumentationGenerator) generateOverview(analysis *AnalysisResult, form
 			}
 			sb.WriteString("\n")
 		}
-		
+
 		if len(analysis.Recommendations) > 0 {
 			sb.WriteString("## Recommendations\n\n")
 			for _, rec := range analysis.Recommendations {
@@ -123,34 +123,34 @@ func (d *DocumentationGenerator) generateMigrationGuide(analysis *AnalysisResult
 		sb.WriteString("# Migration Guide\n\n")
 		sb.WriteString(fmt.Sprintf("**Change Type**: %s\n", analysis.Type))
 		sb.WriteString(fmt.Sprintf("**Risk Level**: %s\n\n", analysis.RiskLevel))
-		
+
 		sb.WriteString("## Overview\n\n")
 		sb.WriteString("This guide helps you migrate to the new implementation.\n\n")
-		
+
 		sb.WriteString("## Migration Steps\n\n")
 		sb.WriteString("1. **Backup current state**\n")
 		sb.WriteString("   ```bash\n")
 		sb.WriteString("   # Backup your data\n")
 		sb.WriteString("   backup-tool create\n")
 		sb.WriteString("   ```\n\n")
-		
+
 		sb.WriteString("2. **Update dependencies**\n")
 		sb.WriteString("   ```bash\n")
 		sb.WriteString("   # Update package versions\n")
 		sb.WriteString("   package-manager update\n")
 		sb.WriteString("   ```\n\n")
-		
+
 		sb.WriteString("3. **Apply changes**\n")
 		sb.WriteString("   - Update configuration files\n")
 		sb.WriteString("   - Modify code as needed\n")
 		sb.WriteString("   - Run migration scripts\n\n")
-		
+
 		sb.WriteString("4. **Test thoroughly**\n")
 		sb.WriteString("   ```bash\n")
 		sb.WriteString("   # Run test suite\n")
 		sb.WriteString("   test-runner --all\n")
 		sb.WriteString("   ```\n\n")
-		
+
 		if analysis.Breaking {
 			sb.WriteString("## Breaking Changes\n\n")
 			sb.WriteString("⚠️ **Warning**: This migration includes breaking changes.\n\n")
@@ -171,29 +171,29 @@ func (d *DocumentationGenerator) generateAPIDoc(analysis *AnalysisResult, format
 	if format == "markdown" {
 		sb.WriteString("# API Changes Documentation\n\n")
 		sb.WriteString(fmt.Sprintf("**Generated**: %s\n\n", time.Now().Format("2006-01-02")))
-		
+
 		sb.WriteString("## Overview\n\n")
 		sb.WriteString("This document describes the API changes introduced by this update.\n\n")
-		
+
 		sb.WriteString("## Changed Endpoints\n\n")
 		sb.WriteString("### Before\n\n")
 		sb.WriteString("```http\n")
 		sb.WriteString("GET /api/v1/endpoint\n")
 		sb.WriteString("Authorization: Basic <credentials>\n")
 		sb.WriteString("```\n\n")
-		
+
 		sb.WriteString("### After\n\n")
 		sb.WriteString("```http\n")
 		sb.WriteString("GET /api/v2/endpoint\n")
 		sb.WriteString("Authorization: Bearer <token>\n")
 		sb.WriteString("```\n\n")
-		
+
 		sb.WriteString("## New Features\n\n")
 		for _, req := range analysis.Requirements.Functional {
 			sb.WriteString(fmt.Sprintf("- %s\n", req))
 		}
 		sb.WriteString("\n")
-		
+
 		sb.WriteString("## Migration Notes\n\n")
 		sb.WriteString("- Update client libraries to latest version\n")
 		sb.WriteString("- Review authentication flow changes\n")
@@ -209,20 +209,20 @@ func (d *DocumentationGenerator) generateSecurityDoc(analysis *AnalysisResult, f
 	if format == "markdown" {
 		sb.WriteString("# Security Notes\n\n")
 		sb.WriteString("## Security Improvements\n\n")
-		
+
 		if analysis.Category == "authentication" {
 			sb.WriteString("### Authentication Changes\n\n")
 			sb.WriteString("- Enhanced authentication mechanism\n")
 			sb.WriteString("- Improved token management\n")
 			sb.WriteString("- Added multi-factor authentication support\n\n")
 		}
-		
+
 		sb.WriteString("## Security Considerations\n\n")
 		sb.WriteString("1. **Review access controls**\n")
 		sb.WriteString("2. **Update security policies**\n")
 		sb.WriteString("3. **Conduct security audit**\n")
 		sb.WriteString("4. **Monitor for suspicious activity**\n\n")
-		
+
 		sb.WriteString("## Compliance\n\n")
 		sb.WriteString("This change maintains compliance with:\n")
 		sb.WriteString("- OWASP security standards\n")
@@ -240,9 +240,9 @@ func (d *DocumentationGenerator) generateReleaseNotes(analysis *AnalysisResult, 
 		sb.WriteString("# Release Notes\n\n")
 		sb.WriteString(fmt.Sprintf("**Date**: %s\n", time.Now().Format("2006-01-02")))
 		sb.WriteString(fmt.Sprintf("**Change Type**: %s\n\n", analysis.Type))
-		
+
 		sb.WriteString("## What's Changed\n\n")
-		
+
 		// Format based on change type
 		switch analysis.Type {
 		case ChangeTypeFeature:
@@ -254,17 +254,17 @@ func (d *DocumentationGenerator) generateReleaseNotes(analysis *AnalysisResult, 
 		case ChangeTypeSecurity:
 			sb.WriteString("### Security Updates\n\n")
 		}
-		
+
 		for _, req := range analysis.Requirements.Functional {
 			sb.WriteString(fmt.Sprintf("- %s\n", req))
 		}
 		sb.WriteString("\n")
-		
+
 		if analysis.Breaking {
 			sb.WriteString("### Breaking Changes\n\n")
 			sb.WriteString("⚠️ This release contains breaking changes. Please review the migration guide.\n\n")
 		}
-		
+
 		sb.WriteString("## Upgrade Instructions\n\n")
 		sb.WriteString("1. Review the migration guide\n")
 		sb.WriteString("2. Update dependencies\n")

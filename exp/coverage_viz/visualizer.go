@@ -55,22 +55,22 @@ func NewVisualizer(coverage *CoverageData) *CoverageVisualizer {
 // Serve starts the web server for visualization
 func (v *CoverageVisualizer) Serve(port int) error {
 	mux := http.NewServeMux()
-	
+
 	// API endpoints
 	mux.HandleFunc("/api/coverage/files", v.handleFiles)
 	mux.HandleFunc("/api/coverage/file/", v.handleFile)
 	mux.HandleFunc("/api/coverage/tests", v.handleTests)
 	mux.HandleFunc("/api/coverage/test/", v.handleTest)
-	
+
 	// Web UI
 	mux.HandleFunc("/", v.handleIndex)
 	mux.HandleFunc("/file/", v.handleFileView)
-	
+
 	v.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
-	
+
 	fmt.Printf("Coverage visualization server starting on http://localhost:%d\n", port)
 	return v.server.ListenAndServe()
 }
@@ -144,7 +144,7 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 </body>
 </html>
 `
-	
+
 	// Calculate overall coverage
 	totalLines := 0
 	coveredLines := 0
@@ -152,12 +152,12 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 		totalLines += file.TotalLines
 		coveredLines += file.CoveredLines
 	}
-	
+
 	overallCoverage := 0.0
 	if totalLines > 0 {
 		overallCoverage = float64(coveredLines) / float64(totalLines) * 100
 	}
-	
+
 	// Prepare file data
 	var files []struct {
 		Path         string
@@ -165,7 +165,7 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 		CoveredLines int
 		TotalLines   int
 	}
-	
+
 	for path, file := range v.coverage.Files {
 		coverage := 0.0
 		if file.TotalLines > 0 {
@@ -183,18 +183,18 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 			TotalLines:   file.TotalLines,
 		})
 	}
-	
+
 	// Sort files by path
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Path < files[j].Path
 	})
-	
+
 	// Prepare test data
 	var tests []struct {
 		Name         string
 		CoveredLines int
 	}
-	
+
 	for name, test := range v.coverage.Tests {
 		tests = append(tests, struct {
 			Name         string
@@ -204,12 +204,12 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 			CoveredLines: test.CoveredLines,
 		})
 	}
-	
+
 	// Sort tests by name
 	sort.Slice(tests, func(i, j int) bool {
 		return tests[i].Name < tests[j].Name
 	})
-	
+
 	// Execute template
 	t := template.Must(template.New("index").Parse(tmpl))
 	data := struct {
@@ -221,7 +221,7 @@ func (v *CoverageVisualizer) handleIndex(w http.ResponseWriter, r *http.Request)
 		Files:           files,
 		Tests:           tests,
 	}
-	
+
 	t.Execute(w, data)
 }
 
@@ -233,7 +233,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	tmpl := `
 <!DOCTYPE html>
 <html>
@@ -287,13 +287,13 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 </body>
 </html>
 `
-	
+
 	// Calculate file coverage
 	coverage := 0.0
 	if file.TotalLines > 0 {
 		coverage = float64(file.CoveredLines) / float64(file.TotalLines) * 100
 	}
-	
+
 	// Prepare line data
 	var lines []struct {
 		Number    int
@@ -302,7 +302,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 		HitCount  int
 		TestCount int
 	}
-	
+
 	// Mock source code content
 	sourceLines := []string{
 		"package example",
@@ -334,7 +334,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 		"    }",
 		"}",
 	}
-	
+
 	for i, content := range sourceLines {
 		lineNum := i + 1
 		lineCov, exists := file.Lines[lineNum]
@@ -366,7 +366,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 			})
 		}
 	}
-	
+
 	// Get tests covering this file
 	var tests []string
 	testMap := make(map[string]bool)
@@ -379,7 +379,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 		tests = append(tests, test)
 	}
 	sort.Strings(tests)
-	
+
 	// Execute template
 	t := template.Must(template.New("file").Parse(tmpl))
 	data := struct {
@@ -397,7 +397,7 @@ func (v *CoverageVisualizer) handleFileView(w http.ResponseWriter, r *http.Reque
 		Lines:        lines,
 		Tests:        tests,
 	}
-	
+
 	t.Execute(w, data)
 }
 
@@ -435,26 +435,26 @@ func (v *CoverageVisualizer) GenerateReport(w io.Writer) {
 		totalLines += file.TotalLines
 		coveredLines += file.CoveredLines
 	}
-	
+
 	overallCoverage := 0.0
 	if totalLines > 0 {
 		overallCoverage = float64(coveredLines) / float64(totalLines) * 100
 	}
-	
+
 	fmt.Fprintf(w, "MCP Coverage Report\n")
 	fmt.Fprintf(w, "==================\n\n")
 	fmt.Fprintf(w, "Overall Coverage: %.1f%% (%d/%d lines)\n\n", overallCoverage, coveredLines, totalLines)
-	
+
 	fmt.Fprintf(w, "File Coverage:\n")
 	fmt.Fprintf(w, "--------------\n")
-	
+
 	// Sort files for consistent output
 	var paths []string
 	for path := range v.coverage.Files {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
-	
+
 	for _, path := range paths {
 		file := v.coverage.Files[path]
 		coverage := 0.0
@@ -463,17 +463,17 @@ func (v *CoverageVisualizer) GenerateReport(w io.Writer) {
 		}
 		fmt.Fprintf(w, "%-40s %6.1f%% (%d/%d)\n", path, coverage, file.CoveredLines, file.TotalLines)
 	}
-	
+
 	fmt.Fprintf(w, "\nTest Impact:\n")
 	fmt.Fprintf(w, "------------\n")
-	
+
 	// Sort tests for consistent output
 	var testNames []string
 	for name := range v.coverage.Tests {
 		testNames = append(testNames, name)
 	}
 	sort.Strings(testNames)
-	
+
 	for _, name := range testNames {
 		test := v.coverage.Tests[name]
 		fmt.Fprintf(w, "%-40s Covers %d lines\n", name, test.CoveredLines)

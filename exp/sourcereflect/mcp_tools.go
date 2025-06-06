@@ -13,10 +13,10 @@ import (
 
 // MCPToolDescription represents an MCP tool description
 type MCPToolDescription struct {
-	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
-	InputSchema *Schema            `json:"inputSchema"`
-	Hints       *MCPToolHints      `json:"hints,omitempty"`
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	InputSchema *Schema       `json:"inputSchema"`
+	Hints       *MCPToolHints `json:"hints,omitempty"`
 }
 
 // ToJSON converts the tool description to JSON
@@ -39,10 +39,10 @@ func (t *MCPToolDescription) ToPrettyJSON() (string, error) {
 
 // MCPToolHints represents behavioral hints for an MCP tool
 type MCPToolHints struct {
-	ReadOnlyHint     *bool `json:"readOnlyHint,omitempty"`
-	DestructiveHint  *bool `json:"destructiveHint,omitempty"`
-	IdempotentHint   *bool `json:"idempotentHint,omitempty"`
-	OpenWorldHint    *bool `json:"openWorldHint,omitempty"`
+	ReadOnlyHint    *bool `json:"readOnlyHint,omitempty"`
+	DestructiveHint *bool `json:"destructiveHint,omitempty"`
+	IdempotentHint  *bool `json:"idempotentHint,omitempty"`
+	OpenWorldHint   *bool `json:"openWorldHint,omitempty"`
 }
 
 // ToMCPTool converts a Go function to an MCP tool description
@@ -62,12 +62,12 @@ func ToMCPTool(funcName string, funcType reflect.Type) (*MCPToolDescription, err
 	for i := 0; i < funcType.NumIn(); i++ {
 		paramType := funcType.In(i)
 		paramName := fmt.Sprintf("arg%d", i)
-		
+
 		paramSchema, err := TypeToSchema(paramType)
 		if err != nil {
 			return nil, fmt.Errorf("error processing parameter %d: %w", i, err)
 		}
-		
+
 		inputSchema.Properties[paramName] = paramSchema
 		inputSchema.Required = append(inputSchema.Required, paramName)
 	}
@@ -117,7 +117,7 @@ func AnalyzeSourceHints(filename string, funcName string) (*MCPToolHints, error)
 		node:     node,
 		funcDecl: targetFunc,
 	}
-	
+
 	return analyzer.analyze()
 }
 
@@ -126,12 +126,12 @@ type sourceAnalyzer struct {
 	fset     *token.FileSet
 	node     *ast.File
 	funcDecl *ast.FuncDecl
-	
+
 	// Analysis results
-	hasDiskOps    bool
-	hasNetworkOps bool
+	hasDiskOps     bool
+	hasNetworkOps  bool
 	hasStateChange bool
-	isIdempotent  bool
+	isIdempotent   bool
 }
 
 func (a *sourceAnalyzer) analyze() (*MCPToolHints, error) {
@@ -149,27 +149,27 @@ func (a *sourceAnalyzer) analyze() (*MCPToolHints, error) {
 
 	// Determine hints based on analysis
 	hints := &MCPToolHints{}
-	
+
 	// ReadOnlyHint: true if no disk ops and no state changes
 	readOnly := !a.hasDiskOps && !a.hasStateChange
 	hints.ReadOnlyHint = &readOnly
-	
+
 	// DestructiveHint: true if has disk operations
 	if !readOnly {
 		destructive := a.hasDiskOps
 		hints.DestructiveHint = &destructive
 	}
-	
+
 	// IdempotentHint: harder to determine, default to false
 	if !readOnly {
 		idempotent := a.isIdempotent
 		hints.IdempotentHint = &idempotent
 	}
-	
+
 	// OpenWorldHint: true if has network operations
 	openWorld := a.hasNetworkOps
 	hints.OpenWorldHint = &openWorld
-	
+
 	return hints, nil
 }
 
@@ -179,24 +179,24 @@ func (a *sourceAnalyzer) analyzeCall(call *ast.CallExpr) {
 	if funcName == "" {
 		return
 	}
-	
+
 	// Check for disk operations
 	if strings.Contains(funcName, "os.") || strings.Contains(funcName, "ioutil.") {
 		if strings.Contains(funcName, "Write") || strings.Contains(funcName, "Create") ||
-		   strings.Contains(funcName, "Remove") || strings.Contains(funcName, "Rename") ||
-		   strings.Contains(funcName, "Mkdir") {
+			strings.Contains(funcName, "Remove") || strings.Contains(funcName, "Rename") ||
+			strings.Contains(funcName, "Mkdir") {
 			a.hasDiskOps = true
 		}
 	}
-	
+
 	// Check for network operations
 	if strings.Contains(funcName, "net.") || strings.Contains(funcName, "http.") {
 		a.hasNetworkOps = true
 	}
-	
+
 	// Check for idempotent operations
 	if strings.Contains(funcName, "Get") || strings.Contains(funcName, "Read") ||
-	   strings.Contains(funcName, "List") || strings.Contains(funcName, "Describe") {
+		strings.Contains(funcName, "List") || strings.Contains(funcName, "Describe") {
 		// These are typically idempotent
 		if !a.hasDiskOps && !a.hasStateChange {
 			a.isIdempotent = true

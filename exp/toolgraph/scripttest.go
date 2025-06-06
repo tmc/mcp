@@ -24,32 +24,32 @@ func NewScriptTestAnalyzer(builder *GraphBuilder) *ScriptTestAnalyzer {
 func (a *ScriptTestAnalyzer) AnalyzeScriptTest(path string, content string, depth int) error {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	lineNum := 0
-	
+
 	// Regular expressions for pattern matching
 	execRe := regexp.MustCompile(`^exec\s+(\S+)(.*)`)
 	stdinRe := regexp.MustCompile(`^stdin\s+(.*)`)
 	stdoutRe := regexp.MustCompile(`^stdout\s+(.*)`)
 	stderrRe := regexp.MustCompile(`^stderr\s+(.*)`)
-	
+
 	// Track current command context
 	var currentCmd string
-	
+
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Skip comments and empty lines
 		if strings.HasPrefix(trimmed, "#") || trimmed == "" {
 			continue
 		}
-		
+
 		// Process exec commands
 		if matches := execRe.FindStringSubmatch(trimmed); matches != nil {
 			cmd := matches[1]
 			args := matches[2]
 			currentCmd = cmd
-			
+
 			// Create command node
 			cmdNode := &Node{
 				ID:    fmt.Sprintf("%s:cmd:%d:%s", path, lineNum, cmd),
@@ -62,11 +62,11 @@ func (a *ScriptTestAnalyzer) AnalyzeScriptTest(path string, content string, dept
 			}
 			a.builder.graph.Nodes[cmdNode.ID] = cmdNode
 			a.builder.addEdge(path, cmdNode.ID, "executes", fmt.Sprintf("line %d", lineNum))
-			
+
 			// Analyze the command
 			a.analyzeCommand(cmdNode, cmd, args, depth)
 		}
-		
+
 		// Process stdin with current command context
 		if matches := stdinRe.FindStringSubmatch(trimmed); matches != nil {
 			input := matches[1]
@@ -74,19 +74,19 @@ func (a *ScriptTestAnalyzer) AnalyzeScriptTest(path string, content string, dept
 				a.analyzeInput(path, currentCmd, input, lineNum, depth)
 			}
 		}
-		
+
 		// Process stdout/stderr for tool outputs
 		if matches := stdoutRe.FindStringSubmatch(trimmed); matches != nil {
 			output := matches[1]
 			a.analyzeOutput(path, currentCmd, output, lineNum, "stdout", depth)
 		}
-		
+
 		if matches := stderrRe.FindStringSubmatch(trimmed); matches != nil {
 			output := matches[1]
 			a.analyzeOutput(path, currentCmd, output, lineNum, "stderr", depth)
 		}
 	}
-	
+
 	return scanner.Err()
 }
 
@@ -103,13 +103,13 @@ func (a *ScriptTestAnalyzer) analyzeCommand(cmdNode *Node, cmd string, args stri
 		}
 		a.builder.graph.Nodes[toolNode.ID] = toolNode
 		a.builder.addEdge(cmdNode.ID, toolNode.ID, "invokes", "")
-		
+
 		// Parse tool subcommands
 		if strings.Contains(args, "call") {
 			a.parseToolCall(cmdNode, args, depth)
 		}
 	}
-	
+
 	// Identify file operations
 	if isFileCommand(cmd) {
 		a.analyzeFileOperation(cmdNode, cmd, args, depth)
@@ -142,7 +142,7 @@ func (a *ScriptTestAnalyzer) analyzeInput(path string, cmd string, input string,
 	if strings.Contains(input, "method") || strings.Contains(input, "jsonrpc") {
 		a.parseJSONRPC(path, input, line, depth)
 	}
-	
+
 	// Look for tool-specific patterns
 	if strings.Contains(cmd, "mcp") {
 		a.parseMCPInput(path, cmd, input, line, depth)
@@ -196,7 +196,7 @@ func (a *ScriptTestAnalyzer) parseMCPInput(path string, cmd string, input string
 			`"name"\s*:\s*"([^"]+)"`,
 			`"action"\s*:\s*"([^"]+)"`,
 		}
-		
+
 		for _, pattern := range patterns {
 			re := regexp.MustCompile(pattern)
 			if matches := re.FindStringSubmatch(input); len(matches) > 1 {
@@ -220,7 +220,7 @@ func (a *ScriptTestAnalyzer) parseMCPInput(path string, cmd string, input string
 func (a *ScriptTestAnalyzer) analyzeFileOperation(cmdNode *Node, cmd string, args string, depth int) {
 	// Extract file paths from command arguments
 	files := extractFilePaths(args)
-	
+
 	for _, file := range files {
 		fileNode := &Node{
 			ID:    "file:" + file,
@@ -243,7 +243,7 @@ func isFileCommand(cmd string) bool {
 		"cat", "ls", "cp", "mv", "rm", "mkdir", "touch",
 		"grep", "sed", "awk", "find", "test", "stat",
 	}
-	
+
 	for _, fc := range fileCommands {
 		if cmd == fc {
 			return true
@@ -257,19 +257,19 @@ func extractFilePaths(args string) []string {
 	// In production, use more sophisticated parsing
 	paths := []string{}
 	parts := strings.Fields(args)
-	
+
 	for _, part := range parts {
 		// Skip flags
 		if strings.HasPrefix(part, "-") {
 			continue
 		}
-		
+
 		// Check if it looks like a path
 		if strings.Contains(part, "/") || strings.Contains(part, ".") {
 			paths = append(paths, part)
 		}
 	}
-	
+
 	return paths
 }
 

@@ -24,7 +24,7 @@ func main() {
 		toolDef     = flag.Bool("tool-def", false, "Output just the tool definition as JSON")
 		verbose     = flag.Bool("v", false, "Verbose output")
 	)
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <binary-path>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nConverts a Go command-line tool into an MCP server.\n\n")
@@ -38,14 +38,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  # View tool definition:\n")
 		fmt.Fprintf(os.Stderr, "  %s -tool-def ./mycommand\n", os.Args[0])
 	}
-	
+
 	flag.Parse()
-	
+
 	if flag.NArg() != 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
-	
+
 	binaryPath := flag.Arg(0)
 
 	// Validate binary exists
@@ -75,19 +75,19 @@ func main() {
 		}
 		fmt.Println()
 	}
-	
+
 	// Derive defaults from binary name
 	binaryName := filepath.Base(binaryPath)
 	binaryName = strings.TrimSuffix(binaryName, filepath.Ext(binaryName))
-	
+
 	if *outputDir == "" {
 		*outputDir = fmt.Sprintf("./%s-mcp-server", binaryName)
 	}
-	
+
 	if *moduleName == "" {
 		*moduleName = fmt.Sprintf("github.com/generated/%s-mcp-server", binaryName)
 	}
-	
+
 	if *serverName == "" {
 		// Convert to CamelCase
 		parts := strings.Split(binaryName, "-")
@@ -98,11 +98,11 @@ func main() {
 		}
 		*serverName = strings.Join(parts, "")
 	}
-	
+
 	if *toolName == "" {
 		*toolName = binaryName
 	}
-	
+
 	if *description == "" {
 		// Use binary analysis description if available
 		if analyzerErr == nil && binaryInfo.Description != "" {
@@ -111,7 +111,7 @@ func main() {
 			*description = fmt.Sprintf("MCP wrapper for %s command", binaryName)
 		}
 	}
-	
+
 	config := &cmd2mcpserver.Config{
 		BinaryPath:  binaryPath,
 		OutputDir:   *outputDir,
@@ -120,7 +120,7 @@ func main() {
 		ToolName:    *toolName,
 		Description: *description,
 	}
-	
+
 	if *verbose {
 		fmt.Printf("Configuration:\n")
 		fmt.Printf("  Binary: %s\n", config.BinaryPath)
@@ -131,9 +131,9 @@ func main() {
 		fmt.Printf("  Desc:   %s\n", config.Description)
 		fmt.Println()
 	}
-	
+
 	generator := cmd2mcpserver.NewGenerator(config)
-	
+
 	// If source directory provided, analyze it for flags
 	sourceDirToAnalyze := *sourceDir
 
@@ -161,7 +161,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	if *toolDef {
 		// Output just the tool definition as JSON
 		toolDef := generator.GetToolDefinition()

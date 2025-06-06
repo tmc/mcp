@@ -65,18 +65,18 @@ func (r *Runner) RunTests(testFiles []string) *Results {
 		}
 
 		err := r.runTest(testFile)
-		
+
 		if err != nil {
 			results.Failed++
 			results.Failures = append(results.Failures, Failure{
 				Test:  testFile,
 				Error: err.Error(),
 			})
-			
+
 			if !r.options.ContinueOnError {
 				break
 			}
-			
+
 			if r.options.BailAfter > 0 && results.Failed >= r.options.BailAfter {
 				break
 			}
@@ -95,7 +95,7 @@ func (r *Runner) runTest(testFile string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create work directory: %w", err)
 	}
-	
+
 	if !r.options.KeepWork {
 		defer os.RemoveAll(workDir)
 	} else if r.options.Verbose {
@@ -123,12 +123,12 @@ func (r *Runner) runTest(testFile string) error {
 
 func (r *Runner) makeEnv() []string {
 	env := os.Environ()
-	
+
 	// Add custom environment variables
 	for k, v := range r.options.Environment {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	
+
 	return env
 }
 
@@ -140,7 +140,7 @@ type Test struct {
 	timeout time.Duration
 	verbose bool
 	update  bool
-	
+
 	currentDir string
 	lineNum    int
 	updates    map[int]string
@@ -150,29 +150,29 @@ type Test struct {
 func (t *Test) Run(content string) error {
 	t.currentDir = t.workDir
 	t.updates = make(map[int]string)
-	
+
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	t.lineNum = 0
-	
+
 	for scanner.Scan() {
 		t.lineNum++
 		line := scanner.Text()
-		
+
 		// Strip comments and whitespace
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		
+
 		if err := t.executeLine(line); err != nil {
 			return fmt.Errorf("line %d: %w", t.lineNum, err)
 		}
 	}
-	
+
 	if t.update && len(t.updates) > 0 {
 		return t.updateFile()
 	}
-	
+
 	return scanner.Err()
 }
 
@@ -181,10 +181,10 @@ func (t *Test) executeLine(line string) error {
 	if len(parts) == 0 {
 		return nil
 	}
-	
+
 	cmd := parts[0]
 	args := parts[1:]
-	
+
 	switch cmd {
 	case "exec":
 		return t.execCommand(args)
@@ -211,27 +211,27 @@ func (t *Test) execCommand(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("exec requires command")
 	}
-	
+
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = t.currentDir
 	cmd.Env = t.env
-	
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	
+
 	if t.timeout > 0 {
 		timer := time.AfterFunc(t.timeout, func() {
 			cmd.Process.Kill()
 		})
 		defer timer.Stop()
 	}
-	
+
 	err := cmd.Run()
-	
+
 	t.lastStdout = stdout.String()
 	t.lastStderr = stderr.String()
-	
+
 	if t.verbose {
 		if t.lastStdout != "" {
 			fmt.Printf("stdout: %s\n", t.lastStdout)
@@ -240,7 +240,7 @@ func (t *Test) execCommand(args []string) error {
 			fmt.Printf("stderr: %s\n", t.lastStderr)
 		}
 	}
-	
+
 	return err
 }
 
@@ -254,7 +254,7 @@ func (t *Test) execCommandExpectFail(args []string) error {
 
 func (t *Test) expectStdout(expected string) error {
 	expected = expandVars(expected, t.env)
-	
+
 	if !matchOutput(t.lastStdout, expected) {
 		if t.update {
 			t.updates[t.lineNum] = fmt.Sprintf("stdout %s", quote(t.lastStdout))
@@ -262,13 +262,13 @@ func (t *Test) expectStdout(expected string) error {
 		}
 		return fmt.Errorf("stdout mismatch:\nexpected: %s\nactual: %s", expected, t.lastStdout)
 	}
-	
+
 	return nil
 }
 
 func (t *Test) expectStderr(expected string) error {
 	expected = expandVars(expected, t.env)
-	
+
 	if !matchOutput(t.lastStderr, expected) {
 		if t.update {
 			t.updates[t.lineNum] = fmt.Sprintf("stderr %s", quote(t.lastStderr))
@@ -276,7 +276,7 @@ func (t *Test) expectStderr(expected string) error {
 		}
 		return fmt.Errorf("stderr mismatch:\nexpected: %s\nactual: %s", expected, t.lastStderr)
 	}
-	
+
 	return nil
 }
 
@@ -284,14 +284,14 @@ func (t *Test) changeDir(dir string) error {
 	if dir == "" {
 		return fmt.Errorf("cd requires directory")
 	}
-	
+
 	dir = expandVars(dir, t.env)
 	newDir := filepath.Join(t.currentDir, dir)
-	
+
 	if _, err := os.Stat(newDir); err != nil {
 		return fmt.Errorf("directory not found: %s", newDir)
 	}
-	
+
 	t.currentDir = newDir
 	return nil
 }
@@ -301,11 +301,11 @@ func (t *Test) setEnv(envStr string) error {
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid env format, expected KEY=value")
 	}
-	
+
 	key := parts[0]
 	value := expandVars(parts[1], t.env)
 	t.env = append(t.env, fmt.Sprintf("%s=%s", key, value))
-	
+
 	return nil
 }
 
@@ -321,7 +321,7 @@ func (t *Test) sendStdin(data string) error {
 
 // Add these fields to Test struct
 var _ = (*Test)(nil).lastStdout
-var _ = (*Test)(nil).lastStderr  
+var _ = (*Test)(nil).lastStderr
 var _ = (*Test)(nil).pendingStdin
 
 type TestWithOutput struct {
@@ -337,22 +337,22 @@ func (t *Test) updateFile() error {
 	if err != nil {
 		return err
 	}
-	
+
 	lines := strings.Split(string(content), "\n")
-	
+
 	// Apply updates in reverse order to maintain line numbers
 	lineNums := make([]int, 0, len(t.updates))
 	for line := range t.updates {
 		lineNums = append(lineNums, line)
 	}
-	
+
 	for i := len(lineNums) - 1; i >= 0; i-- {
 		lineNum := lineNums[i]
 		if lineNum > 0 && lineNum <= len(lines) {
 			lines[lineNum-1] = t.updates[lineNum]
 		}
 	}
-	
+
 	// Write back
 	return os.WriteFile(t.file, []byte(strings.Join(lines, "\n")), 0644)
 }
@@ -362,7 +362,7 @@ func (t *Test) updateFile() error {
 func matchOutput(actual, expected string) bool {
 	actual = strings.TrimSpace(actual)
 	expected = strings.TrimSpace(expected)
-	
+
 	// Simple string contains for now
 	// Could add regex support later
 	return strings.Contains(actual, expected)

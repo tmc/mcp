@@ -78,17 +78,17 @@ func NewChangeAnalyzer() *ChangeAnalyzer {
 			"upgrade":    ChangeTypeMigration,
 		},
 		keywords: map[string]string{
-			"oauth":          "authentication",
-			"auth":           "authentication",
-			"login":          "authentication",
-			"api":            "api",
-			"endpoint":       "api",
-			"database":       "database",
-			"db":             "database",
-			"performance":    "performance",
-			"speed":          "performance",
-			"security":       "security",
-			"vulnerability":  "security",
+			"oauth":         "authentication",
+			"auth":          "authentication",
+			"login":         "authentication",
+			"api":           "api",
+			"endpoint":      "api",
+			"database":      "database",
+			"db":            "database",
+			"performance":   "performance",
+			"speed":         "performance",
+			"security":      "security",
+			"vulnerability": "security",
 		},
 	}
 }
@@ -140,7 +140,7 @@ func (a *ChangeAnalyzer) AnalyzeChange(description string) (*AnalysisResult, err
 
 	// Extract requirements (simplified)
 	if strings.Contains(desc, "must") || strings.Contains(desc, "require") {
-		result.Requirements.Functional = append(result.Requirements.Functional, 
+		result.Requirements.Functional = append(result.Requirements.Functional,
 			"Extracted from description: "+description)
 	}
 

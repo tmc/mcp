@@ -57,7 +57,7 @@ func main() {
 		}
 		defer file.Close()
 		reader = file
-		
+
 		if *follow {
 			// TODO: Implement file following
 			log.Fatal("Follow mode not yet implemented")
@@ -91,49 +91,49 @@ type Colorizer struct {
 	LineNums bool
 	Filter   *regexp.Regexp
 	Verbose  bool
-	
-	lineNum  int
-	colors   map[string]*color.Color
+
+	lineNum int
+	colors  map[string]*color.Color
 }
 
 // Process reads from input and writes colorized output
 func (c *Colorizer) Process(reader io.Reader, writer io.Writer) error {
 	c.setupColors()
-	
+
 	scanner := bufio.NewScanner(reader)
 	c.lineNum = 0
-	
+
 	for scanner.Scan() {
 		c.lineNum++
 		line := scanner.Text()
-		
+
 		// Apply filter if set
 		if c.Filter != nil && !c.Filter.MatchString(line) {
 			continue
 		}
-		
+
 		// Colorize line
 		colorized := c.colorizeLine(line)
-		
+
 		// Add line number if requested
 		if c.LineNums {
-			colorized = fmt.Sprintf("%s%d:%s %s", 
-				c.colors["linenum"].Sprint(), 
+			colorized = fmt.Sprintf("%s%d:%s %s",
+				c.colors["linenum"].Sprint(),
 				c.lineNum,
-				c.colors["reset"].Sprint(), 
+				c.colors["reset"].Sprint(),
 				colorized)
 		}
-		
+
 		// Write output
 		fmt.Fprintln(writer, colorized)
 	}
-	
+
 	return scanner.Err()
 }
 
 func (c *Colorizer) setupColors() {
 	c.colors = make(map[string]*color.Color)
-	
+
 	if c.NoColor {
 		// Create no-op colors
 		for _, name := range []string{
@@ -145,7 +145,7 @@ func (c *Colorizer) setupColors() {
 		}
 		return
 	}
-	
+
 	// Setup theme colors
 	switch c.Theme {
 	case "dark":
@@ -161,7 +161,7 @@ func (c *Colorizer) setupColors() {
 		c.colors["info"] = color.New(color.FgGreen)
 		c.colors["debug"] = color.New(color.FgCyan)
 		c.colors["linenum"] = color.New(color.FgHiBlack)
-		
+
 	case "light":
 		c.colors["timestamp"] = color.New(color.FgBlue)
 		c.colors["level"] = color.New(color.FgRed)
@@ -175,7 +175,7 @@ func (c *Colorizer) setupColors() {
 		c.colors["info"] = color.New(color.FgGreen)
 		c.colors["debug"] = color.New(color.FgBlue)
 		c.colors["linenum"] = color.New(color.FgBlack)
-		
+
 	default: // default theme
 		c.colors["timestamp"] = color.New(color.FgBlue)
 		c.colors["level"] = color.New(color.FgYellow)
@@ -190,7 +190,7 @@ func (c *Colorizer) setupColors() {
 		c.colors["debug"] = color.New(color.FgCyan)
 		c.colors["linenum"] = color.New(color.FgBlack, color.Faint)
 	}
-	
+
 	c.colors["reset"] = color.New(color.Reset)
 }
 
@@ -200,7 +200,7 @@ func (c *Colorizer) colorizeLine(line string) string {
 	if format == "auto" {
 		format = c.detectFormat(line)
 	}
-	
+
 	switch format {
 	case "json":
 		return c.colorizeJSON(line)
@@ -215,18 +215,18 @@ func (c *Colorizer) colorizeLine(line string) string {
 
 func (c *Colorizer) detectFormat(line string) string {
 	trimmed := strings.TrimSpace(line)
-	
+
 	// Check if it's JSON
 	if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
 		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
-		
+
 		// Check for JSON-RPC
 		if strings.Contains(trimmed, `"jsonrpc"`) || strings.Contains(trimmed, `"method"`) {
 			return "jsonrpc"
 		}
 		return "json"
 	}
-	
+
 	return "plain"
 }
 
@@ -235,10 +235,10 @@ func (c *Colorizer) colorizeJSON(line string) string {
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
 		return line // Return as-is if not valid JSON
 	}
-	
+
 	// Rebuild with colors
 	var parts []string
-	
+
 	// Common log fields
 	if timestamp, ok := data["timestamp"].(string); ok {
 		parts = append(parts, c.colors["timestamp"].Sprint(timestamp))
@@ -257,15 +257,15 @@ func (c *Colorizer) colorizeJSON(line string) string {
 		parts = append(parts, c.colors["message"].Sprint(msg))
 		delete(data, "msg")
 	}
-	
+
 	// Remaining fields
 	for k, v := range data {
-		fieldStr := fmt.Sprintf("%s=%v", 
+		fieldStr := fmt.Sprintf("%s=%v",
 			c.colors["field"].Sprint(k),
 			c.colors["value"].Sprint(v))
 		parts = append(parts, fieldStr)
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 
@@ -274,54 +274,54 @@ func (c *Colorizer) colorizeJSONRPC(line string) string {
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
 		return line
 	}
-	
+
 	var parts []string
-	
+
 	// JSON-RPC version
 	if jsonrpc, ok := data["jsonrpc"].(string); ok {
 		parts = append(parts, c.colors["field"].Sprintf("jsonrpc:%s", jsonrpc))
 	}
-	
+
 	// Method (for requests)
 	if method, ok := data["method"].(string); ok {
 		parts = append(parts, c.colors["method"].Sprintf("method:%s", method))
 	}
-	
+
 	// ID
 	if id := data["id"]; id != nil {
 		parts = append(parts, c.colors["id"].Sprintf("id:%v", id))
 	}
-	
+
 	// Result (for responses)
 	if result := data["result"]; result != nil {
 		resultStr := c.formatValue(result)
 		parts = append(parts, c.colors["value"].Sprintf("result:%s", resultStr))
 	}
-	
+
 	// Error (for error responses)
 	if errData := data["error"]; errData != nil {
 		errStr := c.formatValue(errData)
 		parts = append(parts, c.colors["error"].Sprintf("error:%s", errStr))
 	}
-	
+
 	// Params
 	if params := data["params"]; params != nil {
 		paramsStr := c.formatValue(params)
 		parts = append(parts, c.colors["field"].Sprintf("params:%s", paramsStr))
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 
 func (c *Colorizer) colorizePlain(line string) string {
 	// Simple pattern matching for common log formats
-	
+
 	// Timestamp pattern
 	timestampRe := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2}`)
 	if match := timestampRe.FindString(line); match != "" {
 		line = strings.Replace(line, match, c.colors["timestamp"].Sprint(match), 1)
 	}
-	
+
 	// Log level patterns
 	levels := map[string]*regexp.Regexp{
 		"ERROR": regexp.MustCompile(`\b(ERROR|ERR|FATAL)\b`),
@@ -329,7 +329,7 @@ func (c *Colorizer) colorizePlain(line string) string {
 		"INFO":  regexp.MustCompile(`\b(INFO|INFORMATION)\b`),
 		"DEBUG": regexp.MustCompile(`\b(DEBUG|DBG|TRACE)\b`),
 	}
-	
+
 	for level, re := range levels {
 		if match := re.FindString(line); match != "" {
 			levelColor := c.getLevelColor(strings.ToLower(level))
@@ -337,13 +337,13 @@ func (c *Colorizer) colorizePlain(line string) string {
 			break
 		}
 	}
-	
+
 	// Highlight quoted strings
 	quotedRe := regexp.MustCompile(`"[^"]*"`)
 	line = quotedRe.ReplaceAllStringFunc(line, func(match string) string {
 		return c.colors["value"].Sprint(match)
 	})
-	
+
 	// Highlight key=value pairs
 	kvRe := regexp.MustCompile(`\b(\w+)=([^\s]+)`)
 	line = kvRe.ReplaceAllStringFunc(line, func(match string) string {
@@ -355,7 +355,7 @@ func (c *Colorizer) colorizePlain(line string) string {
 		}
 		return match
 	})
-	
+
 	return line
 }
 

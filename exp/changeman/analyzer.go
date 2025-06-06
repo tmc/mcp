@@ -46,13 +46,13 @@ type Analyzer struct {
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
 		typeKeywords: map[ChangeType][]string{
-			ChangeTypeBugFix: {"fix", "bug", "issue", "error", "crash", "broken", "repair", "resolve", "patch"},
-			ChangeTypeFeature: {"add", "feature", "implement", "new", "enhance", "extend", "create", "support"},
-			ChangeTypeRefactor: {"refactor", "restructure", "reorganize", "cleanup", "simplify", "optimize", "improve"},
-			ChangeTypeTest: {"test", "testing", "coverage", "unit test", "integration test", "spec"},
+			ChangeTypeBugFix:        {"fix", "bug", "issue", "error", "crash", "broken", "repair", "resolve", "patch"},
+			ChangeTypeFeature:       {"add", "feature", "implement", "new", "enhance", "extend", "create", "support"},
+			ChangeTypeRefactor:      {"refactor", "restructure", "reorganize", "cleanup", "simplify", "optimize", "improve"},
+			ChangeTypeTest:          {"test", "testing", "coverage", "unit test", "integration test", "spec"},
 			ChangeTypeDocumentation: {"doc", "documentation", "readme", "comment", "explain", "clarify"},
-			ChangeTypePerformance: {"performance", "speed", "optimize", "faster", "efficient", "cache", "latency"},
-			ChangeTypeSecurity: {"security", "vulnerability", "auth", "encrypt", "permission", "access", "safe"},
+			ChangeTypePerformance:   {"performance", "speed", "optimize", "faster", "efficient", "cache", "latency"},
+			ChangeTypeSecurity:      {"security", "vulnerability", "auth", "encrypt", "permission", "access", "safe"},
 		},
 	}
 }
@@ -70,19 +70,19 @@ func (a *Analyzer) Analyze(description string) *Change {
 	// Normalize description for analysis
 	lowerDesc := strings.ToLower(description)
 	words := strings.Fields(lowerDesc)
-	
+
 	// Detect change type based on keywords
 	change.Type = a.detectChangeType(lowerDesc)
-	
+
 	// Extract keywords
 	change.Keywords = a.extractKeywords(words)
-	
+
 	// Detect impact level
 	change.Impact = a.detectImpact(lowerDesc)
-	
+
 	// Extract component names (simple heuristic: words containing "/" or starting with capitals)
 	change.Components = a.extractComponents(description)
-	
+
 	return change
 }
 
@@ -90,7 +90,7 @@ func (a *Analyzer) Analyze(description string) *Change {
 func (a *Analyzer) detectChangeType(description string) ChangeType {
 	maxScore := 0
 	detectedType := ChangeTypeUnknown
-	
+
 	for changeType, keywords := range a.typeKeywords {
 		score := 0
 		for _, keyword := range keywords {
@@ -103,7 +103,7 @@ func (a *Analyzer) detectChangeType(description string) ChangeType {
 			detectedType = changeType
 		}
 	}
-	
+
 	return detectedType
 }
 
@@ -111,7 +111,7 @@ func (a *Analyzer) detectChangeType(description string) ChangeType {
 func (a *Analyzer) extractKeywords(words []string) []string {
 	keywords := []string{}
 	keywordSet := make(map[string]bool)
-	
+
 	// Collect all keywords from type definitions
 	allKeywords := make(map[string]bool)
 	for _, typeKeywords := range a.typeKeywords {
@@ -119,7 +119,7 @@ func (a *Analyzer) extractKeywords(words []string) []string {
 			allKeywords[keyword] = true
 		}
 	}
-	
+
 	// Find matching keywords
 	for _, word := range words {
 		if allKeywords[word] && !keywordSet[word] {
@@ -127,7 +127,7 @@ func (a *Analyzer) extractKeywords(words []string) []string {
 			keywordSet[word] = true
 		}
 	}
-	
+
 	return keywords
 }
 
@@ -138,13 +138,13 @@ func (a *Analyzer) detectImpact(description string) ChangeImpact {
 		strings.Contains(description, "critical") || strings.Contains(description, "security") {
 		return ImpactHigh
 	}
-	
+
 	// Medium impact keywords
 	if strings.Contains(description, "refactor") || strings.Contains(description, "feature") ||
 		strings.Contains(description, "significant") {
 		return ImpactMedium
 	}
-	
+
 	// Default to low impact
 	return ImpactLow
 }
@@ -153,17 +153,17 @@ func (a *Analyzer) detectImpact(description string) ChangeImpact {
 func (a *Analyzer) extractComponents(description string) []string {
 	components := []string{}
 	words := strings.Fields(description)
-	
+
 	for _, word := range words {
 		// Remove common punctuation
 		word = strings.Trim(word, ".,!?;:")
-		
+
 		// Check for path-like structures
 		if strings.Contains(word, "/") {
 			components = append(components, word)
 			continue
 		}
-		
+
 		// Check for capitalized words that might be component names
 		if len(word) > 0 && strings.ToUpper(word[0:1]) == word[0:1] && word != strings.ToUpper(word) {
 			// Skip common words
@@ -172,7 +172,7 @@ func (a *Analyzer) extractComponents(description string) []string {
 			}
 		}
 	}
-	
+
 	return components
 }
 

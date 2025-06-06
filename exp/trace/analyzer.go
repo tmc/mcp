@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	
+
 	"github.com/tmc/mcp/modelcontextprotocol"
 	"github.com/tmc/mcp/modelcontextprotocol/draft"
 )
@@ -26,28 +26,28 @@ type State struct {
 	IsExecutable bool
 
 	// Discovered elements
-	Tools          []*ToolInfo
-	Handlers       []*HandlerInfo
-	Resources      []*ResourceInfo
-	ServerInfo     *modelcontextprotocol.Implementation
-	ClientInfo     *modelcontextprotocol.Implementation
-	Capabilities   *modelcontextprotocol.ServerCapabilities
+	Tools        []*ToolInfo
+	Handlers     []*HandlerInfo
+	Resources    []*ResourceInfo
+	ServerInfo   *modelcontextprotocol.Implementation
+	ClientInfo   *modelcontextprotocol.Implementation
+	Capabilities *modelcontextprotocol.ServerCapabilities
 
 	// Interaction patterns
-	ToolCalls      map[string]*ToolCallPattern
-	Subscriptions  map[string]*SubscriptionInfo
-	Notifications  []*NotificationInfo
+	ToolCalls     map[string]*ToolCallPattern
+	Subscriptions map[string]*SubscriptionInfo
+	Notifications []*NotificationInfo
 
 	// Advanced features
 	ResourceTemplates []*ResourceTemplateInfo
-	Prompts          []*PromptInfo
-	PromptCalls      map[string]*PromptCallPattern
-	LoggingLevel     string
-	Roots            []*RootInfo
+	Prompts           []*PromptInfo
+	PromptCalls       map[string]*PromptCallPattern
+	LoggingLevel      string
+	Roots             []*RootInfo
 
 	// Error patterns
-	ErrorPatterns    map[string]int
-	ProtocolErrors   []ProtocolError
+	ErrorPatterns  map[string]int
+	ProtocolErrors []ProtocolError
 
 	// Metadata
 	InitializeParams *modelcontextprotocol.InitializeRequestParams
@@ -71,8 +71,8 @@ type ToolCallExample struct {
 
 // HandlerInfo represents a discovered handler pattern
 type HandlerInfo struct {
-	Method    string
-	ParamType string
+	Method     string
+	ParamType  string
 	ResultType string
 	ErrorTypes []string
 }
@@ -301,7 +301,7 @@ func (a *Analyzer) processToolsList(entry *Entry) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -309,13 +309,13 @@ func (a *Analyzer) processToolCall(entry *Entry) error {
 	if entry.Direction == "->" {
 		// Client tool call request
 		var params struct {
-			Method string `json:"method"`
+			Method string                                     `json:"method"`
 			Params modelcontextprotocol.CallToolRequestParams `json:"params"`
 		}
 		if err := json.Unmarshal(entry.Payload, &params); err != nil {
 			return fmt.Errorf("parsing tool call: %w", err)
 		}
-		
+
 		pattern, exists := a.state.ToolCalls[params.Params.Name]
 		if !exists {
 			pattern = &ToolCallPattern{
@@ -325,7 +325,7 @@ func (a *Analyzer) processToolCall(entry *Entry) error {
 			a.state.ToolCalls[params.Params.Name] = pattern
 		}
 		pattern.TotalCalls++
-		
+
 		// Store example
 		for _, tool := range a.state.Tools {
 			if tool.Tool.Name == params.Params.Name {
@@ -346,11 +346,11 @@ func (a *Analyzer) processToolCall(entry *Entry) error {
 		if err := json.Unmarshal(entry.Payload, &response); err != nil {
 			return fmt.Errorf("parsing tool response: %w", err)
 		}
-		
+
 		// Update patterns and examples
 		// (In real implementation, we'd correlate with the request)
 	}
-	
+
 	return nil
 }
 
@@ -362,7 +362,7 @@ func (a *Analyzer) processResourcesList(entry *Entry) error {
 		if err := json.Unmarshal(entry.Payload, &result); err != nil {
 			return fmt.Errorf("parsing resources list: %w", err)
 		}
-		
+
 		for _, resource := range result.Result.Resources {
 			a.state.Resources = append(a.state.Resources, &ResourceInfo{
 				URI:         resource.URI,
@@ -372,7 +372,7 @@ func (a *Analyzer) processResourcesList(entry *Entry) error {
 			})
 		}
 	}
-	
+
 	return nil
 }
 
@@ -644,7 +644,7 @@ func (a *Analyzer) trackHandler(entry *Entry) {
 		handler := &HandlerInfo{
 			Method: method,
 		}
-		
+
 		// Analyze payload structure
 		var payload map[string]any
 		if err := json.Unmarshal(entry.Payload, &payload); err == nil {
@@ -660,7 +660,7 @@ func (a *Analyzer) trackHandler(entry *Entry) {
 				}
 			}
 		}
-		
+
 		a.state.Handlers = append(a.state.Handlers, handler)
 	}
 }
@@ -672,7 +672,7 @@ func (a *Analyzer) addTool(tool *modelcontextprotocol.Tool) {
 			return
 		}
 	}
-	
+
 	a.state.Tools = append(a.state.Tools, &ToolInfo{
 		Tool:     tool,
 		Examples: []ToolCallExample{},
@@ -695,13 +695,13 @@ func inferType(v map[string]any) string {
 		}
 		return "Response"
 	}
-	
+
 	// Check for known patterns
 	if _, hasName := v["name"]; hasName {
 		if _, hasArgs := v["arguments"]; hasArgs {
 			return "CallToolParams"
 		}
 	}
-	
+
 	return "Object"
 }

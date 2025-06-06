@@ -4,24 +4,24 @@
 //
 // Basic usage:
 //
-//     type User struct {
-//         Name  string `json:"name"`
-//         Email string `json:"email"`
-//         Age   int    `json:"age,omitempty"`
-//     }
+//	type User struct {
+//	    Name  string `json:"name"`
+//	    Email string `json:"email"`
+//	    Age   int    `json:"age,omitempty"`
+//	}
 //
-//     schema, err := sourcereflect.FromType(reflect.TypeOf(User{}))
-//     if err != nil {
-//         log.Fatal(err)
-//     }
+//	schema, err := sourcereflect.FromType(reflect.TypeOf(User{}))
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 //
-//     jsonStr, _ := schema.ToPrettyJSON()
-//     fmt.Println(jsonStr)
+//	jsonStr, _ := schema.ToPrettyJSON()
+//	fmt.Println(jsonStr)
 //
 // Using caller context:
 //
-//     schema, err := sourcereflect.SchemaFromCaller(User{})
-//     // schema will include source location metadata
+//	schema, err := sourcereflect.SchemaFromCaller(User{})
+//	// schema will include source location metadata
 //
 // The package supports:
 // - Basic Go types (string, int, float, bool)

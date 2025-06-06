@@ -2,6 +2,7 @@ package generictypes
 
 import (
 	"encoding/json"
+
 	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
@@ -194,19 +195,19 @@ func ExampleBuilders() {
 		WithMimeType("text/plain").
 		WithSize(1024).
 		Build()
-		
+
 	// Building a Tool
 	schema := modelcontextprotocol.ToolSchema{
 		Type:       "object",
 		Properties: make(map[string]json.RawMessage),
 		Required:   []string{"input"},
 	}
-	
+
 	tool, _ := NewToolBuilder("example_tool", schema).
 		WithDescription("An example tool").
 		WithReadOnlyHint(true).
 		Build()
-		
+
 	// Building a Request
 	params := struct {
 		Name  string `json:"name"`
@@ -215,13 +216,13 @@ func ExampleBuilders() {
 		Name:  "test",
 		Value: "value",
 	}
-	
+
 	request, _ := NewRequestBuilder(params).
 		WithProgressToken("token-123").
 		Build()
-		
+
 	_ = resource
-	_ = tool  
+	_ = tool
 	_ = request
 }
 

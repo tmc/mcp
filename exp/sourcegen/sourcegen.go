@@ -20,25 +20,25 @@ type MCPToolDescription struct {
 
 // JSONSchema represents a JSON schema
 type JSONSchema struct {
-	Type                 string                    `json:"type"`
-	Description          string                    `json:"description"`
-	Properties           map[string]*JSONSchema    `json:"properties"`
-	Items                *JSONSchema               `json:"items"`
-	Required             []string                  `json:"required"`
-	Enum                 []interface{}             `json:"enum"`
-	Default              interface{}               `json:"default"`
-	Format               string                    `json:"format"`
-	Minimum              *float64                  `json:"minimum"`
-	Maximum              *float64                  `json:"maximum"`
-	MinLength            *int                      `json:"minLength"`
-	MaxLength            *int                      `json:"maxLength"`
-	Pattern              string                    `json:"pattern"`
-	Ref                  string                    `json:"$ref"`
-	Definitions          map[string]*JSONSchema    `json:"definitions"`
-	AllOf                []*JSONSchema             `json:"allOf"`
-	AnyOf                []*JSONSchema             `json:"anyOf"`
-	OneOf                []*JSONSchema             `json:"oneOf"`
-	AdditionalProperties interface{}               `json:"additionalProperties,omitempty"`
+	Type                 string                 `json:"type"`
+	Description          string                 `json:"description"`
+	Properties           map[string]*JSONSchema `json:"properties"`
+	Items                *JSONSchema            `json:"items"`
+	Required             []string               `json:"required"`
+	Enum                 []interface{}          `json:"enum"`
+	Default              interface{}            `json:"default"`
+	Format               string                 `json:"format"`
+	Minimum              *float64               `json:"minimum"`
+	Maximum              *float64               `json:"maximum"`
+	MinLength            *int                   `json:"minLength"`
+	MaxLength            *int                   `json:"maxLength"`
+	Pattern              string                 `json:"pattern"`
+	Ref                  string                 `json:"$ref"`
+	Definitions          map[string]*JSONSchema `json:"definitions"`
+	AllOf                []*JSONSchema          `json:"allOf"`
+	AnyOf                []*JSONSchema          `json:"anyOf"`
+	OneOf                []*JSONSchema          `json:"oneOf"`
+	AdditionalProperties interface{}            `json:"additionalProperties,omitempty"`
 }
 
 // Generator generates Go source code from schemas
@@ -153,10 +153,10 @@ func (g *Generator) GenerateFromMCPTool(tool *MCPToolDescription) (string, error
 
 	// Generate types
 	var buf bytes.Buffer
-	
+
 	// Add package declaration
 	fmt.Fprintf(&buf, "package %s\n\n", g.packageName)
-	
+
 	toolName := toGoName(tool.Name)
 
 	// Generate input type
@@ -177,23 +177,23 @@ func (g *Generator) GenerateFromMCPTool(tool *MCPToolDescription) (string, error
 	fmt.Fprintf(&buf, "\t// Execute runs the %s tool\n", tool.Name)
 	fmt.Fprintf(&buf, "\tExecute(ctx context.Context, input *%s) (*%s, error)\n", inputTypeName, outputTypeName)
 	fmt.Fprintf(&buf, "}\n\n")
-	
+
 	// Add context import
 	g.imports["context"] = true
-	
+
 	// Generate implementation stub
 	fmt.Fprintf(&buf, "// %sImpl implements the %sTool interface\n", toolName, toolName)
 	fmt.Fprintf(&buf, "type %sImpl struct{}\n\n", toolName)
-	
+
 	fmt.Fprintf(&buf, "// Execute implements %sTool\n", toolName)
 	fmt.Fprintf(&buf, "func (t *%sImpl) Execute(ctx context.Context, input *%s) (*%s, error) {\n", toolName, inputTypeName, outputTypeName)
 	fmt.Fprintf(&buf, "\t// TODO: Implement tool logic\n")
 	fmt.Fprintf(&buf, "\treturn nil, fmt.Errorf(\"not implemented\")\n")
 	fmt.Fprintf(&buf, "}\n\n")
-	
+
 	// Add fmt import for error
 	g.imports["fmt"] = true
-	
+
 	// Add imports
 	return g.finalizeSource(&buf)
 }
@@ -201,15 +201,15 @@ func (g *Generator) GenerateFromMCPTool(tool *MCPToolDescription) (string, error
 // GenerateFromJSONSchema generates Go types from a JSON schema
 func (g *Generator) GenerateFromJSONSchema(name string, schema *JSONSchema) (string, error) {
 	var buf bytes.Buffer
-	
+
 	// Add package declaration
 	fmt.Fprintf(&buf, "package %s\n\n", g.packageName)
-	
+
 	// Generate the type
 	if err := g.generateType(&buf, name, schema); err != nil {
 		return "", err
 	}
-	
+
 	return g.finalizeSource(&buf)
 }
 
@@ -220,7 +220,7 @@ func (g *Generator) generateType(buf *bytes.Buffer, name string, schema *JSONSch
 		// TODO: Implement reference resolution
 		return fmt.Errorf("references not yet implemented: %s", schema.Ref)
 	}
-	
+
 	// Handle type based on schema type
 	switch schema.Type {
 	case "object":
@@ -246,45 +246,45 @@ func (g *Generator) generateStruct(buf *bytes.Buffer, name string, schema *JSONS
 	} else {
 		fmt.Fprintf(buf, "// %s represents %s\n", name, toHumanReadable(name))
 	}
-	
+
 	fmt.Fprintf(buf, "type %s struct {\n", name)
-	
+
 	// Sort properties for consistent output
 	propNames := make([]string, 0, len(schema.Properties))
 	for propName := range schema.Properties {
 		propNames = append(propNames, propName)
 	}
 	sort.Strings(propNames)
-	
+
 	// Generate struct fields
 	for _, propName := range propNames {
 		prop := schema.Properties[propName]
-		
+
 		fieldName := toGoName(propName)
 		fieldType := g.jsonSchemaToGoType(prop)
-		
+
 		// Check if field is required
 		isRequired := containsString(schema.Required, propName)
-		
+
 		// Add field comment
 		if prop.Description != "" {
 			fmt.Fprintf(buf, "\t// %s %s\n", fieldName, prop.Description)
 		}
-		
+
 		// Handle pointer types for optional fields
 		if !isRequired && needsPointer(fieldType) {
 			fieldType = "*" + fieldType
 		}
-		
+
 		// Add JSON tag
 		jsonTag := propName
 		if !isRequired {
 			jsonTag += ",omitempty"
 		}
-		
+
 		fmt.Fprintf(buf, "\t%s %s `json:\"%s\"`\n", fieldName, fieldType, jsonTag)
 	}
-	
+
 	fmt.Fprintf(buf, "}\n\n")
 	return nil
 }
@@ -294,27 +294,27 @@ func (g *Generator) generateArray(buf *bytes.Buffer, name string, schema *JSONSc
 	if schema.Items == nil {
 		return fmt.Errorf("array schema missing items definition")
 	}
-	
+
 	itemType := g.jsonSchemaToGoType(schema.Items)
-	
+
 	// Generate type alias
 	if schema.Description != "" {
 		fmt.Fprintf(buf, "// %s %s\n", name, schema.Description)
 	}
 	fmt.Fprintf(buf, "type %s []%s\n\n", name, itemType)
-	
+
 	return nil
 }
 
 // generateSimpleType generates a simple type alias
 func (g *Generator) generateSimpleType(buf *bytes.Buffer, name string, schema *JSONSchema) error {
 	goType := g.jsonSchemaToGoType(schema)
-	
+
 	if schema.Description != "" {
 		fmt.Fprintf(buf, "// %s %s\n", name, schema.Description)
 	}
 	fmt.Fprintf(buf, "type %s %s\n\n", name, goType)
-	
+
 	// Generate enum constants if present
 	if len(schema.Enum) > 0 {
 		fmt.Fprintf(buf, "// %s values\n", name)
@@ -329,7 +329,7 @@ func (g *Generator) generateSimpleType(buf *bytes.Buffer, name string, schema *J
 		}
 		fmt.Fprintf(buf, ")\n\n")
 	}
-	
+
 	return nil
 }
 
@@ -393,42 +393,42 @@ func (g *Generator) jsonSchemaToGoType(schema *JSONSchema) string {
 // finalizeSource adds imports and formats the generated source
 func (g *Generator) finalizeSource(buf *bytes.Buffer) (string, error) {
 	var finalBuf bytes.Buffer
-	
+
 	// Write package declaration
 	lines := strings.Split(buf.String(), "\n")
 	if len(lines) > 0 {
 		finalBuf.WriteString(lines[0] + "\n\n")
 	}
-	
+
 	// Write imports if any
 	if len(g.imports) > 0 {
 		finalBuf.WriteString("import (\n")
-		
+
 		// Sort imports
 		importList := make([]string, 0, len(g.imports))
 		for imp := range g.imports {
 			importList = append(importList, imp)
 		}
 		sort.Strings(importList)
-		
+
 		for _, imp := range importList {
 			fmt.Fprintf(&finalBuf, "\t\"%s\"\n", imp)
 		}
 		finalBuf.WriteString(")\n\n")
 	}
-	
+
 	// Write the rest of the code
 	if len(lines) > 1 {
 		finalBuf.WriteString(strings.Join(lines[1:], "\n"))
 	}
-	
+
 	// Format the source
 	formatted, err := format.Source(finalBuf.Bytes())
 	if err != nil {
 		// Return unformatted if formatting fails
 		return finalBuf.String(), nil
 	}
-	
+
 	return string(formatted), nil
 }
 
@@ -439,11 +439,11 @@ func toGoName(s string) string {
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '_' || r == '-' || r == ' '
 	})
-	
+
 	for i, part := range parts {
 		parts[i] = strings.Title(part)
 	}
-	
+
 	return strings.Join(parts, "")
 }
 
@@ -451,7 +451,7 @@ func toHumanReadable(s string) string {
 	// Convert PascalCase to human readable
 	var result []string
 	var current []rune
-	
+
 	for _, r := range s {
 		if len(current) > 0 && r >= 'A' && r <= 'Z' {
 			result = append(result, string(current))
@@ -460,11 +460,11 @@ func toHumanReadable(s string) string {
 			current = append(current, r)
 		}
 	}
-	
+
 	if len(current) > 0 {
 		result = append(result, string(current))
 	}
-	
+
 	return strings.ToLower(strings.Join(result, " "))
 }
 

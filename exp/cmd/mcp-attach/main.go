@@ -20,7 +20,6 @@
 //	-socket-env string Environment variable to set (default: MCP_SOCKET_PATH)
 //	-root-dir string   Root directory for service/socket discovery (default: ~/.mcpd or $XDG_RUNTIME_DIR/mcpd)
 //	-v                 Verbose mode
-//
 package main
 
 import (
@@ -181,7 +180,7 @@ func isPID(s string) bool {
 func findSocketByPID(pid int) (string, error) {
 	// Determine socket root directory
 	rootDir := getMCPDRootDir()
-	
+
 	// Try different possible socket patterns
 	patterns := []string{
 		filepath.Join(rootDir, fmt.Sprintf("sock.%d", pid)),
@@ -206,11 +205,11 @@ func findSocketByServiceName(name string) (string, error) {
 	// Check in ~/.srv/mcp directory first
 	srvDir := getSrvRootDir()
 	srvPath := filepath.Join(srvDir, name)
-	
+
 	if *verboseFlag {
 		log.Printf("Checking for service at: %s", srvPath)
 	}
-	
+
 	if fileExists(srvPath) {
 		// Read the socket path from the service file
 		content, err := os.ReadFile(srvPath)
@@ -227,11 +226,11 @@ func findSocketByServiceName(name string) (string, error) {
 	// If not in service dir, check if service file in ~/.mcpd
 	mcpdRoot := getMCPDRootDir()
 	sockPath := filepath.Join(mcpdRoot, fmt.Sprintf("svc.%s.sock", name))
-	
+
 	if *verboseFlag {
 		log.Printf("Checking for service socket at: %s", sockPath)
 	}
-	
+
 	if fileExists(sockPath) && isSocket(sockPath) {
 		return sockPath, nil
 	}
@@ -248,12 +247,12 @@ func findSocketByServiceName(name string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("error reading 'current' symlink: %w", err)
 			}
-			
+
 			// If target is relative, make it absolute
 			if !filepath.IsAbs(target) {
 				target = filepath.Join(mcpdRoot, target)
 			}
-			
+
 			if isSocket(target) {
 				return target, nil
 			}
@@ -269,12 +268,12 @@ func getMCPDRootDir() string {
 	if *rootDirFlag != "" {
 		return *rootDirFlag
 	}
-	
+
 	// Use XDG_RUNTIME_DIR if available
 	if xdgDir := os.Getenv("XDG_RUNTIME_DIR"); xdgDir != "" {
 		return filepath.Join(xdgDir, "mcpd")
 	}
-	
+
 	// Fall back to ~/.mcpd
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -289,7 +288,7 @@ func getSrvRootDir() string {
 	if *srvDirFlag != "" {
 		return *srvDirFlag
 	}
-	
+
 	// Fall back to ~/.srv/mcp
 	home, err := os.UserHomeDir()
 	if err != nil {

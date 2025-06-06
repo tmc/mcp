@@ -24,10 +24,10 @@ import (
 type LLMOracle interface {
 	// EvaluateTestQuality assesses the quality of a test case based on coverage patterns
 	EvaluateTestQuality(ctx context.Context, coverage *CoverageSnapshot, testCase interface{}) (*TestQualityAssessment, error)
-	
+
 	// SuggestCoverageTargets recommends areas to focus fuzzing efforts
 	SuggestCoverageTargets(ctx context.Context, coverage *CoverageSnapshot) (*CoverageGuidance, error)
-	
+
 	// AnalyzeCoveragePattern identifies patterns in coverage data
 	AnalyzeCoveragePattern(ctx context.Context, coverage *CoverageSnapshot) (*PatternAnalysis, error)
 }
@@ -70,16 +70,16 @@ type PatternAnalysis struct {
 
 // CoverageSnapshot represents a point-in-time coverage state
 type CoverageSnapshot struct {
-	Timestamp      time.Time                    `json:"timestamp"`
-	TotalLines     int                          `json:"total_lines"`
-	CoveredLines   int                          `json:"covered_lines"`
-	CoverageRatio  float64                      `json:"coverage_ratio"`
-	PackageStats   map[string]*PackageCoverage  `json:"package_stats"`
-	FunctionStats  map[string]*FunctionCoverage `json:"function_stats"`
-	HotPaths       []string                     `json:"hot_paths"`
-	ColdPaths      []string                     `json:"cold_paths"`
-	CallGraph      map[string][]string          `json:"call_graph"`
-	Metadata       map[string]interface{}       `json:"metadata"`
+	Timestamp     time.Time                    `json:"timestamp"`
+	TotalLines    int                          `json:"total_lines"`
+	CoveredLines  int                          `json:"covered_lines"`
+	CoverageRatio float64                      `json:"coverage_ratio"`
+	PackageStats  map[string]*PackageCoverage  `json:"package_stats"`
+	FunctionStats map[string]*FunctionCoverage `json:"function_stats"`
+	HotPaths      []string                     `json:"hot_paths"`
+	ColdPaths     []string                     `json:"cold_paths"`
+	CallGraph     map[string][]string          `json:"call_graph"`
+	Metadata      map[string]interface{}       `json:"metadata"`
 }
 
 // PackageCoverage tracks coverage at package level
@@ -94,13 +94,13 @@ type PackageCoverage struct {
 
 // FunctionCoverage tracks coverage at function level
 type FunctionCoverage struct {
-	Name          string  `json:"name"`
-	Package       string  `json:"package"`
-	TotalLines    int     `json:"total_lines"`
-	CoveredLines  int     `json:"covered_lines"`
-	CoverageRatio float64 `json:"coverage_ratio"`
-	CallCount     int64   `json:"call_count"`
-	Complexity    float64 `json:"complexity"`
+	Name          string    `json:"name"`
+	Package       string    `json:"package"`
+	TotalLines    int       `json:"total_lines"`
+	CoveredLines  int       `json:"covered_lines"`
+	CoverageRatio float64   `json:"coverage_ratio"`
+	CallCount     int64     `json:"call_count"`
+	Complexity    float64   `json:"complexity"`
 	LastHit       time.Time `json:"last_hit"`
 }
 
@@ -110,20 +110,20 @@ type EnhancedCoverageCoordinator struct {
 	oracle          LLMOracle
 	snapshots       []*CoverageSnapshot
 	currentSnapshot *CoverageSnapshot
-	
+
 	// Configuration
-	maxSnapshots    int
+	maxSnapshots     int
 	snapshotInterval time.Duration
-	
+
 	// Event handlers
 	onCoverageChange func(*CoverageSnapshot)
 	onTestQuality    func(*TestQualityAssessment)
 	onGuidance       func(*CoverageGuidance)
-	
+
 	// Metrics
 	totalEvaluations int64
 	totalGuidance    int64
-	
+
 	// Background processing
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -146,7 +146,7 @@ func GetCoordinator() *EnhancedCoverageCoordinator {
 			ctx:              ctx,
 			cancel:           cancel,
 		}
-		
+
 		// Start background processing
 		coordinator.wg.Add(1)
 		go coordinator.backgroundProcessor()
@@ -178,7 +178,7 @@ func (c *EnhancedCoverageCoordinator) SetEventHandlers(
 func (c *EnhancedCoverageCoordinator) TakeSnapshot() *CoverageSnapshot {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	snapshot := &CoverageSnapshot{
 		Timestamp:     time.Now(),
 		PackageStats:  make(map[string]*PackageCoverage),
@@ -188,26 +188,26 @@ func (c *EnhancedCoverageCoordinator) TakeSnapshot() *CoverageSnapshot {
 		CallGraph:     make(map[string][]string),
 		Metadata:      make(map[string]interface{}),
 	}
-	
+
 	// Collect coverage data from runtime
 	// This would integrate with actual Go coverage infrastructure
 	snapshot.TotalLines = c.getTotalLines()
 	snapshot.CoveredLines = c.getCoveredLines()
 	snapshot.CoverageRatio = float64(snapshot.CoveredLines) / float64(snapshot.TotalLines)
-	
+
 	// Add snapshot to history
 	c.snapshots = append(c.snapshots, snapshot)
 	if len(c.snapshots) > c.maxSnapshots {
 		c.snapshots = c.snapshots[1:]
 	}
-	
+
 	c.currentSnapshot = snapshot
-	
+
 	// Trigger event handler
 	if c.onCoverageChange != nil {
 		go c.onCoverageChange(snapshot)
 	}
-	
+
 	return snapshot
 }
 
@@ -217,29 +217,29 @@ func (c *EnhancedCoverageCoordinator) EvaluateTestQuality(ctx context.Context, t
 	oracle := c.oracle
 	snapshot := c.currentSnapshot
 	c.mu.RUnlock()
-	
+
 	if oracle == nil {
 		return nil, fmt.Errorf("no LLM oracle configured")
 	}
-	
+
 	if snapshot == nil {
 		snapshot = c.TakeSnapshot()
 	}
-	
+
 	assessment, err := oracle.EvaluateTestQuality(ctx, snapshot, testCase)
 	if err != nil {
 		return nil, fmt.Errorf("LLM evaluation failed: %w", err)
 	}
-	
+
 	c.mu.Lock()
 	c.totalEvaluations++
 	c.mu.Unlock()
-	
+
 	// Trigger event handler
 	if c.onTestQuality != nil {
 		go c.onTestQuality(assessment)
 	}
-	
+
 	return assessment, nil
 }
 
@@ -249,29 +249,29 @@ func (c *EnhancedCoverageCoordinator) GetCoverageGuidance(ctx context.Context) (
 	oracle := c.oracle
 	snapshot := c.currentSnapshot
 	c.mu.RUnlock()
-	
+
 	if oracle == nil {
 		return nil, fmt.Errorf("no LLM oracle configured")
 	}
-	
+
 	if snapshot == nil {
 		snapshot = c.TakeSnapshot()
 	}
-	
+
 	guidance, err := oracle.SuggestCoverageTargets(ctx, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("LLM guidance failed: %w", err)
 	}
-	
+
 	c.mu.Lock()
 	c.totalGuidance++
 	c.mu.Unlock()
-	
+
 	// Trigger event handler
 	if c.onGuidance != nil {
 		go c.onGuidance(guidance)
 	}
-	
+
 	return guidance, nil
 }
 
@@ -279,7 +279,7 @@ func (c *EnhancedCoverageCoordinator) GetCoverageGuidance(ctx context.Context) (
 func (c *EnhancedCoverageCoordinator) GetSnapshots() []*CoverageSnapshot {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	snapshots := make([]*CoverageSnapshot, len(c.snapshots))
 	copy(snapshots, c.snapshots)
 	return snapshots
@@ -289,7 +289,7 @@ func (c *EnhancedCoverageCoordinator) GetSnapshots() []*CoverageSnapshot {
 func (c *EnhancedCoverageCoordinator) GetMetrics() map[string]interface{} {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"total_evaluations": c.totalEvaluations,
 		"total_guidance":    c.totalGuidance,
@@ -301,10 +301,10 @@ func (c *EnhancedCoverageCoordinator) GetMetrics() map[string]interface{} {
 // backgroundProcessor handles periodic tasks
 func (c *EnhancedCoverageCoordinator) backgroundProcessor() {
 	defer c.wg.Done()
-	
+
 	ticker := time.NewTicker(c.snapshotInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -341,16 +341,16 @@ func (c *EnhancedCoverageCoordinator) getCoveredLines() int {
 func initHook(istest bool) {
 	// Initialize enhanced coordinator
 	coordinator := GetCoordinator()
-	
+
 	// Enhanced logging with LLM awareness
 	if os.Getenv("COVERAGE_DEBUG") != "" {
-		log.Printf("Enhanced coverage initialized (test=%v, LLM=%v)", 
+		log.Printf("Enhanced coverage initialized (test=%v, LLM=%v)",
 			istest, coordinator.oracle != nil)
 	}
-	
+
 	// Call original initialization
 	cfile.InitHook(istest)
-	
+
 	// Take initial snapshot
 	coordinator.TakeSnapshot()
 }
@@ -360,15 +360,15 @@ func initHook(istest bool) {
 // LLM oracle insights and additional metadata.
 func WriteMetaDir(dir string) error {
 	coordinator := GetCoordinator()
-	
+
 	// Take snapshot before writing
 	snapshot := coordinator.TakeSnapshot()
-	
+
 	// Write enhanced metadata if oracle is available
 	if coordinator.oracle != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		
+
 		if analysis, err := coordinator.oracle.AnalyzeCoveragePattern(ctx, snapshot); err == nil {
 			// Write LLM analysis to separate file
 			analysisFile := fmt.Sprintf("%s/llm_analysis.json", dir)
@@ -378,7 +378,7 @@ func WriteMetaDir(dir string) error {
 			}
 		}
 	}
-	
+
 	// Write standard metadata
 	return cfile.WriteMetaDir(dir)
 }
@@ -395,14 +395,14 @@ func WriteMeta(w io.Writer) error {
 // Enhanced with LLM analysis and guidance.
 func WriteCountersDir(dir string) error {
 	coordinator := GetCoordinator()
-	
+
 	// Take snapshot and get guidance if oracle available
 	snapshot := coordinator.TakeSnapshot()
-	
+
 	if coordinator.oracle != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		
+
 		if guidance, err := coordinator.GetCoverageGuidance(ctx); err == nil {
 			// Write guidance to separate file
 			guidanceFile := fmt.Sprintf("%s/coverage_guidance.json", dir)
@@ -411,7 +411,7 @@ func WriteCountersDir(dir string) error {
 				f.Close()
 			}
 		}
-		
+
 		// Write snapshot data
 		snapshotFile := fmt.Sprintf("%s/coverage_snapshot.json", dir)
 		if f, err := os.Create(snapshotFile); err == nil {
@@ -419,7 +419,7 @@ func WriteCountersDir(dir string) error {
 			f.Close()
 		}
 	}
-	
+
 	return cfile.WriteCountersDir(dir)
 }
 
@@ -434,10 +434,10 @@ func WriteCounters(w io.Writer) error {
 // currently running program. Enhanced with snapshot preservation.
 func ClearCounters() error {
 	coordinator := GetCoordinator()
-	
+
 	// Take snapshot before clearing
 	coordinator.TakeSnapshot()
-	
+
 	return cfile.ClearCounters()
 }
 
@@ -451,7 +451,7 @@ func RegisterFuzzingHook(hook func(*CoverageSnapshot, *CoverageGuidance)) {
 			if coordinator.oracle != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				
+
 				if guidance, err := coordinator.GetCoverageGuidance(ctx); err == nil {
 					hook(snapshot, guidance)
 				}
@@ -474,7 +474,7 @@ func TrackFunctionEntry(pkg, fn string) {
 	coordinator := GetCoordinator()
 	coordinator.mu.Lock()
 	defer coordinator.mu.Unlock()
-	
+
 	if coordinator.currentSnapshot != nil {
 		if funcCov, exists := coordinator.currentSnapshot.FunctionStats[fn]; exists {
 			funcCov.CallCount++

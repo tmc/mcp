@@ -12,11 +12,11 @@ import (
 
 func main() {
 	var (
-		testFile    = flag.String("test", "", "Test file to mutate")
-		outputDir   = flag.String("output", "mutations", "Output directory for mutations")
-		strategies  = flag.String("strategies", "all", "Mutation strategies: all, reorder, fuzz, timing, error")
-		count       = flag.Int("count", 10, "Number of mutations to generate")
-		verbose     = flag.Bool("verbose", false, "Verbose output")
+		testFile   = flag.String("test", "", "Test file to mutate")
+		outputDir  = flag.String("output", "mutations", "Output directory for mutations")
+		strategies = flag.String("strategies", "all", "Mutation strategies: all, reorder, fuzz, timing, error")
+		count      = flag.Int("count", 10, "Number of mutations to generate")
+		verbose    = flag.Bool("verbose", false, "Verbose output")
 	)
 	flag.Parse()
 
@@ -65,13 +65,13 @@ func main() {
 	for i, mutation := range mutations {
 		fileName := fmt.Sprintf("%s_mutation_%d_%s.txt", baseFileName, i+1, mutation.Type)
 		outputPath := filepath.Join(*outputDir, fileName)
-		
+
 		err := os.WriteFile(outputPath, []byte(mutation.Content), 0644)
 		if err != nil {
 			log.Printf("Failed to write mutation %d: %v", i+1, err)
 			continue
 		}
-		
+
 		if *verbose {
 			fmt.Printf("Created mutation: %s (type: %s)\n", outputPath, mutation.Type)
 		}

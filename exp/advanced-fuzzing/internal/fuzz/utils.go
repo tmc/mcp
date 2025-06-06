@@ -41,7 +41,7 @@ func LoadConfig(configPath string) (*CoordinatorConfig, error) {
 	if configPath == "" {
 		return DefaultConfig(), nil
 	}
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -49,12 +49,12 @@ func LoadConfig(configPath string) (*CoordinatorConfig, error) {
 		}
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	var config CoordinatorConfig
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
-	
+
 	return &config, nil
 }
 
@@ -64,13 +64,13 @@ func (c *CoordinatorConfig) SaveConfig(configPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	// Ensure directory exists
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	
+
 	return os.WriteFile(configPath, data, 0644)
 }
 
@@ -96,12 +96,12 @@ func (sm *SessionManager) CreateSession(ctx context.Context, sessionID string, o
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Apply session options
 	if options != nil {
 		session.Metadata = options
 	}
-	
+
 	sm.sessions[sessionID] = session
 	return session, nil
 }
@@ -127,7 +127,7 @@ func (sm *SessionManager) UpdateSession(sessionID string, progress *SessionProgr
 	if !exists {
 		return fmt.Errorf("session %s not found", sessionID)
 	}
-	
+
 	return sm.coordinator.UpdateSessionProgress(
 		sessionID,
 		progress.Iterations,
@@ -142,7 +142,7 @@ func (sm *SessionManager) CompleteSession(sessionID string, status SessionStatus
 	if err := sm.coordinator.CompleteSession(sessionID, status); err != nil {
 		return err
 	}
-	
+
 	delete(sm.sessions, sessionID)
 	return nil
 }
@@ -157,14 +157,14 @@ type SessionProgress struct {
 
 // TargetManager manages fuzzing targets
 type TargetManager struct {
-	targets    []*FuzzTarget
+	targets     []*FuzzTarget
 	coordinator *MultiModalCoordinator
 }
 
 // NewTargetManager creates a new target manager
 func NewTargetManager(coordinator *MultiModalCoordinator) *TargetManager {
 	return &TargetManager{
-		targets:    make([]*FuzzTarget, 0),
+		targets:     make([]*FuzzTarget, 0),
 		coordinator: coordinator,
 	}
 }
@@ -284,14 +284,14 @@ func NewMetricsCollector(coordinator *MultiModalCoordinator) *MetricsCollector {
 // CollectMetrics collects current metrics
 func (mc *MetricsCollector) CollectMetrics() map[string]interface{} {
 	metrics := mc.coordinator.GetMetrics()
-	
+
 	// Add collection metadata
 	metrics["collection_time"] = time.Now()
 	metrics["uptime"] = time.Since(mc.lastUpdate)
-	
+
 	mc.metrics = metrics
 	mc.lastUpdate = time.Now()
-	
+
 	return metrics
 }
 
@@ -303,12 +303,12 @@ func (mc *MetricsCollector) GetMetrics() map[string]interface{} {
 // ExportMetrics exports metrics to file
 func (mc *MetricsCollector) ExportMetrics(filepath string) error {
 	metrics := mc.CollectMetrics()
-	
+
 	data, err := json.MarshalIndent(metrics, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal metrics: %w", err)
 	}
-	
+
 	return os.WriteFile(filepath, data, 0644)
 }
 
@@ -331,7 +331,7 @@ func (l *Logger) Log(level, message string, context map[string]interface{}) {
 	if !l.enabled {
 		return
 	}
-	
+
 	contextJSON, _ := json.Marshal(context)
 	log.Printf("[%s] %s: %s - %s", l.prefix, level, message, string(contextJSON))
 }

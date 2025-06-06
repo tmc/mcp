@@ -4,7 +4,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -158,21 +157,21 @@ func (c *TunnelClient) startLocalServer() error {
 
 		c.localServer = server
 		log.Printf("Started local stdio server: %s %v", c.localCmd, c.localArgs)
-		
+
 	case "sse", "http":
 		// For HTTP-based transports, assume the server is already running
 		baseURL := c.localCmd
 		if !strings.HasPrefix(baseURL, "http") {
 			baseURL = "http://" + baseURL
 		}
-		
+
 		c.localServer = &LocalServer{
 			transport: c.transport,
 			client:    &http.Client{Timeout: 30 * time.Second},
 			baseURL:   baseURL,
 		}
 		log.Printf("Connecting to local %s server at %s", c.transport, baseURL)
-		
+
 	default:
 		return fmt.Errorf("unsupported transport: %s", c.transport)
 	}
@@ -223,22 +222,22 @@ func (c *TunnelClient) handleRequest(msg TunnelMessage) {
 			// Read response with proper JSON message boundary detection
 			scanner := bufio.NewScanner(c.localServer.stdout)
 			scanner.Buffer(make([]byte, 64*1024), 64*1024)
-			
+
 			var responseData []byte
 			bracketCount := 0
 			inString := false
 			escape := false
-			
+
 			for scanner.Scan() {
 				line := scanner.Bytes()
-				
+
 				// Simple JSON object detection
 				for _, b := range line {
 					if escape {
 						escape = false
 						continue
 					}
-					
+
 					switch b {
 					case '\\':
 						if inString {
@@ -258,10 +257,10 @@ func (c *TunnelClient) handleRequest(msg TunnelMessage) {
 						}
 					}
 				}
-				
+
 				responseData = append(responseData, line...)
 				responseData = append(responseData, '\n')
-				
+
 				// Check if we have a complete JSON object
 				if bracketCount == 0 && len(responseData) > 0 {
 					// Try to parse as valid JSON
@@ -272,7 +271,7 @@ func (c *TunnelClient) handleRequest(msg TunnelMessage) {
 					}
 				}
 			}
-			
+
 			if err := scanner.Err(); err != nil {
 				response.Error = fmt.Sprintf("Failed to read response: %v", err)
 			} else if len(response.Payload) == 0 {

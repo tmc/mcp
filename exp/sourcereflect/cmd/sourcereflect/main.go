@@ -100,10 +100,10 @@ func funcToInputSchema(funcDecl *ast.FuncDecl) *sourcereflect.Schema {
 
 func main() {
 	var (
-		pretty      = flag.Bool("pretty", false, "Output pretty-printed JSON")
-		typeName    = flag.String("type", "", "Type name to generate schema for")
-		funcName    = flag.String("func", "", "Function name to generate MCP tool description for")
-		showCaller  = flag.Bool("caller", false, "Include caller information in schema")
+		pretty       = flag.Bool("pretty", false, "Output pretty-printed JSON")
+		typeName     = flag.String("type", "", "Type name to generate schema for")
+		funcName     = flag.String("func", "", "Function name to generate MCP tool description for")
+		showCaller   = flag.Bool("caller", false, "Include caller information in schema")
 		analyzeHints = flag.Bool("analyze-hints", false, "Analyze source code to determine MCP tool hints")
 	)
 	flag.Parse()
@@ -128,7 +128,7 @@ func main() {
 	}
 
 	filename := flag.Arg(0)
-	
+
 	// Read and parse the Go file
 	src, err := os.ReadFile(filename)
 	if err != nil {
@@ -281,7 +281,7 @@ func structToSchema(s *ast.StructType, typeName string) (*sourcereflect.Schema, 
 		// Parse JSON tag
 		jsonName := fieldName
 		isRequired := true
-		
+
 		if field.Tag != nil {
 			tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
 			jsonTag := tag.Get("json")

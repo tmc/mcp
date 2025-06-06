@@ -8,14 +8,14 @@ import (
 )
 
 type User struct {
-	ID        int                   `json:"id"`
-	Username  string                `json:"username"`
-	Email     string                `json:"email"`
-	Age       int                   `json:"age,omitempty"`
-	IsActive  bool                  `json:"is_active"`
-	Tags      []string              `json:"tags"`
-	Settings  map[string]string     `json:"settings"`
-	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	ID       int                    `json:"id"`
+	Username string                 `json:"username"`
+	Email    string                 `json:"email"`
+	Age      int                    `json:"age,omitempty"`
+	IsActive bool                   `json:"is_active"`
+	Tags     []string               `json:"tags"`
+	Settings map[string]string      `json:"settings"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 func main() {

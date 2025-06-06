@@ -12,12 +12,12 @@ import (
 
 // Config represents the configuration for generating an MCP server
 type Config struct {
-	BinaryPath   string
-	OutputDir    string
-	ModuleName   string
-	ServerName   string
-	ToolName     string
-	Description  string
+	BinaryPath  string
+	OutputDir   string
+	ModuleName  string
+	ServerName  string
+	ToolName    string
+	Description string
 }
 
 // Generator generates an MCP server from a Go binary
@@ -90,7 +90,7 @@ func (g *Generator) GetToolDefinition() map[string]interface{} {
 			// String default - remove quotes if present
 			defaultVal := flag.Default
 			if len(defaultVal) > 2 && defaultVal[0] == '"' && defaultVal[len(defaultVal)-1] == '"' {
-				defaultVal = defaultVal[1:len(defaultVal)-1]
+				defaultVal = defaultVal[1 : len(defaultVal)-1]
 			}
 			prop["default"] = defaultVal
 		}
@@ -175,12 +175,12 @@ func (g *Generator) extractFlags() error {
 	// For now, we'll use a simple approach
 	// In a real implementation, we would analyze the binary's source
 	// or use reflection to extract flag definitions
-	
+
 	// This is a placeholder that would be replaced with actual analysis
 	g.flags = []FlagDef{
 		{Name: "help", Type: "bool", Default: "false", Description: "Show help"},
 	}
-	
+
 	return nil
 }
 

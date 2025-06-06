@@ -99,7 +99,7 @@ func (f *TestFinder) analyzeTestFile(path string, analysis *AnalysisResult) (boo
 
 	// Simple keyword matching for now
 	contentStr := string(content)
-	
+
 	// Check for affected components
 	for _, component := range analysis.Components {
 		if strings.Contains(strings.ToLower(contentStr), strings.ToLower(component)) {
@@ -218,24 +218,24 @@ func (f *TestFinder) suggestTestName(requirement string) string {
 	if len(words) > 3 {
 		words = words[:3]
 	}
-	
+
 	testName := "Test"
 	for _, word := range words {
 		testName += strings.Title(strings.ToLower(word))
 	}
-	
+
 	return testName
 }
 
 func (f *TestFinder) testExists(testName string, existing *TestFinderResult) bool {
 	allTests := append(existing.DefinitelyAffected, existing.PossiblyAffected...)
 	allTests = append(allTests, existing.RelatedTests...)
-	
+
 	for _, test := range allTests {
 		if strings.Contains(test, testName) {
 			return true
 		}
 	}
-	
+
 	return false
 }

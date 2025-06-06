@@ -33,18 +33,18 @@ func (fe *FlagExtractor) ExtractFlags() ([]FlagDef, error) {
 		if err != nil {
 			return err
 		}
-		
+
 		if !strings.HasSuffix(path, ".go") || strings.Contains(path, "_test.go") {
 			return nil
 		}
-		
+
 		return fe.analyzeFile(path)
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return fe.flags, nil
 }
 
@@ -59,13 +59,13 @@ func (fe *FlagExtractor) analyzeFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 	if err != nil {
 		return err
 	}
-	
+
 	ast.Inspect(node, func(n ast.Node) bool {
 		// Check for stdin usage
 		switch n := n.(type) {
@@ -121,7 +121,7 @@ func (fe *FlagExtractor) analyzeFile(filename string) error {
 
 		return true
 	})
-	
+
 	return nil
 }
 
@@ -130,9 +130,9 @@ func (fe *FlagExtractor) extractStringFlag(call *ast.CallExpr) {
 	if len(call.Args) < 3 {
 		return
 	}
-	
+
 	flag := FlagDef{Type: "string"}
-	
+
 	// Extract flag name
 	if name := extractStringLiteral(call.Args[0]); name != "" {
 		flag.Name = name
@@ -141,7 +141,7 @@ func (fe *FlagExtractor) extractStringFlag(call *ast.CallExpr) {
 			flag.Name = name
 		}
 	}
-	
+
 	// Extract default value (second argument for String, third for StringVar)
 	defIndex := 1
 	descIndex := 2
@@ -158,7 +158,7 @@ func (fe *FlagExtractor) extractStringFlag(call *ast.CallExpr) {
 	if desc := extractStringLiteral(call.Args[descIndex]); desc != "" {
 		flag.Description = desc
 	}
-	
+
 	if flag.Name != "" {
 		fe.flags = append(fe.flags, flag)
 	}
@@ -209,9 +209,9 @@ func (fe *FlagExtractor) extractBoolFlag(call *ast.CallExpr) {
 	if len(call.Args) < 3 {
 		return
 	}
-	
+
 	flag := FlagDef{Type: "boolean"}
-	
+
 	// Extract flag name
 	if name := extractStringLiteral(call.Args[0]); name != "" {
 		flag.Name = name
@@ -220,7 +220,7 @@ func (fe *FlagExtractor) extractBoolFlag(call *ast.CallExpr) {
 			flag.Name = name
 		}
 	}
-	
+
 	// Extract default value (second argument for Bool, third for BoolVar)
 	if basicLit, ok := call.Args[1].(*ast.BasicLit); ok && basicLit.Kind == token.IDENT {
 		flag.Default = basicLit.Value
@@ -238,7 +238,7 @@ func (fe *FlagExtractor) extractBoolFlag(call *ast.CallExpr) {
 			flag.Description = desc
 		}
 	}
-	
+
 	if flag.Name != "" {
 		fe.flags = append(fe.flags, flag)
 	}

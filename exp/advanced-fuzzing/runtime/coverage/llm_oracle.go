@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -62,7 +61,7 @@ func NewDefaultLLMOracle(config *OracleConfig) *DefaultLLMOracle {
 			HeuristicWeight:      0.7,
 		}
 	}
-	
+
 	return &DefaultLLMOracle{
 		cache:        make(map[string]*CachedResult),
 		maxCacheSize: config.MaxCacheSize,
@@ -80,36 +79,36 @@ func NewDefaultLLMOracle(config *OracleConfig) *DefaultLLMOracle {
 func (o *DefaultLLMOracle) EvaluateTestQuality(ctx context.Context, coverage *CoverageSnapshot, testCase interface{}) (*TestQualityAssessment, error) {
 	// Create cache key
 	cacheKey := fmt.Sprintf("quality_%v_%v", coverage.Timestamp.Unix(), hashInterface(testCase))
-	
+
 	// Check cache first
 	if cached := o.getCached(cacheKey); cached != nil {
 		if assessment, ok := cached.Response.(*TestQualityAssessment); ok {
 			return assessment, nil
 		}
 	}
-	
+
 	// Check rate limiting
 	if !o.rateLimiter.Allow() {
 		return o.fallbackQualityAssessment(coverage, testCase), nil
 	}
-	
+
 	// Use heuristics if enabled or as fallback
 	if o.config.EnableHeuristics {
 		heuristicAssessment := o.heuristicQualityAssessment(coverage, testCase)
-		
+
 		// If LLM is disabled, return heuristic result
 		if !o.isLLMEnabled() {
 			o.setCached(cacheKey, heuristicAssessment, o.config.CacheTTL)
 			return heuristicAssessment, nil
 		}
-		
+
 		// TODO: Integrate with actual LLM service
 		// For now, enhance heuristic with mock LLM insights
 		llmEnhanced := o.enhanceWithMockLLM(heuristicAssessment, coverage, testCase)
 		o.setCached(cacheKey, llmEnhanced, o.config.CacheTTL)
 		return llmEnhanced, nil
 	}
-	
+
 	// Fallback to basic assessment
 	assessment := o.fallbackQualityAssessment(coverage, testCase)
 	o.setCached(cacheKey, assessment, o.config.CacheTTL)
@@ -120,27 +119,27 @@ func (o *DefaultLLMOracle) EvaluateTestQuality(ctx context.Context, coverage *Co
 func (o *DefaultLLMOracle) SuggestCoverageTargets(ctx context.Context, coverage *CoverageSnapshot) (*CoverageGuidance, error) {
 	// Create cache key
 	cacheKey := fmt.Sprintf("targets_%v", coverage.Timestamp.Unix())
-	
+
 	// Check cache first
 	if cached := o.getCached(cacheKey); cached != nil {
 		if guidance, ok := cached.Response.(*CoverageGuidance); ok {
 			return guidance, nil
 		}
 	}
-	
+
 	// Check rate limiting
 	if !o.rateLimiter.Allow() {
 		return o.fallbackCoverageGuidance(coverage), nil
 	}
-	
+
 	// Use heuristics to identify targets
 	guidance := o.heuristicCoverageGuidance(coverage)
-	
+
 	// TODO: Enhance with actual LLM analysis
 	if o.isLLMEnabled() {
 		guidance = o.enhanceGuidanceWithMockLLM(guidance, coverage)
 	}
-	
+
 	o.setCached(cacheKey, guidance, o.config.CacheTTL)
 	return guidance, nil
 }
@@ -149,27 +148,27 @@ func (o *DefaultLLMOracle) SuggestCoverageTargets(ctx context.Context, coverage 
 func (o *DefaultLLMOracle) AnalyzeCoveragePattern(ctx context.Context, coverage *CoverageSnapshot) (*PatternAnalysis, error) {
 	// Create cache key
 	cacheKey := fmt.Sprintf("pattern_%v", coverage.Timestamp.Unix())
-	
+
 	// Check cache first
 	if cached := o.getCached(cacheKey); cached != nil {
 		if analysis, ok := cached.Response.(*PatternAnalysis); ok {
 			return analysis, nil
 		}
 	}
-	
+
 	// Check rate limiting
 	if !o.rateLimiter.Allow() {
 		return o.fallbackPatternAnalysis(coverage), nil
 	}
-	
+
 	// Use heuristics for pattern analysis
 	analysis := o.heuristicPatternAnalysis(coverage)
-	
+
 	// TODO: Enhance with actual LLM analysis
 	if o.isLLMEnabled() {
 		analysis = o.enhanceAnalysisWithMockLLM(analysis, coverage)
 	}
-	
+
 	o.setCached(cacheKey, analysis, o.config.CacheTTL)
 	return analysis, nil
 }
@@ -179,7 +178,7 @@ func (o *DefaultLLMOracle) AnalyzeCoveragePattern(ctx context.Context, coverage 
 func (o *DefaultLLMOracle) heuristicQualityAssessment(coverage *CoverageSnapshot, testCase interface{}) *TestQualityAssessment {
 	score := 0.5 // Base score
 	suggestions := []string{}
-	
+
 	// Analyze coverage ratio
 	if coverage.CoverageRatio > 0.8 {
 		score += 0.2
@@ -187,7 +186,7 @@ func (o *DefaultLLMOracle) heuristicQualityAssessment(coverage *CoverageSnapshot
 		score -= 0.2
 		suggestions = append(suggestions, "Low coverage ratio - consider expanding test scope")
 	}
-	
+
 	// Analyze test case complexity
 	testStr := fmt.Sprintf("%v", testCase)
 	if len(testStr) < 10 {
@@ -197,28 +196,28 @@ func (o *DefaultLLMOracle) heuristicQualityAssessment(coverage *CoverageSnapshot
 		score -= 0.1
 		suggestions = append(suggestions, "Test case may be overly complex")
 	}
-	
+
 	// Check for hot paths coverage
 	if len(coverage.HotPaths) > 0 {
 		score += 0.1
 	}
-	
+
 	// Ensure score is in valid range
 	if score > 1.0 {
 		score = 1.0
 	} else if score < 0.0 {
 		score = 0.0
 	}
-	
+
 	return &TestQualityAssessment{
 		Score:       score,
 		Rationale:   fmt.Sprintf("Heuristic assessment based on coverage ratio (%.2f) and test complexity", coverage.CoverageRatio),
 		Suggestions: suggestions,
 		Rubric:      "Heuristic",
 		Metadata: map[string]string{
-			"method":          "heuristic",
-			"coverage_ratio":  fmt.Sprintf("%.2f", coverage.CoverageRatio),
-			"test_length":     fmt.Sprintf("%d", len(testStr)),
+			"method":         "heuristic",
+			"coverage_ratio": fmt.Sprintf("%.2f", coverage.CoverageRatio),
+			"test_length":    fmt.Sprintf("%d", len(testStr)),
 		},
 	}
 }
@@ -226,7 +225,7 @@ func (o *DefaultLLMOracle) heuristicQualityAssessment(coverage *CoverageSnapshot
 func (o *DefaultLLMOracle) heuristicCoverageGuidance(coverage *CoverageSnapshot) *CoverageGuidance {
 	targets := []CoverageTarget{}
 	strategies := []string{}
-	
+
 	// Identify uncovered functions with high complexity
 	for funcName, funcCov := range coverage.FunctionStats {
 		if funcCov.CoverageRatio < 0.5 && funcCov.Complexity > 0.7 {
@@ -239,7 +238,7 @@ func (o *DefaultLLMOracle) heuristicCoverageGuidance(coverage *CoverageSnapshot)
 			})
 		}
 	}
-	
+
 	// Suggest strategies based on current state
 	if coverage.CoverageRatio < 0.5 {
 		strategies = append(strategies, "Focus on basic path coverage")
@@ -248,7 +247,7 @@ func (o *DefaultLLMOracle) heuristicCoverageGuidance(coverage *CoverageSnapshot)
 	} else {
 		strategies = append(strategies, "Balance between breadth and depth")
 	}
-	
+
 	return &CoverageGuidance{
 		PriorityTargets: targets,
 		Strategies:      strategies,
@@ -261,7 +260,7 @@ func (o *DefaultLLMOracle) heuristicPatternAnalysis(coverage *CoverageSnapshot) 
 	anomalies := []string{}
 	insights := []string{}
 	recommendations := []string{}
-	
+
 	// Analyze coverage patterns
 	if coverage.CoverageRatio > 0.9 {
 		patterns = append(patterns, "High coverage achieved")
@@ -270,13 +269,13 @@ func (o *DefaultLLMOracle) heuristicPatternAnalysis(coverage *CoverageSnapshot) 
 		patterns = append(patterns, "Low coverage detected")
 		recommendations = append(recommendations, "Increase test coverage focus")
 	}
-	
+
 	// Look for anomalies
 	if len(coverage.HotPaths) > len(coverage.ColdPaths)*3 {
 		anomalies = append(anomalies, "Disproportionate hot path concentration")
 		recommendations = append(recommendations, "Consider balancing path coverage")
 	}
-	
+
 	return &PatternAnalysis{
 		Patterns:        patterns,
 		Anomalies:       anomalies,
@@ -284,7 +283,7 @@ func (o *DefaultLLMOracle) heuristicPatternAnalysis(coverage *CoverageSnapshot) 
 		Recommendations: recommendations,
 		Confidence:      0.7,
 		Metadata: map[string]string{
-			"method": "heuristic",
+			"method":    "heuristic",
 			"timestamp": coverage.Timestamp.Format(time.RFC3339),
 		},
 	}
@@ -358,7 +357,7 @@ func (o *DefaultLLMOracle) fallbackPatternAnalysis(coverage *CoverageSnapshot) *
 func (o *DefaultLLMOracle) getCached(key string) *CachedResult {
 	o.mu.RLock()
 	defer o.mu.RUnlock()
-	
+
 	if result, exists := o.cache[key]; exists {
 		if time.Since(result.Timestamp) < result.TTL {
 			return result
@@ -372,7 +371,7 @@ func (o *DefaultLLMOracle) getCached(key string) *CachedResult {
 func (o *DefaultLLMOracle) setCached(key string, response interface{}, ttl time.Duration) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	
+
 	// Clean up cache if full
 	if len(o.cache) >= o.maxCacheSize {
 		// Remove oldest entries (simple LRU)
@@ -388,7 +387,7 @@ func (o *DefaultLLMOracle) setCached(key string, response interface{}, ttl time.
 			delete(o.cache, oldestKey)
 		}
 	}
-	
+
 	o.cache[key] = &CachedResult{
 		Response:  response,
 		Timestamp: time.Now(),
@@ -402,7 +401,7 @@ func (r *RateLimiter) Allow() bool {
 		r.tokens = r.maxTokens
 		r.refillAt = now.Add(r.interval)
 	}
-	
+
 	if r.tokens > 0 {
 		r.tokens--
 		return true
@@ -431,17 +430,17 @@ func LoadOracleConfig(configPath string) (*OracleConfig, error) {
 	if configPath == "" {
 		return nil, nil // Use defaults
 	}
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	var config OracleConfig
 	if err := json.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
-	
+
 	return &config, nil
 }
 
@@ -450,7 +449,7 @@ func (config *OracleConfig) Save(configPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	return os.WriteFile(configPath, data, 0644)
 }
 

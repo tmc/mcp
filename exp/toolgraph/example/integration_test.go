@@ -35,7 +35,7 @@ func TestMCPIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to list tools: %v", err)
 		}
-		
+
 		if !contains(string(output), "authenticate") {
 			t.Error("Expected authenticate tool")
 		}
@@ -43,13 +43,13 @@ func TestMCPIntegration(t *testing.T) {
 
 	// Test authentication
 	t.Run("Authenticate", func(t *testing.T) {
-		cmd := exec.Command("mcp-tool", "call", "authenticate", 
+		cmd := exec.Command("mcp-tool", "call", "authenticate",
 			`{"username": "test", "password": "pass"}`)
 		output, err := cmd.Output()
 		if err != nil {
 			t.Fatalf("Authentication failed: %v", err)
 		}
-		
+
 		if !contains(string(output), "access_token") {
 			t.Error("Expected access token in response")
 		}
@@ -62,24 +62,24 @@ func TestMCPIntegration(t *testing.T) {
 		if err := cmd.Run(); err != nil {
 			t.Fatalf("Failed to create file: %v", err)
 		}
-		
+
 		// Write to file
 		cmd = exec.Command("echo", "test data")
 		if err := cmd.Run(); err != nil {
 			t.Fatalf("Failed to write file: %v", err)
 		}
-		
+
 		// Read from file
 		cmd = exec.Command("cat", "test.txt")
 		output, err := cmd.Output()
 		if err != nil {
 			t.Fatalf("Failed to read file: %v", err)
 		}
-		
+
 		if string(output) != "test data\n" {
 			t.Errorf("Unexpected file content: %s", output)
 		}
-		
+
 		// Cleanup
 		cmd = exec.Command("rm", "test.txt")
 		cmd.Run()
@@ -88,10 +88,10 @@ func TestMCPIntegration(t *testing.T) {
 
 func TestToolExecution(t *testing.T) {
 	tests := []struct {
-		name    string
-		tool    string
-		args    string
-		expect  string
+		name   string
+		tool   string
+		args   string
+		expect string
 	}{
 		{
 			name:   "Calculator",
@@ -114,7 +114,7 @@ func TestToolExecution(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Tool execution failed: %v", err)
 			}
-			
+
 			if !contains(string(output), tt.expect) {
 				t.Errorf("Expected %s in output, got: %s", tt.expect, output)
 			}

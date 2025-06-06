@@ -41,12 +41,12 @@ func getPackageFromFunc(funcName string) string {
 	if lastSlash < 0 {
 		lastSlash = 0
 	}
-	
+
 	firstDot := strings.Index(funcName[lastSlash:], ".")
 	if firstDot < 0 {
 		return ""
 	}
-	
+
 	return funcName[:lastSlash+firstDot]
 }
 

@@ -7,9 +7,9 @@ import (
 // ListResult is a generic paginated list result that can replace multiple specific list types.
 // It can replace ListResourcesResult, ListResourceTemplatesResult, ListPromptsResult, etc.
 type ListResult[T any] struct {
-	Meta       map[string]any                 `json:"_meta,omitempty"`
-	Items      []T                            `json:"items"`
-	NextCursor *modelcontextprotocol.Cursor   `json:"nextCursor,omitempty"`
+	Meta       map[string]any               `json:"_meta,omitempty"`
+	Items      []T                          `json:"items"`
+	NextCursor *modelcontextprotocol.Cursor `json:"nextCursor,omitempty"`
 }
 
 // ListRequest is a generic paginated list request.
@@ -29,7 +29,7 @@ func (lr ListRequest) WithCursor(cursor modelcontextprotocol.Cursor) ListRequest
 // ResourceList would replace ListResourcesResult
 type ResourceList = ListResult[modelcontextprotocol.Resource]
 
-// ResourceTemplateList would replace ListResourceTemplatesResult  
+// ResourceTemplateList would replace ListResourceTemplatesResult
 type ResourceTemplateList = ListResult[modelcontextprotocol.ResourceTemplate]
 
 // PromptList would replace ListPromptsResult
@@ -76,20 +76,20 @@ func CombineLists[T any](lists ...ListResult[T]) ListResult[T] {
 	if len(lists) == 0 {
 		return ListResult[T]{}
 	}
-	
+
 	result := ListResult[T]{
 		Meta:  lists[0].Meta,
 		Items: make([]T, 0),
 	}
-	
+
 	for _, list := range lists {
 		result.Items = append(result.Items, list.Items...)
 	}
-	
+
 	// Use the last cursor from the last list
 	if len(lists) > 0 {
 		result.NextCursor = lists[len(lists)-1].NextCursor
 	}
-	
+
 	return result
 }

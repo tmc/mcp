@@ -13,16 +13,16 @@ import (
 
 func main() {
 	var (
-		dir          = flag.String("dir", ".", "Directory containing test scripts")
-		pattern      = flag.String("pattern", "*.txt", "Pattern for test files")
-		verbose      = flag.Bool("verbose", false, "Verbose output")
+		dir             = flag.String("dir", ".", "Directory containing test scripts")
+		pattern         = flag.String("pattern", "*.txt", "Pattern for test files")
+		verbose         = flag.Bool("verbose", false, "Verbose output")
 		continueOnError = flag.Bool("continue", false, "Continue on test failures")
-		timeout      = flag.Duration("timeout", 0, "Timeout for each test (0 = no timeout)")
-		work         = flag.Bool("work", false, "Keep temporary work directory")
-		update       = flag.Bool("update", false, "Update test files with actual output")
-		list         = flag.Bool("list", false, "List test files without running")
-		env          = flag.String("env", "", "Additional environment variables (KEY=value,...)")
-		bail         = flag.Int("bail", 0, "Stop after N failures (0 = no limit)")
+		timeout         = flag.Duration("timeout", 0, "Timeout for each test (0 = no timeout)")
+		work            = flag.Bool("work", false, "Keep temporary work directory")
+		update          = flag.Bool("update", false, "Update test files with actual output")
+		list            = flag.Bool("list", false, "List test files without running")
+		env             = flag.String("env", "", "Additional environment variables (KEY=value,...)")
+		bail            = flag.Int("bail", 0, "Stop after N failures (0 = no limit)")
 	)
 	flag.Parse()
 
@@ -77,28 +77,28 @@ func main() {
 
 func findTestFiles(dir, pattern string) ([]string, error) {
 	var files []string
-	
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		matched, err := filepath.Match(pattern, filepath.Base(path))
 		if err != nil {
 			return err
 		}
-		
+
 		if matched {
 			files = append(files, path)
 		}
-		
+
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -106,7 +106,7 @@ func parseEnv(envStr string) map[string]string {
 	if envStr == "" {
 		return nil
 	}
-	
+
 	env := make(map[string]string)
 	for _, pair := range strings.Split(envStr, ",") {
 		parts := strings.SplitN(pair, "=", 2)
@@ -114,7 +114,7 @@ func parseEnv(envStr string) map[string]string {
 			env[parts[0]] = parts[1]
 		}
 	}
-	
+
 	return env
 }
 
@@ -125,14 +125,14 @@ func printSummary(results *scripttest.Results) {
 	fmt.Printf("  Passed:  %d\n", results.Passed)
 	fmt.Printf("  Failed:  %d\n", results.Failed)
 	fmt.Printf("  Skipped: %d\n", results.Skipped)
-	
+
 	if results.Failed > 0 {
 		fmt.Printf("\nFailed tests:\n")
 		for _, failure := range results.Failures {
 			fmt.Printf("  %s: %s\n", failure.Test, failure.Error)
 		}
 	}
-	
+
 	fmt.Printf("\nDuration: %s\n", results.Duration)
 }
 

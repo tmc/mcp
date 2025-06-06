@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,23 +16,23 @@ import (
 
 // Namespace represents a hierarchical namespace entry
 type Namespace struct {
-	mu       sync.RWMutex
-	entries  map[string]*Entry
-	parent   *Namespace
-	name     string
+	mu      sync.RWMutex
+	entries map[string]*Entry
+	parent  *Namespace
+	name    string
 }
 
 // Entry represents a service registration
 type Entry struct {
-	Name        string            `json:"name"`
-	Type        string            `json:"type"` // "local", "remote", "namespace"
-	Transport   string            `json:"transport,omitempty"`
-	Address     string            `json:"address,omitempty"`
-	Command     string            `json:"command,omitempty"`
-	Args        []string          `json:"args,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	LastSeen    time.Time         `json:"last_seen"`
-	Children    *Namespace        `json:"-"` // For nested namespaces
+	Name      string            `json:"name"`
+	Type      string            `json:"type"` // "local", "remote", "namespace"
+	Transport string            `json:"transport,omitempty"`
+	Address   string            `json:"address,omitempty"`
+	Command   string            `json:"command,omitempty"`
+	Args      []string          `json:"args,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	LastSeen  time.Time         `json:"last_seen"`
+	Children  *Namespace        `json:"-"` // For nested namespaces
 }
 
 // NamespaceServer handles namespace operations
@@ -62,12 +61,12 @@ func (ns *NamespaceServer) Register(path string, entry *Entry) error {
 	defer ns.mu.Unlock()
 
 	current := ns.root
-	
+
 	// Navigate to the parent namespace, creating as needed
 	for i := 0; i < len(parts)-1; i++ {
 		name := parts[i]
 		current.mu.Lock()
-		
+
 		if existing, ok := current.entries[name]; ok {
 			if existing.Type != "namespace" {
 				current.mu.Unlock()
@@ -115,22 +114,22 @@ func (ns *NamespaceServer) Lookup(path string) (*Entry, error) {
 	defer ns.mu.RUnlock()
 
 	current := ns.root
-	
+
 	for i := 0; i < len(parts); i++ {
 		name := parts[i]
 		current.mu.RLock()
-		
+
 		if entry, ok := current.entries[name]; ok {
 			if i == len(parts)-1 {
 				current.mu.RUnlock()
 				return entry, nil
 			}
-			
+
 			if entry.Type != "namespace" {
 				current.mu.RUnlock()
 				return nil, fmt.Errorf("path component %s is not a namespace", name)
 			}
-			
+
 			current.mu.RUnlock()
 			current = entry.Children
 		} else {
@@ -219,7 +218,7 @@ func (ns *NamespaceServer) handleLookup(w http.ResponseWriter, r *http.Request) 
 
 func (ns *NamespaceServer) handleList(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Query().Get("path")
-	
+
 	entries, err := ns.List(path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -234,9 +233,9 @@ func (ns *NamespaceServer) handleList(w http.ResponseWriter, r *http.Request) {
 func (ns *NamespaceServer) handle9P(w http.ResponseWriter, r *http.Request) {
 	// This would implement a 9P-like protocol over HTTP
 	// For now, we'll use a simplified REST-like interface
-	
+
 	path := strings.TrimPrefix(r.URL.Path, "/9p")
-	
+
 	switch r.Method {
 	case http.MethodGet:
 		// List directory or get file info
@@ -248,22 +247,22 @@ func (ns *NamespaceServer) handle9P(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			
+
 			// Return directory listing
 			var names []string
 			for _, e := range entries {
 				names = append(names, e.Name)
 			}
-			
+
 			w.Header().Set("Content-Type", "text/plain")
 			fmt.Fprintf(w, "%s\n", strings.Join(names, "\n"))
 			return
 		}
-		
+
 		// Return entry info
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(entry)
-		
+
 	case http.MethodPost:
 		// Create/update entry
 		var entry Entry
@@ -271,18 +270,18 @@ func (ns *NamespaceServer) handle9P(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		
+
 		if err := ns.Register(path, &entry); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
-		
+
 	case http.MethodDelete:
 		// Remove entry (not implemented yet)
 		http.Error(w, "Not implemented", http.StatusNotImplemented)
-		
+
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -334,7 +333,7 @@ func main() {
 		go func() {
 			ticker := time.NewTicker(30 * time.Second)
 			defer ticker.Stop()
-			
+
 			for range ticker.C {
 				if err := server.SaveToFile(path.Join(*dataDir, "namespace.json")); err != nil {
 					log.Printf("Failed to save namespace: %v", err)
@@ -380,10 +379,10 @@ func (ns *NamespaceServer) LoadFromFile(filename string) error {
 
 func (ns *NamespaceServer) serializeNamespace(namespace *Namespace) map[string]interface{} {
 	result := make(map[string]interface{})
-	
+
 	namespace.mu.RLock()
 	defer namespace.mu.RUnlock()
-	
+
 	for name, entry := range namespace.entries {
 		if entry.Type == "namespace" {
 			result[name] = ns.serializeNamespace(entry.Children)
@@ -391,7 +390,7 @@ func (ns *NamespaceServer) serializeNamespace(namespace *Namespace) map[string]i
 			result[name] = entry
 		}
 	}
-	
+
 	return result
 }
 
@@ -400,7 +399,7 @@ func (ns *NamespaceServer) deserializeNamespace(data map[string]interface{}, par
 		entries: make(map[string]*Entry),
 		parent:  parent,
 	}
-	
+
 	for name, value := range data {
 		switch v := value.(type) {
 		case map[string]interface{}:
@@ -424,6 +423,6 @@ func (ns *NamespaceServer) deserializeNamespace(data map[string]interface{}, par
 			}
 		}
 	}
-	
+
 	return namespace
 }

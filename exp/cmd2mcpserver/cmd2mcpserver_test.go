@@ -13,7 +13,7 @@ import (
 func TestGenerateServer(t *testing.T) {
 	// Create a temporary directory for output
 	tmpDir := t.TempDir()
-	
+
 	config := &cmd2mcpserver.Config{
 		BinaryPath:  "/bin/echo",
 		OutputDir:   filepath.Join(tmpDir, "echo-server"),
@@ -22,9 +22,9 @@ func TestGenerateServer(t *testing.T) {
 		ToolName:    "echo",
 		Description: "Echo command wrapper",
 	}
-	
+
 	generator := cmd2mcpserver.NewGenerator(config)
-	
+
 	// Set some test flags
 	flags := []cmd2mcpserver.FlagDef{
 		{
@@ -43,33 +43,33 @@ func TestGenerateServer(t *testing.T) {
 		},
 	}
 	generator.SetFlags(flags)
-	
+
 	// Generate the server
 	err := generator.Generate()
 	if err != nil {
 		t.Fatalf("Failed to generate server: %v", err)
 	}
-	
+
 	// Check that files were created
 	expectedFiles := []string{
 		"go.mod",
 		"main.go",
 	}
-	
+
 	for _, file := range expectedFiles {
 		path := filepath.Join(config.OutputDir, file)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			t.Errorf("Expected file %s was not created", file)
 		}
 	}
-	
+
 	// Read and check the generated main.go
 	mainPath := filepath.Join(config.OutputDir, "main.go")
 	content, err := os.ReadFile(mainPath)
 	if err != nil {
 		t.Fatalf("Failed to read main.go: %v", err)
 	}
-	
+
 	// Basic content checks
 	contentStr := string(content)
 	t.Logf("Generated content:\n%s", contentStr)
@@ -92,7 +92,7 @@ func TestFlagExtractor(t *testing.T) {
 	// Create a test Go file with flag definitions
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.go")
-	
+
 	testCode := `package main
 
 import "flag"
@@ -106,29 +106,29 @@ func main() {
 	flag.Parse()
 }
 `
-	
+
 	err := os.WriteFile(testFile, []byte(testCode), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
-	
+
 	extractor := cmd2mcpserver.NewFlagExtractor(tmpDir)
 	flags, err := extractor.ExtractFlags()
 	if err != nil {
 		t.Fatalf("Failed to extract flags: %v", err)
 	}
-	
+
 	// Check extracted flags
 	if len(flags) < 3 {
 		t.Errorf("Expected at least 3 flags, got %d", len(flags))
 	}
-	
+
 	// Look for specific flags
 	flagMap := make(map[string]cmd2mcpserver.FlagDef)
 	for _, flag := range flags {
 		flagMap[flag.Name] = flag
 	}
-	
+
 	// Check verbose flag
 	if verbose, ok := flagMap["verbose"]; ok {
 		if verbose.Type != "boolean" {
@@ -137,7 +137,7 @@ func main() {
 	} else {
 		t.Error("Flag 'verbose' not found")
 	}
-	
+
 	// Check port flag
 	if port, ok := flagMap["port"]; ok {
 		if port.Type != "integer" {

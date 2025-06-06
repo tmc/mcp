@@ -31,10 +31,10 @@ func (ba *BinaryAnalyzer) GetModuleInfo() (*ModuleInfo, error) {
 
 	info := &ModuleInfo{}
 	lines := strings.Split(string(output), "\n")
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		// Parse Go version
 		if strings.HasPrefix(line, ba.binaryPath+":") {
 			parts := strings.Fields(line)
@@ -42,12 +42,12 @@ func (ba *BinaryAnalyzer) GetModuleInfo() (*ModuleInfo, error) {
 				info.GoVersion = parts[1]
 			}
 		}
-		
+
 		// Parse module path
 		if strings.HasPrefix(line, "path\t") {
 			info.ModulePath = strings.TrimPrefix(line, "path\t")
 		}
-		
+
 		// Parse module version
 		if strings.HasPrefix(line, "mod\t") {
 			parts := strings.Fields(line)
@@ -58,14 +58,14 @@ func (ba *BinaryAnalyzer) GetModuleInfo() (*ModuleInfo, error) {
 				}
 			}
 		}
-		
+
 		// Parse build settings
 		if strings.HasPrefix(line, "build\t") {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {
 				key := strings.TrimPrefix(parts[0], "build\t")
 				value := parts[1]
-				
+
 				switch key {
 				case "GOOS":
 					info.GOOS = value
@@ -75,7 +75,7 @@ func (ba *BinaryAnalyzer) GetModuleInfo() (*ModuleInfo, error) {
 			}
 		}
 	}
-	
+
 	return info, nil
 }
 
@@ -86,7 +86,7 @@ func (ba *BinaryAnalyzer) GetPackageDoc(importPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get package doc: %w", err)
 	}
-	
+
 	return string(output), nil
 }
 
@@ -209,18 +209,18 @@ func (ba *BinaryAnalyzer) ExtractBinaryInfo() (*BinaryInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	binaryInfo := &BinaryInfo{
 		Path:       ba.binaryPath,
 		Name:       filepath.Base(ba.binaryPath),
 		ModuleInfo: moduleInfo,
 	}
-	
+
 	// Try to get source path
 	if sourcePath, err := ba.GetSourcePath(); err == nil {
 		binaryInfo.SourcePath = sourcePath
 	}
-	
+
 	// Try to get package documentation
 	if moduleInfo.ModulePath != "" {
 		if doc, err := ba.GetPackageDoc(moduleInfo.ModulePath); err == nil {
@@ -231,7 +231,7 @@ func (ba *BinaryAnalyzer) ExtractBinaryInfo() (*BinaryInfo, error) {
 			}
 		}
 	}
-	
+
 	return binaryInfo, nil
 }
 
@@ -258,20 +258,20 @@ type BinaryInfo struct {
 // ExtractFlagsFromDoc attempts to extract flag definitions from go doc output
 func ExtractFlagsFromDoc(doc string) []FlagDef {
 	var flags []FlagDef
-	
+
 	// Look for flag definitions in documentation
 	// This is a simple heuristic - could be improved
 	lines := strings.Split(doc, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		// Look for patterns like: -name string
 		if strings.HasPrefix(line, "-") {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				flagName := strings.TrimPrefix(parts[0], "-")
 				flagType := parts[1]
-				
+
 				// Convert type to our format
 				var ourType string
 				switch flagType {
@@ -286,21 +286,21 @@ func ExtractFlagsFromDoc(doc string) []FlagDef {
 				default:
 					ourType = "string"
 				}
-				
+
 				flag := FlagDef{
 					Name: flagName,
 					Type: ourType,
 				}
-				
+
 				// Try to extract description
 				if len(parts) > 2 {
 					flag.Description = strings.Join(parts[2:], " ")
 				}
-				
+
 				flags = append(flags, flag)
 			}
 		}
 	}
-	
+
 	return flags
 }

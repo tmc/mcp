@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"go/format"
@@ -31,7 +30,7 @@ func main() {
 	// Read input
 	var inputData []byte
 	var err error
-	
+
 	if *input == "-" {
 		inputData, err = io.ReadAll(os.Stdin)
 		if err != nil {

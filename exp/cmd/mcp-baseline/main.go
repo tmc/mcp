@@ -48,10 +48,10 @@ type ValidationRule struct {
 
 // RequestResponse is a test case with request and expected response
 type RequestResponse struct {
-	Name             string                 `json:"name"`
-	Request          map[string]interface{} `json:"request"`
-	ExpectedResponse map[string]interface{} `json:"expected_response"`
-	ValidationRules  []ValidationRule       `json:"validation_rules,omitempty"`
+	Name             string                   `json:"name"`
+	Request          map[string]interface{}   `json:"request"`
+	ExpectedResponse map[string]interface{}   `json:"expected_response"`
+	ValidationRules  []ValidationRule         `json:"validation_rules,omitempty"`
 	Setup            []map[string]interface{} `json:"setup,omitempty"`
 	Cleanup          []map[string]interface{} `json:"cleanup,omitempty"`
 }
@@ -64,24 +64,24 @@ type Baseline struct {
 
 // ValidationResult represents the result of a test case validation
 type ValidationResult struct {
-	Name      string   `json:"name"`
-	Success   bool     `json:"success"`
-	Errors    []string `json:"errors,omitempty"`
-	Request   map[string]interface{} `json:"request,omitempty"`
-	Expected  map[string]interface{} `json:"expected,omitempty"`
-	Actual    map[string]interface{} `json:"actual,omitempty"`
+	Name     string                 `json:"name"`
+	Success  bool                   `json:"success"`
+	Errors   []string               `json:"errors,omitempty"`
+	Request  map[string]interface{} `json:"request,omitempty"`
+	Expected map[string]interface{} `json:"expected,omitempty"`
+	Actual   map[string]interface{} `json:"actual,omitempty"`
 }
 
 // TestReport contains the complete test results
 type TestReport struct {
-	ServerAddress   string            `json:"server_address"`
-	BaselineFile    string            `json:"baseline_file"`
-	Timestamp       time.Time         `json:"timestamp"`
-	OverallSuccess  bool              `json:"overall_success"`
+	ServerAddress   string             `json:"server_address"`
+	BaselineFile    string             `json:"baseline_file"`
+	Timestamp       time.Time          `json:"timestamp"`
+	OverallSuccess  bool               `json:"overall_success"`
 	Results         []ValidationResult `json:"results"`
-	SuccessCount    int               `json:"success_count"`
-	FailureCount    int               `json:"failure_count"`
-	ExecutionTimeMs int64             `json:"execution_time_ms"`
+	SuccessCount    int                `json:"success_count"`
+	FailureCount    int                `json:"failure_count"`
+	ExecutionTimeMs int64              `json:"execution_time_ms"`
 }
 
 // printUsage prints the command usage information
@@ -265,7 +265,7 @@ func recordBaseline() {
 			},
 		},
 	}
-	
+
 	// Get methods to test
 	methods := []string{}
 	if *methodsList != "" {
@@ -429,28 +429,28 @@ func recordBaseline() {
 		baseline.TestCases = append(baseline.TestCases, testCase)
 		fmt.Printf("Recorded test case for method: %s\n", method)
 	}
-	
+
 	// Write baseline to file
 	err = writeJSONFile(*outputFile, baseline)
 	if err != nil {
 		fmt.Printf("Error writing baseline file: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	fmt.Printf("Baseline recorded successfully to %s\n", *outputFile)
 }
 
 // verifyBaseline verifies a server against a recorded baseline
 func verifyBaseline() {
 	fmt.Printf("Verifying server %s against baseline %s\n", *serverAddr, *baselineFile)
-	
+
 	// Load baseline
 	baseline, err := loadBaseline(*baselineFile)
 	if err != nil {
 		fmt.Printf("Error loading baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	// Create report
 	report := TestReport{
 		ServerAddress: *serverAddr,
@@ -458,39 +458,39 @@ func verifyBaseline() {
 		Timestamp:     time.Now(),
 		Results:       []ValidationResult{},
 	}
-	
+
 	startTime := time.Now()
-	
+
 	// Execute test cases
 	for _, testCase := range baseline.TestCases {
 		fmt.Printf("Testing method: %s\n", testCase.Name)
-		
+
 		// Run setup steps
 		for _, setup := range testCase.Setup {
 			setupMethod, _ := setup["method"].(string)
 			setupParams, _ := setup["params"].(map[string]interface{})
-			
+
 			setupRequest := map[string]interface{}{
 				"jsonrpc": "2.0",
 				"id":      99, // Use high ID for setup operations
 				"method":  setupMethod,
 				"params":  setupParams,
 			}
-			
+
 			_, err := sendRequest(setupRequest)
 			if err != nil {
 				fmt.Printf("Error in setup for test case %s: %v\n", testCase.Name, err)
 				// Continue anyway - the test may still work
 			}
 		}
-		
+
 		// Send test request
 		actualResponse, err := sendRequest(testCase.Request)
-		
+
 		// Validate response
 		result := validateResponse(testCase, actualResponse, err)
 		report.Results = append(report.Results, result)
-		
+
 		if result.Success {
 			report.SuccessCount++
 			if *verbose {
@@ -503,19 +503,19 @@ func verifyBaseline() {
 				fmt.Printf("  - %s\n", errMsg)
 			}
 		}
-		
+
 		// Run cleanup steps
 		for _, cleanup := range testCase.Cleanup {
 			cleanupMethod, _ := cleanup["method"].(string)
 			cleanupParams, _ := cleanup["params"].(map[string]interface{})
-			
+
 			cleanupRequest := map[string]interface{}{
 				"jsonrpc": "2.0",
 				"id":      999, // Use very high ID for cleanup operations
 				"method":  cleanupMethod,
 				"params":  cleanupParams,
 			}
-			
+
 			_, err := sendRequest(cleanupRequest)
 			if err != nil {
 				fmt.Printf("Warning: Error in cleanup for test case %s: %v\n", testCase.Name, err)
@@ -523,14 +523,14 @@ func verifyBaseline() {
 			}
 		}
 	}
-	
+
 	// Finalize report
 	report.ExecutionTimeMs = time.Since(startTime).Milliseconds()
 	report.OverallSuccess = report.FailureCount == 0
-	
+
 	// Output report
 	generateReport(&report)
-	
+
 	// In CI mode, exit with error if verification failed
 	if *ciMode && !report.OverallSuccess {
 		os.Exit(1)
@@ -544,20 +544,20 @@ func listBaseline() {
 		fmt.Printf("Error loading baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	fmt.Printf("Baseline %s contains %d test cases:\n", *baselineFile, len(baseline.TestCases))
 	fmt.Printf("Server: %s %s\n", baseline.Metadata.ServerName, baseline.Metadata.ServerVersion)
 	fmt.Printf("Recorded: %s\n", baseline.Metadata.RecordedAt.Format(time.RFC3339))
 	fmt.Printf("Protocol: %s\n\n", baseline.Metadata.ProtocolVersion)
-	
+
 	fmt.Println("Test cases:")
 	for i, testCase := range baseline.TestCases {
 		fmt.Printf("%d. %s\n", i+1, testCase.Name)
-		
+
 		if *verbose {
 			method, _ := testCase.Request["method"].(string)
 			fmt.Printf("   Method: %s\n", method)
-			
+
 			// Print parameters in a readable format
 			if params, ok := testCase.Request["params"].(map[string]interface{}); ok {
 				fmt.Printf("   Parameters:\n")
@@ -565,7 +565,7 @@ func listBaseline() {
 					fmt.Printf("     %s: %v\n", k, v)
 				}
 			}
-			
+
 			// Print validation rules
 			if len(testCase.ValidationRules) > 0 {
 				fmt.Printf("   Validation Rules:\n")
@@ -573,7 +573,7 @@ func listBaseline() {
 					fmt.Printf("     %s: %s\n", rule.Path, rule.Match)
 				}
 			}
-			
+
 			fmt.Println()
 		}
 	}
@@ -586,35 +586,35 @@ func extractBaseline() {
 		fmt.Printf("Error loading baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	methods := strings.Split(*methodsList, ",")
 	methodMap := make(map[string]bool)
 	for _, method := range methods {
 		methodMap[method] = true
 	}
-	
+
 	newBaseline := Baseline{
-		Metadata: baseline.Metadata,
+		Metadata:  baseline.Metadata,
 		TestCases: []RequestResponse{},
 	}
-	
+
 	for _, testCase := range baseline.TestCases {
 		method, _ := testCase.Request["method"].(string)
 		if methodMap[testCase.Name] || methodMap[method] {
 			newBaseline.TestCases = append(newBaseline.TestCases, testCase)
 		}
 	}
-	
+
 	if len(newBaseline.TestCases) == 0 {
 		fmt.Println("Warning: No matching test cases found")
 	}
-	
+
 	err = writeJSONFile(*outputFile, newBaseline)
 	if err != nil {
 		fmt.Printf("Error writing extracted baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	fmt.Printf("Extracted %d test cases to %s\n", len(newBaseline.TestCases), *outputFile)
 }
 
@@ -625,62 +625,62 @@ func updateBaseline() {
 		fmt.Printf("Error loading baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	methods := strings.Split(*methodsList, ",")
 	methodMap := make(map[string]bool)
 	for _, method := range methods {
 		methodMap[method] = true
 	}
-	
+
 	// Create a map of existing test cases by name for easy lookup
 	testCaseMap := make(map[string]int)
 	for i, testCase := range baseline.TestCases {
 		testCaseMap[testCase.Name] = i
 	}
-	
+
 	// Update each specified method
 	for _, methodName := range methods {
 		fmt.Printf("Updating method: %s\n", methodName)
-		
+
 		// Find existing test case
 		index, exists := testCaseMap[methodName]
 		if !exists {
 			fmt.Printf("Method %s not found in baseline, skipping\n", methodName)
 			continue
 		}
-		
+
 		// Get existing test case
 		testCase := baseline.TestCases[index]
-		
+
 		// Send request to server
 		response, err := sendRequest(testCase.Request)
 		if err != nil {
 			fmt.Printf("Error testing method %s: %v\n", methodName, err)
 			continue
 		}
-		
+
 		// Update expected response
 		testCase.ExpectedResponse = response
 		baseline.TestCases[index] = testCase
-		
+
 		fmt.Printf("Updated test case for method: %s\n", methodName)
 	}
-	
+
 	// Update metadata
 	baseline.Metadata.RecordedAt = time.Now()
-	
+
 	// Write updated baseline
 	output := *baselineFile
 	if *outputFile != "" {
 		output = *outputFile
 	}
-	
+
 	err = writeJSONFile(output, baseline)
 	if err != nil {
 		fmt.Printf("Error writing updated baseline: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	fmt.Printf("Baseline updated successfully to %s\n", output)
 }
 
@@ -694,18 +694,18 @@ func validateResponse(testCase RequestResponse, actualResponse map[string]interf
 		Expected: testCase.ExpectedResponse,
 		Actual:   actualResponse,
 	}
-	
+
 	// Check for errors in the request
 	if err != nil {
 		result.Success = false
 		result.Errors = append(result.Errors, fmt.Sprintf("Request failed: %v", err))
 		return result
 	}
-	
+
 	// If JSON-RPC error is returned, check if it's expected
 	if actualError, hasError := actualResponse["error"].(map[string]interface{}); hasError {
 		expectedError, expectsError := testCase.ExpectedResponse["error"].(map[string]interface{})
-		
+
 		if !expectsError {
 			result.Success = false
 			errCode := actualError["code"]
@@ -713,17 +713,17 @@ func validateResponse(testCase RequestResponse, actualResponse map[string]interf
 			result.Errors = append(result.Errors, fmt.Sprintf("Unexpected error: %v - %v", errCode, errMsg))
 			return result
 		}
-		
+
 		// Compare error codes
 		if actualError["code"] != expectedError["code"] {
 			result.Success = false
-			result.Errors = append(result.Errors, fmt.Sprintf("Expected error code %v but got %v", 
+			result.Errors = append(result.Errors, fmt.Sprintf("Expected error code %v but got %v",
 				expectedError["code"], actualError["code"]))
 		}
-		
+
 		return result
 	}
-	
+
 	// Apply validation rules
 	for _, rule := range testCase.ValidationRules {
 		if !validateRule(rule, testCase.ExpectedResponse, actualResponse) {
@@ -732,7 +732,7 @@ func validateResponse(testCase RequestResponse, actualResponse map[string]interf
 				rule.Path, rule.Match))
 		}
 	}
-	
+
 	// If no validation rules, fall back to exact comparison
 	if len(testCase.ValidationRules) == 0 {
 		if !reflect.DeepEqual(testCase.ExpectedResponse, actualResponse) {
@@ -740,7 +740,7 @@ func validateResponse(testCase RequestResponse, actualResponse map[string]interf
 			result.Errors = append(result.Errors, "Response does not match expected value")
 		}
 	}
-	
+
 	return result
 }
 
@@ -901,22 +901,22 @@ func toFloat64(value interface{}) (float64, bool) {
 func getValueByPath(data map[string]interface{}, path string) interface{} {
 	parts := strings.Split(path, ".")
 	current := data
-	
+
 	for i, part := range parts {
 		// Last part of the path
 		if i == len(parts)-1 {
 			return current[part]
 		}
-		
+
 		// Get the next level
 		next, ok := current[part].(map[string]interface{})
 		if !ok {
 			return nil
 		}
-		
+
 		current = next
 	}
-	
+
 	return nil
 }
 
@@ -955,10 +955,10 @@ func generateReport(report *TestReport) {
 		fmt.Printf("Baseline: %s\n", report.BaselineFile)
 		fmt.Printf("Time: %s\n", report.Timestamp.Format(time.RFC3339))
 		fmt.Printf("Duration: %dms\n\n", report.ExecutionTimeMs)
-		
-		fmt.Printf("Results: %d tests, %d passed, %d failed\n\n", 
+
+		fmt.Printf("Results: %d tests, %d passed, %d failed\n\n",
 			len(report.Results), report.SuccessCount, report.FailureCount)
-		
+
 		if report.FailureCount > 0 {
 			fmt.Println("Failed tests:")
 			for _, result := range report.Results {
@@ -971,7 +971,7 @@ func generateReport(report *TestReport) {
 			}
 			fmt.Println()
 		}
-		
+
 		if report.OverallSuccess {
 			fmt.Println("✓ Overall Result: SUCCESS")
 		} else {
@@ -1037,19 +1037,19 @@ func generateHTMLReport(report *TestReport) string {
 			}
 			return "FAILURE"
 		}())
-	
+
 	// Add test results
 	for _, result := range report.Results {
 		status := "✓"
 		class := "success"
 		details := "Test passed"
-		
+
 		if !result.Success {
 			status = "✗"
 			class = "failure"
 			details = strings.Join(result.Errors, "<br>")
 		}
-		
+
 		html += fmt.Sprintf(`
         <tr>
             <td>%s</td>
@@ -1057,13 +1057,13 @@ func generateHTMLReport(report *TestReport) string {
             <td>%s</td>
         </tr>`, result.Name, class, status, details)
 	}
-	
+
 	// Close HTML
 	html += `
     </table>
 </body>
 </html>`
-	
+
 	return html
 }
 
@@ -1183,19 +1183,19 @@ func sendRequest(request map[string]interface{}) (map[string]interface{}, error)
 // loadBaseline loads a baseline from a file
 func loadBaseline(filePath string) (Baseline, error) {
 	var baseline Baseline
-	
+
 	// Read file
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return baseline, fmt.Errorf("error reading file: %w", err)
 	}
-	
+
 	// Parse JSON
 	err = json.Unmarshal(data, &baseline)
 	if err != nil {
 		return baseline, fmt.Errorf("error parsing JSON: %w", err)
 	}
-	
+
 	return baseline, nil
 }
 
@@ -1239,7 +1239,7 @@ func loadTestData() map[string]interface{} {
 			"pattern": "*.txt",
 		},
 	}
-	
+
 	// If test data file is specified, load it
 	if *testDataFile != "" {
 		data, err := os.ReadFile(*testDataFile)
@@ -1248,7 +1248,7 @@ func loadTestData() map[string]interface{} {
 			fmt.Println("Using default test data")
 			return defaultData
 		}
-		
+
 		var testData map[string]interface{}
 		err = json.Unmarshal(data, &testData)
 		if err != nil {
@@ -1256,10 +1256,10 @@ func loadTestData() map[string]interface{} {
 			fmt.Println("Using default test data")
 			return defaultData
 		}
-		
+
 		return testData
 	}
-	
+
 	return defaultData
 }
 

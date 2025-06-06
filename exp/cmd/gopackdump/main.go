@@ -16,14 +16,14 @@ import (
 
 func main() {
 	var (
-		packages    = flag.String("packages", "", "Package paths to dump (comma-separated)")
-		output      = flag.String("output", "-", "Output file (- for stdout)")
-		format      = flag.String("format", "txtar", "Output format: txtar, tar, dir")
-		recursive   = flag.Bool("recursive", false, "Include dependencies recursively")
-		includeTest = flag.Bool("include-test", false, "Include test files")
+		packages      = flag.String("packages", "", "Package paths to dump (comma-separated)")
+		output        = flag.String("output", "-", "Output file (- for stdout)")
+		format        = flag.String("format", "txtar", "Output format: txtar, tar, dir")
+		recursive     = flag.Bool("recursive", false, "Include dependencies recursively")
+		includeTest   = flag.Bool("include-test", false, "Include test files")
 		includeVendor = flag.Bool("include-vendor", false, "Include vendor directory")
-		prefix      = flag.String("prefix", "", "Prefix for file paths in archive")
-		verbose     = flag.Bool("verbose", false, "Verbose output")
+		prefix        = flag.String("prefix", "", "Prefix for file paths in archive")
+		verbose       = flag.Bool("verbose", false, "Verbose output")
 	)
 	flag.Parse()
 
@@ -109,7 +109,7 @@ type PackageDumper struct {
 	IncludeVendor bool
 	Prefix        string
 	Verbose       bool
-	
+
 	visited map[string]bool
 }
 
@@ -225,7 +225,7 @@ func (d *PackageDumper) shouldIncludeImport(imp string) bool {
 
 func (d *PackageDumper) DumpToTar(packages []string) ([]byte, error) {
 	d.visited = make(map[string]bool)
-	
+
 	// Create tar writer
 	var buf strings.Builder
 	tw := tar.NewWriter(&buf)
@@ -357,7 +357,7 @@ func (d *PackageDumper) addPackageToDir(outputDir, pkgPath string) error {
 	for _, file := range files {
 		src := filepath.Join(pkg.Dir, file)
 		dst := filepath.Join(pkgDir, file)
-		
+
 		if err := copyFile(src, dst); err != nil {
 			return err
 		}

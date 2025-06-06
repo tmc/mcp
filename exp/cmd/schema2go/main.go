@@ -32,7 +32,7 @@ func main() {
 	// Read input
 	var inputData []byte
 	var err error
-	
+
 	if *input == "-" {
 		inputData, err = io.ReadAll(os.Stdin)
 		if err != nil {
@@ -133,7 +133,7 @@ func detectSchemaType(data []byte, filename string) string {
 		if _, ok := jsonData["swagger"]; ok {
 			return "openapi"
 		}
-		
+
 		// Check for JSON Schema indicators
 		if _, ok := jsonData["$schema"]; ok {
 			return "json"
@@ -141,7 +141,7 @@ func detectSchemaType(data []byte, filename string) string {
 		if _, ok := jsonData["type"]; ok {
 			return "json"
 		}
-		
+
 		// Check for MCP schema indicators
 		if _, ok := jsonData["tools"]; ok {
 			return "mcp"
@@ -158,20 +158,20 @@ func detectSchemaType(data []byte, filename string) string {
 func isOpenAPI(data []byte) bool {
 	// Simple check for OpenAPI markers
 	dataStr := string(data)
-	return strings.Contains(dataStr, `"openapi"`) || 
-	       strings.Contains(dataStr, `"swagger"`) ||
-	       strings.Contains(dataStr, `"paths"`)
+	return strings.Contains(dataStr, `"openapi"`) ||
+		strings.Contains(dataStr, `"swagger"`) ||
+		strings.Contains(dataStr, `"paths"`)
 }
 
 func parseImports(imports string) []string {
 	if imports == "" {
 		return nil
 	}
-	
+
 	// Split and clean imports
 	parts := strings.Split(imports, ",")
 	result := make([]string, 0, len(parts))
-	
+
 	for _, imp := range parts {
 		imp = strings.TrimSpace(imp)
 		if imp != "" {
@@ -182,7 +182,7 @@ func parseImports(imports string) []string {
 			result = append(result, imp)
 		}
 	}
-	
+
 	return result
 }
 

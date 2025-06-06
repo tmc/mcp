@@ -2,7 +2,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -387,16 +386,16 @@ func main() {
 	go server.pingTunnels()
 
 	router := mux.NewRouter()
-	
+
 	// Tunnel management
 	router.HandleFunc("/tunnels", server.CreateTunnel).Methods("POST")
 	router.HandleFunc("/tunnels/{id}/ws", server.HandleWebSocket)
-	
+
 	// MCP endpoints
 	router.HandleFunc("/tunnels/{id}/mcp", server.HandleMCP).Methods("POST")
 	router.HandleFunc("/tunnels/{id}/sse", server.HandleSSE).Methods("GET")
 	router.HandleFunc("/tunnels/{id}/message", server.HandleMessage).Methods("POST")
-	
+
 	// Health check
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

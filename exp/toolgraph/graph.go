@@ -245,7 +245,7 @@ func (b *GraphBuilder) processImport(testPath string, imp *ast.ImportSpec, depth
 	}
 
 	importPath := strings.Trim(imp.Path.Value, `"`)
-	
+
 	// Skip standard library unless requested
 	if !b.options.IncludeStd && !strings.Contains(importPath, ".") {
 		return
@@ -275,7 +275,7 @@ func (b *GraphBuilder) extractToolFromJSON(path string, jsonStr string, line int
 		`"tool":\s*"([^"]+)"`,
 		`"name":\s*"([^"]+)"`,
 	}
-	
+
 	for _, pattern := range patterns {
 		if tool := extractPattern(jsonStr, pattern); tool != "" {
 			toolNode := &Node{

@@ -37,13 +37,13 @@ func NewTestFinder(rootDir string) *TestFinder {
 // FindAffectedTests finds tests that might be affected by the given change
 func (tf *TestFinder) FindAffectedTests(change *Change) ([]TestInfo, error) {
 	var tests []TestInfo
-	
+
 	// First, scan for all test files
 	testFiles, err := tf.findTestFiles()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Analyze each test file
 	for _, testFile := range testFiles {
 		fileTests, err := tf.analyzeTestFile(testFile, change)
@@ -52,52 +52,52 @@ func (tf *TestFinder) FindAffectedTests(change *Change) ([]TestInfo, error) {
 		}
 		tests = append(tests, fileTests...)
 	}
-	
+
 	// Sort tests by relevance score
 	sortTestsByRelevance(tests)
-	
+
 	return tests, nil
 }
 
 // findTestFiles locates all test files in the project
 func (tf *TestFinder) findTestFiles() ([]string, error) {
 	var testFiles []string
-	
+
 	err := filepath.WalkDir(tf.rootDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil // Skip directories with errors
 		}
-		
+
 		// Skip vendor directories
 		if strings.Contains(path, "vendor/") {
 			return filepath.SkipDir
 		}
-		
+
 		// Find test files
 		if !d.IsDir() && strings.HasSuffix(path, "_test.go") {
 			testFiles = append(testFiles, path)
 		}
-		
+
 		return nil
 	})
-	
+
 	return testFiles, err
 }
 
 // analyzeTestFile analyzes a single test file for relevant tests
 func (tf *TestFinder) analyzeTestFile(filePath string, change *Change) ([]TestInfo, error) {
 	var tests []TestInfo
-	
+
 	// Parse the file
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Extract package name
 	packageName := node.Name.Name
-	
+
 	// Extract imports for dependency analysis
 	var imports []string
 	for _, imp := range node.Imports {
@@ -105,14 +105,14 @@ func (tf *TestFinder) analyzeTestFile(filePath string, change *Change) ([]TestIn
 		imports = append(imports, importPath)
 	}
 	tf.packageImports[packageName] = imports
-	
+
 	// Find test functions
 	ast.Inspect(node, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
 		if !ok {
 			return true
 		}
-		
+
 		// Check if it's a test function
 		if strings.HasPrefix(fn.Name.Name, "Test") {
 			position := fset.Position(fn.Pos())
@@ -122,26 +122,26 @@ func (tf *TestFinder) analyzeTestFile(filePath string, change *Change) ([]TestIn
 				FilePath: filePath,
 				Line:     position.Line,
 			}
-			
+
 			// Calculate relevance score
 			testInfo.Relevance = tf.calculateRelevance(testInfo, change, node)
-			
+
 			// Only include tests with non-zero relevance
 			if testInfo.Relevance > 0 {
 				tests = append(tests, testInfo)
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	return tests, nil
 }
 
 // calculateRelevance calculates how relevant a test is to the given change
 func (tf *TestFinder) calculateRelevance(test TestInfo, change *Change, file *ast.File) int {
 	relevance := 0
-	
+
 	// Check if the test package matches any of the change components
 	for _, component := range change.Components {
 		if strings.Contains(test.Package, strings.ToLower(component)) {
@@ -151,7 +151,7 @@ func (tf *TestFinder) calculateRelevance(test TestInfo, change *Change, file *as
 			relevance += 20
 		}
 	}
-	
+
 	// Check if test name contains relevant keywords
 	testNameLower := strings.ToLower(test.Function)
 	for _, keyword := range change.Keywords {
@@ -159,7 +159,7 @@ func (tf *TestFinder) calculateRelevance(test TestInfo, change *Change, file *as
 			relevance += 15
 		}
 	}
-	
+
 	// Analyze imports for relevance
 	for _, imp := range tf.packageImports[test.Package] {
 		for _, component := range change.Components {
@@ -168,7 +168,7 @@ func (tf *TestFinder) calculateRelevance(test TestInfo, change *Change, file *as
 			}
 		}
 	}
-	
+
 	// Boost relevance based on change type
 	switch change.Type {
 	case ChangeTypeBugFix:
@@ -186,12 +186,12 @@ func (tf *TestFinder) calculateRelevance(test TestInfo, change *Change, file *as
 			relevance += 20
 		}
 	}
-	
+
 	// Cap relevance at 100
 	if relevance > 100 {
 		relevance = 100
 	}
-	
+
 	return relevance
 }
 

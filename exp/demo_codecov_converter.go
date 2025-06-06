@@ -66,7 +66,7 @@ func main() {
 			if len(rangeParts) == 2 {
 				startParts := strings.Split(rangeParts[0], ".")
 				endParts := strings.Split(rangeParts[1], ".")
-				
+
 				if len(startParts) >= 2 && len(endParts) >= 2 {
 					startLine, _ := strconv.Atoi(startParts[0])
 					endLine, _ := strconv.Atoi(endParts[0])
@@ -92,10 +92,10 @@ func main() {
 	for file, lineMap := range fileData {
 		maxLine := fileLines[file]
 		covArray := make([]interface{}, maxLine+1)
-		
+
 		// First element is always null
 		covArray[0] = nil
-		
+
 		// Fill in coverage data
 		for i := 1; i <= maxLine; i++ {
 			if count, exists := lineMap[i]; exists {
@@ -104,7 +104,7 @@ func main() {
 				covArray[i] = nil
 			}
 		}
-		
+
 		coverage[file] = covArray
 	}
 

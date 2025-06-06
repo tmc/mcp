@@ -36,7 +36,7 @@ func main() {
 	}
 
 	target := flag.Arg(0)
-	
+
 	// Find package directory
 	pkgDir, err := findPackageDir(target)
 	if err != nil {
@@ -163,7 +163,7 @@ func escapeTxtarHeaders(content []byte) []byte {
 		// This includes lines in comments like "// -- file.go --"
 		trimmed := strings.TrimSpace(line)
 		if strings.HasPrefix(trimmed, "-- ") && strings.HasSuffix(trimmed, " --") &&
-		   strings.Count(trimmed, "--") == 2 {
+			strings.Count(trimmed, "--") == 2 {
 			// Escape by adding a space at the beginning
 			result.WriteString(" ")
 		}

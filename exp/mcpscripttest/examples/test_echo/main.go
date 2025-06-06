@@ -4,10 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
-	"os"
 	"strings"
 	
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
 
 var (
@@ -17,10 +16,10 @@ var (
 )
 
 func main() {
-	config := mcpscripttest.TestBinaryConfig{
+	config := tools.TestBinaryConfig{
 		BinaryName: "test_echo",
 		
-		SupportedFlags: []mcpscripttest.FlagDefinition{
+		SupportedFlags: []tools.FlagDefinition{
 			{
 				Name:        "--uppercase",
 				ShortName:   "-u",
@@ -45,7 +44,7 @@ func main() {
 		
 		AcceptsStdin: true,
 		
-		RequiredArgs: []mcpscripttest.ArgDefinition{
+		RequiredArgs: []tools.ArgDefinition{
 			{
 				Name:        "message",
 				Description: "Message to echo",
@@ -57,7 +56,7 @@ func main() {
 		ExecuteFunc:  execute,
 	}
 	
-	mcpscripttest.TestMainWithFuzzing(config)
+	tools.TestMainWithFuzzing(config)
 }
 
 // generateCommand generates a valid test_echo command
@@ -134,7 +133,7 @@ func execute() error {
 	fmt.Println(strings.Join(parts, *separator))
 	
 	// Also read and echo stdin if available
-	if mcpscripttest.IsStdinAvailable() {
+	if tools.IsStdinAvailable() {
 		// Read from stdin
 		var input string
 		fmt.Scanln(&input)

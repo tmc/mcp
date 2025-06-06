@@ -1,0 +1,33 @@
+# Test basic mcptrace-to-otel functionality
+go build -o mcptrace-to-otel .
+
+# Create a test MCP trace file
+cat > test.mcp << 'EOF'
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 1234567890.123
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}} # 1234567890.124
+mcp-recv {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}} # 1234567890.125
+mcp-send {"jsonrpc":"2.0","id":2,"result":{"tools":[]}} # 1234567890.126
+EOF
+
+# Test help output
+! ./mcptrace-to-otel -h
+stderr 'Usage.*mcptrace-to-otel'
+
+# Test basic conversion
+./mcptrace-to-otel test.mcp
+stdout 'spans'
+stdout 'initialize'
+stdout 'tools/list'
+
+# Test output to file
+./mcptrace-to-otel -output output.json test.mcp
+[ -f output.json ]
+grep 'initialize' output.json
+
+# Test with non-existent file
+! ./mcptrace-to-otel nonexistent.mcp
+stderr 'error.*nonexistent.mcp'
+
+# Clean up
+rm -f mcptrace-to-otel test.mcp output.json

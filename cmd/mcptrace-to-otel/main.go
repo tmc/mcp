@@ -177,7 +177,7 @@ func processTraceFile(ctx context.Context, filename string) error {
 	var header *TraceHeader
 	messages := make(map[string]*MCPMessage) // spanID -> message
 	links := make(map[string][]string)       // spanID -> linked spanIDs
-	
+
 	// First pass: parse all messages and build link graph
 	lineNum := 0
 	for scanner.Scan() {
@@ -216,7 +216,7 @@ func processTraceFile(ctx context.Context, filename string) error {
 
 	// Group messages by request ID for creating spans
 	requestSpans := make(map[string]trace.Span)
-	
+
 	for spanID, msg := range messages {
 		// Skip if this is a linked span (shadow response)
 		if msg.LinksTo != "" {
@@ -225,7 +225,7 @@ func processTraceFile(ctx context.Context, filename string) error {
 
 		// Create or get span for this request
 		span := createSpanForMessage(rootCtx, tracer, msg, header)
-		
+
 		// Add events for linked messages (e.g., shadow responses)
 		if linkedSpans, ok := links[spanID]; ok {
 			if *verbose {
@@ -357,7 +357,7 @@ func createRootSpan(ctx context.Context, tracer trace.Tracer, header *TraceHeade
 	// Extract trace ID and span ID
 	traceID, _ := trace.TraceIDFromHex(parts[1])
 	spanID, _ := trace.SpanIDFromHex(parts[2])
-	
+
 	// Create span context
 	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
 		TraceID:    traceID,
@@ -367,7 +367,7 @@ func createRootSpan(ctx context.Context, tracer trace.Tracer, header *TraceHeade
 
 	// Create context with remote span context
 	ctx = trace.ContextWithRemoteSpanContext(ctx, spanCtx)
-	
+
 	// Start new span as child
 	return tracer.Start(ctx, "mcp-trace",
 		trace.WithAttributes(
@@ -452,7 +452,7 @@ func addAttributes(span trace.Span, msg *MCPMessage) {
 
 func addLinkedEvent(span trace.Span, linkedMsg *MCPMessage) {
 	eventName := fmt.Sprintf("shadow_%s", linkedMsg.Direction)
-	
+
 	attrs := []attribute.KeyValue{
 		attribute.String("mcp.shadow.span_id", linkedMsg.SpanID),
 		attribute.String("mcp.shadow.direction", linkedMsg.Direction),
@@ -473,7 +473,7 @@ func addLinkedEvent(span trace.Span, linkedMsg *MCPMessage) {
 		attrs = append(attrs, attribute.String(fmt.Sprintf("mcp.shadow.baggage.%s", k), v))
 	}
 
-	span.AddEvent(eventName, 
+	span.AddEvent(eventName,
 		trace.WithTimestamp(linkedMsg.Timestamp),
 		trace.WithAttributes(attrs...),
 	)

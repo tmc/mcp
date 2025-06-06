@@ -1,0 +1,18 @@
+# Test mcpdiff with notifications
+exec go build -o mcpdiff .
+
+# Test diffing files with notifications
+exec ./mcpdiff notif1.mcp notif2.mcp
+stdout 'notification'
+
+-- notif1.mcp --
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+mcp-send {"jsonrpc":"2.0","method":"notifications/progress","params":{"progress":50,"total":100}}
+
+-- notif2.mcp --
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+mcp-send {"jsonrpc":"2.0","method":"notifications/progress","params":{"progress":75,"total":100}}

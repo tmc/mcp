@@ -62,7 +62,7 @@ func TestParseHeader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := parseHeader(tt.line)
-			
+
 			if tt.wantNil {
 				if got != nil {
 					t.Errorf("parseHeader() = %v, want nil", got)

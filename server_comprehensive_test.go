@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"testing"
-	"log/slog"
 )
 
 // TestServerInitialization tests server creation and configuration

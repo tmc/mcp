@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/tmc/mcp"
+	"log/slog"
 )
 
 // TestRegisterTools tests that all expected tools are registered
 func TestRegisterTools(t *testing.T) {
-	server := mcp.NewServer("test-server", "1.0.0")
+	server := mcp.NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	registerTools(server)
 
 	// Get the registered tools
@@ -45,7 +46,7 @@ func TestRegisterTools(t *testing.T) {
 
 // TestEchoTool tests the echo tool implementation
 func TestEchoTool(t *testing.T) {
-	server := mcp.NewServer("test-server", "1.0.0")
+	server := mcp.NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	registerTools(server)
 
 	// Get the call tool handler
@@ -102,7 +103,7 @@ func TestEchoTool(t *testing.T) {
 
 // TestRandomTool tests the random number generator tool
 func TestRandomTool(t *testing.T) {
-	server := mcp.NewServer("test-server", "1.0.0")
+	server := mcp.NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	registerTools(server)
 
 	callHandler := server.GetCallToolHandler()
@@ -144,7 +145,7 @@ func TestRandomTool(t *testing.T) {
 
 // TestCurrentTimeTool tests the current time tool
 func TestCurrentTimeTool(t *testing.T) {
-	server := mcp.NewServer("test-server", "1.0.0")
+	server := mcp.NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	registerTools(server)
 
 	callHandler := server.GetCallToolHandler()

@@ -11,6 +11,8 @@ Model Context Protocol (MCP) is a standardized protocol for AI models to interac
 - Type-safe API with Go generics
 - Management of tools, resources, and prompts
 - Comprehensive testing and validation utilities
+- **Build Status**: ✅ All packages build successfully
+- **Test Status**: ✅ 22/23 packages passing tests
 
 ## Project Structure
 
@@ -18,26 +20,30 @@ Model Context Protocol (MCP) is a standardized protocol for AI models to interac
 mcp/
 ├── client.go, server.go, transport.go  # Core implementation
 ├── cmd/                                # Command-line tools
-│   ├── mcp-capabilities/               # Server capability detection
-│   ├── mcp-config/                     # Configuration management
-│   ├── mcp-jsonschema/                 # Schema extraction
-│   ├── mcp-mock-client/                # Test client
-│   ├── mcp-recv/, mcp-send/            # Message utilities 
+│   ├── mcp-connect/                    # Connection utilities
+│   ├── mcp-debug/                      # Debug tools
+│   ├── mcp-fake/                       # Mock servers
+│   ├── mcp-probe/                      # Server probing
+│   ├── mcp-proxy/                      # Traffic proxying
 │   ├── mcp-replay/                     # Session recording/playback
-│   ├── mcp-spy/                        # Traffic monitoring
-│   ├── mcp-start/, mcp-test/           # Server utilities
-│   ├── mcp-verify/                     # Compliance verification
-│   └── mcpd/                           # MCP daemon (in development)
-├── adapters/                           # System adapters
+│   ├── mcp-send/                       # Message sending
+│   ├── mcp-serve/                      # Server hosting
+│   ├── mcp-shadow/                     # Shadow testing
+│   ├── mcp-sort/                       # Trace sorting
+│   ├── mcpcat/                         # Trace viewing
+│   ├── mcpdiff/                        # Trace comparison
+│   ├── mcpspy/                         # Traffic monitoring
+│   └── mcptrace-to-otel/               # OpenTelemetry conversion
 ├── examples/                           # Example implementations
-│   ├── servers/                        # Server examples
-│   └── hosts/                          # Host applications
-├── schema/                             # Schema functionality
-├── mcptrace/                           # Tracing utilities
-├── testing/                            # Test utilities
+│   └── servers/                        # 25+ server examples
 ├── exp/                                # Experimental features
-│   └── tools/                          # Experimental tools
-└── internal/                           # Internal implementation details
+│   ├── mcpscripttest/                  # Testing framework
+│   ├── adapters/                       # System adapters
+│   └── cmd/                            # Experimental tools
+├── modelcontextprotocol/               # Core protocol types
+├── internal/                           # Internal implementation details
+├── testing/                            # Test utilities
+└── traces/                             # Example trace files
 ```
 
 ## Installation
@@ -50,50 +56,42 @@ go build ./...
 
 ## Command-line Tools
 
-### mcp-capabilities
+### Core Tools
 
-Checks MCP server capabilities including support for tools, prompts, resources, and experimental features.
+- **mcp-connect**: Connect to MCP servers with various transports (stdio, HTTP, SSE)
+- **mcp-debug**: Debug MCP server interactions and protocol flows
+- **mcp-fake**: Create fake/mock MCP servers for testing
+- **mcp-probe**: Probe and test MCP server capabilities and responses
+- **mcp-proxy**: Proxy MCP traffic for debugging and analysis
+- **mcp-replay**: Record and replay MCP sessions for testing
+- **mcp-send**: Send individual MCP requests to servers
+- **mcp-serve**: Serve MCP servers with various transport options
+- **mcp-shadow**: Create shadow testing with dual server comparison
+- **mcp-sort**: Sort and organize MCP trace files
 
-```bash
-# Check server capabilities
-mcp-capabilities --server "./path/to/server"
+### Utility Tools
 
-# Output in JSON format
-mcp-capabilities --server "./path/to/server" --output capabilities.json --json
-```
+- **mcpcat**: Display and format MCP trace files
+- **mcpdiff**: Compare MCP traces and sessions
+- **mcpspy**: Monitor and spy on MCP traffic
+- **mcptrace-to-otel**: Convert MCP traces to OpenTelemetry format
 
-### mcp-config
-
-Manages MCP server configurations. Creates, edits, validates, and formats configuration files.
-
-```bash
-# Create a configuration from template
-mcp-config --create calculator.json --template calculator
-
-# Validate a configuration
-mcp-config --validate server.json
-```
-
-### mcp-jsonschema
-
-Extracts JSON schemas from MCP servers or configuration files.
+### Example Usage
 
 ```bash
-# Extract schemas from a server
-mcp-jsonschema --server "./path/to/server"
+# Connect to a server via stdio
+mcp-connect --stdio ./path/to/server
 
-# Save schemas to a file
-mcp-jsonschema --server "./path/to/server" --output schemas.json
+# Debug server interactions
+mcp-debug --server ./server --verbose
+
+# Proxy MCP traffic for analysis
+mcp-proxy --listen :8080 --target stdio://./server
+
+# Record and replay sessions
+mcp-replay --record session.mcp --server ./server
+mcp-replay --playback session.mcp
 ```
-
-### Additional Tools
-
-- **mcp-spy**: Monitors traffic between clients and servers
-- **mcp-mock-client**: Creates mock clients for testing
-- **mcp-replay**: Records and replays MCP sessions
-- **mcp-start**: Starts servers from configuration files
-- **mcp-test**: Tests servers against specifications
-- **mcp-verify**: Verifies compliance with the MCP specification
 
 ## Example Servers
 

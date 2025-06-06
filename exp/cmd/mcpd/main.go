@@ -54,6 +54,19 @@ var (
 	// Interactive mode
 	interactive = flag.Bool("i", false, "Run in interactive mode, handling prompts via TTY")
 	noTTYPrompt = flag.Bool("no-tty-prompt", false, "Disable TTY prompting in interactive mode")
+
+	// Authentication options
+	enableOAuth     = flag.Bool("enable-oauth", false, "Enable OAuth authentication")
+	oauthClientID   = flag.String("oauth-client-id", "", "OAuth Client ID")
+	oauthSecret     = flag.String("oauth-secret", "", "OAuth Client Secret")
+	oauthProvider   = flag.String("oauth-provider", "google", "OAuth provider: google, github, custom, local")
+	oauthCallback   = flag.String("oauth-callback", "/auth/callback", "OAuth callback path")
+	authorizedUsers = flag.String("authorized-users", "", "Comma-separated list of authorized user emails")
+	
+	// Local authentication options
+	localAuthFile    = flag.String("local-auth-file", "", "Path to local users file (username:password format)")
+	localAuthUsers   = flag.String("local-auth-users", "", "Local users in format 'user1:pass1,user2:pass2' (for development)")
+	localAuthPersist = flag.String("local-auth-persist", "", "Path to persist local users as JSON file")
 )
 
 func main() {

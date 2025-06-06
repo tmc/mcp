@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/tmc/mcp"
+	"log/slog"
 )
 
 // TestToolsIntegration tests the tools registered in the everything server
@@ -141,7 +142,7 @@ func TestToolsIntegration(t *testing.T) {
 // TestToolsListHandler tests the tools/list functionality
 func TestToolsListHandler(t *testing.T) {
 	// Create a new server instance
-	server := mcp.NewServer("test-server", "1.0.0")
+	server := mcp.NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 	registerTools(server)
 
 	// Count the registered tools

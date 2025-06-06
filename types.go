@@ -42,7 +42,7 @@ const (
 	MethodToolsList              MCPMethod = "tools/list"
 	MethodToolsCall              MCPMethod = "tools/call"
 	MethodNotificationCancelled  MCPMethod = "notifications/cancelled"
-	
+
 	// Notification methods
 	MethodProgress            MCPMethod = "notifications/progress"
 	MethodLogging             MCPMethod = "notifications/message"

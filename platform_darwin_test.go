@@ -3,9 +3,9 @@
 package mcp
 
 import (
+	"log/slog"
 	"runtime"
 	"testing"
-	"log/slog"
 )
 
 func TestGetApplePlatformInfo(t *testing.T) {

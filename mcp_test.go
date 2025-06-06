@@ -5,10 +5,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"testing"
 	"time"
-	"log/slog"
 )
 
 type testInput struct {

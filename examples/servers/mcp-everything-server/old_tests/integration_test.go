@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/tmc/mcp/modelcontextprotocol"
+	"log/slog"
 )
 
 // TestEverythingServerIntegration tests the everything server integration

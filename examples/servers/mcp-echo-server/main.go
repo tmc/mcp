@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -18,6 +19,29 @@ const (
 	ServerName    = "echo-server"
 	ServerVersion = "1.0.0"
 )
+
+// StdioTransport provides a transport using stdin/stdout
+type StdioTransport struct{}
+
+// Dial implements the Transport interface
+func (t *StdioTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
+	return &stdioConn{
+		Reader: os.Stdin,
+		Writer: os.Stdout,
+	}, nil
+}
+
+// stdioConn wraps stdin/stdout as a ReadWriteCloser
+type stdioConn struct {
+	io.Reader
+	io.Writer
+}
+
+// Close implements io.Closer
+func (c *stdioConn) Close() error {
+	// Don't actually close stdin/stdout
+	return nil
+}
 
 func main() {
 	// Redirect logs to stderr to keep stdout clean for the protocol
@@ -36,9 +60,12 @@ func main() {
 	// Register echo tool
 	registerEchoTool(server)
 
+	// Create stdio transport
+	stdioTransport := &StdioTransport{}
+	
 	// Serve via stdio
 	log.Println("Starting protocol server via stdio...")
-	if err := server.Serve(ctx, nil); err != nil {
+	if err := server.Serve(ctx, stdioTransport); err != nil {
 		if err != context.Canceled {
 			log.Fatalf("Error serving: %v", err)
 		}

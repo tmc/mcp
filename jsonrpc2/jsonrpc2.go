@@ -61,7 +61,7 @@ func (id ID) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler for ID
 func (id *ID) UnmarshalJSON(data []byte) error {
 	id.raw = data
-	
+
 	// Try to unmarshal as string first
 	var s string
 	if err := json.Unmarshal(data, &s); err == nil {
@@ -69,7 +69,7 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 		id.Num = 0
 		return nil
 	}
-	
+
 	// Try to unmarshal as number
 	var n int64
 	if err := json.Unmarshal(data, &n); err == nil {
@@ -77,7 +77,7 @@ func (id *ID) UnmarshalJSON(data []byte) error {
 		id.Str = ""
 		return nil
 	}
-	
+
 	// If neither works, keep the raw data for null or other values
 	return nil
 }

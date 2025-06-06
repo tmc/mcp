@@ -3,8 +3,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"testing"
 	"log/slog"
+	"testing"
 )
 
 // TestResourceContentsMethods tests the content() methods

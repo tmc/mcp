@@ -6,11 +6,11 @@ import (
 )
 
 type TestUser struct {
-	ID       int      `json:"id"`
-	Name     string   `json:"name"`
-	Email    string   `json:"email"`
-	Age      int      `json:"age,omitempty"`
-	Tags     []string `json:"tags"`
+	ID       int                    `json:"id"`
+	Name     string                 `json:"name"`
+	Email    string                 `json:"email"`
+	Age      int                    `json:"age,omitempty"`
+	Tags     []string               `json:"tags"`
 	Settings map[string]interface{} `json:"settings"`
 }
 

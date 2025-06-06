@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/tmc/mcp/exp/changemanagement"
 )
@@ -53,20 +52,20 @@ func main() {
 	// Save documentation files
 	for _, doc := range docs {
 		outputPath := filepath.Join(*outputDir, doc.Filename)
-		
+
 		// Create subdirectories if needed
 		dir := filepath.Dir(outputPath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			log.Printf("Failed to create directory %s: %v", dir, err)
 			continue
 		}
-		
+
 		err := os.WriteFile(outputPath, []byte(doc.Content), 0644)
 		if err != nil {
 			log.Printf("Failed to write %s: %v", outputPath, err)
 			continue
 		}
-		
+
 		if *verbose {
 			fmt.Printf("Created: %s\n", outputPath)
 		}

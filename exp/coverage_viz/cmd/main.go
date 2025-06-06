@@ -16,14 +16,14 @@ func main() {
 		report    = flag.Bool("report", false, "Generate text report")
 		coverFile = flag.String("coverprofile", "", "Coverage profile file")
 	)
-	
+
 	flag.Parse()
-	
+
 	// Mock coverage data for demonstration
 	coverage := createMockCoverage()
-	
+
 	visualizer := coverage_viz.NewVisualizer(coverage)
-	
+
 	if *serve {
 		log.Fatal(visualizer.Serve(*port))
 	} else if *report {

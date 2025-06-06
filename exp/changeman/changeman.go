@@ -22,13 +22,13 @@ func NewChangeManager(projectRoot string) *ChangeManager {
 func (cm *ChangeManager) AnalyzeChange(description string) (*ChangeAnalysis, error) {
 	// Analyze the change description
 	change := cm.analyzer.Analyze(description)
-	
+
 	// Find affected tests
 	affectedTests, err := cm.testFinder.FindAffectedTests(change)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find affected tests: %w", err)
 	}
-	
+
 	return &ChangeAnalysis{
 		Change:        change,
 		AffectedTests: affectedTests,
@@ -49,16 +49,16 @@ func (ca *ChangeAnalysis) Summary() string {
 	summary += fmt.Sprintf("  Keywords: %v\n", ca.Change.Keywords)
 	summary += fmt.Sprintf("  Components: %v\n", ca.Change.Components)
 	summary += fmt.Sprintf("\nAffected Tests (%d):\n", len(ca.AffectedTests))
-	
+
 	for i, test := range ca.AffectedTests {
 		if i >= 10 {
 			summary += fmt.Sprintf("  ... and %d more\n", len(ca.AffectedTests)-10)
 			break
 		}
-		summary += fmt.Sprintf("  %s.%s (relevance: %d%%)\n", 
+		summary += fmt.Sprintf("  %s.%s (relevance: %d%%)\n",
 			test.Package, test.Function, test.Relevance)
 	}
-	
+
 	return summary
 }
 

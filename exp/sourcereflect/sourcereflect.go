@@ -66,7 +66,7 @@ func structToSchema(t reflect.Type) (*Schema, error) {
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		
+
 		// Skip unexported fields
 		if !field.IsExported() {
 			continue

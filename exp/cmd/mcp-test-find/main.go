@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/tmc/mcp/exp/changemanagement"
@@ -112,8 +111,8 @@ func formatAsText(result *changemanagement.TestFinderResult) string {
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("Total tests found: %d\n", 
-		len(result.DefinitelyAffected) + len(result.PossiblyAffected) + len(result.RelatedTests)))
+	sb.WriteString(fmt.Sprintf("Total tests found: %d\n",
+		len(result.DefinitelyAffected)+len(result.PossiblyAffected)+len(result.RelatedTests)))
 
 	return sb.String()
 }

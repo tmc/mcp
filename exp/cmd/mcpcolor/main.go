@@ -21,25 +21,25 @@ var (
 const (
 	reset      = "\033[0m"
 	bold       = "\033[1m"
-	green      = "\033[32m"        // recv: client→server
-	brightCyan = "\033[96m"        // send: server→client (more readable than blue)
+	green      = "\033[32m" // recv: client→server
+	brightCyan = "\033[96m" // send: server→client (more readable than blue)
 	cyan       = "\033[36m"
 	yellow     = "\033[33m"
 	magenta    = "\033[35m"
 	red        = "\033[31m"
-	gray       = "\033[90m"        // shadow responses
+	gray       = "\033[90m" // shadow responses
 )
 
 // Color palette for cycling through IDs
 var colorPalette = []string{
-	"\033[96m",  // bright cyan
-	"\033[93m",  // bright yellow
-	"\033[95m",  // bright magenta
-	"\033[91m",  // bright red
-	"\033[92m",  // bright green
-	"\033[94m",  // bright blue (might be more readable for IDs)
-	"\033[97m",  // bright white
-	cyan,        // regular cyan
+	"\033[96m", // bright cyan
+	"\033[93m", // bright yellow
+	"\033[95m", // bright magenta
+	"\033[91m", // bright red
+	"\033[92m", // bright green
+	"\033[94m", // bright blue (might be more readable for IDs)
+	"\033[97m", // bright white
+	cyan,       // regular cyan
 }
 
 // Regular expression to match the timestamp portion with milliseconds

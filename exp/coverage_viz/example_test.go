@@ -11,12 +11,12 @@ func ParseMessage(msg string) (string, error) {
 	if msg == "" {
 		return "", fmt.Errorf("empty message")
 	}
-	
+
 	parts := strings.Split(msg, ":")
 	if len(parts) < 2 {
 		return "", fmt.Errorf("invalid format")
 	}
-	
+
 	switch parts[0] {
 	case "info":
 		return fmt.Sprintf("INFO: %s", parts[1]), nil
@@ -74,7 +74,7 @@ func TestParseMessage_PartialCoverage(t *testing.T) {
 		{"warn:msg", "WARNING: msg"},
 		// Note: missing "error" and "default" cases
 	}
-	
+
 	for _, tc := range tests {
 		result, err := ParseMessage(tc.input)
 		if err != nil {

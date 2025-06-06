@@ -22,7 +22,7 @@ func TestResolveSocket(t *testing.T) {
 		*srvDirFlag = origSrvDirFlag
 	}()
 	*rootDirFlag = tmpDir
-	
+
 	// Create a service directory
 	srvDir := filepath.Join(tmpDir, "srv", "mcp")
 	if err := os.MkdirAll(srvDir, 0755); err != nil {
@@ -34,7 +34,7 @@ func TestResolveSocket(t *testing.T) {
 	t.Run("DirectSocketPath", func(t *testing.T) {
 		// Skip actual test as we can't easily create a socket in tests
 		t.Skip("Skipping socket creation test")
-		
+
 		// In a real test, we would:
 		// 1. Create a Unix domain socket
 		// 2. Call resolveSocket with its path
@@ -45,7 +45,7 @@ func TestResolveSocket(t *testing.T) {
 	t.Run("PIDResolution", func(t *testing.T) {
 		// Skip actual test as we would need to mock file operations
 		t.Skip("Skipping PID resolution test")
-		
+
 		// In a real test, we would:
 		// 1. Create a fake socket file at the expected path
 		// 2. Call resolveSocket with a PID string
@@ -56,7 +56,7 @@ func TestResolveSocket(t *testing.T) {
 	t.Run("ServiceNameResolution", func(t *testing.T) {
 		// Skip actual test as we would need to mock file operations
 		t.Skip("Skipping service name resolution test")
-		
+
 		// In a real test, we would:
 		// 1. Create a service file with a socket path
 		// 2. Call resolveSocket with the service name
@@ -69,7 +69,7 @@ func TestGetMCPDRootDir(t *testing.T) {
 	t.Run("ExplicitFlag", func(t *testing.T) {
 		origFlag := *rootDirFlag
 		defer func() { *rootDirFlag = origFlag }()
-		
+
 		*rootDirFlag = "/custom/path"
 		if dir := getMCPDRootDir(); dir != "/custom/path" {
 			t.Errorf("Expected %q, got %q", "/custom/path", dir)
@@ -85,7 +85,7 @@ func TestGetSrvRootDir(t *testing.T) {
 	t.Run("ExplicitFlag", func(t *testing.T) {
 		origFlag := *srvDirFlag
 		defer func() { *srvDirFlag = origFlag }()
-		
+
 		*srvDirFlag = "/custom/srv/path"
 		if dir := getSrvRootDir(); dir != "/custom/srv/path" {
 			t.Errorf("Expected %q, got %q", "/custom/srv/path", dir)

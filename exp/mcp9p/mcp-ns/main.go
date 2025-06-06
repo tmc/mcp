@@ -117,9 +117,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: path required\n")
 			os.Exit(1)
 		}
-		
+
 		path := flag.Arg(0)
-		
+
 		// Parse additional flags for registration
 		regCmd := flag.NewFlagSet("register", flag.ExitOnError)
 		entryType := regCmd.String("type", "", "Entry type (local, remote, namespace)")
@@ -128,13 +128,13 @@ func main() {
 		command := regCmd.String("command", "", "Command for local services")
 		args := regCmd.String("args", "", "Arguments for command (comma-separated)")
 		metadata := regCmd.String("metadata", "", "Metadata (key=value,key=value)")
-		
+
 		regCmd.Parse(flag.Args()[1:])
-		
+
 		entry := map[string]interface{}{
 			"type": *entryType,
 		}
-		
+
 		if *transport != "" {
 			entry["transport"] = *transport
 		}
@@ -157,65 +157,65 @@ func main() {
 			}
 			entry["metadata"] = meta
 		}
-		
+
 		if err := client.Register(path, entry); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		fmt.Println("Registered successfully")
-		
+
 	case "lookup":
 		if flag.NArg() < 1 {
 			fmt.Fprintf(os.Stderr, "Error: path required\n")
 			os.Exit(1)
 		}
-		
+
 		path := flag.Arg(0)
 		entry, err := client.Lookup(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		data, _ := json.MarshalIndent(entry, "", "  ")
 		fmt.Println(string(data))
-		
+
 	case "list":
 		path := "/"
 		if flag.NArg() > 0 {
 			path = flag.Arg(0)
 		}
-		
+
 		entries, err := client.List(path)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		for _, entry := range entries {
 			name := entry["name"].(string)
 			entryType := entry["type"].(string)
-			
+
 			if entryType == "namespace" {
 				fmt.Printf("%s/\n", name)
 			} else {
 				fmt.Printf("%s (%s)\n", name, entryType)
 			}
 		}
-		
+
 	case "bind":
 		if flag.NArg() < 2 {
 			fmt.Fprintf(os.Stderr, "Error: source and target paths required\n")
 			os.Exit(1)
 		}
-		
+
 		source := flag.Arg(0)
 		target := flag.Arg(1)
-		
+
 		// This would call a mount endpoint on the server
 		fmt.Printf("Binding %s to %s (not implemented yet)\n", source, target)
-		
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", *cmd)
 		os.Exit(1)

@@ -7,10 +7,10 @@ import (
 
 // ReactFlowNode represents a node in React Flow format
 type ReactFlowNode struct {
-	ID       string                 `json:"id"`
-	Type     string                 `json:"type"`
-	Position Position               `json:"position"`
-	Data     ReactFlowNodeData      `json:"data"`
+	ID       string            `json:"id"`
+	Type     string            `json:"type"`
+	Position Position          `json:"position"`
+	Data     ReactFlowNodeData `json:"data"`
 }
 
 // Position represents the position of a node
@@ -89,28 +89,28 @@ func ConvertToReactFlow(graph *Graph) *ReactFlowData {
 func calculateLayout(graph *Graph) map[string]Position {
 	layout := make(map[string]Position)
 	levels := calculateLevels(graph)
-	
+
 	// Group nodes by level
 	nodesByLevel := make(map[int][]*Node)
 	for id, node := range graph.Nodes {
 		level := levels[id]
 		nodesByLevel[level] = append(nodesByLevel[level], node)
 	}
-	
+
 	// Position nodes
 	ySpacing := 120.0
 	xSpacing := 200.0
-	
+
 	for level, nodes := range nodesByLevel {
 		y := float64(level) * ySpacing
 		startX := -float64(len(nodes)-1) * xSpacing / 2
-		
+
 		for i, node := range nodes {
 			x := startX + float64(i)*xSpacing
 			layout[node.ID] = Position{X: x, Y: y}
 		}
 	}
-	
+
 	return layout
 }
 
@@ -118,26 +118,26 @@ func calculateLayout(graph *Graph) map[string]Position {
 func calculateLevels(graph *Graph) map[string]int {
 	levels := make(map[string]int)
 	visited := make(map[string]bool)
-	
+
 	// Build adjacency list
 	adj := make(map[string][]string)
 	for _, edge := range graph.Edges {
 		adj[edge.Source] = append(adj[edge.Source], edge.Target)
 	}
-	
+
 	// Find root nodes (nodes with no incoming edges)
 	hasIncoming := make(map[string]bool)
 	for _, edge := range graph.Edges {
 		hasIncoming[edge.Target] = true
 	}
-	
+
 	roots := []string{}
 	for id := range graph.Nodes {
 		if !hasIncoming[id] {
 			roots = append(roots, id)
 		}
 	}
-	
+
 	// If no roots found, use the specified root or first node
 	if len(roots) == 0 {
 		if graph.Root != "" {
@@ -149,7 +149,7 @@ func calculateLevels(graph *Graph) map[string]int {
 			}
 		}
 	}
-	
+
 	// BFS to assign levels
 	queue := []string{}
 	for _, root := range roots {
@@ -157,12 +157,12 @@ func calculateLevels(graph *Graph) map[string]int {
 		levels[root] = 0
 		visited[root] = true
 	}
-	
+
 	for len(queue) > 0 {
 		current := queue[0]
 		queue = queue[1:]
 		currentLevel := levels[current]
-		
+
 		for _, neighbor := range adj[current] {
 			if !visited[neighbor] {
 				visited[neighbor] = true
@@ -171,46 +171,46 @@ func calculateLevels(graph *Graph) map[string]int {
 			}
 		}
 	}
-	
+
 	// Handle unvisited nodes
 	for id := range graph.Nodes {
 		if !visited[id] {
 			levels[id] = 0
 		}
 	}
-	
+
 	return levels
 }
 
 // ConvertToDot converts a graph to Graphviz DOT format
 func ConvertToDot(graph *Graph) string {
 	var sb strings.Builder
-	
+
 	sb.WriteString("digraph ToolGraph {\n")
 	sb.WriteString("  rankdir=TB;\n")
 	sb.WriteString("  node [shape=box];\n\n")
-	
+
 	// Define node styles by type
 	sb.WriteString("  // Node styles\n")
 	sb.WriteString("  node [style=filled];\n")
-	
+
 	// Add nodes
 	sb.WriteString("\n  // Nodes\n")
 	for id, node := range graph.Nodes {
 		color := getNodeColor(node.Type)
 		shape := getNodeShape(node.Type)
-		
+
 		label := node.Label
 		if node.Metadata != nil {
 			if line, ok := node.Metadata["line"]; ok {
 				label = fmt.Sprintf("%s\\n(line %v)", label, line)
 			}
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("  \"%s\" [label=\"%s\", fillcolor=\"%s\", shape=%s];\n",
 			id, label, color, shape))
 	}
-	
+
 	// Add edges
 	sb.WriteString("\n  // Edges\n")
 	for _, edge := range graph.Edges {
@@ -218,16 +218,16 @@ func ConvertToDot(graph *Graph) string {
 		if edge.Type == "executes" {
 			style = ", style=dashed"
 		}
-		
+
 		label := ""
 		if edge.Label != "" {
 			label = fmt.Sprintf(", label=\"%s\"", edge.Label)
 		}
-		
+
 		sb.WriteString(fmt.Sprintf("  \"%s\" -> \"%s\" [label=\"%s\"%s%s];\n",
 			edge.Source, edge.Target, edge.Type, label, style))
 	}
-	
+
 	sb.WriteString("}\n")
 	return sb.String()
 }

@@ -156,7 +156,7 @@ func getCoverageData(dir string) (map[string]PackageCoverage, error) {
 			pkg := parts[0]
 			var cov float64
 			fmt.Sscanf(strings.TrimSuffix(parts[2], "%"), "%f", &cov)
-			
+
 			packages[pkg] = PackageCoverage{
 				Package:  pkg,
 				Coverage: cov,
@@ -170,7 +170,7 @@ func getCoverageData(dir string) (map[string]PackageCoverage, error) {
 // runMerge merges coverage data from two directories
 func runMerge(baseDir, compareDir, outputDir string) error {
 	fmt.Printf("Merging coverage data from %s and %s...\n", baseDir, compareDir)
-	
+
 	mergeDir := filepath.Join(outputDir, "merged")
 	if err := os.MkdirAll(mergeDir, 0755); err != nil {
 		return err
@@ -179,26 +179,26 @@ func runMerge(baseDir, compareDir, outputDir string) error {
 	cmd := exec.Command("go", "tool", "covdata", "merge",
 		"-i="+baseDir+","+compareDir,
 		"-o="+mergeDir)
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("merge failed: %w\nOutput: %s", err, string(output))
 	}
 
 	fmt.Printf("Merged coverage data written to: %s\n", mergeDir)
-	
+
 	// Show merged coverage
 	showCmd := exec.Command("go", "tool", "covdata", "percent", "-i="+mergeDir)
 	showOutput, _ := showCmd.Output()
 	fmt.Printf("\nMerged Coverage:\n%s", string(showOutput))
-	
+
 	return nil
 }
 
 // runIntersect finds the intersection of coverage between two directories
 func runIntersect(baseDir, compareDir, outputDir string) error {
 	fmt.Printf("Finding intersection of coverage data...\n")
-	
+
 	intersectDir := filepath.Join(outputDir, "intersect")
 	if err := os.MkdirAll(intersectDir, 0755); err != nil {
 		return err
@@ -207,26 +207,26 @@ func runIntersect(baseDir, compareDir, outputDir string) error {
 	cmd := exec.Command("go", "tool", "covdata", "intersect",
 		"-i="+baseDir+","+compareDir,
 		"-o="+intersectDir)
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("intersect failed: %w\nOutput: %s", err, string(output))
 	}
 
 	fmt.Printf("Intersection written to: %s\n", intersectDir)
-	
+
 	// Show intersection coverage
 	showCmd := exec.Command("go", "tool", "covdata", "percent", "-i="+intersectDir)
 	showOutput, _ := showCmd.Output()
 	fmt.Printf("\nIntersection Coverage:\n%s", string(showOutput))
-	
+
 	return nil
 }
 
 // runSubtract subtracts compare coverage from base coverage
 func runSubtract(baseDir, compareDir, outputDir string) error {
 	fmt.Printf("Subtracting %s from %s...\n", compareDir, baseDir)
-	
+
 	subtractDir := filepath.Join(outputDir, "subtract")
 	if err := os.MkdirAll(subtractDir, 0755); err != nil {
 		return err
@@ -235,19 +235,19 @@ func runSubtract(baseDir, compareDir, outputDir string) error {
 	cmd := exec.Command("go", "tool", "covdata", "subtract",
 		"-i="+baseDir+","+compareDir,
 		"-o="+subtractDir)
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("subtract failed: %w\nOutput: %s", err, string(output))
 	}
 
 	fmt.Printf("Subtraction result written to: %s\n", subtractDir)
-	
+
 	// Show subtraction coverage
 	showCmd := exec.Command("go", "tool", "covdata", "percent", "-i="+subtractDir)
 	showOutput, _ := showCmd.Output()
 	fmt.Printf("\nSubtraction Coverage:\n%s", string(showOutput))
-	
+
 	return nil
 }
 
@@ -262,12 +262,12 @@ func printDiff(diff *CoverageDiff, verbose bool) {
 		pkg   string
 		delta float64
 	}
-	
+
 	var diffs []pkgDiff
 	for pkg, delta := range diff.Differences {
 		diffs = append(diffs, pkgDiff{pkg, delta})
 	}
-	
+
 	sort.Slice(diffs, func(i, j int) bool {
 		return abs(diffs[i].delta) > abs(diffs[j].delta)
 	})
@@ -340,7 +340,7 @@ func generateDiffReport(diff *CoverageDiff, outputDir string) error {
 	// Calculate summary statistics
 	var improvements, regressions, unchanged int
 	var totalImprovement, totalRegression float64
-	
+
 	for _, delta := range diff.Differences {
 		if delta > 0 {
 			improvements++
@@ -364,7 +364,7 @@ func generateDiffReport(diff *CoverageDiff, outputDir string) error {
 	fmt.Fprintf(f, "## Detailed Changes\n\n")
 	fmt.Fprintf(f, "| Package | Change | Type |\n")
 	fmt.Fprintf(f, "|---------|--------|------|\n")
-	
+
 	// Sort by absolute change
 	type change struct {
 		pkg   string

@@ -17,7 +17,7 @@ func InitializeEnhancedFuzzing(ctx context.Context) (*MultiModalCoordinator, err
 	if globalCoordinator != nil {
 		return globalCoordinator, nil
 	}
-	
+
 	// Load configuration
 	configPath := os.Getenv("FUZZ_COORDINATOR_CONFIG")
 	config, err := LoadConfig(configPath)
@@ -25,30 +25,30 @@ func InitializeEnhancedFuzzing(ctx context.Context) (*MultiModalCoordinator, err
 		log.Printf("Warning: Failed to load coordinator config: %v", err)
 		config = DefaultConfig()
 	}
-	
+
 	// Create coordinator
 	globalCoordinator = NewMultiModalCoordinator(ctx)
-	
+
 	// Configure with loaded settings
 	if err := configureCoordinator(globalCoordinator, config); err != nil {
 		return nil, fmt.Errorf("failed to configure coordinator: %w", err)
 	}
-	
+
 	// Initialize coverage oracle integration
 	if config.EnableLLMGuidance {
 		if err := setupCoverageIntegration(globalCoordinator); err != nil {
 			log.Printf("Warning: Failed to setup coverage integration: %v", err)
 		}
 	}
-	
+
 	// Set up event handlers for debugging and logging
 	setupEventHandlers(globalCoordinator)
-	
+
 	// Initialize default targets and strategies
 	if err := initializeDefaultTargets(globalCoordinator); err != nil {
 		log.Printf("Warning: Failed to initialize default targets: %v", err)
 	}
-	
+
 	log.Printf("Enhanced fuzzing coordinator initialized with config: %+v", config)
 	return globalCoordinator, nil
 }
@@ -62,12 +62,12 @@ func GetGlobalCoordinator() *MultiModalCoordinator {
 func configureCoordinator(coordinator *MultiModalCoordinator, config *CoordinatorConfig) error {
 	coordinator.mu.Lock()
 	defer coordinator.mu.Unlock()
-	
+
 	coordinator.maxConcurrentSessions = config.MaxConcurrentSessions
 	coordinator.sessionTimeout = config.SessionTimeout
 	coordinator.adaptiveWeight = config.AdaptiveWeight
 	coordinator.qualityThreshold = config.QualityThreshold
-	
+
 	return nil
 }
 
@@ -75,7 +75,7 @@ func configureCoordinator(coordinator *MultiModalCoordinator, config *Coordinato
 func setupCoverageIntegration(coordinator *MultiModalCoordinator) error {
 	// Get the enhanced coverage coordinator
 	coverageCoordinator := coverage.GetCoordinator()
-	
+
 	// Initialize the default LLM oracle
 	oracleConfig := &coverage.OracleConfig{
 		MaxRequestsPerMinute: 60,
@@ -87,32 +87,32 @@ func setupCoverageIntegration(coordinator *MultiModalCoordinator) error {
 		EnableHeuristics:     true,
 		HeuristicWeight:      0.7,
 	}
-	
+
 	oracle := coverage.NewDefaultLLMOracle(oracleConfig)
 	coverageCoordinator.SetLLMOracle(oracle)
 	coordinator.SetCoverageOracle(oracle)
-	
+
 	// Set up coverage-driven target refresh
 	coverage.RegisterFuzzingHook(func(snapshot *coverage.CoverageSnapshot, guidance *coverage.CoverageGuidance) {
 		// Convert coverage guidance to fuzz targets
 		targets := coordinator.convertGuidanceToTargets(guidance)
-		
+
 		coordinator.mu.Lock()
 		coordinator.targets = append(coordinator.targets, targets...)
 		coordinator.mu.Unlock()
-		
+
 		if os.Getenv("FUZZ_DEBUG") != "" {
 			log.Printf("Coverage-driven target update: added %d targets", len(targets))
 		}
 	})
-	
+
 	return nil
 }
 
 // setupEventHandlers configures event handlers for logging and debugging
 func setupEventHandlers(coordinator *MultiModalCoordinator) {
 	logger := NewLogger("FuzzCoordinator")
-	
+
 	coordinator.SetEventHandlers(
 		// onSessionStart
 		func(session *FuzzingSession) {
@@ -215,55 +215,55 @@ func initializeDefaultTargets(coordinator *MultiModalCoordinator) error {
 			},
 		},
 	}
-	
+
 	coordinator.mu.Lock()
 	coordinator.targets = append(coordinator.targets, defaultTargets...)
 	coordinator.mu.Unlock()
-	
+
 	return nil
 }
 
 // DemoEnhancedFuzzing demonstrates the enhanced fuzzing capabilities
 func DemoEnhancedFuzzing(ctx context.Context) error {
 	log.Println("=== Enhanced Fuzzing Demo ===")
-	
+
 	// Initialize the coordinator
 	coordinator, err := InitializeEnhancedFuzzing(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize fuzzing: %w", err)
 	}
-	
+
 	// Create a demo session
 	sessionID := GenerateSessionID()
 	session, err := coordinator.StartFuzzingSession(sessionID)
 	if err != nil {
 		return fmt.Errorf("failed to start session: %w", err)
 	}
-	
+
 	log.Printf("Started fuzzing session: %s", session.ID)
 	log.Printf("Target: %s", session.CurrentTarget.ID)
 	log.Printf("Strategy: %s (%s)", session.ActiveStrategy.Name, ConvertGuidanceMode(session.ActiveStrategy.Mode))
-	
+
 	// Simulate fuzzing progress
 	for i := 0; i < 5; i++ {
 		time.Sleep(2 * time.Second)
-		
+
 		// Simulate some fuzzing iterations
 		iterations := int64(100 + i*50)
 		successful := int64(20 + i*10)
 		coverage := 0.05 + float64(i)*0.02
 		quality := 0.6 + float64(i)*0.05
-		
+
 		err := coordinator.UpdateSessionProgress(sessionID, iterations, successful, coverage, quality)
 		if err != nil {
 			log.Printf("Failed to update session progress: %v", err)
 			continue
 		}
-		
-		log.Printf("Progress update %d: %d iterations, %d successful, %.2f coverage, %.2f quality", 
+
+		log.Printf("Progress update %d: %d iterations, %d successful, %.2f coverage, %.2f quality",
 			i+1, iterations, successful, coverage, quality)
 	}
-	
+
 	// Get recommendations
 	targets, strategies, err := coordinator.GetRecommendations(ctx)
 	if err != nil {
@@ -279,7 +279,7 @@ func DemoEnhancedFuzzing(ctx context.Context) error {
 			log.Printf("    - %s (%s, priority: %.2f)", strategy.Name, ConvertGuidanceMode(strategy.Mode), strategy.Priority)
 		}
 	}
-	
+
 	// Complete the session
 	err = coordinator.CompleteSession(sessionID, StatusCompleted)
 	if err != nil {
@@ -287,7 +287,7 @@ func DemoEnhancedFuzzing(ctx context.Context) error {
 	} else {
 		log.Printf("Session %s completed successfully", sessionID)
 	}
-	
+
 	// Show final metrics
 	metrics := coordinator.GetMetrics()
 	log.Printf("Final Metrics:")
@@ -296,7 +296,7 @@ func DemoEnhancedFuzzing(ctx context.Context) error {
 	log.Printf("  Total Coverage Gained: %v", metrics["total_coverage_gained"])
 	log.Printf("  Targets Count: %v", metrics["targets_count"])
 	log.Printf("  Strategies Count: %v", metrics["strategies_count"])
-	
+
 	log.Println("=== Demo Complete ===")
 	return nil
 }
@@ -308,13 +308,13 @@ func CreateFuzzingPipeline(ctx context.Context) (*FuzzingPipeline, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize coordinator: %w", err)
 	}
-	
+
 	// Create component managers
 	sessionManager := NewSessionManager(coordinator, DefaultConfig())
 	targetManager := NewTargetManager(coordinator)
 	strategyManager := NewStrategyManager(coordinator)
 	metricsCollector := NewMetricsCollector(coordinator)
-	
+
 	pipeline := &FuzzingPipeline{
 		Coordinator:      coordinator,
 		SessionManager:   sessionManager,
@@ -323,7 +323,7 @@ func CreateFuzzingPipeline(ctx context.Context) (*FuzzingPipeline, error) {
 		MetricsCollector: metricsCollector,
 		Logger:           NewLogger("FuzzingPipeline"),
 	}
-	
+
 	return pipeline, nil
 }
 
@@ -344,7 +344,7 @@ func (fp *FuzzingPipeline) Start(ctx context.Context) error {
 		"targets_count":           len(fp.TargetManager.GetTargets()),
 		"strategies_count":        len(fp.StrategyManager.GetStrategies()),
 	})
-	
+
 	// Pipeline is now ready to accept fuzzing requests
 	return nil
 }
@@ -352,16 +352,16 @@ func (fp *FuzzingPipeline) Start(ctx context.Context) error {
 // Stop stops the fuzzing pipeline
 func (fp *FuzzingPipeline) Stop() error {
 	fp.Logger.LogInfo("Stopping fuzzing pipeline", nil)
-	
+
 	// Complete all active sessions
 	sessions := fp.SessionManager.ListSessions()
 	for _, session := range sessions {
 		fp.SessionManager.CompleteSession(session.ID, StatusCompleted)
 	}
-	
+
 	// Stop coordinator
 	fp.Coordinator.Stop()
-	
+
 	fp.Logger.LogInfo("Fuzzing pipeline stopped", nil)
 	return nil
 }
@@ -369,12 +369,12 @@ func (fp *FuzzingPipeline) Stop() error {
 // GetStatus returns pipeline status
 func (fp *FuzzingPipeline) GetStatus() map[string]interface{} {
 	metrics := fp.MetricsCollector.CollectMetrics()
-	
+
 	return map[string]interface{}{
-		"active_sessions": len(fp.SessionManager.ListSessions()),
-		"total_targets":   len(fp.TargetManager.GetTargets()),
+		"active_sessions":  len(fp.SessionManager.ListSessions()),
+		"total_targets":    len(fp.TargetManager.GetTargets()),
 		"total_strategies": len(fp.StrategyManager.GetStrategies()),
-		"metrics":         metrics,
+		"metrics":          metrics,
 	}
 }
 

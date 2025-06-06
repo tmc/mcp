@@ -2,6 +2,7 @@ package generictypes
 
 import (
 	"encoding/json"
+
 	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
@@ -58,19 +59,19 @@ func (r Request[T]) MarshalJSON() ([]byte, error) {
 		Data T                                 `json:"-"`
 	}
 	w := wrapper{Meta: r.Meta, Data: r.Params}
-	
+
 	// Marshal the wrapper first
 	wrapperBytes, err := json.Marshal(w)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Marshal the params
 	paramBytes, err := json.Marshal(r.Params)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Merge the two JSON objects
 	if len(paramBytes) > 0 && paramBytes[0] == '{' && len(wrapperBytes) > 0 && wrapperBytes[0] == '{' {
 		// Remove the closing brace from wrapper and opening brace from params
@@ -78,7 +79,7 @@ func (r Request[T]) MarshalJSON() ([]byte, error) {
 		merged = append(merged, paramBytes[1:]...)
 		return merged, nil
 	}
-	
+
 	// Can't use embedded type parameter, so we'll return the marshaled params directly
 	return json.Marshal(r.Params)
 }
@@ -88,13 +89,13 @@ func (r *Request[T]) UnmarshalJSON(data []byte) error {
 	type wrapper struct {
 		Meta *modelcontextprotocol.RequestMeta `json:"_meta,omitempty"`
 	}
-	
+
 	var w wrapper
 	if err := json.Unmarshal(data, &w); err != nil {
 		return err
 	}
 	r.Meta = w.Meta
-	
+
 	// Unmarshal directly into Params
 	return json.Unmarshal(data, &r.Params)
 }
@@ -106,19 +107,19 @@ func (r Result[T]) MarshalJSON() ([]byte, error) {
 		Data T              `json:"-"`
 	}
 	w := wrapper{Meta: r.Meta, Data: r.Data}
-	
+
 	// Marshal the wrapper first
 	wrapperBytes, err := json.Marshal(w)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Marshal the data
 	dataBytes, err := json.Marshal(r.Data)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Merge the two JSON objects
 	if len(dataBytes) > 0 && dataBytes[0] == '{' && len(wrapperBytes) > 0 && wrapperBytes[0] == '{' {
 		// Remove the closing brace from wrapper and opening brace from data
@@ -126,7 +127,7 @@ func (r Result[T]) MarshalJSON() ([]byte, error) {
 		merged = append(merged, dataBytes[1:]...)
 		return merged, nil
 	}
-	
+
 	// Can't use embedded type parameter, so we'll return the marshaled data directly
 	return json.Marshal(r.Data)
 }
@@ -135,17 +136,17 @@ func (r Result[T]) MarshalJSON() ([]byte, error) {
 
 // InitializeRequest replaces InitializeRequestParams
 type InitializeRequest = Request[struct {
-	ProtocolVersion string                           `json:"protocolVersion"`
+	ProtocolVersion string                                  `json:"protocolVersion"`
 	Capabilities    modelcontextprotocol.ClientCapabilities `json:"capabilities"`
 	ClientInfo      modelcontextprotocol.Implementation     `json:"clientInfo"`
 }]
 
 // InitializeResponse replaces InitializeResult
 type InitializeResponse = Result[struct {
-	ProtocolVersion string                           `json:"protocolVersion"`
+	ProtocolVersion string                                  `json:"protocolVersion"`
 	Capabilities    modelcontextprotocol.ServerCapabilities `json:"capabilities"`
 	ServerInfo      modelcontextprotocol.Implementation     `json:"serverInfo"`
-	Instructions    *string                          `json:"instructions,omitempty"`
+	Instructions    *string                                 `json:"instructions,omitempty"`
 }]
 
 // ProgressNotification replaces ProgressNotificationParams

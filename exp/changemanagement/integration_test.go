@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/tmc/mcp/exp/changemanagement"
@@ -44,7 +45,7 @@ func TestIntegrationWorkflow(t *testing.T) {
 	// 2. Find affected tests
 	t.Run("FindTests", func(t *testing.T) {
 		finder := changemanagement.NewTestFinder(".")
-		
+
 		// Load saved analysis
 		analysisPath := filepath.Join(tempDir, "analysis.json")
 		data, err := os.ReadFile(analysisPath)
@@ -63,10 +64,10 @@ func TestIntegrationWorkflow(t *testing.T) {
 		}
 
 		// We should find some tests
-		totalTests := len(result.DefinitelyAffected) + 
-			len(result.PossiblyAffected) + 
+		totalTests := len(result.DefinitelyAffected) +
+			len(result.PossiblyAffected) +
 			len(result.RelatedTests)
-		
+
 		if totalTests == 0 {
 			t.Log("Warning: No tests found (this might be expected in a new project)")
 		}
@@ -80,7 +81,7 @@ func TestIntegrationWorkflow(t *testing.T) {
 	// 3. Generate documentation
 	t.Run("GenerateDocumentation", func(t *testing.T) {
 		generator := changemanagement.NewDocumentationGenerator()
-		
+
 		// Load saved analysis
 		analysisPath := filepath.Join(tempDir, "analysis.json")
 		data, err := os.ReadFile(analysisPath)
@@ -126,7 +127,7 @@ func TestIntegrationWorkflow(t *testing.T) {
 	// 4. Test mutations
 	t.Run("MutateTests", func(t *testing.T) {
 		mutator := changemanagement.NewTestMutator()
-		
+
 		// Create a sample test
 		sampleTest := `exec mcp-server start
 stdout 'Server started'
@@ -135,12 +136,12 @@ stdout '{"token": "'
 exec sleep 1
 exec mcp-server stop`
 
-		mutations, err := mutator.MutateTest(sampleTest, 
+		mutations, err := mutator.MutateTest(sampleTest,
 			[]changemanagement.MutationStrategy{
 				changemanagement.MutationReorder,
 				changemanagement.MutationFuzz,
 			}, 5)
-		
+
 		if err != nil {
 			t.Fatalf("Mutation failed: %v", err)
 		}
@@ -163,7 +164,7 @@ exec mcp-server stop`
 
 func TestChangeAnalyzerPatterns(t *testing.T) {
 	analyzer := changemanagement.NewChangeAnalyzer()
-	
+
 	testCases := []struct {
 		name         string
 		description  string
@@ -226,12 +227,12 @@ func TestChangeAnalyzerPatterns(t *testing.T) {
 func TestDocumentationQuality(t *testing.T) {
 	// Test that generated documentation meets quality standards
 	generator := changemanagement.NewDocumentationGenerator()
-	
+
 	analysis := &changemanagement.AnalysisResult{
-		Type:      changemanagement.ChangeTypeSecurity,
-		Category:  "authentication",
-		Breaking:  true,
-		RiskLevel: changemanagement.RiskHigh,
+		Type:       changemanagement.ChangeTypeSecurity,
+		Category:   "authentication",
+		Breaking:   true,
+		RiskLevel:  changemanagement.RiskHigh,
 		Components: []string{"auth", "api", "middleware"},
 		Requirements: changemanagement.Requirements{
 			Functional: []string{

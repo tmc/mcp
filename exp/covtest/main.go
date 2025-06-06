@@ -26,18 +26,18 @@ type TestResult struct {
 	Passed         bool
 	Duration       time.Duration
 	CoverageDir    string
-	CoverageReport map[string]float64      // package -> coverage percentage
+	CoverageReport map[string]float64       // package -> coverage percentage
 	CoverageData   map[string][]interface{} // Codecov format: file -> coverage array
 	Error          error
 }
 
 // CoverageAnalysis represents the coverage contribution analysis
 type CoverageAnalysis struct {
-	Baseline        map[string]float64
-	TestResults     []TestResult
-	CoverageDelta   map[string]map[string]float64 // test -> package -> delta
-	UniquelyTested  map[string][]string           // test -> packages only it tests
-	TotalTime       time.Duration
+	Baseline       map[string]float64
+	TestResults    []TestResult
+	CoverageDelta  map[string]map[string]float64 // test -> package -> delta
+	UniquelyTested map[string][]string           // test -> packages only it tests
+	TotalTime      time.Duration
 }
 
 // CodecovReport represents the Codecov JSON format
@@ -367,10 +367,10 @@ func parseToCodecov(coverFile string) (map[string][]interface{}, error) {
 	for file, lineMap := range fileData {
 		maxLine := fileLines[file]
 		covArray := make([]interface{}, maxLine+1)
-		
+
 		// First element is always null
 		covArray[0] = nil
-		
+
 		// Fill in coverage data
 		for i := 1; i <= maxLine; i++ {
 			if count, exists := lineMap[i]; exists {
@@ -379,7 +379,7 @@ func parseToCodecov(coverFile string) (map[string][]interface{}, error) {
 				covArray[i] = nil
 			}
 		}
-		
+
 		coverage[file] = covArray
 	}
 
@@ -392,9 +392,9 @@ func writeCodecovFile(coverage map[string][]interface{}, filename, testName stri
 		Coverage: coverage,
 		Messages: map[string]map[string]string{
 			"_metadata": {
-				"test_name":  testName,
-				"generated":  time.Now().Format(time.RFC3339),
-				"generator":  "covtest",
+				"test_name": testName,
+				"generated": time.Now().Format(time.RFC3339),
+				"generator": "covtest",
 			},
 		},
 	}
@@ -449,10 +449,10 @@ func writeCombinedCodecov(analysis *CoverageAnalysis, filename string) error {
 		Coverage: combined,
 		Messages: map[string]map[string]string{
 			"_metadata": {
-				"type":        "combined",
-				"test_count":  fmt.Sprintf("%d", len(analysis.TestResults)),
-				"generated":   time.Now().Format(time.RFC3339),
-				"generator":   "covtest",
+				"type":       "combined",
+				"test_count": fmt.Sprintf("%d", len(analysis.TestResults)),
+				"generated":  time.Now().Format(time.RFC3339),
+				"generator":  "covtest",
 			},
 			"_tests": testInfo,
 		},
@@ -478,7 +478,7 @@ func writeTestContributions(analysis *CoverageAnalysis, filename string) error {
 		testContrib := make(map[string]interface{})
 		testContrib["duration"] = result.Duration.String()
 		testContrib["passed"] = result.Passed
-		
+
 		// Calculate unique lines covered by this test
 		uniqueLines := 0
 		totalLines := 0
@@ -505,11 +505,11 @@ func writeTestContributions(analysis *CoverageAnalysis, filename string) error {
 				}
 			}
 		}
-		
+
 		testContrib["total_lines"] = totalLines
 		testContrib["unique_lines"] = uniqueLines
 		testContrib["coverage_delta"] = analysis.CoverageDelta[result.TestName]
-		
+
 		contributions[result.TestName] = testContrib
 	}
 

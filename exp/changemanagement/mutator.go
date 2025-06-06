@@ -44,12 +44,12 @@ func (m *TestMutator) MutateTest(content string, strategies []MutationStrategy, 
 	for i := 0; i < count; i++ {
 		// Select random strategy
 		strategy := strategies[m.rand.Intn(len(strategies))]
-		
+
 		mutation, err := m.applyStrategy(lines, strategy)
 		if err != nil {
 			continue // Skip failed mutations
 		}
-		
+
 		mutations = append(mutations, mutation)
 	}
 
@@ -74,7 +74,7 @@ func (m *TestMutator) applyStrategy(lines []string, strategy MutationStrategy) (
 func (m *TestMutator) reorderCommands(lines []string) (Mutation, error) {
 	newLines := make([]string, len(lines))
 	copy(newLines, lines)
-	
+
 	// Find exec commands
 	execLines := []int{}
 	for i, line := range lines {
@@ -82,18 +82,18 @@ func (m *TestMutator) reorderCommands(lines []string) (Mutation, error) {
 			execLines = append(execLines, i)
 		}
 	}
-	
+
 	if len(execLines) < 2 {
 		return Mutation{}, fmt.Errorf("not enough exec commands to reorder")
 	}
-	
+
 	// Swap two random exec commands
 	i := m.rand.Intn(len(execLines))
 	j := m.rand.Intn(len(execLines))
 	if i != j {
 		newLines[execLines[i]], newLines[execLines[j]] = newLines[execLines[j]], newLines[execLines[i]]
 	}
-	
+
 	return Mutation{
 		Type:    "reorder",
 		Content: strings.Join(newLines, "\n"),
@@ -104,14 +104,14 @@ func (m *TestMutator) reorderCommands(lines []string) (Mutation, error) {
 func (m *TestMutator) fuzzInputs(lines []string) (Mutation, error) {
 	newLines := make([]string, len(lines))
 	copy(newLines, lines)
-	
+
 	// Find lines with JSON inputs
 	for i, line := range lines {
 		if strings.Contains(line, "{") && strings.Contains(line, "}") {
 			// Simple JSON fuzzing
 			fuzzed := m.fuzzJSON(line)
 			newLines[i] = fuzzed
-			
+
 			return Mutation{
 				Type:    "fuzz",
 				Content: strings.Join(newLines, "\n"),
@@ -119,7 +119,7 @@ func (m *TestMutator) fuzzInputs(lines []string) (Mutation, error) {
 			}, nil
 		}
 	}
-	
+
 	return Mutation{}, fmt.Errorf("no JSON inputs found to fuzz")
 }
 
@@ -143,7 +143,7 @@ func (m *TestMutator) fuzzJSON(line string) string {
 			return strings.Replace(s, `"test"`, `""`, 1)
 		},
 	}
-	
+
 	strategy := strategies[m.rand.Intn(len(strategies))]
 	return strategy(line)
 }
@@ -151,7 +151,7 @@ func (m *TestMutator) fuzzJSON(line string) string {
 func (m *TestMutator) mutateTiming(lines []string) (Mutation, error) {
 	newLines := make([]string, len(lines))
 	copy(newLines, lines)
-	
+
 	// Find sleep commands
 	for i, line := range lines {
 		if strings.Contains(line, "sleep") {
@@ -162,9 +162,9 @@ func (m *TestMutator) mutateTiming(lines []string) (Mutation, error) {
 				"exec sleep 5",
 				"# exec sleep 1  # Removed sleep",
 			}
-			
+
 			newLines[i] = modifications[m.rand.Intn(len(modifications))]
-			
+
 			return Mutation{
 				Type:    "timing",
 				Content: strings.Join(newLines, "\n"),
@@ -172,11 +172,11 @@ func (m *TestMutator) mutateTiming(lines []string) (Mutation, error) {
 			}, nil
 		}
 	}
-	
+
 	// If no sleep found, add one
 	insertPos := m.rand.Intn(len(lines))
 	newLines = append(newLines[:insertPos], append([]string{"exec sleep 1"}, newLines[insertPos:]...)...)
-	
+
 	return Mutation{
 		Type:    "timing",
 		Content: strings.Join(newLines, "\n"),
@@ -187,12 +187,12 @@ func (m *TestMutator) mutateTiming(lines []string) (Mutation, error) {
 func (m *TestMutator) injectErrors(lines []string) (Mutation, error) {
 	newLines := make([]string, len(lines))
 	copy(newLines, lines)
-	
+
 	// Find stdout assertions and change to stderr
 	for i, line := range lines {
 		if strings.HasPrefix(strings.TrimSpace(line), "stdout ") {
 			newLines[i] = strings.Replace(line, "stdout", "stderr", 1)
-			
+
 			return Mutation{
 				Type:    "error",
 				Content: strings.Join(newLines, "\n"),
@@ -200,11 +200,11 @@ func (m *TestMutator) injectErrors(lines []string) (Mutation, error) {
 			}, nil
 		}
 	}
-	
+
 	// Add error check
 	insertPos := m.rand.Intn(len(lines))
 	newLines = append(newLines[:insertPos], append([]string{"! stderr 'error'"}, newLines[insertPos:]...)...)
-	
+
 	return Mutation{
 		Type:    "error",
 		Content: strings.Join(newLines, "\n"),

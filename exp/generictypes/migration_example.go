@@ -2,6 +2,7 @@ package generictypes
 
 import (
 	"encoding/json"
+
 	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
@@ -74,19 +75,19 @@ func unmarshalAs[T any](data json.RawMessage) (modelcontextprotocol.Content, err
 
 // --- After: Optional fields ---
 type ResourceWithGenerics struct {
-	URI         string                      `json:"uri"`
-	Name        string                      `json:"name"`
-	Description Optional[string]            `json:"description,omitempty"`
-	MimeType    Optional[string]            `json:"mimeType,omitempty"`
-	Size        Optional[int64]             `json:"size,omitempty"`
+	URI         string                                     `json:"uri"`
+	Name        string                                     `json:"name"`
+	Description Optional[string]                           `json:"description,omitempty"`
+	MimeType    Optional[string]                           `json:"mimeType,omitempty"`
+	Size        Optional[int64]                            `json:"size,omitempty"`
 	Annotations Optional[modelcontextprotocol.Annotations] `json:"annotations,omitempty"`
 }
 
 // --- Before: Manual helper functions ---
-// func NewTextContent(text string, annotations ...Annotations) TextContent { 
+// func NewTextContent(text string, annotations ...Annotations) TextContent {
 //     var ann *Annotations
-//     if len(annotations) > 0 { 
-//         ann = &annotations[0] 
+//     if len(annotations) > 0 {
+//         ann = &annotations[0]
 //     }
 //     return TextContent{Type: ContentTypeText, Text: text, Annotations: ann}
 // }
@@ -113,7 +114,7 @@ type GenericRequestHandler[T any, U any] func(Request[T]) (Result[U], error)
 
 func HandleListResources(req Request[modelcontextprotocol.ListResourcesRequestParams]) (
 	Result[ListResult[modelcontextprotocol.Resource]], error) {
-	
+
 	// Implementation would go here
 	return Result[ListResult[modelcontextprotocol.Resource]]{
 		Data: ListResult[modelcontextprotocol.Resource]{
@@ -147,7 +148,7 @@ func (em *EventManager[T]) Publish(event T) error {
 // Usage example
 func ExampleEventManager() {
 	resourceEvents := &EventManager[modelcontextprotocol.ResourceUpdatedNotificationParams]{}
-	
+
 	resourceEvents.Subscribe(func(event modelcontextprotocol.ResourceUpdatedNotificationParams) error {
 		// Handle resource update
 		return nil

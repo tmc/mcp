@@ -6,7 +6,7 @@ import "fmt"
 func Example() {
 	// This looks like -- a header --
 	fmt.Println("Hello")
-	
+
 	/* Even this:
 	-- multiline.go --
 	should be escaped

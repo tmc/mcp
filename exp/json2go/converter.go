@@ -51,7 +51,7 @@ func (c *Converter) ConvertJSON(jsonData []byte) (string, error) {
 
 	// Generate the main type
 	mainType := c.generateType(c.options.TypeName, data)
-	
+
 	// Build the complete Go file
 	var buf bytes.Buffer
 	if err := c.generateFile(&buf, mainType); err != nil {
@@ -75,7 +75,7 @@ func (c *Converter) ConvertJSONSchema(schemaData []byte) (string, error) {
 	}
 
 	mainType := c.generateFromSchema(typeName, schema)
-	
+
 	// Build the complete Go file
 	var buf bytes.Buffer
 	if err := c.generateFile(&buf, mainType); err != nil {
@@ -130,42 +130,42 @@ func (c *Converter) generateType(name string, data interface{}) string {
 
 func (c *Converter) generateStruct(name string, obj map[string]interface{}) string {
 	var fields []string
-	
+
 	typeName := c.options.Prefix + name
 	header := fmt.Sprintf("type %s struct {\n", typeName)
-	
+
 	// Generate fields
 	for key, value := range obj {
 		fieldName := toGoName(key)
 		fieldType := c.inferType(value)
-		
+
 		// Handle nested structs
 		if nestedObj, ok := value.(map[string]interface{}); ok {
 			nestedTypeName := name + fieldName
 			c.types[nestedTypeName] = c.generateStruct(nestedTypeName, nestedObj)
 			fieldType = c.options.Prefix + nestedTypeName
 		}
-		
+
 		// Build field with tags
 		tags := c.buildTags(key)
 		fields = append(fields, fmt.Sprintf("\t%s %s %s\n", fieldName, fieldType, tags))
 	}
-	
+
 	// Sort fields for consistent output
 	sortFields(&fields)
-	
+
 	result := header
 	for _, field := range fields {
 		result += field
 	}
 	result += "}"
-	
+
 	return result
 }
 
 func (c *Converter) generateFromSchema(name string, schema map[string]interface{}) string {
 	schemaType, _ := schema["type"].(string)
-	
+
 	switch schemaType {
 	case "object":
 		return c.generateStructFromSchema(name, schema)
@@ -181,11 +181,11 @@ func (c *Converter) generateFromSchema(name string, schema map[string]interface{
 func (c *Converter) generateStructFromSchema(name string, schema map[string]interface{}) string {
 	properties, _ := schema["properties"].(map[string]interface{})
 	required, _ := schema["required"].([]interface{})
-	
+
 	var fields []string
 	typeName := c.options.Prefix + name
 	header := fmt.Sprintf("type %s struct {\n", typeName)
-	
+
 	// Create required set for quick lookup
 	requiredSet := make(map[string]bool)
 	for _, req := range required {
@@ -193,31 +193,31 @@ func (c *Converter) generateStructFromSchema(name string, schema map[string]inte
 			requiredSet[reqStr] = true
 		}
 	}
-	
+
 	// Generate fields from properties
 	for propName, propSchema := range properties {
 		fieldName := toGoName(propName)
 		prop, _ := propSchema.(map[string]interface{})
-		
+
 		fieldType := c.generateFromSchema(name+fieldName, prop)
-		
+
 		// Make non-required fields pointers
 		if !requiredSet[propName] {
 			fieldType = "*" + fieldType
 		}
-		
+
 		tags := c.buildTags(propName)
 		fields = append(fields, fmt.Sprintf("\t%s %s %s\n", fieldName, fieldType, tags))
 	}
-	
+
 	sortFields(&fields)
-	
+
 	result := header
 	for _, field := range fields {
 		result += field
 	}
 	result += "}"
-	
+
 	return result
 }
 
@@ -271,13 +271,13 @@ func (c *Converter) inferType(value interface{}) string {
 
 func (c *Converter) generateJSONRPCRequest(rpc map[string]interface{}) string {
 	typeName := c.options.Prefix + c.options.TypeName
-	
+
 	// Generate params type if exists
 	if params, ok := rpc["params"].(map[string]interface{}); ok {
 		paramsTypeName := typeName + "Params"
 		c.types[paramsTypeName] = c.generateStruct(paramsTypeName, params)
 	}
-	
+
 	// Generate main request type
 	fields := []string{
 		fmt.Sprintf("\tJSONRPC string %s\n", c.buildTags("jsonrpc")),
@@ -285,25 +285,25 @@ func (c *Converter) generateJSONRPCRequest(rpc map[string]interface{}) string {
 		fmt.Sprintf("\tParams  %sParams %s\n", typeName, c.buildTags("params")),
 		fmt.Sprintf("\tID      interface{} %s\n", c.buildTags("id")),
 	}
-	
+
 	return fmt.Sprintf("type %s struct {\n%s}", typeName, strings.Join(fields, ""))
 }
 
 func (c *Converter) generateJSONRPCResponse(rpc map[string]interface{}) string {
 	typeName := c.options.Prefix + c.options.TypeName
-	
+
 	// Generate result type if exists
 	if result, ok := rpc["result"].(map[string]interface{}); ok {
 		resultTypeName := typeName + "Result"
 		c.types[resultTypeName] = c.generateStruct(resultTypeName, result)
 	}
-	
+
 	// Generate error type if exists
 	if rpcError, ok := rpc["error"].(map[string]interface{}); ok {
 		errorTypeName := typeName + "Error"
 		c.types[errorTypeName] = c.generateStruct(errorTypeName, rpcError)
 	}
-	
+
 	// Generate main response type
 	fields := []string{
 		fmt.Sprintf("\tJSONRPC string %s\n", c.buildTags("jsonrpc")),
@@ -311,13 +311,13 @@ func (c *Converter) generateJSONRPCResponse(rpc map[string]interface{}) string {
 		fmt.Sprintf("\tError   *%sError %s\n", typeName, c.buildTags("error")),
 		fmt.Sprintf("\tID      interface{} %s\n", c.buildTags("id")),
 	}
-	
+
 	return fmt.Sprintf("type %s struct {\n%s}", typeName, strings.Join(fields, ""))
 }
 
 func (c *Converter) buildTags(jsonKey string) string {
 	var tags []string
-	
+
 	for _, tag := range c.options.Tags {
 		switch tag {
 		case "json":
@@ -330,11 +330,11 @@ func (c *Converter) buildTags(jsonKey string) string {
 			tags = append(tags, fmt.Sprintf(`%s:"%s"`, tag, jsonKey))
 		}
 	}
-	
+
 	if len(tags) == 0 {
 		return ""
 	}
-	
+
 	return "`" + strings.Join(tags, " ") + "`"
 }
 
@@ -350,12 +350,12 @@ func (c *Converter) generateFile(w io.Writer, mainType string) error {
 
 {{ .MainType }}
 `
-	
+
 	t, err := template.New("file").Parse(tmpl)
 	if err != nil {
 		return err
 	}
-	
+
 	return t.Execute(w, map[string]interface{}{
 		"Package":  c.options.PackageName,
 		"Types":    c.types,
@@ -370,11 +370,11 @@ func toGoName(s string) string {
 	words := strings.FieldsFunc(s, func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
 	})
-	
+
 	for i, word := range words {
 		words[i] = strings.Title(word)
 	}
-	
+
 	return strings.Join(words, "")
 }
 

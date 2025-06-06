@@ -127,7 +127,7 @@ func ParseNamespaceURI(uri string) (server, path string, err error) {
 
 	uri = strings.TrimPrefix(uri, "ns://")
 	parts := strings.SplitN(uri, "/", 2)
-	
+
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("invalid namespace URI: missing path")
 	}

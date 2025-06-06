@@ -16,7 +16,7 @@ func TestScriptSimple(t *testing.T) {
 	// Build the binary once
 	tempDir := t.TempDir()
 	sourcereflectPath := filepath.Join(tempDir, "sourcereflect")
-	
+
 	cmd := exec.Command("go", "build", "-o", sourcereflectPath, "./cmd/sourcereflect")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("failed to build sourcereflect: %v\n%s", err, output)

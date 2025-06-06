@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/tmc/mcp/exp/changemanagement"
@@ -47,7 +48,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to marshal report: %v", err)
 	}
-	
+
 	if err := os.WriteFile(reportPath, reportData, 0644); err != nil {
 		log.Fatalf("Failed to write report: %v", err)
 	}
@@ -142,14 +143,14 @@ func (o *ChangeOrchestrator) ExecuteChange(description, codebase string, dryRun 
 
 func (o *ChangeOrchestrator) analyzeChange(description string) (*changemanagement.AnalysisResult, error) {
 	o.log("Analyzing change description...")
-	
+
 	// Run mcp-change-analyze
 	outputPath := filepath.Join(o.outputDir, "analysis.json")
-	cmd := exec.Command("mcp-change-analyze", 
+	cmd := exec.Command("mcp-change-analyze",
 		"-description", description,
 		"-output", outputPath,
 		"-format", "json")
-	
+
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("analysis command failed: %w", err)
 	}
@@ -171,17 +172,17 @@ func (o *ChangeOrchestrator) analyzeChange(description string) (*changemanagemen
 
 func (o *ChangeOrchestrator) findTests(analysis *changemanagement.AnalysisResult, codebase string) (*changemanagement.TestFinderResult, error) {
 	o.log("Finding affected tests...")
-	
+
 	// Save analysis for test finder
 	analysisPath := filepath.Join(o.outputDir, "analysis.json")
 	outputPath := filepath.Join(o.outputDir, "affected_tests.json")
-	
+
 	cmd := exec.Command("mcp-test-find",
 		"-change", analysisPath,
 		"-codebase", codebase,
 		"-output", outputPath,
 		"-format", "json")
-	
+
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("test finder command failed: %w", err)
 	}
@@ -203,15 +204,15 @@ func (o *ChangeOrchestrator) findTests(analysis *changemanagement.AnalysisResult
 
 func (o *ChangeOrchestrator) generateDocumentation(analysis *changemanagement.AnalysisResult) ([]string, error) {
 	o.log("Generating documentation...")
-	
+
 	analysisPath := filepath.Join(o.outputDir, "analysis.json")
 	docsDir := filepath.Join(o.outputDir, "docs")
-	
+
 	cmd := exec.Command("mcp-doc-gen",
 		"-change", analysisPath,
 		"-output", docsDir,
 		"-format", "markdown")
-	
+
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("documentation command failed: %w", err)
 	}
@@ -234,15 +235,15 @@ func (o *ChangeOrchestrator) generateDocumentation(analysis *changemanagement.An
 
 func (o *ChangeOrchestrator) generateMutations(testFile string) ([]string, error) {
 	o.log("Generating test mutations for %s...", testFile)
-	
+
 	mutationsDir := filepath.Join(o.outputDir, "mutations")
-	
+
 	cmd := exec.Command("mcp-test-mutate",
 		"-test", testFile,
 		"-output", mutationsDir,
 		"-count", "5",
 		"-strategies", "all")
-	
+
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("mutation command failed: %w", err)
 	}
@@ -271,15 +272,15 @@ func (o *ChangeOrchestrator) log(format string, args ...interface{}) {
 
 // Result structures
 type ChangeResult struct {
-	StartTime     time.Time                            `json:"start_time"`
-	EndTime       time.Time                            `json:"end_time"`
-	TotalDuration time.Duration                        `json:"total_duration"`
-	Success       bool                                 `json:"success"`
-	Analysis      *changemanagement.AnalysisResult     `json:"analysis"`
-	TestResults   *changemanagement.TestFinderResult   `json:"test_results"`
-	Documentation []string                             `json:"documentation"`
-	Mutations     []string                             `json:"mutations"`
-	Phases        []PhaseResult                        `json:"phases"`
+	StartTime     time.Time                          `json:"start_time"`
+	EndTime       time.Time                          `json:"end_time"`
+	TotalDuration time.Duration                      `json:"total_duration"`
+	Success       bool                               `json:"success"`
+	Analysis      *changemanagement.AnalysisResult   `json:"analysis"`
+	TestResults   *changemanagement.TestFinderResult `json:"test_results"`
+	Documentation []string                           `json:"documentation"`
+	Mutations     []string                           `json:"mutations"`
+	Phases        []PhaseResult                      `json:"phases"`
 }
 
 type PhaseResult struct {

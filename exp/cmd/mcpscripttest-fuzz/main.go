@@ -36,7 +36,7 @@ func main() {
 			if *count > 1 {
 				filename = fmt.Sprintf("%s.%d", *output, i)
 			}
-			
+
 			if err := os.WriteFile(filename, []byte(script), 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing file %s: %v\n", filename, err)
 				os.Exit(1)

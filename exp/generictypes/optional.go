@@ -102,12 +102,12 @@ func (o *Optional[T]) UnmarshalJSON(data []byte) error {
 		*o = Optional[T]{}
 		return nil
 	}
-	
+
 	var value T
 	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
-	
+
 	*o = NewOptional(value)
 	return nil
 }
@@ -152,7 +152,7 @@ func OptionalFrom[T any](value T, valid bool) Optional[T] {
 
 type ToolWithOptional struct {
 	Name        string
-	Description Optional[string]          // Instead of *string
+	Description Optional[string] // Instead of *string
 	InputSchema json.RawMessage
 	Annotations Optional[ToolAnnotations] // Instead of *ToolAnnotations
 }

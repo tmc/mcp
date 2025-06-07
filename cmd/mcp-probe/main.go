@@ -20,12 +20,14 @@ import (
 )
 
 var (
-	timeout      = flag.Duration("timeout", 5*time.Second, "Timeout for individual operations")
-	totalTimeout = flag.Duration("total-timeout", 10*time.Second, "Total timeout for all operations")
-	verbose      = flag.Bool("v", false, "Verbose output")
-	httpURL      = flag.String("http", "", "HTTP endpoint for HTTP transport")
-	sseURL       = flag.String("sse", "", "SSE endpoint for SSE transport")
-	testTool     = flag.String("test-tool", "", "Tool to test (if server supports tools)")
+	timeout         = flag.Duration("timeout", 5*time.Second, "Timeout for individual operations")
+	totalTimeout    = flag.Duration("total-timeout", 10*time.Second, "Total timeout for all operations")
+	verbose         = flag.Bool("v", false, "Verbose output")
+	httpURL         = flag.String("http", "", "HTTP endpoint for HTTP transport")
+	sseURL          = flag.String("sse", "", "SSE endpoint for SSE transport")
+	testTool        = flag.String("test-tool", "", "Tool to test (if server supports tools)")
+	tool            = flag.String("tool", "", "Tool to test (alias for -test-tool)")
+	protocolVersion = flag.String("protocol-version", "2025-03-26", "MCP protocol version to use")
 )
 
 type Transport interface {
@@ -74,7 +76,20 @@ func NewStdioTransport(args []string) (*StdioTransport, error) {
 }
 
 func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
-	data, err := json.Marshal(req)
+	// Create a proper JSON-RPC 2.0 message
+	msg := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      req.ID,
+		"method":  req.Method,
+		"params":  req.Params,
+	}
+	
+	// Omit ID for notifications
+	if !req.ID.IsValid() {
+		delete(msg, "id")
+	}
+	
+	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -83,8 +98,8 @@ func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error 
 		log.Printf("Sending: %s", data)
 	}
 
-	msg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(data), data)
-	_, err = t.stdin.Write([]byte(msg))
+	framedMsg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(data), data)
+	_, err = t.stdin.Write([]byte(framedMsg))
 	return err
 }
 
@@ -142,7 +157,20 @@ func NewHTTPTransport(url string) *HTTPTransport {
 }
 
 func (t *HTTPTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
-	data, err := json.Marshal(req)
+	// Create a proper JSON-RPC 2.0 message
+	msg := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      req.ID,
+		"method":  req.Method,
+		"params":  req.Params,
+	}
+	
+	// Omit ID for notifications
+	if !req.ID.IsValid() {
+		delete(msg, "id")
+	}
+	
+	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -194,6 +222,11 @@ func (t *HTTPTransport) Close() error {
 func main() {
 	flag.Parse()
 
+	// Handle -tool as alias for -test-tool
+	if *tool != "" && *testTool == "" {
+		*testTool = *tool
+	}
+
 	// If no arguments and no transport specified, just print sample requests
 	if flag.NArg() == 0 && *httpURL == "" && *sseURL == "" {
 		printSampleRequests()
@@ -221,17 +254,19 @@ func main() {
 	defer transport.Close()
 
 	// Send initialize request
+	initParams := fmt.Sprintf(`{
+		"protocolVersion": "%s",
+		"clientInfo": {
+			"name": "mcp-probe",
+			"version": "0.1.0"
+		},
+		"capabilities": {}
+	}`, *protocolVersion)
+
 	initReq := &jsonrpc2.Request{
 		ID:     jsonrpc2.Int64ID(1),
 		Method: "initialize",
-		Params: json.RawMessage(`{
-			"protocolVersion": "2025-03-26",
-			"clientInfo": {
-				"name": "mcp-probe",
-				"version": "0.1.0"
-			},
-			"capabilities": {}
-		}`),
+		Params: json.RawMessage(initParams),
 	}
 
 	// Create context for individual operation
@@ -334,17 +369,19 @@ func printSampleRequests() {
 	}
 
 	// Print initialize request
+	initParams := fmt.Sprintf(`{
+		"protocolVersion": "%s",
+		"clientInfo": {
+			"name": "mcp-probe",
+			"version": "0.1.0"
+		},
+		"capabilities": {}
+	}`, *protocolVersion)
+
 	initReq := &jsonrpc2.Request{
 		ID:     jsonrpc2.Int64ID(1),
 		Method: "initialize",
-		Params: json.RawMessage(`{
-			"protocolVersion": "2025-03-26",
-			"clientInfo": {
-				"name": "mcp-probe",
-				"version": "0.1.0"
-			},
-			"capabilities": {}
-		}`),
+		Params: json.RawMessage(initParams),
 	}
 
 	printFramedMessage(initReq)
@@ -361,6 +398,5 @@ func printSampleRequests() {
 		}`),
 	}
 
-	toolData, _ := json.Marshal(toolReq)
-	fmt.Println(string(toolData))
+	printFramedMessage(toolReq)
 }

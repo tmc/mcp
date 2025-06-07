@@ -706,11 +706,16 @@ func diffFiles(file1, file2 string) {
 		} else {
 			fmt.Println("Files match exactly!")
 		}
-	} else if *jsonOutput {
-		jsonResult.Matches = false
-		jsonResult.TotalDiffs = len(jsonResult.Diffs)
-		jsonBytes, _ := json.MarshalIndent(jsonResult, "", "  ")
-		fmt.Println(string(jsonBytes))
+		// Exit with 0 for identical files
+	} else {
+		if *jsonOutput {
+			jsonResult.Matches = false
+			jsonResult.TotalDiffs = len(jsonResult.Diffs)
+			jsonBytes, _ := json.MarshalIndent(jsonResult, "", "  ")
+			fmt.Println(string(jsonBytes))
+		}
+		// Exit with 1 for different files (like standard diff)
+		os.Exit(1)
 	}
 }
 

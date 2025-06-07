@@ -67,5 +67,3 @@ func TestServerCoverageWithOptions(t *testing.T) {
 		})
 	}
 }
-
-

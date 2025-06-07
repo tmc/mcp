@@ -55,7 +55,7 @@ func main() {
 	// Create a context that can be canceled
 	var ctx context.Context
 	var cancel context.CancelFunc
-	
+
 	if *testMode {
 		log.Println("Running in test mode - will block indefinitely")
 		ctx, cancel = context.WithCancel(context.Background())

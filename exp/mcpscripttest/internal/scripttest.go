@@ -166,13 +166,13 @@ func Test(t *testing.T, pattern string, opts ...*MCPScripttestOptions) {
 		t.Run(baseName, func(t *testing.T) {
 			// Create context with overall test timeout
 			ctx := context.Background()
-			
+
 			// Check if we should disable timeouts (when MCP_TOOL_TIMEOUT=0 is set)
 			if os.Getenv("MCP_TOOL_TIMEOUT") == "0" {
 				// Create a completely fresh context to avoid any inherited timeouts
 				ctx = context.Background()
 			}
-			
+
 			// Temporarily disable timeout to debug context cancellation issues
 			/*
 				if options.TimeoutConfig.TestOverallTimeout > 0 {
@@ -390,7 +390,7 @@ func execCmd(name string) func(*script.State, ...string) (script.WaitFunc, error
 				timeout = parsedTimeout
 			}
 		}
-		
+
 		// Apply timeout only if it's not zero (zero means no timeout)
 		var cancel context.CancelFunc
 		if timeout > 0 {
@@ -452,7 +452,7 @@ func execCmdAsync(name string) func(*script.State, ...string) (script.WaitFunc, 
 				timeout = parsedTimeout
 			}
 		}
-		
+
 		// Apply timeout only if it's not zero (zero means no timeout)
 		var cancel context.CancelFunc
 		if timeout > 0 {
@@ -644,7 +644,7 @@ func isSynctestContext(ctx context.Context) bool {
 				return true
 			}
 		}
-		
+
 		// Walk up the context chain
 		if valuer, ok := ctx.(interface{ Value(interface{}) interface{} }); ok {
 			// Check if there's a parent context
@@ -653,7 +653,7 @@ func isSynctestContext(ctx context.Context) bool {
 				continue
 			}
 		}
-		
+
 		// Try to get the underlying context using reflection
 		val := reflect.ValueOf(ctx)
 		if val.Kind() == reflect.Ptr {
@@ -671,14 +671,14 @@ func isSynctestContext(ctx context.Context) bool {
 				}
 			}
 		}
-		
+
 		break
 	}
-	
+
 	// Also check for environment variables that might indicate synctest
 	if os.Getenv("GOEXPERIMENT") != "" && strings.Contains(os.Getenv("GOEXPERIMENT"), "synctest") {
 		return true
 	}
-	
+
 	return false
 }

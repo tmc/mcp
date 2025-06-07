@@ -41,21 +41,17 @@ type Server struct {
 	capabilities ServerCapabilities
 	instructions string
 
-	tools         map[string]toolDefinition
-	resources     map[string]resourceDefinition
-	resourceTmpls map[string]resourceTemplateDefinition
-	prompts       map[string]promptDefinition
-
 	dispatch *Dispatcher
 
 	logLevel *slog.Level
 	logger   *slog.Logger
 
-	mu       sync.RWMutex
-	handlers map[string]jsonrpc2.HandlerFunc
-
-	// Track active tool contexts for cancellation workaround
-	activeToolsMu sync.RWMutex
+	mu            sync.RWMutex // Protects the following fields:
+	tools         map[string]toolDefinition
+	resources     map[string]resourceDefinition
+	resourceTmpls map[string]resourceTemplateDefinition
+	prompts       map[string]promptDefinition
+	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
 }
 
@@ -110,7 +106,7 @@ var defaultServerOptions = []ServerOption{
 // NewServer creates a new MCP server.
 func NewServer(name, version string, opts ...ServerOption) *Server {
 	opts = append(defaultServerOptions, opts...)
-	
+
 	// Create a test-aware default logger
 	var defaultLogger *slog.Logger
 	if isInTest() && isShortTest() {
@@ -121,7 +117,7 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 	} else {
 		defaultLogger = slog.Default()
 	}
-	
+
 	s := &Server{
 		name:          name,
 		version:       version,
@@ -134,6 +130,7 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 		dispatch:      NewDispatcher(),
 		logger:        defaultLogger,
 		activeTools:   make(map[string]context.CancelFunc),
+		mu:            sync.RWMutex{},
 	}
 
 	// Apply options
@@ -534,6 +531,9 @@ func (s *Server) registerDefaultHandlers() {
 
 // RegisterTool adds a new tool to the server.
 func (s *Server) RegisterTool(tool Tool, handler ToolHandlerFunc) error {
+	if s == nil {
+		return fmt.Errorf("server is nil")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -733,9 +733,9 @@ func inferServerVersion() string {
 
 // isInTest returns true if we're running in a test environment
 func isInTest() bool {
-	return strings.HasSuffix(os.Args[0], ".test") || 
-		   strings.Contains(os.Args[0], "/_test/") ||
-		   os.Getenv("GOTEST") == "1"
+	return strings.HasSuffix(os.Args[0], ".test") ||
+		strings.Contains(os.Args[0], "/_test/") ||
+		os.Getenv("GOTEST") == "1"
 }
 
 // isShortTest returns true if we're running tests in short mode

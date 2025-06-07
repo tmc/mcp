@@ -46,7 +46,7 @@ func DefaultToolsOptions() *ToolsOptions {
 		CoverMode:          ToolCoverModeAuto,
 		AutoDetectCoverage: true,
 		ToolsDir:           "",
-		Tools:              []string{"mcp-replay", "mcp-spy", "mcp-start", "mcp-test", "mcp-verify", "mcp-send", "mcp-recv", "mcpdiff", "mcp-probe"},
+		Tools:              []string{"mcp-replay", "mcpspy", "mcp-shadow", "mcp-send", "mcpdiff", "mcp-probe", "mcpcat", "mcp-sort", "mcp-connect", "mcp-proxy", "mcp-serve", "mcp-debug"},
 		VerboseOutput:      false,
 	}
 }
@@ -59,10 +59,11 @@ func DefaultToolsWithScripttestOptions() *ToolsOptions {
 		ToolsDir:           "",
 		Tools: []string{
 			// Main MCP tools
-			"mcp-replay", "mcp-spy", "mcp-start", "mcp-test", "mcp-verify", "mcp-send", "mcp-recv", "mcpdiff", "mcp-probe",
-			// mcpscripttest analysis tools
+			"mcp-replay", "mcpspy", "mcp-shadow", "mcp-send", "mcpdiff", "mcp-probe", "mcpcat", "mcp-sort", 
+			"mcp-connect", "mcp-proxy", "mcp-serve", "mcp-debug",
+			// mcpscripttest analysis tools - only include those that exist and can build
 			"apply-edits", "coverage-by-program", "coverage-hotspots", "depgraph", "digraph-compat",
-			"testgraph", "testcallgraph", "testcallgraph-coverage", "stitch-demo", "cmd-docs",
+			"cmd-docs",
 		},
 		VerboseOutput: false,
 	}
@@ -173,18 +174,18 @@ func getToolImportPath(toolName string) string {
 	// Map tool names to their import paths
 	toolPaths := map[string]string{
 		// Main MCP tools
-		"mcp-replay": "github.com/tmc/mcp/cmd/mcp-replay",
-		"mcp-spy":    "github.com/tmc/mcp/cmd/mcp-spy",
-		"mcp-start":  "github.com/tmc/mcp/cmd/mcp-start",
-		"mcp-test":   "github.com/tmc/mcp/cmd/mcp-test",
-		"mcp-verify": "github.com/tmc/mcp/cmd/mcp-verify",
-		"mcp-send":   "github.com/tmc/mcp/cmd/mcp-send",
-		"mcp-recv":   "github.com/tmc/mcp/cmd/mcp-recv",
-		"mcpdiff":    "github.com/tmc/mcp/cmd/mcpdiff",
-		"mcp-probe":  "github.com/tmc/mcp/cmd/mcp-probe",
-		"mcpcat":     "github.com/tmc/mcp/cmd/mcpcat",
-		"mcpspy":     "github.com/tmc/mcp/cmd/mcpspy",
-		"mcp-shadow": "github.com/tmc/mcp/cmd/mcp-shadow",
+		"mcp-replay":  "github.com/tmc/mcp/cmd/mcp-replay",
+		"mcp-send":    "github.com/tmc/mcp/cmd/mcp-send",
+		"mcpdiff":     "github.com/tmc/mcp/cmd/mcpdiff",
+		"mcp-probe":   "github.com/tmc/mcp/cmd/mcp-probe",
+		"mcpcat":      "github.com/tmc/mcp/cmd/mcpcat",
+		"mcpspy":      "github.com/tmc/mcp/cmd/mcpspy",
+		"mcp-shadow":  "github.com/tmc/mcp/cmd/mcp-shadow",
+		"mcp-sort":    "github.com/tmc/mcp/cmd/mcp-sort",
+		"mcp-connect": "github.com/tmc/mcp/cmd/mcp-connect",
+		"mcp-proxy":   "github.com/tmc/mcp/cmd/mcp-proxy",
+		"mcp-serve":   "github.com/tmc/mcp/cmd/mcp-serve",
+		"mcp-debug":   "github.com/tmc/mcp/cmd/mcp-debug",
 
 		// Experimental mcpscripttest tools
 		"apply-edits":            "github.com/tmc/mcp/exp/mcpscripttest/cmd/apply-edits",

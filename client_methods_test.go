@@ -216,8 +216,13 @@ func TestClientAllMethods(t *testing.T) {
 		if len(result.Contents) != 1 {
 			t.Errorf("Unexpected resource result length: %+v", result)
 		}
-		if tc, ok := result.Contents[0].(TextResourceContents); !ok || tc.Text != "Resource content" {
-			t.Errorf("Unexpected resource content: %+v", result.Contents[0])
+		// Check content - should be properly unmarshaled as TextResourceContents
+		if tc, ok := result.Contents[0].(TextResourceContents); ok {
+			if tc.Text != "Resource content" || tc.URI != "test://resource" {
+				t.Errorf("Unexpected resource content: %+v", result.Contents[0])
+			}
+		} else {
+			t.Errorf("Unexpected resource content type: %T, value: %+v", result.Contents[0], result.Contents[0])
 		}
 	})
 

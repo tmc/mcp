@@ -8,7 +8,7 @@ import (
 
 // Protocol constants
 const (
-	LATEST_PROTOCOL_VERSION = "2024-11-05"
+	LATEST_PROTOCOL_VERSION = "2025-03-26"
 	JSONRPC_VERSION         = "2.0"
 )
 

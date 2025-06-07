@@ -503,9 +503,9 @@ func TestServerToolsCallHandler(t *testing.T) {
 				t.Fatalf("Unexpected error: %v", err)
 			}
 
-			callResult, ok := result.(CallToolResult)
+			callResult, ok := result.(*CallToolResult)
 			if !ok {
-				t.Fatalf("Expected CallToolResult, got %T", result)
+				t.Fatalf("Expected *CallToolResult, got %T", result)
 			}
 
 			if len(callResult.Content) == 0 {

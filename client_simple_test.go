@@ -87,24 +87,28 @@ func TestClientNotificationHandler(t *testing.T) {
 
 // TestClientInitializeEdgeCases tests edge cases for Initialize
 func TestClientInitializeEdgeCases(t *testing.T) {
-	// Test with empty protocol version (should use default)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	// Test with nil connection
+	t.Run("nil connection", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
 
-	client := &Client{
-		conn: nil, // This will cause Initialize to fail, but we're testing the request setup
-	}
+		client := &Client{
+			conn: nil,
+		}
 
-	_, err := client.Initialize(ctx, InitializeRequest{
-		// Empty protocol version
-		ClientInfo: Implementation{
-			Name:    "test",
-			Version: "1.0",
-		},
+		_, err := client.Initialize(ctx, InitializeRequest{
+			ClientInfo: Implementation{
+				Name:    "test",
+				Version: "1.0",
+			},
+		})
+
+		// Should fail due to nil connection
+		if err == nil {
+			t.Error("Expected error with nil connection")
+		}
+		if err.Error() != "client connection is not established" {
+			t.Errorf("Expected 'client connection is not established' error, got: %v", err)
+		}
 	})
-
-	// Should fail due to nil connection, but that's expected
-	if err == nil {
-		t.Error("Expected error with nil connection")
-	}
 }

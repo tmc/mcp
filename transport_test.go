@@ -278,7 +278,7 @@ func TestTransportErrorHandling(t *testing.T) {
 		{
 			name:      "nil connection",
 			transport: &ReadWriteCloserTransport{nil},
-			wantErr:   "nil connection",
+			wantErr:   "transport closed",
 		},
 		{
 			name: "function returns error",

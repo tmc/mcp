@@ -1,4 +1,4 @@
-//go:build go1.24 && goexperiment.synctest
+//go:build synctest && go1.24 && goexperiment.synctest
 
 package mcp
 
@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"testing"
@@ -96,7 +97,9 @@ func testClientErrorHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a failing transport
-	transport := &mockFailingTransport{}
+	transport := TransportFunc(func(ctx context.Context) (io.ReadWriteCloser, error) {
+		return nil, fmt.Errorf("mock transport failure")
+	})
 	_, err := NewClient(transport)
 	if err == nil {
 		t.Error("Expected error with failing transport")

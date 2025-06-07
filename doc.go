@@ -117,6 +117,27 @@ These can be handled using the OnNotification method on the client:
 		}
 	})
 
+# Context Cancellation
+
+The client automatically handles context cancellation by sending
+notifications/cancelled messages to the server. When using context.WithCancelCause,
+the cancellation reason is automatically propagated:
+
+	ctx, cancel := context.WithCancelCause(context.Background())
+
+	go func() {
+		result, err := client.CallTool(ctx, mcp.CallToolRequest{
+			Name: "analyze_data",
+		})
+		// Handle result or error
+	}()
+
+	// Cancel with a specific reason
+	cancel(errors.New("user clicked stop button"))
+
+	// The client automatically sends a notifications/cancelled message
+	// with the reason to the server
+
 # Working with Resources
 
 Resources represent data that can be read from the server:

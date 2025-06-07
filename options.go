@@ -8,13 +8,6 @@ import (
 // ServerOption configures a Server
 type ServerOption func(*Server)
 
-// WithRateLimiting configures custom rate limiting for the server
-func WithRateLimiting(cfg RateLimitConfig) ServerOption {
-	return func(s *Server) {
-		s.limiter = NewRateLimiter(cfg)
-	}
-}
-
 // WithDispatcher configures a custom notification dispatcher
 func WithDispatcher(d *Dispatcher) ServerOption {
 	return func(s *Server) {

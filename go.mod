@@ -13,11 +13,18 @@ require (
 )
 
 require (
+	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	golang.org/x/exp/event v0.0.0-20220217172124-1812c5b45e43 // indirect
+	golang.org/x/mod v0.24.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/tools v0.33.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	rsc.io/uncover v0.0.2 // indirect
 )
 
-tool github.com/tmc/mcp/cmd/mcpdiff
+tool (
+	github.com/tmc/mcp/cmd/mcpdiff
+	rsc.io/uncover
+)

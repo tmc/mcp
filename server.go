@@ -7,9 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"sync"
 
+	"github.com/tmc/mcp/internal/jsonrpc2util"
 	"golang.org/x/exp/jsonrpc2"
 )
 
@@ -26,7 +28,6 @@ type Server struct {
 	resourceTmpls map[string]resourceTemplateDefinition
 	prompts       map[string]promptDefinition
 
-	limiter  *RateLimiter
 	dispatch *Dispatcher
 
 	logLevel *slog.Level
@@ -109,11 +110,6 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 	s.registerDefaultHandlers()
 
 	return s
-}
-
-func (s *Server) Serve(ctx context.Context, transport Transport) error {
-	s.logger.Debug("Starting MCP server", "name", s.name, "version", s.version)
-	return fmt.Errorf("Serve method not implemented in this file, see simple_serve.go for implementation")
 }
 
 // flushingReadWriteCloser wraps an io.ReadWriteCloser to ensure flushing after writes
@@ -597,6 +593,29 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 	return nil
 }
 
+// Serve starts serving MCP requests using the provided transport.
+// It establishes a JSON-RPC connection and handles incoming requests.
+func (s *Server) Serve(ctx context.Context, transport Transport) error {
+	// Create a handler for the connection
+	handler := jsonrpc2.HandlerFunc(s.handleRequest)
+
+	// Create a binder for the connection
+	binder := jsonrpc2util.ConnectionBinder{
+		Handler: handler,
+	}
+
+	// Create the connection
+	conn, err := jsonrpc2.Dial(ctx, transport, binder)
+	if err != nil {
+		return fmt.Errorf("failed to establish connection: %w", err)
+	}
+	defer conn.Close()
+
+	// Wait for the context to be cancelled
+	<-ctx.Done()
+	return ctx.Err()
+}
+
 // withInferredServerName sets the server name to the default value using go build info.
 func withInferredServerName() ServerOption {
 	return func(s *Server) {
@@ -615,14 +634,12 @@ func withInferredServerVersion() ServerOption {
 
 // inferServerName infers the server name from the build info.
 func inferServerName() string {
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		return os.Args[0]
+	if len(os.Args) == 0 {
+		return ""
 	}
-	if bi.Main.Path != "" {
-		return bi.Main.Path
-	}
-	return os.Args[0]
+
+	// Extract the base name from the first argument
+	return filepath.Base(os.Args[0])
 }
 
 // inferServerVersion infers the server version from the build info.
@@ -631,8 +648,6 @@ func inferServerVersion() string {
 	if !ok {
 		return "unknown"
 	}
-	bij, _ := json.Marshal(bi)
-	slog.Info("Build info", "info", bij)
 	if bi.Main.Version != "" {
 		return bi.Main.Version
 	}

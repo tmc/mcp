@@ -13,8 +13,6 @@ that uses the Test or TestWithCoverageOptions function:
 	package main
 
 	import (
-		"os"
-		"path/filepath"
 		"testing"
 
 		"github.com/tmc/mcp/exp/mcpscripttest"
@@ -31,21 +29,21 @@ MCP tools are automatically built and installed with coverage instrumentation wh
 is set in the environment. This feature enables coverage collection for all MCP tools used
 in script tests.
 
-The ToolsOptions struct provides fine-grained control:
+The tools package provides fine-grained control:
 
 	func TestWithCustomTools(t *testing.T) {
-		toolOpts := &mcpscripttest.ToolsOptions{
+		toolOpts := &tools.ToolsOptions{
 			// Auto-detect coverage from GOCOVERDIR (default: true)
 			AutoDetectCoverage: true,
 
-			// Explicitly enable coverage regardless of GOCOVERDIR
-			InstallCoverage: false,
+			// Coverage mode: "auto", "on", or "off"
+			CoverMode: tools.ToolCoverModeAuto,
 
 			// Custom tool directory
 			ToolsDir: "/custom/tools",
 
 			// Select specific tools
-			Tools: []string{"mcp-replay", "mcp-spy"},
+			Tools: []string{"mcp-replay", "mcpspy"},
 
 			// Enable verbose logging
 			VerboseOutput: true,
@@ -281,16 +279,28 @@ Use the TestMain function to run deadcode checks only once after all tests are c
 
 # Available MCP Commands
 
-Script tests have access to the following MCP-specific commands:
+Script tests have access to the following MCP-specific commands installed by default:
 
 - mcp-replay: Replay MCP recordings
-- mcp-spy/mcpspy: Spy on MCP traffic
-- mcp-start: Start MCP components in the background
-- mcp-test: Run MCP tests
-- mcp-verify: Verify MCP recordings
+- mcpspy: Monitor MCP communications
+- mcp-shadow: Shadow traffic for testing
 - mcp-send: Send MCP messages
-- mcp-recv: Receive MCP messages
-- mcpdiff: Compare MCP files
+- mcpdiff: Compare MCP traces
+- mcp-probe: Probe MCP servers
+- mcpcat: Display MCP traces with color
+- mcp-sort: Sort MCP traces
+- mcp-connect: Connect to MCP servers
+- mcp-proxy: Protocol proxy for debugging
+- mcp-serve: Serve MCP endpoints
+- mcp-debug: Debug MCP servers
+
+Additional experimental tools can be installed using DefaultToolsWithScripttestOptions():
+- apply-edits: Apply edits from scripttest
+- coverage-by-program: Coverage analysis by program
+- coverage-hotspots: Find coverage hotspots
+- depgraph: Dependency graph generator
+- digraph-compat: Digraph compatibility tool
+- cmd-docs: Generate command documentation
 
 # Utility Commands
 

@@ -150,25 +150,19 @@ func TestInitializeRequest(t *testing.T) {
 			}
 
 			// Test capabilities marshaling
-			if tt.request.Capabilities.Roots != nil {
-				if decoded.Capabilities.Roots == nil {
-					t.Error("Expected roots capability in decoded request")
-				} else if *decoded.Capabilities.Roots.ListChanged != *tt.request.Capabilities.Roots.ListChanged {
-					t.Error("Roots capability not preserved in marshaling")
+			if tt.request.Capabilities.Sampling != nil {
+				if decoded.Capabilities.Sampling == nil {
+					t.Error("Expected sampling capability in decoded request")
 				}
 			}
 
 			// Test client info marshaling
-			if tt.request.ClientInfo != nil {
-				if decoded.ClientInfo == nil {
-					t.Error("Expected client info in decoded request")
-				} else {
-					if decoded.ClientInfo.Name != tt.request.ClientInfo.Name {
-						t.Errorf("Expected client name %s, got %s", tt.request.ClientInfo.Name, decoded.ClientInfo.Name)
-					}
-					if decoded.ClientInfo.Version != tt.request.ClientInfo.Version {
-						t.Errorf("Expected client version %s, got %s", tt.request.ClientInfo.Version, decoded.ClientInfo.Version)
-					}
+			if tt.request.ClientInfo.Name != "" {
+				if decoded.ClientInfo.Name != tt.request.ClientInfo.Name {
+					t.Errorf("Expected client name %s, got %s", tt.request.ClientInfo.Name, decoded.ClientInfo.Name)
+				}
+				if decoded.ClientInfo.Version != tt.request.ClientInfo.Version {
+					t.Errorf("Expected client version %s, got %s", tt.request.ClientInfo.Version, decoded.ClientInfo.Version)
 				}
 			}
 		})

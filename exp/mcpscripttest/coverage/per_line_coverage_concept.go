@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Concept for per-line coverage analysis in scripttest
@@ -44,7 +45,7 @@ func (a *PerLineAnalyzer) ParseScriptFile() ([]string, error) {
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
-		
+
 		// Check for txtar section start
 		if strings.HasPrefix(line, "-- ") && strings.HasSuffix(line, " --") {
 			inTxtar = true
@@ -68,21 +69,21 @@ func (a *PerLineAnalyzer) ExecuteLineWithCoverage(lineNum int, line string) Line
 	// Create coverage directory for this line
 	lineDir := filepath.Join(a.baseDir, fmt.Sprintf("line_%d", lineNum))
 	os.MkdirAll(lineDir, 0755)
-	
+
 	// Set GOCOVERDIR for this line execution
 	os.Setenv("GOCOVERDIR", lineDir)
-	
+
 	// Create temporary test file with just this line + txtar
 	tmpFile := filepath.Join(lineDir, "test.txt")
 	content := fmt.Sprintf("%s\n\n%s", line, a.txtar)
 	os.WriteFile(tmpFile, []byte(content), 0644)
-	
+
 	// Execute the test (pseudo-code)
 	// runScriptTest(tmpFile)
-	
+
 	// Analyze coverage
 	coverage := a.analyzeCoverage(lineDir)
-	
+
 	return LineCoverage{
 		LineNumber: lineNum,
 		Line:       line,
@@ -96,18 +97,18 @@ func (a *PerLineAnalyzer) analyzeCoverage(dir string) map[string]float64 {
 	// Pseudo-code for coverage analysis
 	// This would use go tool covdata to get percentages
 	coverage := make(map[string]float64)
-	
+
 	// Example: parse covdata output
 	// output := exec.Command("go", "tool", "covdata", "percent", "-i", dir).Output()
 	// coverage["mcpdiff"] = parseCoveragePercent(output, "mcpdiff")
-	
+
 	return coverage
 }
 
 // GenerateAnnotatedTest creates a test file with coverage annotations
 func (a *PerLineAnalyzer) GenerateAnnotatedTest(results []LineCoverage) error {
 	outFile := strings.TrimSuffix(a.testFile, ".txt") + "_annotated.txt"
-	
+
 	f, err := os.Create(outFile)
 	if err != nil {
 		return err
@@ -122,7 +123,7 @@ func (a *PerLineAnalyzer) GenerateAnnotatedTest(results []LineCoverage) error {
 
 	lines := strings.Split(string(original), "\n")
 	annotated := make([]string, 0, len(lines))
-	
+
 	resultMap := make(map[int]LineCoverage)
 	for _, r := range results {
 		resultMap[r.LineNumber] = r
@@ -176,7 +177,7 @@ func main() {
 	for i, line := range lines {
 		result := analyzer.ExecuteLineWithCoverage(i+1, line)
 		results = append(results, result)
-		
+
 		fmt.Printf("Line %d: %s\n", result.LineNumber, result.Line)
 		fmt.Printf("Coverage: %v\n\n", result.Coverage)
 	}

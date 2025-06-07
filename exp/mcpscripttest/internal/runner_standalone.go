@@ -1,3 +1,4 @@
+//go:build !test
 // +build !test
 
 package internal
@@ -14,7 +15,7 @@ import (
 
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/conditions"
 )
 
@@ -30,7 +31,7 @@ func NewStandaloneEngine(options *MCPScripttestOptions) *script.Engine {
 	for k, v := range scripttest.DefaultCmds() {
 		e.Cmds[k] = v
 	}
-	
+
 	// Add minimal conditions without the problematic testing.Short()
 	e.Conds["GOOS"] = script.OnceCondition(fmt.Sprintf("runtime.GOOS == %q", runtime.GOOS), func() (bool, error) {
 		return true, nil
@@ -115,7 +116,7 @@ func (r *TestRunner) RunTestsStandalone(pattern string) int {
 	failures := 0
 	for _, file := range files {
 		fmt.Printf("\nRunning %s:\n", file)
-		
+
 		// Run the test
 		err := runStandaloneScriptFile(ctx, engine, env, file, r.Verbose)
 		if err != nil {

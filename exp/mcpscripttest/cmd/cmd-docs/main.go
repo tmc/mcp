@@ -19,12 +19,12 @@ import (
 )
 
 var (
-	sourceDir   string
-	outputFile  string
-	format      string
-	verbose     bool
-	structEdit  bool
-	filterCmd   string
+	sourceDir  string
+	outputFile string
+	format     string
+	verbose    bool
+	structEdit bool
+	filterCmd  string
 )
 
 func init() {
@@ -34,7 +34,7 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
 	flag.BoolVar(&structEdit, "structured", false, "Output structured edit suggestions")
 	flag.StringVar(&filterCmd, "cmd", "", "Filter to specific command")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "cmd-docs - Generate documentation for mcpscripttest commands\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
@@ -54,16 +54,16 @@ func init() {
 }
 
 type Command struct {
-	Name         string         `json:"name"`
-	File         string         `json:"file"`
-	Line         int           `json:"line"`
-	Function     string         `json:"function"`
-	Description  string         `json:"description"`
-	Usage        string         `json:"usage"`
-	Arguments    []Argument     `json:"arguments"`
-	Examples     []Example      `json:"examples"`
-	Registration Registration   `json:"registration"`
-	Suggestions  []Suggestion   `json:"suggestions"`
+	Name         string       `json:"name"`
+	File         string       `json:"file"`
+	Line         int          `json:"line"`
+	Function     string       `json:"function"`
+	Description  string       `json:"description"`
+	Usage        string       `json:"usage"`
+	Arguments    []Argument   `json:"arguments"`
+	Examples     []Example    `json:"examples"`
+	Registration Registration `json:"registration"`
+	Suggestions  []Suggestion `json:"suggestions"`
 }
 
 type Argument struct {
@@ -84,11 +84,11 @@ type Registration struct {
 }
 
 type Suggestion struct {
-	Type        string `json:"type"`
-	Field       string `json:"field"`
-	Current     string `json:"current"`
-	Suggested   string `json:"suggested"`
-	Reason      string `json:"reason"`
+	Type      string `json:"type"`
+	Field     string `json:"field"`
+	Current   string `json:"current"`
+	Suggested string `json:"suggested"`
+	Reason    string `json:"reason"`
 }
 
 type Edit struct {
@@ -102,13 +102,13 @@ type Edit struct {
 
 func main() {
 	flag.Parse()
-	
+
 	// Find commands
 	commands, err := findCommands(sourceDir)
 	if err != nil {
 		log.Fatalf("Error finding commands: %v", err)
 	}
-	
+
 	// Filter if requested
 	if filterCmd != "" {
 		filtered := []Command{}
@@ -119,18 +119,18 @@ func main() {
 		}
 		commands = filtered
 	}
-	
+
 	// Analyze and suggest improvements
 	for i := range commands {
 		analyzeCommand(&commands[i])
 		generateSuggestions(&commands[i])
 	}
-	
+
 	// Sort by name
 	sort.Slice(commands, func(i, j int) bool {
 		return commands[i].Name < commands[j].Name
 	})
-	
+
 	// Output
 	var out io.Writer = os.Stdout
 	if outputFile != "" {
@@ -141,7 +141,7 @@ func main() {
 		defer f.Close()
 		out = f
 	}
-	
+
 	switch format {
 	case "json":
 		outputJSON(out, commands)
@@ -154,12 +154,12 @@ func main() {
 
 func findCommands(dir string) ([]Command, error) {
 	var commands []Command
-	
+
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if strings.HasSuffix(path, ".go") && !strings.Contains(path, "_test.go") {
 			cmds, err := parseFile(path)
 			if err != nil {
@@ -170,10 +170,10 @@ func findCommands(dir string) ([]Command, error) {
 			}
 			commands = append(commands, cmds...)
 		}
-		
+
 		return nil
 	})
-	
+
 	return commands, err
 }
 
@@ -183,9 +183,9 @@ func parseFile(filename string) ([]Command, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var commands []Command
-	
+
 	// Look for command registrations
 	ast.Inspect(node, func(n ast.Node) bool {
 		switch x := n.(type) {
@@ -206,7 +206,7 @@ func parseFile(filename string) ([]Command, error) {
 										Location: fset.Position(x.Pos()).String(),
 									},
 								}
-								
+
 								// Extract function info
 								if ident, ok := x.Rhs[0].(*ast.Ident); ok {
 									cmd.Function = ident.Name
@@ -215,7 +215,7 @@ func parseFile(filename string) ([]Command, error) {
 										cmd.Function = ident.Name
 									}
 								}
-								
+
 								commands = append(commands, cmd)
 							}
 						}
@@ -225,7 +225,7 @@ func parseFile(filename string) ([]Command, error) {
 		}
 		return true
 	})
-	
+
 	return commands, nil
 }
 
@@ -243,12 +243,12 @@ func inferDescription(cmd *Command) string {
 	if strings.HasSuffix(name, "Cmd") {
 		name = strings.TrimSuffix(name, "Cmd")
 	}
-	
+
 	// Convert camelCase to sentence
 	re := regexp.MustCompile(`([a-z])([A-Z])`)
 	desc := re.ReplaceAllString(name, `$1 $2`)
 	desc = strings.ToLower(desc)
-	
+
 	// Common patterns
 	switch {
 	case strings.Contains(desc, "server start"):
@@ -279,7 +279,7 @@ func inferUsage(cmd *Command) string {
 func inferArguments(cmd *Command) []Argument {
 	// Common patterns
 	var args []Argument
-	
+
 	switch {
 	case strings.Contains(cmd.Name, "server"):
 		args = append(args, Argument{
@@ -296,14 +296,14 @@ func inferArguments(cmd *Command) []Argument {
 			Description: "Data to send",
 		})
 	}
-	
+
 	return args
 }
 
 func findExamples(cmd *Command) []Example {
 	// Generate basic examples
 	var examples []Example
-	
+
 	switch {
 	case cmd.Name == "mcp-server-start":
 		examples = append(examples, Example{
@@ -316,7 +316,7 @@ func findExamples(cmd *Command) []Example {
 			Description: "Show help information",
 		})
 	}
-	
+
 	return examples
 }
 
@@ -331,7 +331,7 @@ func generateSuggestions(cmd *Command) {
 			Reason:    "Missing or generic description",
 		})
 	}
-	
+
 	if len(cmd.Arguments) == 0 && !strings.HasSuffix(cmd.Name, "-help") {
 		cmd.Suggestions = append(cmd.Suggestions, Suggestion{
 			Type:      "documentation",
@@ -341,7 +341,7 @@ func generateSuggestions(cmd *Command) {
 			Reason:    "Commands typically have arguments that should be documented",
 		})
 	}
-	
+
 	if len(cmd.Examples) == 0 {
 		cmd.Suggestions = append(cmd.Suggestions, Suggestion{
 			Type:      "documentation",
@@ -355,16 +355,16 @@ func generateSuggestions(cmd *Command) {
 
 func outputText(w io.Writer, commands []Command) {
 	fmt.Fprintf(w, "=== MCPScriptTest Commands Documentation ===\n\n")
-	
+
 	for _, cmd := range commands {
 		fmt.Fprintf(w, "## %s\n", cmd.Name)
 		fmt.Fprintf(w, "File: %s:%d\n", cmd.File, cmd.Line)
 		fmt.Fprintf(w, "Function: %s\n", cmd.Function)
 		fmt.Fprintf(w, "\n")
-		
+
 		fmt.Fprintf(w, "Description: %s\n", cmd.Description)
 		fmt.Fprintf(w, "Usage: %s\n", cmd.Usage)
-		
+
 		if len(cmd.Arguments) > 0 {
 			fmt.Fprintf(w, "\nArguments:\n")
 			for _, arg := range cmd.Arguments {
@@ -375,7 +375,7 @@ func outputText(w io.Writer, commands []Command) {
 				fmt.Fprintf(w, "  - %s: %s%s - %s\n", arg.Name, arg.Type, req, arg.Description)
 			}
 		}
-		
+
 		if len(cmd.Examples) > 0 {
 			fmt.Fprintf(w, "\nExamples:\n")
 			for _, ex := range cmd.Examples {
@@ -383,7 +383,7 @@ func outputText(w io.Writer, commands []Command) {
 				fmt.Fprintf(w, "    # %s\n", ex.Description)
 			}
 		}
-		
+
 		if len(cmd.Suggestions) > 0 {
 			fmt.Fprintf(w, "\nSuggestions:\n")
 			for _, sug := range cmd.Suggestions {
@@ -392,10 +392,10 @@ func outputText(w io.Writer, commands []Command) {
 				fmt.Fprintf(w, "    Suggested: %s\n", sug.Suggested)
 			}
 		}
-		
+
 		fmt.Fprintf(w, "\n---\n\n")
 	}
-	
+
 	fmt.Fprintf(w, "Total commands found: %d\n", len(commands))
 }
 
@@ -407,13 +407,13 @@ func outputJSON(w io.Writer, commands []Command) {
 
 func outputEdits(w io.Writer, commands []Command) {
 	var edits []Edit
-	
+
 	// Generate edits for each command
 	for _, cmd := range commands {
 		if len(cmd.Suggestions) > 0 {
 			// Generate a documentation block edit
 			docBlock := generateDocBlock(cmd)
-			
+
 			edit := Edit{
 				File:        cmd.File,
 				StartLine:   cmd.Line - 1, // Insert before command registration
@@ -422,11 +422,11 @@ func outputEdits(w io.Writer, commands []Command) {
 				NewText:     docBlock,
 				Description: fmt.Sprintf("Add documentation for %s command", cmd.Name),
 			}
-			
+
 			edits = append(edits, edit)
 		}
 	}
-	
+
 	// Sort edits by file and line
 	sort.Slice(edits, func(i, j int) bool {
 		if edits[i].File != edits[j].File {
@@ -434,7 +434,7 @@ func outputEdits(w io.Writer, commands []Command) {
 		}
 		return edits[i].StartLine < edits[j].StartLine
 	})
-	
+
 	// Output as JSON
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")

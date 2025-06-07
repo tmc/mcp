@@ -12,16 +12,16 @@ import (
 func FuzzMCPTraces(f *testing.F) {
 	// Add seed corpus
 	f.Add(int64(42))
-	
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		// Use the MCP trace generator
 		generator := fuzzing.NewMCPTraceGenerator(seed)
 		script := generator.Generate()
-		
+
 		// Create temp file
 		tmpfile := createTempScript(t, script)
 		defer tmpfile.Close()
-		
+
 		// Run the test
 		mcpscripttest.Test(t, tmpfile.Name())
 	})
@@ -30,15 +30,15 @@ func FuzzMCPTraces(f *testing.F) {
 // FuzzSafeFileOperations demonstrates fuzzing without exec/rm commands
 func FuzzSafeFileOperations(f *testing.F) {
 	f.Add(int64(123))
-	
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		// Use the safe file operations generator
 		generator := fuzzing.NewSafeFileOperationsGenerator(seed)
 		script := generator.Generate()
-		
+
 		tmpfile := createTempScript(t, script)
 		defer tmpfile.Close()
-		
+
 		// This test will be safer as it doesn't execute arbitrary commands
 		mcpscripttest.Test(t, tmpfile.Name())
 	})
@@ -47,32 +47,32 @@ func FuzzSafeFileOperations(f *testing.F) {
 // FuzzCustomConfiguration demonstrates fuzzing with custom config
 func FuzzCustomConfiguration(f *testing.F) {
 	f.Add(int64(999))
-	
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		// Create a custom configuration
 		config := fuzzing.GeneratorConfig{
 			DisabledCommands: map[string]bool{
-				"exec":   true,  // No arbitrary execution
-				"rm":     true,  // No deletions
-				"sleep":  true,  // No delays
+				"exec":  true, // No arbitrary execution
+				"rm":    true, // No deletions
+				"sleep": true, // No delays
 			},
 			CommandWeights: map[string]float64{
-				"mcp-send":  3.0,  // Focus on MCP protocol
-				"mcp-recv":  3.0,
-				"stdin":     2.0,
-				"stdout":    2.0,
+				"mcp-send": 3.0, // Focus on MCP protocol
+				"mcp-recv": 3.0,
+				"stdin":    2.0,
+				"stdout":   2.0,
 			},
-			AllowDirectives: false,  // No platform-specific tests
+			AllowDirectives: false, // No platform-specific tests
 			MinScriptLength: 5,
 			MaxScriptLength: 10,
 		}
-		
+
 		generator := fuzzing.NewSpecializedGenerator(seed, config)
 		script := generator.Generate()
-		
+
 		tmpfile := createTempScript(t, script)
 		defer tmpfile.Close()
-		
+
 		mcpscripttest.Test(t, tmpfile.Name())
 	})
 }
@@ -83,14 +83,14 @@ func createTempScript(t *testing.T, script string) *os.File {
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	if _, err := tmpfile.WriteString(script); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	if err := tmpfile.Close(); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	return tmpfile
 }

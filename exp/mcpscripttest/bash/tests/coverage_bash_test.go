@@ -19,7 +19,7 @@ func TestBashCoverageSimple(t *testing.T) {
 func TestBashCoverageIntegration(t *testing.T) {
 	// Note: testcallgraph tool is available as prebuilt binary testcallgraph-tool
 	// Skip installation and run test directly
-	
+
 	// Test integration with testcallgraph
 	mcpscripttest.Test(t, "../../testdata/testcallgraph_bash_test.txt")
 }

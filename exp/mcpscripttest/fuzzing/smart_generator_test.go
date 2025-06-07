@@ -3,7 +3,7 @@ package fuzzing_test
 import (
 	"strings"
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/fuzzing"
 )
 
@@ -18,44 +18,44 @@ func TestSmartGenerator(t *testing.T) {
 		CommonTestBinaries:  true,
 		ValidateCommands:    false, // Skip validation for testing
 	}
-	
+
 	generator := fuzzing.NewSmartGenerator(42, config)
 	script := generator.Generate()
-	
+
 	t.Logf("Smart generated script:\n%s\n", script)
-	
+
 	// Analyze exec commands
 	lines := strings.Split(script, "\n")
 	execCommands := []string{}
-	
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "exec ") {
 			execCommands = append(execCommands, strings.TrimPrefix(line, "exec "))
 		}
 	}
-	
+
 	t.Logf("Generated exec commands: %v", execCommands)
 }
 
 // TestBinaryIntrospection tests the introspection capabilities
 func TestBinaryIntrospection(t *testing.T) {
 	introspector := fuzzing.NewBinaryIntrospector()
-	
+
 	// Test with common binaries
 	binaries := []string{"echo", "cat", "ls"}
-	
+
 	for _, binary := range binaries {
 		info, err := introspector.IntrospectBinary(binary)
 		if err != nil {
 			t.Logf("Failed to introspect %s: %v", binary, err)
 			continue
 		}
-		
+
 		t.Logf("Binary: %s", binary)
 		t.Logf("  Supports help: %v", info.SupportsHelp)
 		t.Logf("  Accepts stdin: %v", info.AcceptsStdin)
 		t.Logf("  Flags found: %d", len(info.Flags))
-		
+
 		for _, flag := range info.Flags {
 			t.Logf("    %s (%s): %s", flag.Name, flag.Type, flag.Description)
 		}
@@ -75,10 +75,10 @@ func TestSmartGeneratorWithValidation(t *testing.T) {
 		ValidateCommands:      true,
 		MaxValidationAttempts: 3,
 	}
-	
+
 	generator := fuzzing.NewSmartGeneratorWithEngine(123, config)
 	script := generator.GenerateWithValidation()
-	
+
 	t.Logf("Validated script:\n%s\n", script)
 }
 
@@ -86,25 +86,25 @@ func TestSmartGeneratorWithValidation(t *testing.T) {
 func TestMCPSmartGenerator(t *testing.T) {
 	generator := fuzzing.NewMCPSmartGenerator(999)
 	script := generator.Generate()
-	
+
 	t.Logf("MCP smart generated script:\n%s\n", script)
-	
+
 	// Count command types
 	commandCounts := make(map[string]int)
 	lines := strings.Split(script, "\n")
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		
+
 		parts := strings.Fields(line)
 		if len(parts) > 0 {
 			commandCounts[parts[0]]++
 		}
 	}
-	
+
 	t.Log("Command distribution:")
 	for cmd, count := range commandCounts {
 		t.Logf("  %s: %d", cmd, count)
@@ -114,7 +114,7 @@ func TestMCPSmartGenerator(t *testing.T) {
 // Example fuzzing with smart generator
 func FuzzWithSmartGenerator(f *testing.F) {
 	f.Add(int64(42))
-	
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		config := fuzzing.SmartGeneratorConfig{
 			GeneratorConfig: fuzzing.GeneratorConfig{
@@ -126,10 +126,10 @@ func FuzzWithSmartGenerator(f *testing.F) {
 			CommonTestBinaries:  true,
 			ValidateCommands:    true,
 		}
-		
+
 		generator := fuzzing.NewSmartGeneratorWithEngine(seed, config)
 		script := generator.GenerateWithValidation()
-		
+
 		// Run the generated script
 		// In real use, this would go through mcpscripttest
 		t.Logf("Generated validated script with %d lines", len(strings.Split(script, "\n")))

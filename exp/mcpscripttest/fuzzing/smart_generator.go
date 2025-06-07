@@ -9,27 +9,27 @@ import (
 // SmartGenerator uses binary introspection to generate valid commands
 type SmartGenerator struct {
 	*SpecializedGenerator
-	introspector *BinaryIntrospector
-	binaryCache  map[string]*BinaryInfo
-	cooperativeCache map[string]bool  // Track which binaries support cooperative fuzzing
+	introspector     *BinaryIntrospector
+	binaryCache      map[string]*BinaryInfo
+	cooperativeCache map[string]bool // Track which binaries support cooperative fuzzing
 }
 
 // SmartGeneratorConfig extends GeneratorConfig with introspection options
 type SmartGeneratorConfig struct {
 	GeneratorConfig
-	
+
 	// EnableIntrospection turns on binary analysis
 	EnableIntrospection bool
-	
+
 	// BinaryPaths lists specific binaries to analyze
 	BinaryPaths []string
-	
+
 	// CommonTestBinaries includes common test tools
 	CommonTestBinaries bool
-	
+
 	// ValidateCommands checks if generated commands are valid
 	ValidateCommands bool
-	
+
 	// MaxValidationAttempts limits validation retries
 	MaxValidationAttempts int
 }
@@ -40,24 +40,24 @@ func NewSmartGenerator(seed int64, config SmartGeneratorConfig) *SmartGenerator 
 	if config.MaxValidationAttempts == 0 {
 		config.MaxValidationAttempts = 3
 	}
-	
+
 	sg := &SmartGenerator{
 		SpecializedGenerator: NewSpecializedGenerator(seed, config.GeneratorConfig),
-		introspector:        NewBinaryIntrospector(),
-		binaryCache:         make(map[string]*BinaryInfo),
-		cooperativeCache:    make(map[string]bool),
+		introspector:         NewBinaryIntrospector(),
+		binaryCache:          make(map[string]*BinaryInfo),
+		cooperativeCache:     make(map[string]bool),
 	}
-	
+
 	// Pre-introspect configured binaries
 	if config.EnableIntrospection {
 		sg.introspectBinaries(config)
 	}
-	
+
 	// Override exec command generator with smart version
 	if !config.DisabledCommands["exec"] {
 		sg.overrideExecGenerator()
 	}
-	
+
 	return sg
 }
 
@@ -69,7 +69,7 @@ func (sg *SmartGenerator) introspectBinaries(config SmartGeneratorConfig) {
 			sg.binaryCache[path] = info
 		}
 	}
-	
+
 	// Add common test binaries
 	if config.CommonTestBinaries {
 		commonBinaries := []string{
@@ -77,7 +77,7 @@ func (sg *SmartGenerator) introspectBinaries(config SmartGeneratorConfig) {
 			"true", "false", "test", "date", "pwd",
 			"wc", "sort", "uniq", "head", "tail",
 		}
-		
+
 		for _, binary := range commonBinaries {
 			if info, err := sg.introspector.IntrospectBinary(binary); err == nil {
 				sg.binaryCache[binary] = info
@@ -105,14 +105,14 @@ func (sg *SmartGenerator) generateSmartExecCommand(g *SpecializedGenerator) stri
 		for path := range sg.binaryCache {
 			binaries = append(binaries, path)
 		}
-		
+
 		binary := binaries[sg.rng.Intn(len(binaries))]
 		info := sg.binaryCache[binary]
-		
+
 		// Generate a command based on introspection
 		return sg.generateCommandFromInfo(info)
 	}
-	
+
 	// Fallback to traditional generation
 	return sg.generateTraditionalExecCommand()
 }
@@ -125,34 +125,34 @@ func (sg *SmartGenerator) generateCommandFromInfo(info *BinaryInfo) string {
 	}
 	// Start with the binary path
 	parts := []string{"exec", info.Path}
-	
+
 	// Add flags based on what we know
 	if len(info.Flags) > 0 && sg.rng.Float64() < 0.7 {
 		// 70% chance to add flags
 		numFlags := sg.rng.Intn(3) + 1 // 1-3 flags
-		
+
 		for i := 0; i < numFlags && i < len(info.Flags); i++ {
 			flag := info.Flags[sg.rng.Intn(len(info.Flags))]
-			
+
 			// Use short or long form
 			if flag.ShortName != "" && sg.rng.Float64() < 0.5 {
 				parts = append(parts, flag.ShortName)
 			} else if flag.Name != "" {
 				parts = append(parts, flag.Name)
 			}
-			
+
 			// Add value for non-bool flags
 			if flag.Type != "bool" {
 				parts = append(parts, sg.generateFlagValue(flag.Type))
 			}
 		}
 	}
-	
+
 	// Add positional arguments for some commands
 	if sg.shouldAddPositionalArgs(info.Path) {
 		parts = append(parts, sg.generatePositionalArgs(info.Path)...)
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 
@@ -174,7 +174,7 @@ func (sg *SmartGenerator) generateFlagValue(flagType string) string {
 // shouldAddPositionalArgs determines if a command needs positional args
 func (sg *SmartGenerator) shouldAddPositionalArgs(binary string) bool {
 	base := filepath.Base(binary)
-	
+
 	// Commands that typically need arguments
 	needsArgs := map[string]bool{
 		"echo": true,
@@ -185,33 +185,33 @@ func (sg *SmartGenerator) shouldAddPositionalArgs(binary string) bool {
 		"wc":   true,
 		"sort": true,
 	}
-	
+
 	return needsArgs[base]
 }
 
 // generatePositionalArgs generates appropriate positional arguments
 func (sg *SmartGenerator) generatePositionalArgs(binary string) []string {
 	base := filepath.Base(binary)
-	
+
 	switch base {
 	case "echo":
 		messages := []string{"test", "hello world", "done", "success"}
 		return []string{messages[sg.rng.Intn(len(messages))]}
-		
+
 	case "cat", "wc", "sort":
 		files := []string{"test.txt", "data.log", "output.json"}
 		return []string{files[sg.rng.Intn(len(files))]}
-		
+
 	case "grep":
 		patterns := []string{"error", "success", "test", "[0-9]+"}
 		files := []string{"test.txt", "data.log", "output.json"}
 		return []string{patterns[sg.rng.Intn(len(patterns))], files[sg.rng.Intn(len(files))]}
-		
+
 	case "sed":
 		commands := []string{"s/old/new/", "1d", "/pattern/p"}
 		files := []string{"test.txt", "data.log"}
 		return []string{commands[sg.rng.Intn(len(commands))], files[sg.rng.Intn(len(files))]}
-		
+
 	default:
 		return []string{}
 	}
@@ -271,11 +271,11 @@ func (sg *SmartGenerator) generateTraditionalExecCommand() string {
 func (sg *SmartGenerator) ValidateAndRegenerate(maxAttempts int) string {
 	for i := 0; i < maxAttempts; i++ {
 		script := sg.Generate()
-		
+
 		// Extract exec commands and validate them
 		lines := strings.Split(script, "\n")
 		allValid := true
-		
+
 		for _, line := range lines {
 			if strings.HasPrefix(line, "exec ") {
 				command := strings.TrimPrefix(line, "exec ")
@@ -285,12 +285,12 @@ func (sg *SmartGenerator) ValidateAndRegenerate(maxAttempts int) string {
 				}
 			}
 		}
-		
+
 		if allValid {
 			return script
 		}
 	}
-	
+
 	// Fallback to non-validated generation
 	return sg.Generate()
 }
@@ -319,7 +319,7 @@ func NewMCPSmartGenerator(seed int64) *MCPSmartGenerator {
 		CommonTestBinaries:  true,
 		ValidateCommands:    true,
 	}
-	
+
 	return &MCPSmartGenerator{
 		SmartGenerator: NewSmartGenerator(seed, config),
 	}

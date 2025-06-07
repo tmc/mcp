@@ -16,8 +16,8 @@ import (
 
 // serverManager manages MCP server processes for tests
 type serverManager struct {
-	mu      sync.Mutex
-	servers map[string]*exec.Cmd
+	mu          sync.Mutex
+	servers     map[string]*exec.Cmd
 	stdinPipes  map[string]io.WriteCloser
 	stdoutPipes map[string]io.ReadCloser
 	lastOutput  map[string]string // Tracks the last output from each server
@@ -42,7 +42,7 @@ func registerServerCommands(e *script.Engine) {
 	e.Cmds["mcp-server-stop"] = mcpServerStopCmd
 	e.Cmds["mcp-server-output"] = mcpServerOutputCmd
 	// e.Cmds["mcp-server-detect-capabilities"] = mcpServerDetectCapabilitiesCmd // Will be added later
-	
+
 	// Register conditions for checking server status and capabilities
 
 	// Check if any server is running
@@ -140,7 +140,7 @@ var mcpServerStartCmd = script.Command(
 	},
 	func(s *script.State, args ...string) (script.WaitFunc, error) {
 		var (
-			name string = "default"
+			name    string = "default"
 			cmdArgs []string
 		)
 
@@ -151,7 +151,7 @@ var mcpServerStartCmd = script.Command(
 			if serverCmd == "" {
 				return nil, fmt.Errorf("no server command provided (set MCP_SERVER_COMMAND or provide command arguments)")
 			}
-			
+
 			// Split the server command into arguments
 			cmdArgs = strings.Fields(serverCmd)
 		} else {
@@ -168,7 +168,7 @@ var mcpServerStartCmd = script.Command(
 		// Handle variable expansion for $MCP_SERVER_COMMAND
 		if len(cmdArgs) == 1 && strings.HasPrefix(cmdArgs[0], "$") {
 			varName := strings.TrimPrefix(cmdArgs[0], "$")
-			
+
 			// Check environment variables
 			if val := os.Getenv(varName); val != "" {
 				cmdArgs = strings.Fields(val)
@@ -176,7 +176,7 @@ var mcpServerStartCmd = script.Command(
 				return nil, fmt.Errorf("variable %s not defined", cmdArgs[0])
 			}
 		}
-		
+
 		if len(cmdArgs) < 1 {
 			return nil, fmt.Errorf("no command specified")
 		}
@@ -184,7 +184,7 @@ var mcpServerStartCmd = script.Command(
 		// Check if a server with this name is already running
 		serverMgr.mu.Lock()
 		defer serverMgr.mu.Unlock()
-		
+
 		if _, exists := serverMgr.servers[name]; exists {
 			return nil, fmt.Errorf("server with name %q is already running", name)
 		}
@@ -236,20 +236,20 @@ var mcpServerStartCmd = script.Command(
 		go func() {
 			// Capture stderr output for debugging
 			stderrOutput, _ := io.ReadAll(stderr)
-			
+
 			// Wait for the command to complete
 			err := cmd.Wait()
-			
+
 			// Clean up the server registration
 			serverMgr.mu.Lock()
 			delete(serverMgr.servers, name)
 			delete(serverMgr.stdinPipes, name)
 			delete(serverMgr.stdoutPipes, name)
 			serverMgr.mu.Unlock()
-			
+
 			if err != nil && s.Context().Err() != context.Canceled {
 				// Log the error for debugging
-				fmt.Fprintf(os.Stderr, "Server %q exited with error: %v\nStderr: %s\n", 
+				fmt.Fprintf(os.Stderr, "Server %q exited with error: %v\nStderr: %s\n",
 					name, err, string(stderrOutput))
 			}
 		}()
@@ -281,7 +281,7 @@ var mcpServerSendCmd = script.Command(
 		name := "default"
 		timeout := 2.0 // Aggressive default timeout in seconds (reduced from 5.0)
 		async := false
-		
+
 		for _, arg := range args {
 			if strings.HasPrefix(arg, "--name=") {
 				name = strings.TrimPrefix(arg, "--name=")

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/fuzzing"
 )
 
@@ -12,40 +12,40 @@ import (
 func TestGeneratorOutput(t *testing.T) {
 	// Generate several scripts and analyze them
 	seeds := []int64{42, 123, 999, 1337, 8888}
-	
+
 	for _, seed := range seeds {
 		t.Run(fmt.Sprintf("Seed_%d", seed), func(t *testing.T) {
 			generator := fuzzing.NewFuzzGenerator(seed)
 			script := generator.Generate()
-			
+
 			t.Logf("Script generated with seed %d:\n%s\n", seed, script)
-			
+
 			// Analyze the script
 			lines := strings.Split(script, "\n")
 			var execCount, mcpCount, fileOps, dirOps int
-			
+
 			for _, line := range lines {
 				line = strings.TrimSpace(line)
 				if line == "" || strings.HasPrefix(line, "#") {
 					continue
 				}
-				
+
 				switch {
 				case strings.HasPrefix(line, "exec "):
 					execCount++
 				case strings.HasPrefix(line, "mcp-"):
 					mcpCount++
-				case strings.HasPrefix(line, "cat ") || 
-				     strings.HasPrefix(line, "cp ") || 
-				     strings.HasPrefix(line, "mv ") ||
-				     strings.HasPrefix(line, "rm "):
+				case strings.HasPrefix(line, "cat ") ||
+					strings.HasPrefix(line, "cp ") ||
+					strings.HasPrefix(line, "mv ") ||
+					strings.HasPrefix(line, "rm "):
 					fileOps++
-				case strings.HasPrefix(line, "mkdir ") || 
-				     strings.HasPrefix(line, "cd "):
+				case strings.HasPrefix(line, "mkdir ") ||
+					strings.HasPrefix(line, "cd "):
 					dirOps++
 				}
 			}
-			
+
 			t.Logf("Analysis:")
 			t.Logf("  - exec commands: %d", execCount)
 			t.Logf("  - MCP commands: %d", mcpCount)

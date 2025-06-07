@@ -51,6 +51,23 @@ func DefaultToolsOptions() *ToolsOptions {
 	}
 }
 
+// DefaultToolsWithScripttestOptions returns default options including mcpscripttest cmd/* tools
+func DefaultToolsWithScripttestOptions() *ToolsOptions {
+	return &ToolsOptions{
+		CoverMode:          ToolCoverModeAuto,
+		AutoDetectCoverage: true,
+		ToolsDir:           "",
+		Tools: []string{
+			// Main MCP tools
+			"mcp-replay", "mcp-spy", "mcp-start", "mcp-test", "mcp-verify", "mcp-send", "mcp-recv", "mcpdiff", "mcp-probe",
+			// mcpscripttest analysis tools
+			"apply-edits", "coverage-by-program", "coverage-hotspots", "depgraph", "digraph-compat", 
+			"testgraph", "testcallgraph", "testcallgraph-coverage", "stitch-demo", "cmd-docs",
+		},
+		VerboseOutput: false,
+	}
+}
+
 // InstallMCPTools installs MCP tools with or without coverage instrumentation
 // It returns a cleanup function that should be deferred to restore the original PATH
 func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
@@ -111,9 +128,8 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 		// Clean the tool name (in case it has path separators)
 		toolName := filepath.Base(tool)
 
-		// Build the full import path
-		// Use github.com import path for installation
-		importPath := fmt.Sprintf("github.com/tmc/mcp/cmd/%s", toolName)
+		// Build the full import path based on tool location
+		importPath := getToolImportPath(toolName)
 
 		// Execute the install command
 		cmd := exec.Command(installCmd[0], append(installCmd[1:], importPath)...)
@@ -150,6 +166,45 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 			}
 		}
 	}
+}
+
+// getToolImportPath returns the import path for a given tool name
+func getToolImportPath(toolName string) string {
+	// Map tool names to their import paths
+	toolPaths := map[string]string{
+		// Main MCP tools
+		"mcp-replay":    "github.com/tmc/mcp/cmd/mcp-replay",
+		"mcp-spy":       "github.com/tmc/mcp/cmd/mcp-spy", 
+		"mcp-start":     "github.com/tmc/mcp/cmd/mcp-start",
+		"mcp-test":      "github.com/tmc/mcp/cmd/mcp-test",
+		"mcp-verify":    "github.com/tmc/mcp/cmd/mcp-verify",
+		"mcp-send":      "github.com/tmc/mcp/cmd/mcp-send",
+		"mcp-recv":      "github.com/tmc/mcp/cmd/mcp-recv",
+		"mcpdiff":       "github.com/tmc/mcp/cmd/mcpdiff",
+		"mcp-probe":     "github.com/tmc/mcp/cmd/mcp-probe",
+		"mcpcat":        "github.com/tmc/mcp/cmd/mcpcat",
+		"mcpspy":        "github.com/tmc/mcp/cmd/mcpspy",
+		"mcp-shadow":    "github.com/tmc/mcp/cmd/mcp-shadow",
+		
+		// Experimental mcpscripttest tools
+		"apply-edits":             "github.com/tmc/mcp/exp/mcpscripttest/cmd/apply-edits",
+		"coverage-by-program":     "github.com/tmc/mcp/exp/mcpscripttest/cmd/coverage-by-program",
+		"coverage-hotspots":       "github.com/tmc/mcp/exp/mcpscripttest/cmd/coverage-hotspots",
+		"depgraph":                "github.com/tmc/mcp/exp/mcpscripttest/cmd/depgraph",
+		"digraph-compat":          "github.com/tmc/mcp/exp/mcpscripttest/cmd/digraph-compat",
+		"testgraph":               "github.com/tmc/mcp/exp/mcpscripttest/cmd/testgraph",
+		"testcallgraph":           "github.com/tmc/mcp/exp/mcpscripttest/cmd/testcallgraph",
+		"testcallgraph-coverage":  "github.com/tmc/mcp/exp/mcpscripttest/cmd/testcallgraph-coverage",
+		"stitch-demo":             "github.com/tmc/mcp/exp/mcpscripttest/cmd/stitch-demo",
+		"cmd-docs":                "github.com/tmc/mcp/exp/mcpscripttest/cmd/cmd-docs",
+	}
+	
+	if path, exists := toolPaths[toolName]; exists {
+		return path
+	}
+	
+	// Fallback: assume it's in the main cmd directory
+	return fmt.Sprintf("github.com/tmc/mcp/cmd/%s", toolName)
 }
 
 // SetupMCPToolsPath sets up the PATH to include MCP tools without installing them

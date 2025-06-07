@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest"
 )
 
@@ -20,19 +20,19 @@ type SpecializedGenerator struct {
 type GeneratorConfig struct {
 	// DisabledCommands lists commands that should not be generated
 	DisabledCommands map[string]bool
-	
+
 	// CommandWeights allows custom weighting of commands
 	CommandWeights map[string]float64
-	
+
 	// MaxScriptLength limits the script size
 	MaxScriptLength int
-	
+
 	// MinScriptLength ensures minimum script size
 	MinScriptLength int
-	
+
 	// AllowDirectives controls whether to include directives like !, ?, [platform]
 	AllowDirectives bool
-	
+
 	// FocusArea can be "mcp", "file", "exec", "mixed"
 	FocusArea string
 }
@@ -47,13 +47,13 @@ type GeneratorCommand struct {
 // NewSpecializedGenerator creates a new specialized generator
 func NewSpecializedGenerator(seed int64, config GeneratorConfig) *SpecializedGenerator {
 	schema := mcpscripttest.GetSchema()
-	
+
 	g := &SpecializedGenerator{
 		rng:    rand.New(rand.NewSource(seed)),
 		schema: schema,
 		config: config,
 	}
-	
+
 	// Set defaults
 	if g.config.MaxScriptLength == 0 {
 		g.config.MaxScriptLength = 20
@@ -61,70 +61,70 @@ func NewSpecializedGenerator(seed int64, config GeneratorConfig) *SpecializedGen
 	if g.config.MinScriptLength == 0 {
 		g.config.MinScriptLength = 3
 	}
-	
+
 	// Build command list based on schema and config
 	g.buildCommandList()
-	
+
 	return g
 }
 
 // buildCommandList creates the list of available commands based on config
 func (g *SpecializedGenerator) buildCommandList() {
 	g.commands = []GeneratorCommand{}
-	
+
 	// Add core commands
 	for _, cmd := range g.schema.CoreCommands {
 		if g.config.DisabledCommands[cmd.Name] {
 			continue
 		}
-		
+
 		weight := g.config.CommandWeights[cmd.Name]
 		if weight == 0 {
 			weight = 1.0 // Default weight
 		}
-		
+
 		g.commands = append(g.commands, GeneratorCommand{
 			Name:      cmd.Name,
 			Generator: g.getCoreCommandGenerator(cmd.Name),
 			Weight:    weight,
 		})
 	}
-	
+
 	// Add MCP commands
 	for _, cmd := range g.schema.MCPCommands {
 		if g.config.DisabledCommands[cmd.Name] {
 			continue
 		}
-		
+
 		weight := g.config.CommandWeights[cmd.Name]
 		if weight == 0 {
 			weight = 1.0
 		}
-		
+
 		// Adjust weight based on focus area
 		if g.config.FocusArea == "mcp" {
 			weight *= 3
 		}
-		
+
 		g.commands = append(g.commands, GeneratorCommand{
 			Name:      cmd.Name,
 			Generator: g.getMCPCommandGenerator(cmd.Name),
 			Weight:    weight,
 		})
 	}
-	
+
 	// Add directives if allowed
 	if g.config.AllowDirectives {
 		for _, dir := range g.schema.Directives {
 			if g.config.DisabledCommands[dir.Name] {
 				continue
 			}
-			
+
 			weight := g.config.CommandWeights[dir.Name]
 			if weight == 0 {
 				weight = 0.5 // Lower weight for directives
 			}
-			
+
 			g.commands = append(g.commands, GeneratorCommand{
 				Name:      dir.Name,
 				Generator: g.getDirectiveGenerator(dir.Name),
@@ -233,7 +233,7 @@ func (g *SpecializedGenerator) getMCPCommandGenerator(name string) func(*Special
 		return func(g *SpecializedGenerator) string {
 			servers := []string{
 				"go run server.go",
-				"node server.js", 
+				"node server.js",
 				"./server",
 			}
 			return fmt.Sprintf("mcp-serve -- %s", servers[g.rng.Intn(len(servers))])
@@ -279,25 +279,25 @@ func (g *SpecializedGenerator) getDirectiveGenerator(name string) func(*Speciali
 // Generate creates a test script using weighted command selection
 func (g *SpecializedGenerator) Generate() string {
 	var lines []string
-	
+
 	// Start with a comment
 	lines = append(lines, "# Generated test script")
 	lines = append(lines, "")
-	
+
 	// Calculate total weight
 	totalWeight := 0.0
 	for _, cmd := range g.commands {
 		totalWeight += cmd.Weight
 	}
-	
+
 	// Generate commands
 	numCommands := g.config.MinScriptLength + g.rng.Intn(g.config.MaxScriptLength-g.config.MinScriptLength+1)
-	
+
 	for i := 0; i < numCommands; i++ {
 		// Select command based on weight
 		r := g.rng.Float64() * totalWeight
 		cumWeight := 0.0
-		
+
 		for _, cmd := range g.commands {
 			cumWeight += cmd.Weight
 			if r <= cumWeight {
@@ -306,7 +306,7 @@ func (g *SpecializedGenerator) Generate() string {
 			}
 		}
 	}
-	
+
 	// Ensure we have a completion marker for exec-based tests
 	if !g.config.DisabledCommands["exec"] {
 		hasExec := false
@@ -316,13 +316,13 @@ func (g *SpecializedGenerator) Generate() string {
 				break
 			}
 		}
-		
+
 		if !hasExec {
 			lines = append(lines, "exec echo 'test complete'")
 			lines = append(lines, "stdout 'test complete'")
 		}
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 
@@ -343,11 +343,11 @@ func NewMCPTraceGenerator(seed int64) *MCPTraceGenerator {
 			"mcp-recv":  3.0,
 			"mcp-serve": 2.0,
 		},
-		FocusArea: "mcp",
+		FocusArea:       "mcp",
 		MinScriptLength: 5,
 		MaxScriptLength: 15,
 	}
-	
+
 	return &MCPTraceGenerator{
 		SpecializedGenerator: NewSpecializedGenerator(seed, config),
 	}
@@ -373,10 +373,10 @@ func NewSafeFileOperationsGenerator(seed int64) *SafeFileOperationsGenerator {
 			"stdout": 2.0,
 			"stderr": 1.0,
 		},
-		FocusArea: "file",
+		FocusArea:       "file",
 		AllowDirectives: false,
 	}
-	
+
 	return &SafeFileOperationsGenerator{
 		SpecializedGenerator: NewSpecializedGenerator(seed, config),
 	}

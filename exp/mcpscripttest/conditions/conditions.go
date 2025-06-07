@@ -14,7 +14,7 @@ var (
 	envVarCondServerSupportsHTTP  = fmt.Sprintf(envVarCondServerSupports, "HTTP")
 	envVarCondServerSupportsSSE   = fmt.Sprintf(envVarCondServerSupports, "SSE")
 
-	envVarCondClientSupports = "MCP_SCRIPTTEST_CLIENT_CAPABILITIES"
+	envVarCondClientSupports     = "MCP_SCRIPTTEST_CLIENT_CAPABILITIES"
 	envVarCondServerCapabilities = "MCP_SCRIPTTEST_SERVER_CAPABILITIES"
 )
 

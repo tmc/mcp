@@ -12,18 +12,18 @@ import (
 type SandboxConfig struct {
 	// BlockNetwork prevents any network operations
 	BlockNetwork bool `json:"block_network"`
-	
+
 	// BlockExec prevents execution of external commands
 	BlockExec bool `json:"block_exec"`
-	
+
 	// BlockFileSystem restricts file system access to specific directories
 	BlockFileSystem bool     `json:"block_filesystem"`
 	AllowedPaths    []string `json:"allowed_paths"`
-	
+
 	// BlockEnvironment prevents access to environment variables
 	BlockEnvironment bool     `json:"block_environment"`
 	AllowedEnvVars   []string `json:"allowed_env_vars"`
-	
+
 	// OverlayDir is the directory containing the Go overlay files
 	OverlayDir string `json:"overlay_dir"`
 }
@@ -33,42 +33,42 @@ func GenerateBuildOverlay(config *SandboxConfig) error {
 	if config.OverlayDir == "" {
 		return fmt.Errorf("overlay directory must be specified")
 	}
-	
+
 	// Create the overlay directory
 	if err := os.MkdirAll(config.OverlayDir, 0755); err != nil {
 		return fmt.Errorf("failed to create overlay directory: %w", err)
 	}
-	
+
 	// Generate overlay files based on configuration
 	if config.BlockNetwork {
 		if err := generateNetworkStub(config.OverlayDir); err != nil {
 			return fmt.Errorf("failed to generate network stub: %w", err)
 		}
 	}
-	
+
 	if config.BlockExec {
 		if err := generateExecStub(config.OverlayDir); err != nil {
 			return fmt.Errorf("failed to generate exec stub: %w", err)
 		}
 	}
-	
+
 	if config.BlockFileSystem {
 		if err := generateFileSystemStub(config.OverlayDir, config.AllowedPaths); err != nil {
 			return fmt.Errorf("failed to generate filesystem stub: %w", err)
 		}
 	}
-	
+
 	if config.BlockEnvironment {
 		if err := generateEnvironmentStub(config.OverlayDir, config.AllowedEnvVars); err != nil {
 			return fmt.Errorf("failed to generate environment stub: %w", err)
 		}
 	}
-	
+
 	// Generate the overlay.json file
 	if err := generateOverlayJSON(config); err != nil {
 		return fmt.Errorf("failed to generate overlay.json: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -78,7 +78,7 @@ func generateNetworkStub(overlayDir string) error {
 	if err := os.MkdirAll(netDir, 0755); err != nil {
 		return err
 	}
-	
+
 	stub := `// +build sandbox
 
 package net
@@ -112,7 +112,7 @@ type Addr interface {
 	String() string
 }
 `
-	
+
 	return writeFile(filepath.Join(netDir, "net_sandbox.go"), stub)
 }
 
@@ -122,7 +122,7 @@ func generateExecStub(overlayDir string) error {
 	if err := os.MkdirAll(execDir, 0755); err != nil {
 		return err
 	}
-	
+
 	stub := `// +build sandbox
 
 package exec
@@ -169,7 +169,7 @@ func (c *Cmd) CombinedOutput() ([]byte, error) {
 	return nil, ErrSandboxed
 }
 `
-	
+
 	return writeFile(filepath.Join(execDir, "exec_sandbox.go"), stub)
 }
 
@@ -179,14 +179,14 @@ func generateFileSystemStub(overlayDir string, allowedPaths []string) error {
 	if err := os.MkdirAll(osDir, 0755); err != nil {
 		return err
 	}
-	
+
 	// Generate allowed paths check
 	allowedPathsCode := "var allowedPaths = []string{\n"
 	for _, path := range allowedPaths {
 		allowedPathsCode += fmt.Sprintf("\t%q,\n", path)
 	}
 	allowedPathsCode += "}\n"
-	
+
 	stub := fmt.Sprintf(`// +build sandbox
 
 package os
@@ -239,7 +239,7 @@ func Remove(name string) error {
 	return removeReal(name)
 }
 `, allowedPathsCode)
-	
+
 	return writeFile(filepath.Join(osDir, "file_sandbox.go"), stub)
 }
 
@@ -249,14 +249,14 @@ func generateEnvironmentStub(overlayDir string, allowedVars []string) error {
 	if err := os.MkdirAll(osDir, 0755); err != nil {
 		return err
 	}
-	
+
 	// Generate allowed vars check
 	allowedVarsCode := "var allowedEnvVars = map[string]bool{\n"
 	for _, varName := range allowedVars {
 		allowedVarsCode += fmt.Sprintf("\t%q: true,\n", varName)
 	}
 	allowedVarsCode += "}\n"
-	
+
 	stub := fmt.Sprintf(`// +build sandbox
 
 package os
@@ -287,7 +287,7 @@ func LookupEnv(key string) (string, bool) {
 	return lookupEnvReal(key)
 }
 `, allowedVarsCode)
-	
+
 	return writeFile(filepath.Join(osDir, "env_sandbox.go"), stub)
 }
 
@@ -296,30 +296,30 @@ func generateOverlayJSON(config *SandboxConfig) error {
 	overlay := map[string]interface{}{
 		"Replace": map[string]string{},
 	}
-	
+
 	replaceMap := overlay["Replace"].(map[string]string)
-	
+
 	if config.BlockNetwork {
 		replaceMap["net/net.go"] = filepath.Join(config.OverlayDir, "net", "net_sandbox.go")
 	}
-	
+
 	if config.BlockExec {
 		replaceMap["os/exec/exec.go"] = filepath.Join(config.OverlayDir, "os", "exec", "exec_sandbox.go")
 	}
-	
+
 	if config.BlockFileSystem {
 		replaceMap["os/file.go"] = filepath.Join(config.OverlayDir, "os", "file_sandbox.go")
 	}
-	
+
 	if config.BlockEnvironment {
 		replaceMap["os/env.go"] = filepath.Join(config.OverlayDir, "os", "env_sandbox.go")
 	}
-	
+
 	overlayJSON, err := json.MarshalIndent(overlay, "", "  ")
 	if err != nil {
 		return err
 	}
-	
+
 	return writeFile(filepath.Join(config.OverlayDir, "overlay.json"), string(overlayJSON))
 }
 

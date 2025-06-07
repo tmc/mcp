@@ -27,25 +27,25 @@ const (
 type TestBinaryConfig struct {
 	// BinaryName is the name of this binary
 	BinaryName string
-	
+
 	// SupportedFlags defines available flags
 	SupportedFlags []FlagDefinition
-	
+
 	// AcceptsStdin indicates if the binary accepts stdin
 	AcceptsStdin bool
-	
+
 	// RequiredArgs defines required positional arguments
 	RequiredArgs []ArgDefinition
-	
+
 	// OptionalArgs defines optional positional arguments
 	OptionalArgs []ArgDefinition
-	
+
 	// GenerateFunc is called to generate valid command lines
 	GenerateFunc func(seed int64) (string, error)
-	
+
 	// ValidateFunc is called to validate a command line
 	ValidateFunc func(args []string) error
-	
+
 	// ExecuteFunc is the actual program logic
 	ExecuteFunc func() error
 }
@@ -71,7 +71,7 @@ type ArgDefinition struct {
 func TestMainWithFuzzing(config TestBinaryConfig) {
 	// Determine mode from environment
 	mode := ModeNormal
-	
+
 	if os.Getenv("MCP_SCRIPTTEST_VALIDATE_ONLY") == "1" {
 		mode = ModeValidate
 	} else if os.Getenv("MCP_SCRIPTTEST_GENERATE") == "1" {
@@ -79,7 +79,7 @@ func TestMainWithFuzzing(config TestBinaryConfig) {
 	} else if os.Getenv("MCP_SCRIPTTEST_INTROSPECT") == "1" {
 		mode = ModeIntrospect
 	}
-	
+
 	switch mode {
 	case ModeValidate:
 		handleValidateMode(config)
@@ -96,19 +96,19 @@ func TestMainWithFuzzing(config TestBinaryConfig) {
 func handleValidateMode(config TestBinaryConfig) {
 	// Parse flags without running the program
 	flag.Parse()
-	
+
 	// Custom validation if provided
 	if config.ValidateFunc != nil {
 		if err := config.ValidateFunc(flag.Args()); err != nil {
 			os.Exit(1) // Invalid
 		}
 	}
-	
+
 	// Basic validation
 	if err := validateBasicRequirements(config, flag.Args()); err != nil {
 		os.Exit(1) // Invalid
 	}
-	
+
 	os.Exit(0) // Valid
 }
 
@@ -122,7 +122,7 @@ func handleGenerateMode(config TestBinaryConfig) {
 	} else if len(os.Args) > 1 {
 		fmt.Sscanf(os.Args[1], "%d", &seed)
 	}
-	
+
 	// Use custom generation function if provided
 	if config.GenerateFunc != nil {
 		cmdLine, err := config.GenerateFunc(seed)
@@ -133,7 +133,7 @@ func handleGenerateMode(config TestBinaryConfig) {
 		fmt.Print(cmdLine)
 		os.Exit(0)
 	}
-	
+
 	// Default generation
 	cmdLine := generateDefaultCommand(config, seed)
 	fmt.Print(cmdLine)
@@ -149,7 +149,7 @@ func handleIntrospectMode(config TestBinaryConfig) {
 		RequiredArgs: config.RequiredArgs,
 		OptionalArgs: config.OptionalArgs,
 	}
-	
+
 	if err := json.NewEncoder(os.Stdout).Encode(info); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding capabilities: %v\n", err)
 		os.Exit(1)
@@ -160,7 +160,7 @@ func handleIntrospectMode(config TestBinaryConfig) {
 // handleNormalMode runs the program normally
 func handleNormalMode(config TestBinaryConfig) {
 	flag.Parse()
-	
+
 	if config.ExecuteFunc != nil {
 		if err := config.ExecuteFunc(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -184,7 +184,7 @@ func validateBasicRequirements(config TestBinaryConfig, args []string) error {
 	if len(args) < len(config.RequiredArgs) {
 		return fmt.Errorf("missing required arguments")
 	}
-	
+
 	// Additional validation can be added here
 	return nil
 }
@@ -193,7 +193,7 @@ func validateBasicRequirements(config TestBinaryConfig, args []string) error {
 func generateDefaultCommand(config TestBinaryConfig, seed int64) string {
 	rng := rand.New(rand.NewSource(seed))
 	parts := []string{config.BinaryName}
-	
+
 	// Add some flags randomly
 	for _, flag := range config.SupportedFlags {
 		if rng.Float64() < 0.5 { // 50% chance to include each flag
@@ -202,26 +202,26 @@ func generateDefaultCommand(config TestBinaryConfig, seed int64) string {
 			} else if flag.Name != "" {
 				parts = append(parts, flag.Name)
 			}
-			
+
 			// Add value for non-bool flags
 			if flag.Type != "bool" {
 				parts = append(parts, generateFlagValue(flag.Type, rng))
 			}
 		}
 	}
-	
+
 	// Add required arguments
 	for _, arg := range config.RequiredArgs {
 		parts = append(parts, generateArgValue(arg, rng))
 	}
-	
+
 	// Add some optional arguments
 	for _, arg := range config.OptionalArgs {
 		if rng.Float64() < 0.3 { // 30% chance for optional args
 			parts = append(parts, generateArgValue(arg, rng))
 		}
 	}
-	
+
 	return strings.Join(parts, " ")
 }
 

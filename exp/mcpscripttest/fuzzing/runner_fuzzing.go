@@ -28,7 +28,7 @@ func RunWithState(ctx context.Context, script string, serverCmd []string, opts *
 		return fmt.Errorf("failed to create temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
-	
+
 	scriptFile := filepath.Join(tmpDir, "test.txt")
 	if err := os.WriteFile(scriptFile, []byte(script), 0644); err != nil {
 		return fmt.Errorf("failed to write script: %w", err)
@@ -83,7 +83,7 @@ func (s *RunState) Execute() error {
 	s.env["HOME"] = s.Dir
 	s.env["TMPDIR"] = s.Dir
 	s.env["PATH"] = os.Getenv("PATH")
-	
+
 	// Apply additional environment variables
 	for _, envVar := range s.Options.AdditionalEnvVars {
 		if val := os.Getenv(envVar); val != "" {
@@ -162,14 +162,14 @@ func (s *RunState) execCommand(args []string, expectFailure bool) error {
 	cmd := exec.CommandContext(s.Context, args[0], args[1:]...)
 	cmd.Dir = s.Dir
 	cmd.Env = envMapToSlice(s.env)
-	
+
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
 	err := cmd.Run()
-	
+
 	// Update captured output
 	s.stdout = stdout
 	s.stderr = stderr
@@ -228,11 +228,11 @@ func (s *RunState) setupTraceCapture() error {
 	// proper MCP trace capture through pipes or files
 	s.traces = make(map[string]*bytes.Buffer)
 	s.traces["server"] = &bytes.Buffer{}
-	
+
 	// Set environment variables for trace output
 	traceFile := filepath.Join(s.Dir, "server.mcp")
 	s.server.Env = append(s.server.Env, fmt.Sprintf("MCP_TRACE=%s", traceFile))
-	
+
 	return nil
 }
 
@@ -303,26 +303,26 @@ func FuzzWithState(f *testing.F, serverCmd []string, opts *mcpscripttest.MCPScri
 	if coverageDir == "" {
 		coverageDir = f.TempDir()
 	}
-	
+
 	feedback, err := NewCoverageFeedback(coverageDir)
 	if err != nil {
 		f.Logf("Warning: Failed to initialize coverage feedback: %v", err)
 		feedback = nil
 	}
-	
+
 	// Create fuzzer
 	generator := NewFuzzGenerator(0)
 	var fuzzer *CoverageGuidedFuzzer
 	if feedback != nil {
 		fuzzer = NewCoverageGuidedFuzzer(generator, feedback)
 	}
-	
+
 	// Add seed corpus
 	f.Add(int64(42))
-	
+
 	f.Fuzz(func(t *testing.T, seed int64) {
 		generator.rng = newRand(seed)
-		
+
 		// Generate script
 		var script string
 		if fuzzer != nil {
@@ -330,13 +330,13 @@ func FuzzWithState(f *testing.F, serverCmd []string, opts *mcpscripttest.MCPScri
 		} else {
 			script = generator.Generate()
 		}
-		
+
 		// Run with state management
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		
+
 		err := RunWithState(ctx, script, serverCmd, opts)
-		
+
 		// Handle coverage feedback
 		if feedback != nil && fuzzer != nil && err == nil {
 			// Note: In a real implementation, we'd properly integrate
@@ -345,10 +345,10 @@ func FuzzWithState(f *testing.F, serverCmd []string, opts *mcpscripttest.MCPScri
 				TestID:   seed,
 				TestName: fmt.Sprintf("fuzz_%d", seed),
 			}
-			
+
 			fuzzer.RecordResult(script, result)
 		}
-		
+
 		// Report errors but don't fail on expected issues
 		if err != nil && !strings.Contains(err.Error(), "test skipped") {
 			t.Logf("Script execution failed: %v", err)

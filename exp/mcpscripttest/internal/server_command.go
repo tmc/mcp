@@ -19,7 +19,7 @@ func addServerCommandSupport(e *script.Engine) {
 
 	// Add the server command and HTTP port to the environment
 	// These will be accessible in test scripts via $MCP_SERVER_COMMAND and $MCP_HTTP_PORT
-	
+
 	// Add HTTP port from environment
 	httpPort := os.Getenv("MCP_HTTP_PORT")
 	if httpPort == "" {
@@ -42,7 +42,7 @@ func addServerCommandSupport(e *script.Engine) {
 			sc := os.Getenv("MCP_SERVER_COMMAND")
 			return strings.Contains(sc, arg), nil
 		})
-	
+
 	// Add custom command to set environment variables at runtime
 	e.Cmds["setenv"] = script.Command(
 		script.CmdUsage{

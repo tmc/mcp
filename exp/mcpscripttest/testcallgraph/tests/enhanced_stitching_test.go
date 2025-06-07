@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"github.com/tmc/mcp/exp/callgraph/testcallgraph"
+	"github.com/tmc/mcp/exp/mcpscripttest"
 )
 
 func TestEnhancedStitchingDemo(t *testing.T) {
@@ -15,10 +15,10 @@ func TestEnhancedStitchingDemo(t *testing.T) {
 func TestEnhancedStitchingConcept(t *testing.T) {
 	// Use enhanced stitcher
 	stitcher := testcallgraph.NewEnhancedStitcher()
-	
+
 	// For demo purposes, we'll manually set up the analysis result
 	// In real usage, you'd use stitcher.AnalyzeScriptmcpscripttest.Test(filename)
-	
+
 	// Manually analyze for demo
 	stitcher.TestToProgramMap["demo.txt"] = []testcallgraph.ProgramExecution{
 		{Program: "mcpdiff", Line: 3, ExecutedBy: "exec"},
@@ -27,9 +27,9 @@ func TestEnhancedStitchingConcept(t *testing.T) {
 		{Program: "server", Line: 6, ExecutedBy: "mcp-server-start", IsServer: true},
 		{Program: "mcp-serve", Line: 7, ExecutedBy: "mcp-serve", IsServer: true},
 	}
-	
+
 	edges := stitcher.CreateCallGraphConnections("demo.txt")
-	
+
 	t.Log("Enhanced Stitching Results:")
 	t.Log("==========================")
 	for _, edge := range edges {
@@ -63,4 +63,3 @@ func TestEnhancedStitchingSummary(t *testing.T) {
 	t.Log("")
 	t.Log("Implementation: testcallgraph/enhanced_stitcher.go")
 }
-

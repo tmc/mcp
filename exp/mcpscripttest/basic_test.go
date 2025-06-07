@@ -2,7 +2,7 @@ package mcpscripttest
 
 import (
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/coverage"
 )
 
@@ -35,7 +35,7 @@ func TestCoverageOptionsFunction(t *testing.T) {
 	// Test setting coverage options
 	opts.Enabled = true
 	opts.VerboseOutput = true
-	
+
 	if !opts.Enabled {
 		t.Error("Failed to enable coverage")
 	}
@@ -51,4 +51,14 @@ func TestCoverageEnvironmentSetup(t *testing.T) {
 	// Test that the function runs without error
 	// The actual coverage functionality depends on GOCOVERDIR being set
 	t.Log("Coverage environment setup test passed")
+}
+
+// TestMinimalWorkingScripttest tests that scripttest works with our fixed minimal test
+func TestMinimalWorkingScripttest(t *testing.T) {
+	Test(t, "../../testdata/scripttest/minimal_working_test.txt")
+}
+
+// TestWorkingBasicScripttest tests that working_basic_test.txt works
+func TestWorkingBasicScripttest(t *testing.T) {
+	Test(t, "../../testdata/scripttest/working_basic_test.txt")
 }

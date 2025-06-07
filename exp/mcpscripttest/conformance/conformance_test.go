@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest"
 	"github.com/tmc/mcp/exp/mcpscripttest/coverage"
 	"github.com/tmc/mcp/exp/mcpscripttest/internal"
@@ -13,7 +13,7 @@ import (
 // TestMCPConformance runs all the MCP protocol conformance tests
 func TestMCPConformance(t *testing.T) {
 	t.Skip("Conformance tests require mcp-scripttest-server with --stdio support which is not yet implemented")
-	
+
 	// Set up test environment
 	coverage.SetupCoverageEnvironment(t)
 
@@ -46,7 +46,7 @@ func TestMCPConformance(t *testing.T) {
 // This allows developers to focus on specific test categories
 func TestMCPConformanceIndividual(t *testing.T) {
 	t.Skip("Individual conformance tests require mcp-scripttest-server with --stdio support which is not yet implemented")
-	
+
 	// Skip in short mode
 	if testing.Short() {
 		t.Skip("Skipping individual conformance tests in short mode")
@@ -80,7 +80,7 @@ func TestMCPConformanceIndividual(t *testing.T) {
 	for _, file := range files {
 		testName := filepath.Base(file)
 		testName = testName[:len(testName)-4] // Remove .txt extension
-		
+
 		t.Run(testName, func(t *testing.T) {
 			// Run the conformance test with coverage
 			mcpscripttest.TestWithCoverageOptions(t, file, coverageOpts, options)

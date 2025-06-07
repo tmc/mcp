@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	inputFile    string
-	outputFile   string
-	format       string
-	graphType    string
-	direction    string
-	includeMeta  bool
-	groupByType  bool
-	verbose      bool
+	inputFile   string
+	outputFile  string
+	format      string
+	graphType   string
+	direction   string
+	includeMeta bool
+	groupByType bool
+	verbose     bool
 )
 
 func init() {
@@ -32,7 +32,7 @@ func init() {
 	flag.BoolVar(&includeMeta, "include-meta", false, "Include metadata in output")
 	flag.BoolVar(&groupByType, "group", false, "Group nodes by type")
 	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "depgraph - Transform callgraph data into dependency graphs\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
@@ -96,21 +96,21 @@ type DepEdge struct {
 
 func main() {
 	flag.Parse()
-	
+
 	if inputFile == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
-	
+
 	// Load callgraph
 	callgraph, err := loadCallGraph(inputFile)
 	if err != nil {
 		log.Fatalf("Error loading callgraph: %v", err)
 	}
-	
+
 	// Transform to dependency graph
 	depgraph := transformGraph(callgraph)
-	
+
 	// Setup output
 	var out io.Writer = os.Stdout
 	if outputFile != "" {
@@ -121,7 +121,7 @@ func main() {
 		defer f.Close()
 		out = f
 	}
-	
+
 	// Output the graph
 	switch format {
 	case "json":
@@ -140,12 +140,12 @@ func loadCallGraph(filename string) (*CallGraph, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var callgraph CallGraph
 	if err := json.Unmarshal(data, &callgraph); err != nil {
 		return nil, err
 	}
-	
+
 	return &callgraph, nil
 }
 
@@ -155,7 +155,7 @@ func transformGraph(callgraph *CallGraph) *DepGraph {
 		Edges:       make(map[string]map[string]*DepEdge),
 		NodesByType: make(map[string][]string),
 	}
-	
+
 	// Add nodes
 	for id, node := range callgraph.Nodes {
 		depNode := &DepNode{
@@ -166,7 +166,7 @@ func transformGraph(callgraph *CallGraph) *DepGraph {
 		depgraph.Nodes[id] = depNode
 		depgraph.NodesByType[node.Type] = append(depgraph.NodesByType[node.Type], id)
 	}
-	
+
 	// Add edges based on direction
 	for _, edge := range callgraph.Edges {
 		switch direction {
@@ -179,12 +179,12 @@ func transformGraph(callgraph *CallGraph) *DepGraph {
 			addEdge(depgraph, edge.From, edge.To, edge)
 		}
 	}
-	
+
 	// Calculate transitive closure if requested
 	if graphType == "transitive" {
 		calculateTransitiveClosure(depgraph)
 	}
-	
+
 	// Update degrees
 	for _, node := range depgraph.Nodes {
 		if edges, ok := depgraph.Edges[node.ID]; ok {
@@ -196,7 +196,7 @@ func transformGraph(callgraph *CallGraph) *DepGraph {
 			}
 		}
 	}
-	
+
 	return depgraph
 }
 
@@ -204,7 +204,7 @@ func addEdge(depgraph *DepGraph, from, to string, edge Edge) {
 	if depgraph.Edges[from] == nil {
 		depgraph.Edges[from] = make(map[string]*DepEdge)
 	}
-	
+
 	if existing, ok := depgraph.Edges[from][to]; ok {
 		existing.Weight++
 	} else {
@@ -223,7 +223,7 @@ func calculateTransitiveClosure(depgraph *DepGraph) {
 	for id := range depgraph.Nodes {
 		nodes = append(nodes, id)
 	}
-	
+
 	for _, k := range nodes {
 		for _, i := range nodes {
 			for _, j := range nodes {
@@ -269,7 +269,7 @@ func outputDot(w io.Writer, depgraph *DepGraph) {
 	fmt.Fprintf(w, "  rankdir=LR;\n")
 	fmt.Fprintf(w, "  compound=true;\n")
 	fmt.Fprintf(w, "  node [shape=box];\n\n")
-	
+
 	if groupByType {
 		// Group nodes by type
 		for nodeType, nodes := range depgraph.NodesByType {
@@ -295,11 +295,11 @@ func outputDot(w io.Writer, depgraph *DepGraph) {
 			} else if node.Type == "program" {
 				attrs = append(attrs, "style=filled,fillcolor=lightgreen")
 			}
-			
+
 			if includeMeta {
 				attrs = append(attrs, fmt.Sprintf("tooltip=\"In: %d, Out: %d\"", node.InDegree, node.OutDegree))
 			}
-			
+
 			if len(attrs) > 0 {
 				fmt.Fprintf(w, "  \"%s\" [%s];\n", id, strings.Join(attrs, ","))
 			} else {
@@ -308,27 +308,27 @@ func outputDot(w io.Writer, depgraph *DepGraph) {
 		}
 		fmt.Fprintf(w, "\n")
 	}
-	
+
 	// Define edges
 	for from, edges := range depgraph.Edges {
 		for to, edge := range edges {
 			attrs := []string{}
-			
+
 			if edge.Weight > 1 {
 				attrs = append(attrs, fmt.Sprintf("label=\"%d\"", edge.Weight))
 				attrs = append(attrs, "penwidth=2")
 			}
-			
+
 			if trans, ok := edge.Properties["transitive"].(bool); ok && trans {
 				attrs = append(attrs, "style=dashed")
 			}
-			
+
 			if includeMeta {
 				if line, ok := edge.Properties["line"].(float64); ok {
 					attrs = append(attrs, fmt.Sprintf("tooltip=\"Line: %d\"", int(line)))
 				}
 			}
-			
+
 			if len(attrs) > 0 {
 				fmt.Fprintf(w, "  \"%s\" -> \"%s\" [%s];\n", from, to, strings.Join(attrs, ","))
 			} else {
@@ -336,7 +336,7 @@ func outputDot(w io.Writer, depgraph *DepGraph) {
 			}
 		}
 	}
-	
+
 	fmt.Fprintf(w, "}\n")
 }
 
@@ -347,14 +347,14 @@ func outputMatrix(w io.Writer, depgraph *DepGraph) {
 		nodes = append(nodes, id)
 	}
 	sort.Strings(nodes)
-	
+
 	// Header
 	fmt.Fprintf(w, "           ")
 	for _, node := range nodes {
 		fmt.Fprintf(w, "%-10s ", node)
 	}
 	fmt.Fprintf(w, "\n")
-	
+
 	// Rows
 	for _, from := range nodes {
 		fmt.Fprintf(w, "%-10s ", from)
@@ -379,19 +379,19 @@ func outputJSON(w io.Writer, depgraph *DepGraph) {
 			edgeList = append(edgeList, *edge)
 		}
 	}
-	
+
 	data := map[string]interface{}{
 		"nodes":       depgraph.Nodes,
 		"edges":       edgeList,
 		"nodesByType": depgraph.NodesByType,
 		"statistics": map[string]interface{}{
-			"nodeCount": len(depgraph.Nodes),
-			"edgeCount": len(edgeList),
-			"testCount": len(depgraph.NodesByType["test"]),
+			"nodeCount":    len(depgraph.Nodes),
+			"edgeCount":    len(edgeList),
+			"testCount":    len(depgraph.NodesByType["test"]),
 			"programCount": len(depgraph.NodesByType["program"]),
 		},
 	}
-	
+
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	encoder.Encode(data)

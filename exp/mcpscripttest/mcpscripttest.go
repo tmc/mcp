@@ -64,3 +64,19 @@ func DefaultTestMainOptions() *TestMainOptions {
 func RunTestMain(m *testing.M, opts *TestMainOptions) int {
 	return internal.RunTestMain(m, opts)
 }
+
+
+// TestWithInProcessRegular runs tests with in-process servers without synctest.
+// This provides faster tests than exec while maintaining compatibility with older Go versions.
+// Disabled - part of experimental code that was cleaned up
+/*
+func TestWithInProcessRegular(t *testing.T, pattern string, serverRegistry map[string]func(), opts ...*Options) {
+	// Convert options to interface{} slice for internal call
+	var optsInterface []interface{}
+	for _, opt := range opts {
+		optsInterface = append(optsInterface, opt)
+	}
+	internal.TestWithInProcessRegular(t, pattern, serverRegistry, optsInterface...)
+}
+*/
+

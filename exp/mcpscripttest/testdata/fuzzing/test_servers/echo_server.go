@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	
+
 	"github.com/tmc/mcp"
 	"github.com/tmc/mcp/modelcontextprotocol"
 )
@@ -11,14 +11,14 @@ import (
 func main() {
 	// Create a simple echo server for testing
 	handler := &echoHandler{}
-	
+
 	server := mcp.NewServer(handler,
 		mcp.WithServerInfo(modelcontextprotocol.ServerInfo{
 			Name:    "test-echo-server",
 			Version: "1.0.0",
 		}),
 	)
-	
+
 	if err := server.ServeStdio(); err != nil {
 		log.Fatal(err)
 	}
@@ -59,13 +59,13 @@ func (h *echoHandler) CallTool(request modelcontextprotocol.CallToolRequest) (*m
 	if request.Name != "echo" {
 		return nil, fmt.Errorf("unknown tool: %s", request.Name)
 	}
-	
+
 	args := request.Arguments
 	message, ok := args["message"].(string)
 	if !ok {
 		return nil, fmt.Errorf("message must be a string")
 	}
-	
+
 	return &modelcontextprotocol.CallToolResult{
 		Content: []modelcontextprotocol.Content{
 			{

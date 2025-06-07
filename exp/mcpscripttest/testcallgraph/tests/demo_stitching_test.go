@@ -39,7 +39,7 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 		fmt.Printf("\nTest file: %s\n", tmpfile)
 		fmt.Println("\nConnections found:")
 		fmt.Println("-----------------")
-		
+
 		for _, edge := range edges {
 			fmt.Printf("%s\n", edge)
 		}
@@ -47,12 +47,12 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 		fmt.Println("\nSummary:")
 		fmt.Printf("- Found %d connections from test to programs\n", len(edges))
 	}
-	
+
 	// Count different types
 	execCount := 0
 	customCount := 0
 	serverCount := 0
-	
+
 	for _, edge := range edges {
 		switch edge.EdgeType {
 		case "exec":
@@ -64,7 +64,7 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 			serverCount++
 		}
 	}
-	
+
 	if testing.Verbose() {
 		fmt.Printf("- %d regular exec commands\n", execCount)
 		fmt.Printf("- %d custom MCP commands\n", customCount)
@@ -73,12 +73,12 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 
 	// Verify we found expected programs
 	expectedPrograms := map[string]bool{
-		"echo": false,
+		"echo":    false,
 		"mcpdiff": false,
 		"mcp-spy": false,
-		"server": false,
+		"server":  false,
 	}
-	
+
 	for _, edge := range edges {
 		program := ""
 		// Extract program name from the To field (e.g., "cmd/mcpdiff/main.go:main")
@@ -96,7 +96,7 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 			expectedPrograms[program] = true
 		}
 	}
-	
+
 	if testing.Verbose() {
 		fmt.Println("\nPrograms found:")
 		for prog, found := range expectedPrograms {
@@ -107,7 +107,7 @@ mcp-server-start demo -- go run ./cmd/server/main.go
 			fmt.Printf("  %s %s\n", status, prog)
 		}
 	}
-	
+
 	// Assert at least some connections were found
 	if len(edges) == 0 {
 		t.Error("No connections found")

@@ -13,7 +13,7 @@ import (
 type EngineValidator struct {
 	// Environment variable to signal validation mode
 	ValidationEnvVar string
-	
+
 	// Timeout for validation attempts
 	ValidationTimeout time.Duration
 }
@@ -30,11 +30,11 @@ func NewEngineValidator() *EngineValidator {
 func (ev *EngineValidator) ValidateBinaryFlags(binary string, args []string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ev.ValidationTimeout)
 	defer cancel()
-	
+
 	// Create command with validation environment variable
 	cmd := exec.CommandContext(ctx, binary, args...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=1", ev.ValidationEnvVar))
-	
+
 	// Capture output
 	_, err := cmd.CombinedOutput()
 
@@ -57,7 +57,7 @@ func (ev *EngineValidator) ValidateBinaryFlags(binary string, args []string) (bo
 		}
 		return false, err
 	}
-	
+
 	// If no error, flags are valid
 	return true, nil
 }
@@ -67,11 +67,11 @@ func (ev *EngineValidator) fallbackValidation(binary string, args []string) (boo
 	// Try running with --help to see if flags are mentioned
 	ctx, cancel := context.WithTimeout(context.Background(), ev.ValidationTimeout)
 	defer cancel()
-	
+
 	helpCmd := exec.CommandContext(ctx, binary, "--help")
 	helpOutput, _ := helpCmd.CombinedOutput()
 	helpText := string(helpOutput)
-	
+
 	// Check if our flags appear in help text
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "-") || strings.HasPrefix(arg, "--") {
@@ -82,7 +82,7 @@ func (ev *EngineValidator) fallbackValidation(binary string, args []string) (boo
 			}
 		}
 	}
-	
+
 	// All flags found in help text
 	return true, nil
 }
@@ -96,38 +96,38 @@ type SmartGeneratorWithEngine struct {
 // NewSmartGeneratorWithEngine creates a generator that validates with test binaries
 func NewSmartGeneratorWithEngine(seed int64, config SmartGeneratorConfig) *SmartGeneratorWithEngine {
 	sg := NewSmartGenerator(seed, config)
-	
+
 	return &SmartGeneratorWithEngine{
 		SmartGenerator: sg,
-		validator:     NewEngineValidator(),
+		validator:      NewEngineValidator(),
 	}
 }
 
 // generateValidatedExecCommand generates and validates exec commands
 func (sge *SmartGeneratorWithEngine) generateValidatedExecCommand(g *SpecializedGenerator) string {
 	maxAttempts := 5
-	
+
 	for i := 0; i < maxAttempts; i++ {
 		// Generate a command
 		command := sge.generateSmartExecCommand(g)
-		
+
 		// Parse the command
 		parts := strings.Fields(strings.TrimPrefix(command, "exec "))
 		if len(parts) == 0 {
 			continue
 		}
-		
+
 		binary := parts[0]
 		args := parts[1:]
-		
+
 		// Validate with the engine
 		if valid, err := sge.validator.ValidateBinaryFlags(binary, args); valid || err != nil {
 			return command
 		}
-		
+
 		// Invalid, try again
 	}
-	
+
 	// Fallback to a known-good command
 	return "exec echo 'validation test'"
 }
@@ -140,7 +140,7 @@ func (sge *SmartGeneratorWithEngine) GenerateWithValidation() string {
 			sge.commands[i].Generator = sge.generateValidatedExecCommand
 		}
 	}
-	
+
 	return sge.Generate()
 }
 
@@ -151,15 +151,15 @@ func main() {
 	if os.Getenv("MCP_SCRIPTTEST_VALIDATE_ONLY") == "1" {
 		// Parse flags but don't run the actual program
 		flag.Parse()
-		
+
 		// Check if all flags are valid
 		if err := validateFlags(); err != nil {
 			os.Exit(1) // Invalid flags
 		}
-		
+
 		os.Exit(0) // Valid flags
 	}
-	
+
 	// Normal execution
 	flag.Parse()
 	runProgram()

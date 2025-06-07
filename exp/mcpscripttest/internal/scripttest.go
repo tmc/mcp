@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -16,7 +17,7 @@ import (
 
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/coverage"
 )
 
@@ -75,14 +76,14 @@ type TimeoutConfig struct {
 // DefaultTimeoutConfig returns reasonable default timeout settings
 func DefaultTimeoutConfig() *TimeoutConfig {
 	return &TimeoutConfig{
-		DefaultCommandTimeout:   30 * time.Second,  // Restored to reasonable value
-		ServerStartupTimeout:    10 * time.Second,  // Increased for reliability
-		ServerResponseTimeout:   10 * time.Second,  // Increased for reliability
-		BashCommandTimeout:      60 * time.Second,  // Increased for complex operations
-		ToolExecutionTimeout:    30 * time.Second,  // Reasonable tool execution time
-		TestOverallTimeout:      120 * time.Second, // Generous overall test limit
-		MaxRetries:              3,                 // Keep retry logic
-		RetryDelay:              500 * time.Millisecond, // Slightly longer retry delay
+		DefaultCommandTimeout: 30 * time.Second,       // Restored to reasonable value
+		ServerStartupTimeout:  10 * time.Second,       // Increased for reliability
+		ServerResponseTimeout: 10 * time.Second,       // Increased for reliability
+		BashCommandTimeout:    60 * time.Second,       // Increased for complex operations
+		ToolExecutionTimeout:  30 * time.Second,       // Reasonable tool execution time
+		TestOverallTimeout:    120 * time.Second,      // Generous overall test limit
+		MaxRetries:            3,                      // Keep retry logic
+		RetryDelay:            500 * time.Millisecond, // Slightly longer retry delay
 	}
 }
 
@@ -165,15 +166,22 @@ func Test(t *testing.T, pattern string, opts ...*MCPScripttestOptions) {
 		t.Run(baseName, func(t *testing.T) {
 			// Create context with overall test timeout
 			ctx := context.Background()
+			
+			// Check if we should disable timeouts (when MCP_TOOL_TIMEOUT=0 is set)
+			if os.Getenv("MCP_TOOL_TIMEOUT") == "0" {
+				// Create a completely fresh context to avoid any inherited timeouts
+				ctx = context.Background()
+			}
+			
 			// Temporarily disable timeout to debug context cancellation issues
 			/*
-			if options.TimeoutConfig.TestOverallTimeout > 0 {
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithTimeout(ctx, options.TimeoutConfig.TestOverallTimeout)
-				defer cancel()
-			}
+				if options.TimeoutConfig.TestOverallTimeout > 0 {
+					var cancel context.CancelFunc
+					ctx, cancel = context.WithTimeout(ctx, options.TimeoutConfig.TestOverallTimeout)
+					defer cancel()
+				}
 			*/
-			scripttest.Test(t, ctx, engine, env, scriptFile)
+			synctestCompatibleTest(t, ctx, engine, env, scriptFile)
 		})
 	}
 }
@@ -242,7 +250,7 @@ func addDefaultMCPCommands(e *script.Engine) {
 	e.Cmds["stdout"] = stdoutVerifyCmd
 	e.Cmds["setstdin"] = setStdinCmd
 	e.Cmds["cat"] = catCmd
-	e.Cmds["bash"] = bashCmd  // Add bash command
+	e.Cmds["bash"] = bashCmd // Add bash command
 
 	// Add shell-like variable assignment support
 	e.Cmds["server_command"] = variableAssignCmd("server_command")
@@ -373,7 +381,7 @@ func execCmd(name string) func(*script.State, ...string) (script.WaitFunc, error
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Apply aggressive timeout for tool execution
 		ctx := s.Context()
 		timeout := 10 * time.Second // Default aggressive timeout
@@ -382,8 +390,16 @@ func execCmd(name string) func(*script.State, ...string) (script.WaitFunc, error
 				timeout = parsedTimeout
 			}
 		}
-		ctx, cancel := context.WithTimeout(ctx, timeout)
 		
+		// Apply timeout only if it's not zero (zero means no timeout)
+		var cancel context.CancelFunc
+		if timeout > 0 {
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+		} else {
+			// No timeout requested
+			cancel = func() {} // no-op cancel function
+		}
+
 		cmd := exec.CommandContext(ctx, path, args...)
 		cmd.Dir = s.Getwd()
 		cmd.Env = s.Environ()
@@ -427,7 +443,7 @@ func execCmdAsync(name string) func(*script.State, ...string) (script.WaitFunc, 
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Apply aggressive timeout for async tool execution
 		ctx := s.Context()
 		timeout := 10 * time.Second // Default aggressive timeout
@@ -436,8 +452,16 @@ func execCmdAsync(name string) func(*script.State, ...string) (script.WaitFunc, 
 				timeout = parsedTimeout
 			}
 		}
-		ctx, cancel := context.WithTimeout(ctx, timeout)
 		
+		// Apply timeout only if it's not zero (zero means no timeout)
+		var cancel context.CancelFunc
+		if timeout > 0 {
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+		} else {
+			// No timeout requested
+			cancel = func() {} // no-op cancel function
+		}
+
 		cmd := exec.CommandContext(ctx, path, args...)
 		cmd.Dir = s.Getwd()
 		cmd.Env = s.Environ()
@@ -473,6 +497,7 @@ func execCmdAsync(name string) func(*script.State, ...string) (script.WaitFunc, 
 		}, nil
 	}
 }
+
 // Add the missing command definitions
 
 var mcpServeCmd = script.Command(
@@ -504,19 +529,19 @@ var setStdinCmd = script.Command(
 	},
 	func(s *script.State, args ...string) (script.WaitFunc, error) {
 		var content string
-		
+
 		if len(args) == 0 {
 			content = s.Stdout()
 		} else {
 			// Join all args with spaces
 			content = strings.Join(args, " ")
 		}
-		
+
 		// Store the content for the next command's stdin
 		stdinStore.Lock()
 		stdinStore.pendingContent[s] = content
 		stdinStore.Unlock()
-		
+
 		return nil, nil
 	},
 )
@@ -534,7 +559,7 @@ var catCmd = script.Command(
 				return strings.Join(args, " ") + "\n", "", nil
 			}, nil
 		}
-		
+
 		// Otherwise, check for stdin content
 		stdinStore.Lock()
 		content, ok := stdinStore.pendingContent[s]
@@ -542,13 +567,13 @@ var catCmd = script.Command(
 			delete(stdinStore.pendingContent, s)
 		}
 		stdinStore.Unlock()
-		
+
 		if ok {
 			return func(*script.State) (string, string, error) {
 				return content, "", nil
 			}, nil
 		}
-		
+
 		// No input, return empty
 		return func(*script.State) (string, string, error) {
 			return "", "", nil
@@ -568,16 +593,16 @@ func variableAssignCmd(varName string) script.Cmd {
 			if len(args) < 2 || args[0] != "=" {
 				return nil, fmt.Errorf("invalid syntax: expected '%s = value'", varName)
 			}
-			
+
 			// Join all args after = to handle values with spaces
 			value := strings.Join(args[1:], " ")
-			
+
 			// Expand environment variables in the value
 			value = os.ExpandEnv(value)
-			
+
 			// Store in environment for later use
 			os.Setenv(varName, value)
-			
+
 			// Return function to print the assignment
 			return func(*script.State) (string, string, error) {
 				return fmt.Sprintf("%s=%s\n", varName, value), "", nil
@@ -602,4 +627,58 @@ func TestWithCoverageOptions(t *testing.T, pattern string, coverageOpts *coverag
 		opts = []*Options{DefaultOptions()}
 	}
 	Test(t, pattern, opts[0])
+}
+
+// isSynctestContext detects if we're running under synctest by checking for synctest context markers.
+// This function uses reflection to detect synctest context types without importing testing/synctest,
+// which may not be available in all builds.
+func isSynctestContext(ctx context.Context) bool {
+	// Check if we're running under synctest by examining the context chain
+	for ctx != nil {
+		// Use reflection to check the context type name to avoid import dependency
+		contextType := reflect.TypeOf(ctx)
+		if contextType != nil {
+			typeName := contextType.String()
+			// Look for synctest-related context types
+			if strings.Contains(typeName, "synctest") || strings.Contains(typeName, "Synctest") {
+				return true
+			}
+		}
+		
+		// Walk up the context chain
+		if valuer, ok := ctx.(interface{ Value(interface{}) interface{} }); ok {
+			// Check if there's a parent context
+			if parentCtx, ok := valuer.Value(context.Background()).(context.Context); ok && parentCtx != ctx {
+				ctx = parentCtx
+				continue
+			}
+		}
+		
+		// Try to get the underlying context using reflection
+		val := reflect.ValueOf(ctx)
+		if val.Kind() == reflect.Ptr {
+			val = val.Elem()
+		}
+		if val.Kind() == reflect.Struct {
+			// Look for a Context field
+			for i := 0; i < val.NumField(); i++ {
+				field := val.Field(i)
+				if field.Type() == reflect.TypeOf((*context.Context)(nil)).Elem() && field.CanInterface() {
+					if parentCtx, ok := field.Interface().(context.Context); ok && parentCtx != ctx {
+						ctx = parentCtx
+						continue
+					}
+				}
+			}
+		}
+		
+		break
+	}
+	
+	// Also check for environment variables that might indicate synctest
+	if os.Getenv("GOEXPERIMENT") != "" && strings.Contains(os.Getenv("GOEXPERIMENT"), "synctest") {
+		return true
+	}
+	
+	return false
 }

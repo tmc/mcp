@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // This is a standalone program that shows how to run a scripttest with coverage

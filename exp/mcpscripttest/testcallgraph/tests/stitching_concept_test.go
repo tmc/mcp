@@ -9,26 +9,26 @@ import (
 
 func TestStitchingConcept(t *testing.T) {
 	// Demonstrate the concept of stitching
-	
+
 	// 1. We have a test script
 	testScript := `
 exec mcpdiff --help
 stdout 'Usage'
 exec echo "test"
 `
-	
+
 	// 2. Standard callgraph can't see these connections
 	// (It only analyzes static Go code)
-	
+
 	// 3. Our simple stitcher finds the connections
 	stitcher := &testcallgraph.SimpleStitcher{}
 	connections := stitcher.AnalyzeAndStitch("demo_test.txt", testScript)
-	
+
 	// 4. Verify we found the connections
 	if len(connections) != 2 {
 		t.Errorf("expected 2 connections, got %d", len(connections))
 	}
-	
+
 	// Check we found mcpdiff
 	foundMcpdiff := false
 	for _, conn := range connections {
@@ -38,7 +38,7 @@ exec echo "test"
 				conn.TestFile, conn.TestLine, conn.Program, conn.MainPath)
 		}
 	}
-	
+
 	if !foundMcpdiff {
 		t.Error("did not find mcpdiff connection")
 	}
@@ -51,13 +51,13 @@ func TestStitchingDemonstration(t *testing.T) {
 	t.Log("  - It CANNOT see which external programs are executed")
 	t.Log("")
 	t.Log("Our testcallgraph adds these missing connections:")
-	
+
 	// Run the demo
 	output := captureOutput(testcallgraph.Demo)
 	if !strings.Contains(output, "mcpdiff") {
 		t.Error("demo did not show mcpdiff connection")
 	}
-	
+
 	t.Log(output)
 }
 

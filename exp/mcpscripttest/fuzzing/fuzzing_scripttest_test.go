@@ -1,11 +1,10 @@
 package mcpscripttest
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
-	"testing"
+	"os"
 	"path/filepath"
 	"runtime"
-	"os"
+	"testing"
 )
 
 // TestFuzzingScripts runs the mcpscripttest tests for fuzzing functionality
@@ -13,7 +12,7 @@ func TestFuzzingScripts(t *testing.T) {
 	// Get the path to our scripttest files
 	_, filename, _, _ := runtime.Caller(0)
 	testdataDir := filepath.Join(filepath.Dir(filename), "testdata", "fuzzing")
-	
+
 	// Define test cases
 	tests := []struct {
 		name string
@@ -50,13 +49,13 @@ func TestFuzzingScripts(t *testing.T) {
 			file: "visualization_test.txt",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.skip != "" {
 				t.Skip(tt.skip)
 			}
-			
+
 			// Use the Test function from mcpscripttest to run the script
 			opts := DefaultOptions()
 			opts.AdditionalEnvVars = []string{"FUZZING_TEST"}

@@ -1,10 +1,11 @@
 package tests
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/tmc/mcp/exp/mcpscripttest"
 
 	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
@@ -22,15 +23,15 @@ func TestCoverageSummary(t *testing.T) {
 			AutoDetectCoverage: true,
 			VerboseOutput:      testing.Verbose(),
 		}
-		
+
 		// Test that coverage is auto-detected
 		if !opts.AutoDetectCoverage {
 			t.Error("AutoDetectCoverage should be true by default")
 		}
-		
+
 		cleanup := mcpscripttest.InstallMCPTools(t, opts)
 		defer cleanup()
-		
+
 		t.Log("Tools installed with coverage instrumentation")
 	})
 
@@ -57,7 +58,7 @@ func TestCoverageSummary(t *testing.T) {
 			t.Logf("Warning: Could not read coverage directory: %v", err)
 			return
 		}
-		
+
 		// Count coverage files
 		var covFiles int
 		for _, entry := range entries {
@@ -66,11 +67,11 @@ func TestCoverageSummary(t *testing.T) {
 				covFiles++
 			}
 		}
-		
+
 		t.Logf("Coverage collection summary:")
 		t.Logf("  Coverage directory: %s", coverDir)
 		t.Logf("  Coverage files found: %d", covFiles)
-		
+
 		if covFiles == 0 {
 			t.Error("No coverage files found")
 		}

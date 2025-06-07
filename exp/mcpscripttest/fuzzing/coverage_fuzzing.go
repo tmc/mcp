@@ -1,7 +1,6 @@
 package fuzzing
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"fmt"
 	"os"
 	"os/exec"
@@ -67,7 +66,7 @@ func (cf *CoverageFeedback) loadBaseline() error {
 		if line == "" {
 			continue
 		}
-		
+
 		// Skip the header line
 		if strings.HasPrefix(line, "github.com/tmc/mcp") {
 			parts := strings.Fields(line)
@@ -89,7 +88,7 @@ func (cf *CoverageFeedback) RunWithCoverage(t *testing.T, testFunc func()) (*Tes
 	testID := cf.testCounter.Add(1)
 	testName := fmt.Sprintf("fuzz_%d", testID)
 	testDir := filepath.Join(cf.coverageDir, testName)
-	
+
 	// Create test-specific directory
 	if err := os.MkdirAll(testDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create test dir: %w", err)
@@ -98,10 +97,10 @@ func (cf *CoverageFeedback) RunWithCoverage(t *testing.T, testFunc func()) (*Tes
 	// Save current GOCOVERDIR and set it to test-specific dir
 	origCoverDir := os.Getenv("GOCOVERDIR")
 	t.Setenv("GOCOVERDIR", testDir)
-	
+
 	// Run the test
 	testFunc()
-	
+
 	// Restore original GOCOVERDIR
 	if origCoverDir != "" {
 		t.Setenv("GOCOVERDIR", origCoverDir)
@@ -129,7 +128,7 @@ func (cf *CoverageFeedback) RunWithCoverage(t *testing.T, testFunc func()) (*Tes
 		if line == "" {
 			continue
 		}
-		
+
 		if strings.HasPrefix(line, "github.com/tmc/mcp") {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
@@ -137,7 +136,7 @@ func (cf *CoverageFeedback) RunWithCoverage(t *testing.T, testFunc func()) (*Tes
 				coverage := strings.TrimSuffix(parts[1], "%")
 				if percent, err := strconv.ParseFloat(coverage, 64); err == nil {
 					newCoverage[pkg] = percent
-					
+
 					// Check if coverage increased
 					if baseline, exists := cf.baselineCoverage[pkg]; exists {
 						increase := percent - baseline
@@ -164,7 +163,7 @@ func (cf *CoverageFeedback) calculateTotalCoverage(coverage map[string]float64) 
 	if len(coverage) == 0 {
 		return 0.0
 	}
-	
+
 	total := 0.0
 	for _, percent := range coverage {
 		total += percent
@@ -203,27 +202,27 @@ type TestCoverageResult struct {
 func (r *TestCoverageResult) Score() float64 {
 	// Weight new coverage heavily
 	score := r.CoverageIncrease * 100.0
-	
+
 	// Bonus for covering new packages
 	score += float64(len(r.NewPackages)) * 10.0
-	
+
 	// Small penalty for time (prefer faster tests with same coverage)
 	if r.Duration > 0 {
 		score -= r.Duration.Seconds() * 0.1
 	}
-	
+
 	return score
 }
 
 // CoverageGuidedFuzzer integrates coverage feedback with fuzzing
 type CoverageGuidedFuzzer struct {
-	generator      *FuzzGenerator
-	feedback       *CoverageFeedback
-	goodInputs     []string
-	inputScores    map[string]float64
-	mu             sync.RWMutex
-	maxGoodInputs  int
-	minScore       float64
+	generator     *FuzzGenerator
+	feedback      *CoverageFeedback
+	goodInputs    []string
+	inputScores   map[string]float64
+	mu            sync.RWMutex
+	maxGoodInputs int
+	minScore      float64
 }
 
 // NewCoverageGuidedFuzzer creates a new coverage-guided fuzzer
@@ -233,8 +232,8 @@ func NewCoverageGuidedFuzzer(generator *FuzzGenerator, feedback *CoverageFeedbac
 		feedback:      feedback,
 		goodInputs:    make([]string, 0),
 		inputScores:   make(map[string]float64),
-		maxGoodInputs: 100,  // Keep best 100 inputs
-		minScore:      1.0,  // Minimum score to keep an input
+		maxGoodInputs: 100, // Keep best 100 inputs
+		minScore:      1.0, // Minimum score to keep an input
 	}
 }
 
@@ -249,7 +248,7 @@ func (cgf *CoverageGuidedFuzzer) GenerateInput() string {
 		cgf.mu.RLock()
 		baseInput := cgf.goodInputs[cgf.generator.rng.Intn(len(cgf.goodInputs))]
 		cgf.mu.RUnlock()
-		
+
 		return cgf.mutateInput(baseInput)
 	}
 
@@ -260,7 +259,7 @@ func (cgf *CoverageGuidedFuzzer) GenerateInput() string {
 // mutateInput applies mutations to an existing input
 func (cgf *CoverageGuidedFuzzer) mutateInput(input string) string {
 	lines := strings.Split(input, "\n")
-	
+
 	// Apply random mutations
 	mutationType := cgf.generator.rng.Intn(5)
 	switch mutationType {
@@ -268,25 +267,25 @@ func (cgf *CoverageGuidedFuzzer) mutateInput(input string) string {
 		newLine := cgf.generateSingleCommand()
 		position := cgf.generator.rng.Intn(len(lines) + 1)
 		lines = append(lines[:position], append([]string{newLine}, lines[position:]...)...)
-	
+
 	case 1: // Remove a line
 		if len(lines) > 1 {
 			position := cgf.generator.rng.Intn(len(lines))
 			lines = append(lines[:position], lines[position+1:]...)
 		}
-	
+
 	case 2: // Modify a line
 		if len(lines) > 0 {
 			position := cgf.generator.rng.Intn(len(lines))
 			lines[position] = cgf.generateSingleCommand()
 		}
-	
+
 	case 3: // Duplicate a line
 		if len(lines) > 0 {
 			position := cgf.generator.rng.Intn(len(lines))
 			lines = append(lines[:position], append([]string{lines[position]}, lines[position:]...)...)
 		}
-	
+
 	case 4: // Swap two lines
 		if len(lines) > 1 {
 			i := cgf.generator.rng.Intn(len(lines))
@@ -312,16 +311,16 @@ func (cgf *CoverageGuidedFuzzer) generateSingleCommand() string {
 // RecordResult records the result of a test run
 func (cgf *CoverageGuidedFuzzer) RecordResult(input string, result *TestCoverageResult) {
 	score := result.Score()
-	
+
 	cgf.mu.Lock()
 	defer cgf.mu.Unlock()
 
 	cgf.inputScores[input] = score
-	
+
 	// Keep the input if it's good enough
 	if score >= cgf.minScore {
 		cgf.goodInputs = append(cgf.goodInputs, input)
-		
+
 		// Trim to max size, keeping best inputs
 		if len(cgf.goodInputs) > cgf.maxGoodInputs {
 			// Simple strategy: keep most recent

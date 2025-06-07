@@ -1,0 +1,15 @@
+# Test pretty-printing JSON scanner functionality
+#
+# This test verifies that mcpspy correctly formats JSON with indentation
+
+# Pretty printing test
+cat input.json | mcpspy -f output.log -v -pretty -pipe
+
+# Verify that output was captured
+grep "mcp-recv" output.log
+
+# Test files to be used
+-- input.json --
+{"method": "initialize", "params": {"protocolVersion": "2024-11-05", "clientInfo": {"name": "test-client", "version": "1.0.0"}, "capabilities": {}}}
+{"method": "tools/list", "params": {}}
+{"method": "tools/call", "params": {"name": "TestTool", "arguments": {"key": "value"}}}

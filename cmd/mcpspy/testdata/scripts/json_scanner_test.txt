@@ -1,0 +1,31 @@
+# Test JSON scanning functionality in mcpspy
+#
+# This script tests the mcpspy tool's ability to parse and format JSON messages
+# from stdin and log them properly with timestamps.
+
+# Basic JSON processing test
+cat input.json | mcpspy -f output1.log -v -pipe
+# Verify that all JSON objects were captured
+grep "mcp-recv" output1.log
+
+# Test pretty-print JSON option
+cat input.json | mcpspy -f output2.log -v -pretty -pipe
+grep "mcp-recv" output2.log
+
+# Test with split/fragmented JSON (simulate slow input)
+cat split_json.txt | mcpspy -f output3.log -v -pipe
+grep "mcp-recv" output3.log
+
+# Test basic pipe mode
+echo '{"method": "test"}' | mcpspy -f output4.log -v -pipe
+grep "mcp-recv" output4.log
+
+# Data files
+-- input.json --
+{"method": "initialize", "params": {"protocolVersion": "2024-11-05", "clientInfo": {"name": "test-client", "version": "1.0.0"}, "capabilities": {}}}
+{"method": "tools/list", "params": {}}
+{"method": "tools/call", "params": {"name": "TestTool", "arguments": {"key": "value"}}}
+
+-- split_json.txt --
+{"method": "split_test", "param
+": "value"}

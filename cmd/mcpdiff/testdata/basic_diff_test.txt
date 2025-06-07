@@ -1,0 +1,39 @@
+# Test basic mcpdiff functionality
+go build -o mcpdiff .
+
+# Create test MCP trace files
+cat > test1.mcp << 'EOF'
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+EOF
+
+cat > test2.mcp << 'EOF'
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}}}
+EOF
+
+# Test help output
+! ./mcpdiff -h
+stderr 'Usage.*mcpdiff'
+
+# Test with no arguments
+! ./mcpdiff
+stderr 'Usage.*mcpdiff'
+
+# Test diffing two files
+./mcpdiff test1.mcp test2.mcp
+stdout 'diff'
+
+# Test with identical files
+cp test1.mcp test3.mcp
+./mcpdiff test1.mcp test3.mcp
+! stdout 'diff'
+
+# Test with non-existent file
+! ./mcpdiff nonexistent.mcp test1.mcp
+stderr 'error.*nonexistent'
+
+# Clean up
+rm -f mcpdiff test1.mcp test2.mcp test3.mcp

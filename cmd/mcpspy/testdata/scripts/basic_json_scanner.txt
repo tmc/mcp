@@ -1,0 +1,21 @@
+# Test basic JSON scanner functionality
+#
+# This test verifies that mcpspy correctly parses and formats JSON messages
+
+# Basic JSON parsing test
+cat input.json | mcpspy -f output.log -v
+
+# Verify that all JSON objects are correctly parsed and output
+grep -c "mcp-recv" output.log
+stdout 3
+cat output.log
+stdout "mcp-recv {"
+stdout '"method": "initialize"'
+stdout '"method": "tools/list"'
+stdout '"method": "tools/call"'
+
+# Test files to be used
+-- input.json --
+{"method": "initialize", "params": {"protocolVersion": "2024-11-05", "clientInfo": {"name": "test-client", "version": "1.0.0"}, "capabilities": {}}}
+{"method": "tools/list", "params": {}}
+{"method": "tools/call", "params": {"name": "TestTool", "arguments": {"key": "value"}}}

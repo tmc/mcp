@@ -1,0 +1,33 @@
+# Test basic client-server interaction using mcpscripttest infrastructure
+
+# Start a simple MCP echo server in the background
+mcp-server-start echo-server go run examples/servers/mcp-echo-server/main.go
+
+# Wait for server to be ready
+[mcp_server_running]
+
+# Send initialization request
+mcp-server-send echo-server '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
+
+# Verify response contains server capabilities
+stdout '2024-11-05'
+stdout 'capabilities'
+
+# Send initialized notification
+mcp-server-send echo-server '{"jsonrpc": "2.0", "method": "notifications/initialized"}'
+
+# List available tools
+mcp-server-send echo-server '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
+
+# Verify echo tool is available
+stdout 'echo'
+stdout 'result'
+
+# Call the echo tool
+mcp-server-send echo-server '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "echo", "arguments": {"message": "Hello, World!"}}}'
+
+# Verify echo response
+stdout 'Hello, World!'
+
+# Stop the server
+mcp-server-stop echo-server

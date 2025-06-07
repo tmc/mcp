@@ -1,0 +1,31 @@
+# Debug Server Basic Test
+# Test that debug server functionality builds and integrates correctly
+
+cd /Volumes/tmc/go/src/github.com/tmc/mcp
+
+echo '=== Testing mcp-say-server with mcpdebug support ==='
+# Test that mcp-say-server builds with debug support
+exec go build -o /tmp/test-debug-server examples/servers/mcp-say-server/main.go
+! stderr 'error'
+
+echo '=== Testing debug flag is available ==='
+# Test that debug flag appears in help output
+exec /tmp/test-debug-server -help
+stderr 'debug string'
+stderr 'Enable debug server'
+
+echo '=== Testing MCP package with mcpdebug extension ==='
+# Test that the entire MCP package compiles with debug functionality
+exec go build ./...
+! stderr 'error'
+
+echo '=== Testing mcpdebug package directly ==='
+# Test that mcpdebug package compiles independently
+exec go build ./ext/debug/mcpdebug
+! stderr 'error'
+
+# Clean up
+rm -f /tmp/test-debug-server
+
+echo '✅ Debug Server Basic Test Complete'
+echo 'mcpdebug extension builds and integrates successfully'

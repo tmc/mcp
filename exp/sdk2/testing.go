@@ -17,10 +17,10 @@ type TestServer struct {
 	*Server
 	listener *TestListener
 	URL      string
-	
+
 	// Client for connecting to this test server
 	Client Client
-	
+
 	mu     sync.Mutex
 	closed bool
 }
@@ -30,25 +30,25 @@ func NewTestServer(handler Handler) *TestServer {
 	if handler == nil {
 		handler = DefaultServeMux
 	}
-	
+
 	server := &Server{
 		Handler: handler,
 	}
-	
+
 	listener := NewTestListener()
 	ts := &TestServer{
 		Server:   server,
 		listener: listener,
 		URL:      "test://localhost",
 	}
-	
+
 	// Create a client connected to this server
 	client, _ := NewTestClient(ts)
 	ts.Client = client
-	
+
 	// Start the server
 	go server.Serve(ts.listener)
-	
+
 	return ts
 }
 
@@ -69,7 +69,7 @@ func (ts *TestServer) Close() {
 type TestListener struct {
 	conns chan Conn
 	done  chan struct{}
-	
+
 	mu     sync.Mutex
 	closed bool
 }
@@ -96,7 +96,7 @@ func (l *TestListener) Accept() (Conn, error) {
 func (l *TestListener) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	if l.closed {
 		return nil
 	}
@@ -130,7 +130,7 @@ func (a *testAddr) String() string  { return a.address }
 type TestConn struct {
 	reader *bytes.Buffer
 	writer *bytes.Buffer
-	
+
 	mu     sync.Mutex
 	closed bool
 }
@@ -147,7 +147,7 @@ func NewTestConn() *TestConn {
 func (c *TestConn) Read(p []byte) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.closed {
 		return 0, io.EOF
 	}
@@ -158,7 +158,7 @@ func (c *TestConn) Read(p []byte) (int, error) {
 func (c *TestConn) Write(p []byte) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.closed {
 		return 0, fmt.Errorf("connection closed")
 	}
@@ -169,7 +169,7 @@ func (c *TestConn) Write(p []byte) (int, error) {
 func (c *TestConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.closed = true
 	return nil
 }
@@ -210,16 +210,16 @@ type MockClient struct {
 	tools     []Tool
 	resources []Resource
 	prompts   []Prompt
-	
+
 	// Response handlers
 	ToolHandler     func(ctx context.Context, name string, args map[string]any) (*ToolResult, error)
 	ResourceHandler func(ctx context.Context, uri string) (*ResourceContent, error)
 	PromptHandler   func(ctx context.Context, name string, args map[string]any) (*PromptResult, error)
-	
+
 	// Behavior configuration
 	Latency time.Duration
 	Error   error
-	
+
 	mu     sync.RWMutex
 	closed bool
 }
@@ -255,7 +255,7 @@ func (m *MockClient) Do(req *Request) (*Response, error) {
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	return &Response{
 		Status:     "200 OK",
 		StatusCode: 200,
@@ -269,10 +269,10 @@ func (m *MockClient) ListTools(ctx context.Context) ([]Tool, error) {
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Return a copy to prevent modification
 	tools := make([]Tool, len(m.tools))
 	copy(tools, m.tools)
@@ -284,15 +284,15 @@ func (m *MockClient) CallTool(ctx context.Context, name string, args map[string]
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	handler := m.ToolHandler
 	m.mu.RUnlock()
-	
+
 	if handler != nil {
 		return handler(ctx, name, args)
 	}
-	
+
 	// Default behavior
 	return &ToolResult{
 		Content: []Content{
@@ -306,10 +306,10 @@ func (m *MockClient) ListResources(ctx context.Context) ([]Resource, error) {
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	resources := make([]Resource, len(m.resources))
 	copy(resources, m.resources)
 	return resources, nil
@@ -320,15 +320,15 @@ func (m *MockClient) ReadResource(ctx context.Context, uri string) (*ResourceCon
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	handler := m.ResourceHandler
 	m.mu.RUnlock()
-	
+
 	if handler != nil {
 		return handler(ctx, uri)
 	}
-	
+
 	// Default behavior
 	return &ResourceContent{
 		URI:      uri,
@@ -344,10 +344,10 @@ func (m *MockClient) ListPrompts(ctx context.Context) ([]Prompt, error) {
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	prompts := make([]Prompt, len(m.prompts))
 	copy(prompts, m.prompts)
 	return prompts, nil
@@ -358,15 +358,15 @@ func (m *MockClient) GetPrompt(ctx context.Context, name string, args map[string
 	if err := m.checkLatencyAndError(); err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.RLock()
 	handler := m.PromptHandler
 	m.mu.RUnlock()
-	
+
 	if handler != nil {
 		return handler(ctx, name, args)
 	}
-	
+
 	// Default behavior
 	return &PromptResult{
 		Description: fmt.Sprintf("Mock prompt result for %s", name),
@@ -385,7 +385,7 @@ func (m *MockClient) GetPrompt(ctx context.Context, name string, args map[string
 func (m *MockClient) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.closed = true
 	return nil
 }
@@ -397,19 +397,19 @@ func (m *MockClient) checkLatencyAndError() error {
 	err := m.Error
 	closed := m.closed
 	m.mu.RUnlock()
-	
+
 	if closed {
 		return fmt.Errorf("client closed")
 	}
-	
+
 	if latency > 0 {
 		time.Sleep(latency)
 	}
-	
+
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -419,7 +419,7 @@ type ResponseRecorder struct {
 	Code   int
 	Header Header
 	Body   *bytes.Buffer
-	
+
 	mu sync.Mutex
 }
 
@@ -441,7 +441,7 @@ func (rr *ResponseRecorder) Header() Header {
 func (rr *ResponseRecorder) Write(data []byte) (int, error) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
-	
+
 	return rr.Body.Write(data)
 }
 
@@ -449,7 +449,7 @@ func (rr *ResponseRecorder) Write(data []byte) (int, error) {
 func (rr *ResponseRecorder) WriteHeader(code int) {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
-	
+
 	rr.Code = code
 }
 
@@ -457,7 +457,7 @@ func (rr *ResponseRecorder) WriteHeader(code int) {
 func (rr *ResponseRecorder) Result() string {
 	rr.mu.Lock()
 	defer rr.mu.Unlock()
-	
+
 	return rr.Body.String()
 }
 
@@ -538,20 +538,20 @@ func (h *TestHelper) AssertContains(str, substr string) {
 // AssertJSON asserts that two JSON strings are equivalent.
 func (h *TestHelper) AssertJSON(got, want string) {
 	h.t.Helper()
-	
+
 	var gotData, wantData interface{}
-	
+
 	if err := json.Unmarshal([]byte(got), &gotData); err != nil {
 		h.t.Fatalf("failed to unmarshal got JSON: %v", err)
 	}
-	
+
 	if err := json.Unmarshal([]byte(want), &wantData); err != nil {
 		h.t.Fatalf("failed to unmarshal want JSON: %v", err)
 	}
-	
+
 	gotJSON, _ := json.Marshal(gotData)
 	wantJSON, _ := json.Marshal(wantData)
-	
+
 	if string(gotJSON) != string(wantJSON) {
 		h.t.Errorf("JSON mismatch:\ngot:  %s\nwant: %s", gotJSON, wantJSON)
 	}
@@ -576,22 +576,22 @@ func NewTestClient(server *TestServer) (Client, error) {
 	// Create test connections
 	serverConn := NewTestConn()
 	clientConn := NewTestConn()
-	
+
 	// Cross-connect them (server writes go to client reads, etc.)
 	serverConn.reader = clientConn.writer
 	clientConn.reader = serverConn.writer
-	
+
 	// Add server connection to the test listener
 	server.listener.AddConnection(serverConn)
-	
+
 	// Create client with the client side of the connection
 	config := &ClientConfig{
-		Timeout:     30 * time.Second,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
+		Timeout:    30 * time.Second,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
 		ClientInfo: ClientInfo{Name: "test-client", Version: "0.1.0"},
 	}
-	
+
 	return newClient(context.Background(), clientConn, config)
 }
 
@@ -647,16 +647,16 @@ func (h *LoadTestHelper) RunLoadTest(fn func() error) *LoadTestResult {
 	result := &LoadTestResult{
 		StartTime: time.Now(),
 	}
-	
+
 	var wg sync.WaitGroup
 	results := make(chan error, h.concurrency*100) // Buffer for results
-	
+
 	// Start workers
 	for i := 0; i < h.concurrency; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			start := time.Now()
 			for time.Since(start) < h.duration {
 				err := fn()
@@ -673,19 +673,19 @@ func (h *LoadTestHelper) RunLoadTest(fn func() error) *LoadTestResult {
 			}
 		}()
 	}
-	
+
 	// Wait for completion
 	wg.Wait()
 	close(results)
-	
+
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
 	result.TotalRequests = result.Successes + result.Errors
-	
+
 	if result.Duration > 0 {
 		result.RequestsPerSecond = float64(result.TotalRequests) / result.Duration.Seconds()
 	}
-	
+
 	return result
 }
 
@@ -698,7 +698,7 @@ type LoadTestResult struct {
 	Successes         int64
 	Errors            int64
 	RequestsPerSecond float64
-	
+
 	mu sync.Mutex
 }
 

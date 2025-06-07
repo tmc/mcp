@@ -15,5 +15,3 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
-
-replace github.com/tmc/mcp => ../../..

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -179,7 +178,7 @@ func runProductionClient() {
 	// Demonstrate tool calls with proper error handling
 	for _, tool := range tools {
 		slog.Info("Calling tool", "name", tool.Name)
-		
+
 		var args map[string]any
 		switch tool.Name {
 		case "add":
@@ -730,6 +729,8 @@ func runTypeSafetyDemo() {
 // testLogger implements a simple test logger
 type testLogger struct{}
 
-func (t *testLogger) Helper()                                     {}
-func (t *testLogger) Fatalf(format string, args ...interface{})  { log.Fatalf(format, args...) }
-func (t *testLogger) Errorf(format string, args ...interface{})  { log.Printf("ERROR: "+format, args...) }
+func (t *testLogger) Helper()                                   {}
+func (t *testLogger) Fatalf(format string, args ...interface{}) { log.Fatalf(format, args...) }
+func (t *testLogger) Errorf(format string, args ...interface{}) {
+	log.Printf("ERROR: "+format, args...)
+}

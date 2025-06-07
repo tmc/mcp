@@ -62,7 +62,7 @@ var (
 	oauthProvider   = flag.String("oauth-provider", "google", "OAuth provider: google, github, custom, local")
 	oauthCallback   = flag.String("oauth-callback", "/auth/callback", "OAuth callback path")
 	authorizedUsers = flag.String("authorized-users", "", "Comma-separated list of authorized user emails")
-	
+
 	// Local authentication options
 	localAuthFile    = flag.String("local-auth-file", "", "Path to local users file (username:password format)")
 	localAuthUsers   = flag.String("local-auth-users", "", "Local users in format 'user1:pass1,user2:pass2' (for development)")

@@ -40,9 +40,9 @@ func NewProvider(config *authtypes.Config) (*Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	sessionStore := session.NewMemoryStore(config.SessionTimeout)
-	
+
 	return &Provider{
 		config:       config,
 		oauthConfig:  oauthConfig,
@@ -59,7 +59,7 @@ func createOAuthConfig(config *authtypes.Config) (*oauth2.Config, error) {
 		RedirectURL:  config.RedirectURL,
 		Scopes:       []string{"openid", "email", "profile"},
 	}
-	
+
 	switch strings.ToLower(config.Provider) {
 	case "google":
 		oauthConfig.Endpoint = google.Endpoint
@@ -70,7 +70,7 @@ func createOAuthConfig(config *authtypes.Config) (*oauth2.Config, error) {
 	default:
 		return nil, fmt.Errorf("unsupported OAuth provider: %s", config.Provider)
 	}
-	
+
 	return oauthConfig, nil
 }
 
@@ -140,10 +140,10 @@ func (p *Provider) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate state for CSRF protection
 	state := generateState()
 	p.stateStore[state] = time.Now().Add(10 * time.Minute) // 10 minute expiry
-	
+
 	// Clean up expired states
 	p.cleanupExpiredStates()
-	
+
 	// Redirect to OAuth provider
 	authURL := p.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
@@ -157,21 +157,21 @@ func (p *Provider) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	delete(p.stateStore, state) // Use state only once
-	
+
 	// Exchange code for token
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		http.Error(w, "Missing authorization code", http.StatusBadRequest)
 		return
 	}
-	
+
 	token, err := p.oauthConfig.Exchange(context.Background(), code)
 	if err != nil {
 		log.Printf("Failed to exchange OAuth code: %v", err)
 		http.Error(w, "Failed to exchange authorization code", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Get user info from provider
 	userInfo, err := p.getUserInfo(token)
 	if err != nil {
@@ -179,13 +179,13 @@ func (p *Provider) handleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to get user information", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Check if user is authorized
 	if !p.isUserAuthorized(userInfo.Email) {
 		http.Error(w, "Unauthorized: User not in authorized list", http.StatusForbidden)
 		return
 	}
-	
+
 	// Create session
 	authUserInfo := authtypes.UserInfo{
 		ID:       userInfo.ID,
@@ -194,16 +194,16 @@ func (p *Provider) handleCallback(w http.ResponseWriter, r *http.Request) {
 		Name:     userInfo.Name,
 		LoginAt:  time.Now(),
 	}
-	
+
 	sessionID, err := p.sessionStore.Create(authUserInfo)
 	if err != nil {
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Set session cookie
 	session.SetSessionCookie(w, sessionID, p.config.SecureCookies, p.config.CookieDomain)
-	
+
 	// Redirect to home or original destination
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
@@ -213,10 +213,10 @@ func (p *Provider) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if sessionID, hasSession := session.GetSessionFromRequest(r); hasSession {
 		p.sessionStore.Destroy(sessionID)
 	}
-	
+
 	// Clear cookie
 	session.ClearSessionCookie(w, p.config.CookieDomain)
-	
+
 	http.Redirect(w, r, p.config.LoginPath, http.StatusTemporaryRedirect)
 }
 
@@ -230,7 +230,7 @@ func (p *Provider) redirectToLogin(w http.ResponseWriter, r *http.Request) {
 
 func (p *Provider) getUserInfo(token *oauth2.Token) (*OAuthUserInfo, error) {
 	client := p.oauthConfig.Client(context.Background(), token)
-	
+
 	var userInfoURL string
 	switch strings.ToLower(p.config.Provider) {
 	case "google":
@@ -240,22 +240,22 @@ func (p *Provider) getUserInfo(token *oauth2.Token) (*OAuthUserInfo, error) {
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", p.config.Provider)
 	}
-	
+
 	resp, err := client.Get(userInfoURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("user info request failed with status: %d", resp.StatusCode)
 	}
-	
+
 	var userInfo OAuthUserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
 		return nil, fmt.Errorf("failed to decode user info: %w", err)
 	}
-	
+
 	// For GitHub, we need to get the email separately if it's not public
 	if strings.ToLower(p.config.Provider) == "github" && userInfo.Email == "" {
 		email, err := p.getGitHubEmail(client)
@@ -263,7 +263,7 @@ func (p *Provider) getUserInfo(token *oauth2.Token) (*OAuthUserInfo, error) {
 			userInfo.Email = email
 		}
 	}
-	
+
 	return &userInfo, nil
 }
 
@@ -273,26 +273,26 @@ func (p *Provider) getGitHubEmail(client *http.Client) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	var emails []struct {
 		Email   string `json:"email"`
 		Primary bool   `json:"primary"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
 		return "", err
 	}
-	
+
 	for _, email := range emails {
 		if email.Primary {
 			return email.Email, nil
 		}
 	}
-	
+
 	if len(emails) > 0 {
 		return emails[0].Email, nil
 	}
-	
+
 	return "", fmt.Errorf("no email found")
 }
 
@@ -300,13 +300,13 @@ func (p *Provider) isUserAuthorized(email string) bool {
 	if len(p.config.AuthorizedUsers) == 0 {
 		return true // No restrictions if no authorized users specified
 	}
-	
+
 	for _, authorizedEmail := range p.config.AuthorizedUsers {
 		if email == authorizedEmail {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

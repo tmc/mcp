@@ -48,7 +48,7 @@ type MemoryUserStore struct {
 // NewProvider creates a new local authentication provider
 func NewProvider(config *authtypes.Config, userStore authtypes.UserStore) *Provider {
 	sessionStore := session.NewMemoryStore(config.SessionTimeout)
-	
+
 	return &Provider{
 		userStore:    userStore,
 		sessionStore: sessionStore,
@@ -62,11 +62,11 @@ func NewFileUserStore(filePath string) (*FileUserStore, error) {
 		users:    make(map[string]*User),
 		filePath: filePath,
 	}
-	
+
 	if err := store.loadFromFile(); err != nil {
 		return nil, err
 	}
-	
+
 	return store, nil
 }
 
@@ -87,21 +87,21 @@ func (p *Provider) Middleware(next http.Handler) http.Handler {
 			p.handleAuthEndpoints(w, r, next)
 			return
 		}
-		
+
 		// Check session cookie
 		sessionID, hasSession := session.GetSessionFromRequest(r)
 		if !hasSession {
 			p.redirectToLogin(w, r)
 			return
 		}
-		
+
 		// Validate session
 		userInfo, valid := p.sessionStore.Validate(sessionID)
 		if !valid {
 			p.redirectToLogin(w, r)
 			return
 		}
-		
+
 		// Add user info to request context for logging
 		r.Header.Set("X-Authenticated-User", userInfo.Username)
 		next.ServeHTTP(w, r)
@@ -136,47 +136,47 @@ func (p *Provider) handleLogin(w http.ResponseWriter, r *http.Request) {
 		p.serveLoginPage(w, r)
 		return
 	}
-	
+
 	if r.Method == "POST" {
 		p.handleLoginSubmit(w, r)
 		return
 	}
-	
+
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
 func (p *Provider) handleLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	
+
 	if username == "" || password == "" {
 		p.redirectToLoginWithError(w, r, "Username and password required")
 		return
 	}
-	
+
 	// Authenticate user
 	userInfo, valid := p.userStore.Authenticate(username, password)
 	if !valid {
 		p.redirectToLoginWithError(w, r, "Invalid username or password")
 		return
 	}
-	
+
 	// Create session
 	sessionID, err := p.sessionStore.Create(userInfo)
 	if err != nil {
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Set session cookie
 	session.SetSessionCookie(w, sessionID, p.config.SecureCookies, p.config.CookieDomain)
-	
+
 	// Redirect to original destination or home
 	redirect := r.URL.Query().Get("redirect")
 	if redirect == "" {
 		redirect = "/"
 	}
-	
+
 	http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
 }
 
@@ -185,10 +185,10 @@ func (p *Provider) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if sessionID, hasSession := session.GetSessionFromRequest(r); hasSession {
 		p.sessionStore.Destroy(sessionID)
 	}
-	
+
 	// Clear cookie
 	session.ClearSessionCookie(w, p.config.CookieDomain)
-	
+
 	http.Redirect(w, r, p.config.LoginPath, http.StatusTemporaryRedirect)
 }
 
@@ -250,7 +250,7 @@ func (p *Provider) serveLoginPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Template error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	data := struct {
 		Error     string
 		LoginPath string
@@ -258,7 +258,7 @@ func (p *Provider) serveLoginPage(w http.ResponseWriter, r *http.Request) {
 		Error:     r.URL.Query().Get("error"),
 		LoginPath: p.config.LoginPath,
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	t.Execute(w, data)
 }
@@ -269,7 +269,7 @@ func (s *FileUserStore) loadFromFile() error {
 	if s.filePath == "" {
 		return nil
 	}
-	
+
 	file, err := os.Open(s.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -278,7 +278,7 @@ func (s *FileUserStore) loadFromFile() error {
 		return fmt.Errorf("failed to open users file: %w", err)
 	}
 	defer file.Close()
-	
+
 	// Try JSON format first
 	var users []*User
 	decoder := json.NewDecoder(file)
@@ -289,7 +289,7 @@ func (s *FileUserStore) loadFromFile() error {
 		}
 		return nil
 	}
-	
+
 	// Fall back to simple text format (username:password per line)
 	file.Seek(0, 0) // Reset file position
 	scanner := bufio.NewScanner(file)
@@ -298,22 +298,22 @@ func (s *FileUserStore) loadFromFile() error {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue // Skip empty lines and comments
 		}
-		
+
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
 			continue // Skip malformed lines
 		}
-		
+
 		username := strings.TrimSpace(parts[0])
 		password := strings.TrimSpace(parts[1])
-		
+
 		if username != "" && password != "" {
 			if err := s.AddUser(username, password, "", ""); err != nil {
 				continue // Skip users that fail to add
 			}
 		}
 	}
-	
+
 	return scanner.Err()
 }
 
@@ -321,18 +321,18 @@ func (s *FileUserStore) saveToFile() error {
 	if s.filePath == "" {
 		return nil
 	}
-	
+
 	file, err := os.Create(s.filePath)
 	if err != nil {
 		return fmt.Errorf("failed to create users file: %w", err)
 	}
 	defer file.Close()
-	
+
 	var users []*User
 	for _, user := range s.users {
 		users = append(users, user)
 	}
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(users)
@@ -342,12 +342,12 @@ func (s *FileUserStore) AddUser(username, password, email, fullName string) erro
 	if _, exists := s.users[username]; exists {
 		return fmt.Errorf("user %s already exists", username)
 	}
-	
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
-	
+
 	user := &User{
 		Username:     username,
 		PasswordHash: string(hash),
@@ -355,7 +355,7 @@ func (s *FileUserStore) AddUser(username, password, email, fullName string) erro
 		FullName:     fullName,
 		CreatedAt:    time.Now(),
 	}
-	
+
 	s.users[username] = user
 	return s.saveToFile()
 }
@@ -365,16 +365,16 @@ func (s *FileUserStore) Authenticate(username, password string) (authtypes.UserI
 	if !exists {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	// Update last login time
 	user.LastLogin = time.Now()
 	s.saveToFile() // Ignore errors for last login update
-	
+
 	userInfo := authtypes.UserInfo{
 		ID:       user.Username,
 		Username: user.Username,
@@ -382,7 +382,7 @@ func (s *FileUserStore) Authenticate(username, password string) (authtypes.UserI
 		Name:     user.FullName,
 		LoginAt:  time.Now(),
 	}
-	
+
 	return userInfo, true
 }
 
@@ -391,7 +391,7 @@ func (s *FileUserStore) GetUser(username string) (authtypes.UserInfo, bool) {
 	if !exists {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	userInfo := authtypes.UserInfo{
 		ID:       user.Username,
 		Username: user.Username,
@@ -399,7 +399,7 @@ func (s *FileUserStore) GetUser(username string) (authtypes.UserInfo, bool) {
 		Name:     user.FullName,
 		LoginAt:  user.LastLogin,
 	}
-	
+
 	return userInfo, true
 }
 
@@ -417,12 +417,12 @@ func (s *MemoryUserStore) AddUser(username, password, email, fullName string) er
 	if _, exists := s.users[username]; exists {
 		return fmt.Errorf("user %s already exists", username)
 	}
-	
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
-	
+
 	user := &User{
 		Username:     username,
 		PasswordHash: string(hash),
@@ -430,7 +430,7 @@ func (s *MemoryUserStore) AddUser(username, password, email, fullName string) er
 		FullName:     fullName,
 		CreatedAt:    time.Now(),
 	}
-	
+
 	s.users[username] = user
 	return nil
 }
@@ -440,15 +440,15 @@ func (s *MemoryUserStore) Authenticate(username, password string) (authtypes.Use
 	if !exists {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	// Update last login time
 	user.LastLogin = time.Now()
-	
+
 	userInfo := authtypes.UserInfo{
 		ID:       user.Username,
 		Username: user.Username,
@@ -456,7 +456,7 @@ func (s *MemoryUserStore) Authenticate(username, password string) (authtypes.Use
 		Name:     user.FullName,
 		LoginAt:  time.Now(),
 	}
-	
+
 	return userInfo, true
 }
 
@@ -465,7 +465,7 @@ func (s *MemoryUserStore) GetUser(username string) (authtypes.UserInfo, bool) {
 	if !exists {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	userInfo := authtypes.UserInfo{
 		ID:       user.Username,
 		Username: user.Username,
@@ -473,7 +473,7 @@ func (s *MemoryUserStore) GetUser(username string) (authtypes.UserInfo, bool) {
 		Name:     user.FullName,
 		LoginAt:  user.LastLogin,
 	}
-	
+
 	return userInfo, true
 }
 
@@ -495,22 +495,22 @@ func CreateUsersFromEnv(store interface {
 	if usersEnv == "" {
 		return nil
 	}
-	
+
 	pairs := strings.Split(usersEnv, ",")
 	for _, pair := range pairs {
 		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		
+
 		username := strings.TrimSpace(parts[0])
 		password := strings.TrimSpace(parts[1])
-		
+
 		if username != "" && password != "" {
 			store.AddUser(username, password, "", "")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -521,21 +521,21 @@ func CreateUsersFromCommandLine(store interface {
 	if usersStr == "" {
 		return nil
 	}
-	
+
 	pairs := strings.Split(usersStr, ",")
 	for _, pair := range pairs {
 		parts := strings.SplitN(strings.TrimSpace(pair), ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		
+
 		username := strings.TrimSpace(parts[0])
 		password := strings.TrimSpace(parts[1])
-		
+
 		if username != "" && password != "" {
 			store.AddUser(username, password, "", "")
 		}
 	}
-	
+
 	return nil
 }

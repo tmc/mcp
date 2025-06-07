@@ -90,27 +90,27 @@ func (t EnhancedTextContent) Valid() error {
 // Validate implements enhanced validation.
 func (t EnhancedTextContent) Validate() error {
 	var errors ValidationErrors
-	
+
 	if strings.TrimSpace(t.Text) == "" {
 		errors.Add("text", "required", "text content cannot be empty or whitespace only", t.Text)
 	}
-	
+
 	if len(t.Text) > 1024*1024 { // 1MB limit
 		errors.Add("text", "max_length", "text content exceeds maximum size of 1MB", len(t.Text))
 	}
-	
+
 	if !utf8.ValidString(t.Text) {
 		errors.Add("text", "encoding", "text content must be valid UTF-8", nil)
 	}
-	
+
 	if t.Encoding != "" && !isValidEncoding(t.Encoding) {
 		errors.Add("encoding", "format", "invalid encoding format", t.Encoding)
 	}
-	
+
 	if t.Language != "" && !isValidLanguageTag(t.Language) {
 		errors.Add("language", "format", "invalid language tag format", t.Language)
 	}
-	
+
 	if errors.HasErrors() {
 		return errors
 	}
@@ -125,7 +125,7 @@ func (t EnhancedTextContent) MarshalJSON() ([]byte, error) {
 		Encoding string `json:"encoding,omitempty"`
 		Language string `json:"language,omitempty"`
 	}
-	
+
 	return json.Marshal(textContent{
 		Type:     "text",
 		Text:     t.Text,
@@ -181,39 +181,39 @@ func (i EnhancedImageContent) Valid() error {
 // Validate implements enhanced validation.
 func (i EnhancedImageContent) Validate() error {
 	var errors ValidationErrors
-	
+
 	if strings.TrimSpace(i.Data) == "" {
 		errors.Add("data", "required", "image data cannot be empty", i.Data)
 	}
-	
+
 	if i.MimeType == "" {
 		errors.Add("mimeType", "required", "image mime type is required", i.MimeType)
 	} else if !isValidImageMimeType(i.MimeType) {
 		errors.Add("mimeType", "format", "invalid image mime type", i.MimeType)
 	}
-	
+
 	if i.Width < 0 {
 		errors.Add("width", "min", "image width cannot be negative", i.Width)
 	}
-	
+
 	if i.Height < 0 {
 		errors.Add("height", "min", "image height cannot be negative", i.Height)
 	}
-	
+
 	if i.Compression < 0.0 || i.Compression > 1.0 {
 		errors.Add("compression", "range", "compression must be between 0.0 and 1.0", i.Compression)
 	}
-	
+
 	// Validate base64 format
 	if !isValidBase64(i.Data) {
 		errors.Add("data", "format", "image data must be valid base64", nil)
 	}
-	
+
 	// Size limits (10MB for images)
 	if i.Size() > 10*1024*1024 {
 		errors.Add("data", "max_size", "image data exceeds maximum size of 10MB", i.Size())
 	}
-	
+
 	if errors.HasErrors() {
 		return errors
 	}
@@ -230,7 +230,7 @@ func (i EnhancedImageContent) MarshalJSON() ([]byte, error) {
 		Height      int     `json:"height,omitempty"`
 		Compression float64 `json:"compression,omitempty"`
 	}
-	
+
 	return json.Marshal(imageContent{
 		Type:        "image",
 		Data:        i.Data,
@@ -291,7 +291,7 @@ func (r EnhancedResourceContent) Valid() error {
 // Validate implements enhanced validation.
 func (r EnhancedResourceContent) Validate() error {
 	var errors ValidationErrors
-	
+
 	if strings.TrimSpace(r.URI) == "" {
 		errors.Add("uri", "required", "resource URI cannot be empty", r.URI)
 	} else {
@@ -299,19 +299,19 @@ func (r EnhancedResourceContent) Validate() error {
 			errors.Add("uri", "format", "invalid URI format", r.URI)
 		}
 	}
-	
+
 	if r.MimeType != "" && !isValidMimeType(r.MimeType) {
 		errors.Add("mimeType", "format", "invalid mime type format", r.MimeType)
 	}
-	
+
 	if r.TTL < 0 {
 		errors.Add("ttl", "min", "TTL cannot be negative", r.TTL)
 	}
-	
+
 	if r.AccessLevel != "" && !isValidAccessLevel(r.AccessLevel) {
 		errors.Add("accessLevel", "enum", "invalid access level", r.AccessLevel)
 	}
-	
+
 	if errors.HasErrors() {
 		return errors
 	}
@@ -328,7 +328,7 @@ func (r EnhancedResourceContent) MarshalJSON() ([]byte, error) {
 		TTL         int64  `json:"ttl,omitempty"`
 		AccessLevel string `json:"accessLevel,omitempty"`
 	}
-	
+
 	return json.Marshal(resourceContent{
 		Type:        "resource",
 		URI:         r.URI,
@@ -461,15 +461,15 @@ func NewEnhancedTextContent(text string, opts ...ContentOption) (*EnhancedTextCo
 		Text:     text,
 		Encoding: "utf-8",
 	}
-	
+
 	for _, opt := range opts {
 		opt(content)
 	}
-	
+
 	if err := content.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid text content: %w", err)
 	}
-	
+
 	return content, nil
 }
 
@@ -488,15 +488,15 @@ func NewEnhancedImageContent(data, mimeType string, opts ...ContentOption) (*Enh
 		Data:     data,
 		MimeType: mimeType,
 	}
-	
+
 	for _, opt := range opts {
 		opt(content)
 	}
-	
+
 	if err := content.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid image content: %w", err)
 	}
-	
+
 	return content, nil
 }
 
@@ -515,15 +515,15 @@ func NewEnhancedResourceContent(uri string, opts ...ContentOption) (*EnhancedRes
 		URI:       uri,
 		Cacheable: true, // Default to cacheable
 	}
-	
+
 	for _, opt := range opts {
 		opt(content)
 	}
-	
+
 	if err := content.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid resource content: %w", err)
 	}
-	
+
 	return content, nil
 }
 
@@ -542,31 +542,31 @@ func ValidateStruct(v interface{}) error {
 	if val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
-	
+
 	if val.Kind() != reflect.Struct {
 		return fmt.Errorf("expected struct, got %s", val.Kind())
 	}
-	
+
 	var errors ValidationErrors
 	typ := val.Type()
-	
+
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
-		
+
 		// Check for validation tags
 		validateTag := fieldType.Tag.Get("validate")
 		if validateTag == "" {
 			continue
 		}
-		
+
 		fieldName := fieldType.Name
 		if jsonTag := fieldType.Tag.Get("json"); jsonTag != "" {
 			if parts := strings.Split(jsonTag, ","); len(parts) > 0 && parts[0] != "" {
 				fieldName = parts[0]
 			}
 		}
-		
+
 		// Perform validation based on tags
 		if err := validateField(fieldName, field, validateTag); err != nil {
 			if valErr, ok := err.(*ValidationError); ok {
@@ -576,7 +576,7 @@ func ValidateStruct(v interface{}) error {
 			}
 		}
 	}
-	
+
 	if errors.HasErrors() {
 		return errors
 	}
@@ -585,10 +585,10 @@ func ValidateStruct(v interface{}) error {
 
 func validateField(fieldName string, field reflect.Value, tag string) error {
 	rules := strings.Split(tag, ",")
-	
+
 	for _, rule := range rules {
 		rule = strings.TrimSpace(rule)
-		
+
 		switch rule {
 		case "required":
 			if field.Kind() == reflect.String && field.String() == "" {
@@ -605,21 +605,21 @@ func validateField(fieldName string, field reflect.Value, tag string) error {
 				return NewValidationError(fieldName, "nonzero", "field cannot be zero", field.Interface())
 			}
 		}
-		
+
 		// Handle parameterized rules
 		if strings.Contains(rule, "=") {
 			parts := strings.SplitN(rule, "=", 2)
 			if len(parts) == 2 {
 				ruleName := parts[0]
 				ruleValue := parts[1]
-				
+
 				if err := validateParameterizedRule(fieldName, field, ruleName, ruleValue); err != nil {
 					return err
 				}
 			}
 		}
 	}
-	
+
 	return nil
 }
 

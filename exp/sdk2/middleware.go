@@ -38,12 +38,12 @@ func RecoveryMiddleware() Middleware {
 						"method", r.Method,
 						"stack", string(debug.Stack()),
 					)
-					
+
 					// Return error response
 					Error(w, "Internal server error", StatusInternalServerError)
 				}
 			}()
-			
+
 			next.ServeRequest(w, r)
 		})
 	}
@@ -59,22 +59,22 @@ func LoggingMiddlewareWithLogger(logger *slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return HandlerFunc(func(w ResponseWriter, r *Request) {
 			start := time.Now()
-			
+
 			// Extract request ID if available
 			requestID := getRequestID(r.Context)
-			
+
 			logger.Info("Request started",
 				"method", r.Method,
 				"request_id", requestID,
 			)
-			
+
 			// Wrap the response writer to capture status code
 			rw := &responseCapture{ResponseWriter: w, statusCode: StatusOK}
-			
+
 			next.ServeRequest(rw, r)
-			
+
 			duration := time.Since(start)
-			
+
 			logger.Info("Request completed",
 				"method", r.Method,
 				"request_id", requestID,
@@ -92,10 +92,10 @@ func RequestIDMiddleware() Middleware {
 			// Generate request ID if not present
 			requestID := generateRequestID()
 			ctx := context.WithValue(r.Context, requestIDKey, requestID)
-			
+
 			// Add request ID to response headers
 			w.Header().Set("X-Request-ID", requestID)
-			
+
 			next.ServeRequest(w, r.WithContext(ctx))
 		})
 	}
@@ -110,22 +110,22 @@ func MetricsMiddleware() Middleware {
 func MetricsMiddlewareWithRegistry(registry interface{}) Middleware {
 	// In a real implementation, this would use prometheus or similar
 	metrics := newRequestMetrics()
-	
+
 	return func(next Handler) Handler {
 		return HandlerFunc(func(w ResponseWriter, r *Request) {
 			start := time.Now()
-			
+
 			// Increment active requests
 			metrics.activeRequests.Add(1)
 			defer metrics.activeRequests.Add(-1)
-			
+
 			// Wrap response writer to capture status
 			rw := &responseCapture{ResponseWriter: w, statusCode: StatusOK}
-			
+
 			next.ServeRequest(rw, r)
-			
+
 			duration := time.Since(start)
-			
+
 			// Record metrics
 			metrics.recordRequest(r.Method, rw.statusCode, duration)
 		})
@@ -167,7 +167,7 @@ func AuthMiddlewareWithConfig(config AuthConfig) Middleware {
 	if config.SkipMethods == nil {
 		config.SkipMethods = []string{MethodInitialize, MethodInitialized}
 	}
-	
+
 	return func(next Handler) Handler {
 		return HandlerFunc(func(w ResponseWriter, r *Request) {
 			// Check if method should skip authentication
@@ -177,24 +177,24 @@ func AuthMiddlewareWithConfig(config AuthConfig) Middleware {
 					return
 				}
 			}
-			
+
 			// Extract token
 			token, err := config.TokenExtractor(r)
 			if err != nil {
 				Error(w, "Authentication required", StatusUnauthorized)
 				return
 			}
-			
+
 			// Validate token
 			userInfo, err := config.TokenValidator(r.Context, token)
 			if err != nil {
 				Error(w, "Invalid authentication", StatusUnauthorized)
 				return
 			}
-			
+
 			// Add user info to context
 			ctx := context.WithValue(r.Context, userInfoKey, userInfo)
-			
+
 			next.ServeRequest(w, r.WithContext(ctx))
 		})
 	}
@@ -225,10 +225,10 @@ func RateLimitMiddlewareWithConfig(config RateLimitConfig) Middleware {
 			return "global"
 		}
 	}
-	
+
 	limiters := make(map[string]*rate.Limiter)
 	var mu sync.RWMutex
-	
+
 	return func(next Handler) Handler {
 		return HandlerFunc(func(w ResponseWriter, r *Request) {
 			// Check if method should skip rate limiting
@@ -238,15 +238,15 @@ func RateLimitMiddlewareWithConfig(config RateLimitConfig) Middleware {
 					return
 				}
 			}
-			
+
 			// Get rate limit key
 			key := config.KeyExtractor(r)
-			
+
 			// Get or create limiter for this key
 			mu.RLock()
 			limiter, exists := limiters[key]
 			mu.RUnlock()
-			
+
 			if !exists {
 				mu.Lock()
 				// Double-check after acquiring write lock
@@ -259,13 +259,13 @@ func RateLimitMiddlewareWithConfig(config RateLimitConfig) Middleware {
 				}
 				mu.Unlock()
 			}
-			
+
 			// Check rate limit
 			if !limiter.Allow() {
 				Error(w, "Rate limit exceeded", StatusTooManyRequests)
 				return
 			}
-			
+
 			next.ServeRequest(w, r)
 		})
 	}
@@ -278,15 +278,15 @@ func TimeoutMiddleware(timeout time.Duration) Middleware {
 			// Create timeout context
 			ctx, cancel := context.WithTimeout(r.Context, timeout)
 			defer cancel()
-			
+
 			// Channel to signal completion
 			done := make(chan struct{})
-			
+
 			go func() {
 				defer close(done)
 				next.ServeRequest(w, r.WithContext(ctx))
 			}()
-			
+
 			select {
 			case <-done:
 				// Request completed normally
@@ -336,7 +336,7 @@ func CORSMiddlewareWithConfig(config CORSConfig) Middleware {
 			if config.MaxAge > 0 {
 				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", config.MaxAge))
 			}
-			
+
 			next.ServeRequest(w, r)
 		})
 	}
@@ -442,17 +442,17 @@ func extractTokenFromHeader(r *Request) (string, error) {
 	if auth == nil {
 		return "", fmt.Errorf("no authorization header")
 	}
-	
+
 	authStr, ok := auth.(string)
 	if !ok {
 		return "", fmt.Errorf("invalid authorization header")
 	}
-	
+
 	// Extract token from "Bearer <token>" format
 	if strings.HasPrefix(authStr, "Bearer ") {
 		return strings.TrimPrefix(authStr, "Bearer "), nil
 	}
-	
+
 	return "", fmt.Errorf("invalid token format")
 }
 
@@ -461,7 +461,7 @@ func defaultTokenValidator(ctx context.Context, token string) (*UserInfo, error)
 	if token == "" {
 		return nil, fmt.Errorf("empty token")
 	}
-	
+
 	// Mock validation
 	return &UserInfo{
 		ID:       "user_123",

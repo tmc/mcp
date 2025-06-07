@@ -14,7 +14,7 @@
 //		result := processCall(call)
 //		json.NewEncoder(w).Encode(result)
 //	})
-//	
+//
 //	server := &sdk2.Server{
 //		Addr:    ":stdio",
 //		Handler: mux,
@@ -28,10 +28,9 @@
 //		log.Fatal(err)
 //	}
 //	defer client.Close()
-//	
+//
 //	tools, err := client.ListTools(ctx)
 //	result, err := client.CallTool(ctx, "echo", map[string]any{"message": "hello"})
-//
 package sdk2
 
 import (
@@ -53,28 +52,28 @@ type Client interface {
 	// the net/http.Client pattern. This is the primitive method that
 	// other methods are built upon.
 	Do(req *Request) (*Response, error)
-	
+
 	// ListTools lists available tools from the server
 	ListTools(ctx context.Context) ([]Tool, error)
-	
+
 	// CallTool executes a tool with the given arguments
 	CallTool(ctx context.Context, name string, args map[string]any) (*ToolResult, error)
-	
+
 	// ListResources lists available resources from the server
 	ListResources(ctx context.Context) ([]Resource, error)
-	
+
 	// ReadResource reads content from a specific resource
 	ReadResource(ctx context.Context, uri string) (*ResourceContent, error)
-	
+
 	// ListPrompts lists available prompts from the server
 	ListPrompts(ctx context.Context) ([]Prompt, error)
-	
+
 	// GetPrompt retrieves a specific prompt with optional arguments
 	GetPrompt(ctx context.Context, name string, args map[string]any) (*PromptResult, error)
-	
+
 	// Close closes the client connection and cleans up resources
 	Close() error
-	
+
 	// Ping verifies connectivity to the server (like database/sql)
 	Ping(ctx context.Context) error
 }
@@ -84,37 +83,37 @@ type Server struct {
 	// Addr optionally specifies the TCP address for the server to listen on,
 	// in the form "host:port". If empty, ":stdio" is used (stdio transport).
 	Addr string
-	
+
 	// Handler to invoke for MCP requests. If nil, DefaultMux is used.
 	Handler Handler
-	
+
 	// serverInfo holds server information for handshake
 	serverInfo *ServerInfo
-	
+
 	// ReadTimeout is the maximum duration for reading the entire
 	// request, including the body. Zero means no timeout.
 	ReadTimeout time.Duration
-	
+
 	// WriteTimeout is the maximum duration before timing out
 	// writes of the response. Zero means no timeout.
 	WriteTimeout time.Duration
-	
+
 	// IdleTimeout is the maximum amount of time to wait for the
 	// next request when keep-alives are enabled. Zero means no timeout.
 	IdleTimeout time.Duration
-	
+
 	// MaxHeaderBytes controls the maximum number of bytes the
 	// server will read parsing the request header's keys and values.
 	MaxHeaderBytes int
-	
+
 	// ConnState specifies an optional callback function that is
 	// called when a client connection changes state.
 	ConnState func(net.Conn, ConnState)
-	
+
 	// BaseContext optionally specifies a function that returns
 	// the base context for incoming requests on this server.
 	BaseContext func(net.Listener) context.Context
-	
+
 	// ConnContext optionally specifies a function that modifies
 	// the context used for a new connection.
 	ConnContext func(ctx context.Context, c net.Conn) context.Context
@@ -128,15 +127,15 @@ const (
 	// StateNew represents a new connection that is expected to
 	// send a request immediately.
 	StateNew ConnState = iota
-	
+
 	// StateActive represents a connection that has read 1 or more
 	// bytes of a request.
 	StateActive
-	
+
 	// StateIdle represents a connection that has finished
 	// handling a request and is in the keep-alive state.
 	StateIdle
-	
+
 	// StateClosed represents a closed connection.
 	StateClosed
 )
@@ -184,26 +183,26 @@ func (f HandlerFunc) ServeRequest(w ResponseWriter, r *Request) {
 type Request struct {
 	// Method specifies the MCP method (e.g., "tools/list", "tools/call")
 	Method string
-	
+
 	// Params holds the parameters for this request
 	Params json.RawMessage
-	
+
 	// ID is the JSON-RPC request ID. Nil for notifications.
 	ID *RequestID
-	
+
 	// Context is the request's context. To change the context, use WithContext.
 	Context context.Context
-	
+
 	// Proto is the protocol version (e.g., "2025-03-26").
 	Proto string
-	
+
 	// Header contains the request header fields
 	Header Header
-	
+
 	// RemoteAddr allows HTTP servers and other software to record
 	// the network address that sent the request
 	RemoteAddr string
-	
+
 	// RequestURI is the unmodified request-target sent by the client
 	RequestURI string
 }
@@ -263,10 +262,10 @@ func (id RequestID) IsNil() bool {
 type ResponseWriter interface {
 	// Header returns the header map that will be sent by WriteHeader.
 	Header() Header
-	
+
 	// Write writes the data to the connection as part of an MCP reply.
 	Write([]byte) (int, error)
-	
+
 	// WriteHeader sends an MCP response header with the provided status code.
 	WriteHeader(statusCode int)
 }
@@ -335,22 +334,22 @@ func (h Header) Clone() Header {
 type Response struct {
 	// Status is the response status text.
 	Status string // e.g. "200 OK"
-	
+
 	// StatusCode is the response status code.
 	StatusCode int // e.g. 200
-	
+
 	// Proto is the protocol version.
 	Proto string // e.g. "MCP/2025-03-26"
-	
+
 	// Header maps header keys to values.
 	Header Header
-	
+
 	// Body represents the response body.
 	Body io.ReadCloser
-	
+
 	// ContentLength records the length of the associated content.
 	ContentLength int64
-	
+
 	// Request is the request that was sent to obtain this Response.
 	Request *Request
 }
@@ -666,7 +665,7 @@ func UnmarshalContent(data []byte) (Content, error) {
 	if err := json.Unmarshal(data, &base); err != nil {
 		return nil, fmt.Errorf("unmarshal content type: %w", err)
 	}
-	
+
 	switch base.Type {
 	case "text":
 		var t struct {
@@ -676,7 +675,7 @@ func UnmarshalContent(data []byte) (Content, error) {
 			return nil, fmt.Errorf("unmarshal text content: %w", err)
 		}
 		return TextContent{Text: t.Text}, nil
-		
+
 	case "image":
 		var i struct {
 			Data     string `json:"data"`
@@ -686,7 +685,7 @@ func UnmarshalContent(data []byte) (Content, error) {
 			return nil, fmt.Errorf("unmarshal image content: %w", err)
 		}
 		return ImageContent{Data: i.Data, MimeType: i.MimeType}, nil
-		
+
 	case "resource":
 		var r struct {
 			URI      string `json:"uri"`
@@ -696,7 +695,7 @@ func UnmarshalContent(data []byte) (Content, error) {
 			return nil, fmt.Errorf("unmarshal resource content: %w", err)
 		}
 		return ResourceReferenceContent{URI: r.URI, MimeType: r.MimeType}, nil
-		
+
 	default:
 		return nil, fmt.Errorf("unknown content type: %s", base.Type)
 	}
@@ -709,19 +708,19 @@ func UnmarshalContent(data []byte) (Content, error) {
 type ClientConfig struct {
 	// Timeout for each request. Zero means no timeout.
 	Timeout time.Duration
-	
+
 	// Maximum number of retry attempts.
 	MaxRetries int
-	
+
 	// Delay between retry attempts.
 	RetryDelay time.Duration
-	
+
 	// Handler for server notifications.
 	NotificationHandler NotificationHandler
-	
+
 	// Client information sent during handshake.
 	ClientInfo ClientInfo
-	
+
 	// Optional transport-specific configuration
 	Transport RoundTripper
 }
@@ -758,15 +757,15 @@ type ClientInfo struct {
 type ServerConfig struct {
 	// Server information sent during handshake.
 	ServerInfo ServerInfo
-	
+
 	// Capabilities supported by the server.
 	Capabilities ServerCapabilities
 }
 
 // ServerInfo contains information about the server.
 type ServerInfo struct {
-	Name         string               `json:"name"`
-	Version      string               `json:"version"`
+	Name         string              `json:"name"`
+	Version      string              `json:"version"`
 	Capabilities *ServerCapabilities `json:"capabilities,omitempty"`
 }
 
@@ -807,20 +806,20 @@ type Conn interface {
 	io.Reader
 	io.Writer
 	io.Closer
-	
+
 	// LocalAddr returns the local network address.
 	LocalAddr() net.Addr
-	
+
 	// RemoteAddr returns the remote network address.
 	RemoteAddr() net.Addr
-	
+
 	// SetDeadline sets the read and write deadlines associated
 	// with the connection.
 	SetDeadline(t time.Time) error
-	
+
 	// SetReadDeadline sets the deadline for future Read calls.
 	SetReadDeadline(t time.Time) error
-	
+
 	// SetWriteDeadline sets the deadline for future Write calls.
 	SetWriteDeadline(t time.Time) error
 }
@@ -830,10 +829,10 @@ type Conn interface {
 type Listener interface {
 	// Accept waits for and returns the next connection to the listener.
 	Accept() (Conn, error)
-	
+
 	// Close closes the listener.
 	Close() error
-	
+
 	// Addr returns the listener's network address.
 	Addr() net.Addr
 }
@@ -844,17 +843,17 @@ type Dialer struct {
 	// Timeout is the maximum amount of time a dial will wait for
 	// a connect to complete.
 	Timeout time.Duration
-	
+
 	// Deadline is the absolute point in time after which dials will fail.
 	Deadline time.Time
-	
+
 	// LocalAddr is the local address to use when dialing an address.
 	LocalAddr net.Addr
-	
+
 	// KeepAlive specifies the interval between keep-alive probes
 	// for an active network connection.
 	KeepAlive time.Duration
-	
+
 	// Control is called after creating the network connection
 	// but before actually dialing.
 	Control func(network, address string, c interface{}) error
@@ -865,24 +864,24 @@ type Dialer struct {
 const (
 	// ProtocolVersion is the MCP protocol version this SDK supports.
 	ProtocolVersion = "2025-03-26"
-	
+
 	// DefaultPort is the default port for MCP over TCP.
 	DefaultPort = "3000"
 )
 
 // Well-known MCP methods
 const (
-	MethodInitialize     = "initialize"
-	MethodInitialized    = "notifications/initialized"
-	MethodToolsList      = "tools/list"
-	MethodToolsCall      = "tools/call"
-	MethodResourcesList  = "resources/list"
-	MethodResourcesRead  = "resources/read"
-	MethodPromptsList    = "prompts/list"
-	MethodPromptsGet     = "prompts/get"
-	MethodLoggingLog     = "logging/setLevel"
-	MethodProgress       = "notifications/progress"
-	MethodCancelled      = "notifications/cancelled"
+	MethodInitialize    = "initialize"
+	MethodInitialized   = "notifications/initialized"
+	MethodToolsList     = "tools/list"
+	MethodToolsCall     = "tools/call"
+	MethodResourcesList = "resources/list"
+	MethodResourcesRead = "resources/read"
+	MethodPromptsList   = "prompts/list"
+	MethodPromptsGet    = "prompts/get"
+	MethodLoggingLog    = "logging/setLevel"
+	MethodProgress      = "notifications/progress"
+	MethodCancelled     = "notifications/cancelled"
 )
 
 // Option types following the functional options pattern

@@ -4,7 +4,8 @@ that communicate over stdin/stdout. It defaults to using Unix domain sockets
 for client connections and logs all interactions to an MCP trace file.
 
 Usage:
-    mcpd [flags] -- <server_command> [server_args...]
+
+	mcpd [flags] -- <server_command> [server_args...]
 
 The "--" is mandatory to separate mcpd's flags from the <server_command>.
 
@@ -23,14 +24,15 @@ Key Features:
   - Logs all client-server interactions to a specified .mcp trace file.
     This trace file serves as the primary record of the session.
   - Can manage the backend server process in different modes:
-    - 'once' (default): Starts the server once; all clients connect to this instance.
-    - 'per-connection': Starts a new server instance for each client connection.
+  - 'once' (default): Starts the server once; all clients connect to this instance.
+  - 'per-connection': Starts a new server instance for each client connection.
   - Optional redirection of the backend server's own stderr.
   - PID file management for both mcpd and the managed server process.
 
 Primary Use Case:
-  Facilitating testing of MCP servers in isolated environments (like rsc.io/script)
-  by abstracting network setup and providing detailed interaction logs.
+
+	Facilitating testing of MCP servers in isolated environments (like rsc.io/script)
+	by abstracting network setup and providing detailed interaction logs.
 
 Flags:
 */

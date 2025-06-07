@@ -76,13 +76,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error parsing MCP tool description: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		output, err = gen.GenerateFromMCPTool(&tool)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating code: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		if *fileName == "" {
 			outputFileName = strings.ToLower(tool.Name) + "_tool.go"
 		}
@@ -186,7 +186,7 @@ func main() {
 
 	// Write output
 	outputPath := filepath.Join(*outputDir, outputFileName)
-	
+
 	// Create output directory if needed
 	if err := os.MkdirAll(*outputDir, 0755); err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating output directory: %v\n", err)
@@ -253,10 +253,10 @@ func toGoName(s string) string {
 	parts := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '_' || r == '-' || r == ' '
 	})
-	
+
 	for i, part := range parts {
 		parts[i] = strings.Title(part)
 	}
-	
+
 	return strings.Join(parts, "")
 }

@@ -8,12 +8,12 @@ import (
 
 func TestTextContent_MarshalJSON(t *testing.T) {
 	content := TextContent{Text: "Hello, world!"}
-	
+
 	data, err := json.Marshal(content)
 	if err != nil {
 		t.Fatalf("Failed to marshal TextContent: %v", err)
 	}
-	
+
 	expected := `{"type":"text","text":"Hello, world!"}`
 	if string(data) != expected {
 		t.Errorf("Expected %s, got %s", expected, string(data))
@@ -25,12 +25,12 @@ func TestImageContent_MarshalJSON(t *testing.T) {
 		Data:     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
 		MimeType: "image/png",
 	}
-	
+
 	data, err := json.Marshal(content)
 	if err != nil {
 		t.Fatalf("Failed to marshal ImageContent: %v", err)
 	}
-	
+
 	expected := `{"type":"image","data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==","mimeType":"image/png"}`
 	if string(data) != expected {
 		t.Errorf("Expected %s, got %s", expected, string(data))
@@ -39,13 +39,13 @@ func TestImageContent_MarshalJSON(t *testing.T) {
 
 func TestClientOptions(t *testing.T) {
 	config := &ClientConfig{}
-	
+
 	// Test WithTimeout
 	WithTimeout(10 * time.Second)(config)
 	if config.Timeout != 10*time.Second {
 		t.Errorf("Expected timeout 10s, got %v", config.Timeout)
 	}
-	
+
 	// Test WithRetries
 	WithRetries(5, 2*time.Second)(config)
 	if config.MaxRetries != 5 {
@@ -54,7 +54,7 @@ func TestClientOptions(t *testing.T) {
 	if config.RetryDelay != 2*time.Second {
 		t.Errorf("Expected retry delay 2s, got %v", config.RetryDelay)
 	}
-	
+
 	// Test WithClientInfo
 	WithClientInfo("test-client", "1.0.0")(config)
 	if config.ClientInfo.Name != "test-client" {

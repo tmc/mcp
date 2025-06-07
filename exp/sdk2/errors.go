@@ -9,32 +9,32 @@ import (
 // Common errors following stdlib patterns like os.ErrNotExist, io.EOF, etc.
 var (
 	// Connection errors
-	ErrClosed        = errors.New("mcp: connection closed")
-	ErrTimeout       = errors.New("mcp: operation timed out")
-	ErrConnRefused   = errors.New("mcp: connection refused")
-	ErrConnReset     = errors.New("mcp: connection reset")
-	
-	// Protocol errors  
-	ErrHandshake     = errors.New("mcp: handshake failed")
-	ErrProtocol      = errors.New("mcp: protocol error")
-	ErrInvalidData   = errors.New("mcp: invalid data")
-	ErrNotSupported  = errors.New("mcp: not supported")
-	
+	ErrClosed      = errors.New("mcp: connection closed")
+	ErrTimeout     = errors.New("mcp: operation timed out")
+	ErrConnRefused = errors.New("mcp: connection refused")
+	ErrConnReset   = errors.New("mcp: connection reset")
+
+	// Protocol errors
+	ErrHandshake    = errors.New("mcp: handshake failed")
+	ErrProtocol     = errors.New("mcp: protocol error")
+	ErrInvalidData  = errors.New("mcp: invalid data")
+	ErrNotSupported = errors.New("mcp: not supported")
+
 	// Request/Response errors
-	ErrToolNotFound  = errors.New("mcp: tool not found")
-	ErrBadRequest    = errors.New("mcp: bad request")
-	ErrUnauthorized  = errors.New("mcp: unauthorized")
-	ErrForbidden     = errors.New("mcp: forbidden")
-	
+	ErrToolNotFound = errors.New("mcp: tool not found")
+	ErrBadRequest   = errors.New("mcp: bad request")
+	ErrUnauthorized = errors.New("mcp: unauthorized")
+	ErrForbidden    = errors.New("mcp: forbidden")
+
 	// Validation errors
-	ErrInvalid       = errors.New("mcp: invalid")
-	ErrRequired      = errors.New("mcp: required field missing")
-	ErrTooLarge      = errors.New("mcp: data too large")
-	ErrTooSmall      = errors.New("mcp: data too small")
-	
+	ErrInvalid  = errors.New("mcp: invalid")
+	ErrRequired = errors.New("mcp: required field missing")
+	ErrTooLarge = errors.New("mcp: data too large")
+	ErrTooSmall = errors.New("mcp: data too small")
+
 	// Client/Server lifecycle errors
-	ErrClientClosed  = errors.New("mcp: client closed")
-	ErrServerClosed  = errors.New("mcp: server closed")
+	ErrClientClosed = errors.New("mcp: client closed")
+	ErrServerClosed = errors.New("mcp: server closed")
 )
 
 // MCPError represents an MCP-specific error with context preservation.
@@ -87,7 +87,7 @@ func NewErrorWithData(op string, code int, message string, data interface{}, cau
 			dataBytes = bytes
 		}
 	}
-	
+
 	return &MCPError{
 		Op:      op,
 		Code:    code,
@@ -220,16 +220,16 @@ func IsTimeout(err error) bool {
 	type timeout interface {
 		Timeout() bool
 	}
-	
+
 	if t, ok := err.(timeout); ok {
 		return t.Timeout()
 	}
-	
+
 	// Check for wrapped timeout errors
 	if te, ok := err.(*TimeoutError); ok {
 		return te.Timeout()
 	}
-	
+
 	return false
 }
 
@@ -238,16 +238,16 @@ func IsRetryable(err error) bool {
 	if err == nil {
 		return false
 	}
-	
+
 	// Check for specific error types
 	if IsTimeout(err) {
 		return true
 	}
-	
+
 	if _, ok := err.(*ConnectionError); ok {
 		return true
 	}
-	
+
 	// Check for MCP errors with retryable codes
 	if mcpErr, ok := err.(*MCPError); ok {
 		switch mcpErr.Code {
@@ -255,26 +255,26 @@ func IsRetryable(err error) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 // Error status codes
 const (
-	StatusOK                    = 200
-	StatusBadRequest            = 400
-	StatusUnauthorized          = 401
-	StatusForbidden             = 403
-	StatusNotFound              = 404
-	StatusMethodNotAllowed      = 405
-	StatusRequestTimeout        = 408
-	StatusConflict              = 409
-	StatusTooManyRequests       = 429
-	StatusInternalServerError   = 500
-	StatusNotImplemented        = 501
-	StatusBadGateway            = 502
-	StatusServiceUnavailable    = 503
-	StatusGatewayTimeout        = 504
+	StatusOK                  = 200
+	StatusBadRequest          = 400
+	StatusUnauthorized        = 401
+	StatusForbidden           = 403
+	StatusNotFound            = 404
+	StatusMethodNotAllowed    = 405
+	StatusRequestTimeout      = 408
+	StatusConflict            = 409
+	StatusTooManyRequests     = 429
+	StatusInternalServerError = 500
+	StatusNotImplemented      = 501
+	StatusBadGateway          = 502
+	StatusServiceUnavailable  = 503
+	StatusGatewayTimeout      = 504
 )
 
 var statusText = map[int]string{

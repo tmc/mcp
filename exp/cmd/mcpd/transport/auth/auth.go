@@ -25,7 +25,7 @@ func NewProvider(config *authtypes.Config, localConfig *authtypes.LocalConfig) (
 func createLocalProvider(config *authtypes.Config, localConfig *authtypes.LocalConfig) (authtypes.Provider, error) {
 	var userStore authtypes.UserStore
 	var err error
-	
+
 	// Determine which user store to use
 	if localConfig.UsersFile != "" {
 		// File-based user store
@@ -37,12 +37,12 @@ func createLocalProvider(config *authtypes.Config, localConfig *authtypes.LocalC
 		// Memory-based user store
 		memoryStore := local.NewMemoryUserStore()
 		userStore = memoryStore
-		
+
 		// Add users from various sources
 		if err := addUsersToStore(memoryStore, localConfig); err != nil {
 			return nil, fmt.Errorf("failed to add users: %w", err)
 		}
-		
+
 		// If no users exist, create a default admin user
 		if len(userStore.ListUsers()) == 0 {
 			if err := memoryStore.AddUser("admin", "admin", "", "Administrator"); err != nil {
@@ -50,7 +50,7 @@ func createLocalProvider(config *authtypes.Config, localConfig *authtypes.LocalC
 			}
 		}
 	}
-	
+
 	return local.NewProvider(config, userStore), nil
 }
 
@@ -58,30 +58,30 @@ func createOAuthProvider(config *authtypes.Config) (authtypes.Provider, error) {
 	if config.ClientID == "" || config.ClientSecret == "" {
 		return nil, fmt.Errorf("OAuth provider %s requires client ID and secret", config.Provider)
 	}
-	
+
 	if config.RedirectURL == "" {
 		return nil, fmt.Errorf("OAuth provider %s requires redirect URL", config.Provider)
 	}
-	
+
 	return oauth.NewProvider(config)
 }
 
 func addUsersToStore(store interface {
 	AddUser(username, password, email, fullName string) error
 }, localConfig *authtypes.LocalConfig) error {
-	
+
 	// Add from environment variables
 	if err := local.CreateUsersFromEnv(store); err != nil {
 		return fmt.Errorf("failed to create users from environment: %w", err)
 	}
-	
+
 	// Add from command line string
 	if localConfig.UsersString != "" {
 		if err := local.CreateUsersFromCommandLine(store, localConfig.UsersString); err != nil {
 			return fmt.Errorf("failed to create users from command line: %w", err)
 		}
 	}
-	
+
 	// Add from in-memory map
 	if localConfig.Users != nil {
 		for username, password := range localConfig.Users {
@@ -90,19 +90,19 @@ func addUsersToStore(store interface {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
 // SetupLocalAuth is a helper function to set up local authentication with various options
 func SetupLocalAuth(config *authtypes.Config, options ...LocalOption) (authtypes.Provider, error) {
 	localConfig := &authtypes.LocalConfig{}
-	
+
 	// Apply options
 	for _, opt := range options {
 		opt(localConfig)
 	}
-	
+
 	return createLocalProvider(config, localConfig)
 }
 

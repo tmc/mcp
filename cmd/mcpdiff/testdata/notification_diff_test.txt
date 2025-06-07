@@ -1,8 +1,8 @@
 # Test mcpdiff with notifications
-exec go build -o mcpdiff .
+# mcpdiff should be available in PATH from tool installation
 
 # Test diffing files with notifications
-exec ./mcpdiff notif1.mcp notif2.mcp
+exec mcpdiff notif1.mcp notif2.mcp
 stdout 'notification'
 
 -- notif1.mcp --

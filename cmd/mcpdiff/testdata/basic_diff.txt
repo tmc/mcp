@@ -1,28 +1,28 @@
 # Test basic mcpdiff functionality
-exec go build -o mcpdiff .
+# mcpdiff should be available in PATH from tool installation
 
 # Test help output
-! exec ./mcpdiff -h
+exec mcpdiff -h
 stderr 'Usage.*mcpdiff'
 
 # Test with no arguments
-! exec ./mcpdiff
+! exec mcpdiff
 stderr 'Usage.*mcpdiff'
 
 # Test diffing two files
-exec ./mcpdiff test1.mcp test2.mcp
-stdout 'diff'
+exec mcpdiff test1.mcp test2.mcp
+stdout 'capabilities'
 
 # Test with identical files
-exec ./mcpdiff test1.mcp test1.mcp
-! stdout 'diff'
+exec mcpdiff test1.mcp test1.mcp
+stdout 'Files match exactly!'
 
 -- test1.mcp --
 # mcptrace:v1
-mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
-mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 100.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}} # 100.100
 
 -- test2.mcp --
 # mcptrace:v1
-mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
-mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}}}
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}} # 100.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}}} # 100.100

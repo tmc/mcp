@@ -61,10 +61,10 @@ func TestProbeShadowDiffIntegration(t *testing.T) {
 
 		// Verify we get the expected JSON output
 		outputStr := string(output)
-		if !strings.Contains(outputStr, `"Method":"initialize"`) {
+		if !strings.Contains(outputStr, `"method":"initialize"`) {
 			t.Errorf("Expected initialize method in output, got: %s", outputStr)
 		}
-		if !strings.Contains(outputStr, `"Method":"tools/call"`) {
+		if !strings.Contains(outputStr, `"method":"tools/call"`) {
 			t.Errorf("Expected tools/call method in output, got: %s", outputStr)
 		}
 	})
@@ -74,7 +74,7 @@ func TestProbeShadowDiffIntegration(t *testing.T) {
 		traceFile := filepath.Join(tmpDir, "shadow-trace.mcp")
 
 		// Create a simple request to send through shadow
-		input := `{"ID":{},"Method":"initialize","Params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0.0"},"capabilities":{}}}`
+		input := `{"id":1,"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0.0"},"capabilities":{}}}`
 
 		// Run mcp-shadow with both primary and shadow servers
 		shadowCmd := exec.CommandContext(ctx, filepath.Join(tmpDir, "mcp-shadow"),
@@ -115,8 +115,14 @@ func TestProbeShadowDiffIntegration(t *testing.T) {
 			}
 		}
 
-		// Run mcpdiff
-		diffCmd := exec.CommandContext(ctx, filepath.Join(tmpDir, "mcpdiff"), traceFile)
+		// Create a second trace file for comparison
+		traceFile2 := filepath.Join(tmpDir, "shadow-trace2.mcp")
+		if err := os.WriteFile(traceFile2, []byte(`{"timestamp":"2024-01-01T00:00:00Z","direction":"recv","raw":"test2"}`+"\n"), 0644); err != nil {
+			t.Fatalf("Failed to create second test trace file: %v", err)
+		}
+
+		// Run mcpdiff with two files
+		diffCmd := exec.CommandContext(ctx, filepath.Join(tmpDir, "mcpdiff"), traceFile, traceFile2)
 		output, err := diffCmd.CombinedOutput()
 
 		if err != nil {
@@ -144,8 +150,11 @@ cat $TMPDIR/request.json | $TMPDIR/mcp-shadow \
 	-timeout 2s \
 	-compare
 
-# Analyze with diff
-$TMPDIR/mcpdiff $TMPDIR/full-trace.mcp || true
+# Create a second trace for comparison
+cp $TMPDIR/full-trace.mcp $TMPDIR/full-trace2.mcp
+
+# Analyze with diff (needs two files currently)
+$TMPDIR/mcpdiff $TMPDIR/full-trace.mcp $TMPDIR/full-trace2.mcp || true
 
 echo "Pipeline completed"
 `

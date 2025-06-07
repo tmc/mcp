@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
 
 func TestMCPRecordParsing(t *testing.T) {
@@ -82,6 +83,12 @@ func TestMCPRecordParsing(t *testing.T) {
 
 // TestBasicDiff specifically tests basic diff functionality
 func TestBasicDiff(t *testing.T) {
+	// Install mcpdiff tool for the test
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcpdiff"},
+	})
+	defer cleanup()
+
 	mcpscripttest.Test(t, "testdata/basic_diff.txt")
 }
 

@@ -40,6 +40,7 @@ const (
 	MethodPromptsGet             MCPMethod = "prompts/get"
 	MethodToolsList              MCPMethod = "tools/list"
 	MethodToolsCall              MCPMethod = "tools/call"
+	MethodNotificationCancelled  MCPMethod = "notifications/cancelled"
 )
 
 // JSONRPCNotification represents a notification message in the JSON-RPC protocol.

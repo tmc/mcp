@@ -6,10 +6,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/tmc/mcp/internal/jsonrpc2util"
 	"golang.org/x/exp/jsonrpc2"
 )
 
 // Client represents an MCP client capable of connecting to and interacting with an MCP server.
+//
+// The client automatically handles context cancellation by sending appropriate
+// notifications to the server. When using context.WithCancelCause, the cancellation
+// reason is automatically propagated to the server via the notifications/cancelled message.
 type Client struct {
 	conn               *jsonrpc2.Connection
 	notificationMu     sync.RWMutex
@@ -32,18 +37,6 @@ func WithNotificationHandler(handler func(notification JSONRPCNotification)) Cli
 	}
 }
 
-// connectionBinder implements jsonrpc2.Binder
-type connectionBinder struct {
-	handler jsonrpc2.Handler
-}
-
-// Bind implements the jsonrpc2.Binder interface
-func (b connectionBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
-	return jsonrpc2.ConnectionOptions{
-		Handler: b.handler,
-	}, nil
-}
-
 // NewClient creates a new MCP client instance using the provided transport.
 func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	ctx := context.Background()
@@ -58,8 +51,8 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	handler := jsonrpc2.HandlerFunc(c.handleMessage)
 
 	// Create a binder for the connection options
-	binder := connectionBinder{
-		handler: handler,
+	binder := jsonrpc2util.ConnectionBinder{
+		Handler: handler,
 	}
 
 	// Transport implements the jsonrpc2.Dialer interface directly
@@ -233,17 +226,46 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// call is a helper to perform a JSON-RPC call
+// call is a helper to perform a JSON-RPC call with automatic cancellation notification
 func (c *Client) call(ctx context.Context, method string, params, result interface{}) error {
 	// Call the method and get the AsyncCall object
 	asyncCall := c.conn.Call(ctx, method, params)
 
-	// Await the results and unmarshal into result
-	if err := asyncCall.Await(ctx, result); err != nil {
-		return err
-	}
+	// Create a channel to signal when the call is done
+	done := make(chan struct{})
 
-	return nil
+	// Monitor context cancellation in a separate goroutine
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Check if there's a cancellation cause
+			cause := context.Cause(ctx)
+
+			// Send cancellation notification if there's a specific cause
+			// or if the context was cancelled (not just deadline exceeded)
+			if cause != nil && (cause != context.Canceled || cause == context.Canceled) {
+				cancelParams := map[string]interface{}{
+					"requestId": asyncCall.ID(),
+				}
+
+				// Add reason from the cause
+				if cause != context.Canceled {
+					cancelParams["reason"] = cause.Error()
+				}
+
+				// Send the notification (best effort, ignore errors)
+				_ = c.conn.Notify(context.Background(), string(MethodNotificationCancelled), cancelParams)
+			}
+		case <-done:
+			// Call completed normally, exit goroutine
+		}
+	}()
+
+	// Await the results and unmarshal into result
+	err := asyncCall.Await(ctx, result)
+	close(done) // Signal that the call is complete
+
+	return err
 }
 
 // checkInitialized ensures the client has been initialized

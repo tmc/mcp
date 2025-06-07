@@ -17,9 +17,9 @@ import (
 // It's similar to http.DefaultClient.
 var DefaultClient = &client{
 	config: ClientConfig{
-		Timeout:     30 * time.Second,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
+		Timeout:    30 * time.Second,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
 		ClientInfo: ClientInfo{Name: "sdk2-client", Version: "0.1.0"},
 	},
 }
@@ -68,10 +68,11 @@ func Ping(ctx context.Context) error {
 
 // Dial connects to the MCP server at the given address using stdlib dial patterns.
 // The network and address parameters follow net.Dial conventions.
-// 
+//
 // Example:
-//   client, err := sdk2.Dial(ctx, "stdio", "")
-//   client, err := sdk2.Dial(ctx, "tcp", "localhost:3000")
+//
+//	client, err := sdk2.Dial(ctx, "stdio", "")
+//	client, err := sdk2.Dial(ctx, "tcp", "localhost:3000")
 func Dial(ctx context.Context, network, address string) (Client, error) {
 	d := &Dialer{}
 	return d.DialContext(ctx, network, address)
@@ -104,16 +105,16 @@ func MustDialStdio(ctx context.Context) Client {
 // This follows the functional options pattern common in Go.
 func DialConfig(ctx context.Context, network, address string, opts ...ClientOption) (Client, error) {
 	config := &ClientConfig{
-		Timeout:     30 * time.Second,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
+		Timeout:    30 * time.Second,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
 		ClientInfo: ClientInfo{Name: "sdk2-client", Version: "0.1.0"},
 	}
-	
+
 	for _, opt := range opts {
 		opt(config)
 	}
-	
+
 	d := &Dialer{}
 	return d.dialWithConfig(ctx, network, address, config)
 }
@@ -121,9 +122,9 @@ func DialConfig(ctx context.Context, network, address string, opts ...ClientOpti
 // DialContext connects to the MCP server using the dialer.
 func (d *Dialer) DialContext(ctx context.Context, network, address string) (Client, error) {
 	config := &ClientConfig{
-		Timeout:     d.Timeout,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
+		Timeout:    d.Timeout,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
 		ClientInfo: ClientInfo{Name: "sdk2-client", Version: "0.1.0"},
 	}
 	return d.dialWithConfig(ctx, network, address, config)
@@ -135,7 +136,7 @@ func (d *Dialer) dialWithConfig(ctx context.Context, network, address string, co
 	if network == "stdio" {
 		return dialStdio(ctx, config)
 	}
-	
+
 	// Use context deadline if set
 	deadline := d.Deadline
 	if d.Timeout > 0 {
@@ -144,13 +145,13 @@ func (d *Dialer) dialWithConfig(ctx context.Context, network, address string, co
 			deadline = timeoutDeadline
 		}
 	}
-	
+
 	if !deadline.IsZero() {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithDeadline(ctx, deadline)
 		defer cancel()
 	}
-	
+
 	// Dial the connection
 	conn, err := (&net.Dialer{
 		Timeout:   d.Timeout,
@@ -160,10 +161,10 @@ func (d *Dialer) dialWithConfig(ctx context.Context, network, address string, co
 	if err != nil {
 		return nil, NewConnError("dial", network, address, err)
 	}
-	
+
 	// Wrap in our Conn interface
 	mcpConn := &netConn{Conn: conn}
-	
+
 	return newClient(ctx, mcpConn, config)
 }
 
@@ -209,8 +210,8 @@ func (c *stdioConn) Close() error { return nil }
 func (c *stdioConn) LocalAddr() net.Addr  { return &stdioAddr{} }
 func (c *stdioConn) RemoteAddr() net.Addr { return &stdioAddr{} }
 
-func (c *stdioConn) SetDeadline(t time.Time) error     { return nil }
-func (c *stdioConn) SetReadDeadline(t time.Time) error { return nil }
+func (c *stdioConn) SetDeadline(t time.Time) error      { return nil }
+func (c *stdioConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *stdioConn) SetWriteDeadline(t time.Time) error { return nil }
 
 // stdioAddr implements net.Addr for stdio
@@ -223,26 +224,26 @@ func (a *stdioAddr) String() string  { return "stdio" }
 type client struct {
 	conn   Conn
 	config ClientConfig
-	
+
 	// JSON-RPC state
 	nextID    int64
 	pending   map[int64]chan *jsonrpcResponse
 	pendingMu sync.RWMutex
-	
+
 	// Connection state
 	reader *bufio.Reader
 	writer *bufio.Writer
 	mu     sync.Mutex // protects writing
-	
+
 	// Lifecycle
 	once sync.Once
 	done chan struct{}
-	
+
 	// Protocol state
-	initialized   int32 // atomic
-	serverInfo    *ServerInfo
-	capabilities  *ServerCapabilities
-	handshakeMu   sync.Mutex
+	initialized  int32 // atomic
+	serverInfo   *ServerInfo
+	capabilities *ServerCapabilities
+	handshakeMu  sync.Mutex
 }
 
 // Do implements Client.Do - the low-level request method following http.Client pattern
@@ -250,26 +251,26 @@ func (c *client) Do(req *Request) (*Response, error) {
 	if req.Context == nil {
 		req.Context = context.Background()
 	}
-	
+
 	// Convert to JSON-RPC request
 	var id any
 	if req.ID != nil {
 		id = req.ID.Value
 	}
-	
+
 	jsonReq := &jsonrpcRequest{
 		JSONRPC: "2.0",
 		ID:      id,
 		Method:  req.Method,
 		Params:  req.Params,
 	}
-	
+
 	// Send request and get response
 	jsonResp, err := c.sendRequest(req.Context, jsonReq)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert to MCP response
 	resp := &Response{
 		Status:     "200 OK",
@@ -278,17 +279,17 @@ func (c *client) Do(req *Request) (*Response, error) {
 		Header:     make(Header),
 		Request:    req,
 	}
-	
+
 	if jsonResp.Error != nil {
 		resp.Status = fmt.Sprintf("%d %s", jsonResp.Error.Code, StatusText(jsonResp.Error.Code))
 		resp.StatusCode = jsonResp.Error.Code
 	}
-	
+
 	if jsonResp.Result != nil {
 		resp.Body = io.NopCloser(jsonReaderFromBytes(jsonResp.Result))
 		resp.ContentLength = int64(len(jsonResp.Result))
 	}
-	
+
 	return resp, nil
 }
 
@@ -306,7 +307,7 @@ func (r *jsonReader) Read(p []byte) (n int, err error) {
 	if r.pos >= len(r.data) {
 		return 0, io.EOF
 	}
-	
+
 	n = copy(p, r.data[r.pos:])
 	r.pos += n
 	return n, nil
@@ -316,13 +317,13 @@ func (r *jsonReader) Read(p []byte) (n int, err error) {
 func newClient(ctx context.Context, conn Conn, config *ClientConfig) (Client, error) {
 	if config == nil {
 		config = &ClientConfig{
-			Timeout:     30 * time.Second,
-			MaxRetries:  3,
-			RetryDelay:  time.Second,
+			Timeout:    30 * time.Second,
+			MaxRetries: 3,
+			RetryDelay: time.Second,
 			ClientInfo: ClientInfo{Name: "sdk2-client", Version: "0.1.0"},
 		}
 	}
-	
+
 	c := &client{
 		conn:    conn,
 		config:  *config,
@@ -331,10 +332,10 @@ func newClient(ctx context.Context, conn Conn, config *ClientConfig) (Client, er
 		writer:  bufio.NewWriter(conn),
 		done:    make(chan struct{}),
 	}
-	
+
 	// Start the read loop
 	go c.readLoop(ctx)
-	
+
 	return c, nil
 }
 
@@ -350,27 +351,27 @@ func (c *client) ListTools(ctx context.Context) ([]Tool, error) {
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodToolsList,
 		Context: ctx,
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("tools/list failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result struct {
 		Tools []Tool `json:"tools"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal tools response: %w", err)
 	}
-	
+
 	return result.Tools, nil
 }
 
@@ -379,17 +380,17 @@ func (c *client) CallTool(ctx context.Context, name string, args map[string]any)
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	params := ToolCall{
 		Name:      name,
 		Arguments: args,
 	}
-	
+
 	paramBytes, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("marshal parameters: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodToolsCall,
 		Params:  json.RawMessage(paramBytes),
@@ -397,18 +398,18 @@ func (c *client) CallTool(ctx context.Context, name string, args map[string]any)
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("tools/call failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result ToolResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal tool result: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -417,27 +418,27 @@ func (c *client) ListResources(ctx context.Context) ([]Resource, error) {
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodResourcesList,
 		Context: ctx,
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("resources/list failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result struct {
 		Resources []Resource `json:"resources"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal resources response: %w", err)
 	}
-	
+
 	return result.Resources, nil
 }
 
@@ -446,14 +447,14 @@ func (c *client) ReadResource(ctx context.Context, uri string) (*ResourceContent
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	params := ResourceRequest{URI: uri}
-	
+
 	paramBytes, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("marshal parameters: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodResourcesRead,
 		Params:  json.RawMessage(paramBytes),
@@ -461,24 +462,24 @@ func (c *client) ReadResource(ctx context.Context, uri string) (*ResourceContent
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("resources/read failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result struct {
 		Contents []ResourceContent `json:"contents"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal resource content: %w", err)
 	}
-	
+
 	if len(result.Contents) == 0 {
 		return nil, Errorf("resource not found: %s", uri)
 	}
-	
+
 	return &result.Contents[0], nil
 }
 
@@ -487,27 +488,27 @@ func (c *client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodPromptsList,
 		Context: ctx,
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("prompts/list failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result struct {
 		Prompts []Prompt `json:"prompts"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal prompts response: %w", err)
 	}
-	
+
 	return result.Prompts, nil
 }
 
@@ -516,17 +517,17 @@ func (c *client) GetPrompt(ctx context.Context, name string, args map[string]any
 	if err := c.ensureInitialized(ctx); err != nil {
 		return nil, fmt.Errorf("initialize failed: %w", err)
 	}
-	
+
 	params := PromptRequest{
 		Name:      name,
 		Arguments: args,
 	}
-	
+
 	paramBytes, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("marshal parameters: %w", err)
 	}
-	
+
 	req := &Request{
 		Method:  MethodPromptsGet,
 		Params:  json.RawMessage(paramBytes),
@@ -534,18 +535,18 @@ func (c *client) GetPrompt(ctx context.Context, name string, args map[string]any
 		Proto:   ProtocolVersion,
 		Header:  make(Header),
 	}
-	
+
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("prompts/get failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var result PromptResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("unmarshal prompt result: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -564,15 +565,15 @@ func (c *client) ensureInitialized(ctx context.Context) error {
 	if atomic.LoadInt32(&c.initialized) == 1 {
 		return nil
 	}
-	
+
 	c.handshakeMu.Lock()
 	defer c.handshakeMu.Unlock()
-	
+
 	// Double-check after acquiring lock
 	if atomic.LoadInt32(&c.initialized) == 1 {
 		return nil
 	}
-	
+
 	// Send initialize request
 	params := struct {
 		ProtocolVersion string     `json:"protocolVersion"`
@@ -582,47 +583,47 @@ func (c *client) ensureInitialized(ctx context.Context) error {
 		ProtocolVersion: ProtocolVersion,
 		ClientInfo:      c.config.ClientInfo,
 	}
-	
+
 	paramBytes, err := json.Marshal(params)
 	if err != nil {
 		return fmt.Errorf("marshal initialize params: %w", err)
 	}
-	
+
 	req := &jsonrpcRequest{
 		JSONRPC: "2.0",
 		ID:      atomic.AddInt64(&c.nextID, 1),
 		Method:  MethodInitialize,
 		Params:  json.RawMessage(paramBytes),
 	}
-	
+
 	resp, err := c.sendRequest(ctx, req)
 	if err != nil {
 		return NewProtocolError("initialize", "initialize request failed", err)
 	}
-	
+
 	if resp.Error != nil {
 		return NewMCPError("initialize", MethodInitialize, resp.Error.Code, resp.Error.Message, nil)
 	}
-	
+
 	var result ServerInfo
 	if err := json.Unmarshal(resp.Result, &result); err != nil {
 		return NewProtocolError("initialize", "unmarshal initialize response", err)
 	}
-	
+
 	c.serverInfo = &result
 	c.capabilities = result.Capabilities
-	
+
 	// Send initialized notification
 	notif := &jsonrpcRequest{
 		JSONRPC: "2.0",
 		Method:  MethodInitialized,
 		// No ID for notifications
 	}
-	
+
 	if err := c.writeMessage(notif); err != nil {
 		return NewProtocolError("initialize", "send initialized notification", err)
 	}
-	
+
 	atomic.StoreInt32(&c.initialized, 1)
 	return nil
 }
@@ -633,7 +634,7 @@ func (c *client) sendRequest(ctx context.Context, req *jsonrpcRequest) (*jsonrpc
 		// This is a notification, no response expected
 		return nil, c.writeMessage(req)
 	}
-	
+
 	// Extract ID for response tracking
 	var id int64
 	switch v := req.ID.(type) {
@@ -644,31 +645,31 @@ func (c *client) sendRequest(ctx context.Context, req *jsonrpcRequest) (*jsonrpc
 	default:
 		return nil, fmt.Errorf("unsupported request ID type: %T", req.ID)
 	}
-	
+
 	// Create response channel
 	respChan := make(chan *jsonrpcResponse, 1)
-	
+
 	c.pendingMu.Lock()
 	c.pending[id] = respChan
 	c.pendingMu.Unlock()
-	
+
 	defer func() {
 		c.pendingMu.Lock()
 		delete(c.pending, id)
 		c.pendingMu.Unlock()
 	}()
-	
+
 	// Send request
 	if err := c.writeMessage(req); err != nil {
 		return nil, NewConnError("write", "mcp", "", err)
 	}
-	
+
 	// Wait for response with timeout
 	timeout := c.config.Timeout
 	if timeout == 0 {
 		timeout = 30 * time.Second
 	}
-	
+
 	select {
 	case resp := <-respChan:
 		return resp, nil
@@ -685,19 +686,19 @@ func (c *client) sendRequest(ctx context.Context, req *jsonrpcRequest) (*jsonrpc
 func (c *client) writeMessage(msg any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("marshal message: %w", err)
 	}
-	
+
 	// Add newline for line-delimited JSON
 	data = append(data, '\n')
-	
+
 	if _, err := c.writer.Write(data); err != nil {
 		return fmt.Errorf("write message: %w", err)
 	}
-	
+
 	return c.writer.Flush()
 }
 
@@ -711,7 +712,7 @@ func (c *client) readLoop(ctx context.Context) {
 		}
 		c.pendingMu.Unlock()
 	}()
-	
+
 	for {
 		select {
 		case <-c.done:
@@ -728,14 +729,14 @@ func (c *client) readLoop(ctx context.Context) {
 				// Log error and continue
 				continue
 			}
-			
+
 			// Parse JSON-RPC message
 			var msg jsonrpcResponse
 			if err := json.Unmarshal(line, &msg); err != nil {
 				// Skip invalid messages
 				continue
 			}
-			
+
 			// Handle response or notification
 			if msg.ID != nil {
 				c.handleResponse(&msg)
@@ -758,15 +759,15 @@ func (c *client) handleResponse(resp *jsonrpcResponse) {
 	default:
 		return // Skip unknown ID types
 	}
-	
+
 	c.pendingMu.RLock()
 	ch, exists := c.pending[id]
 	c.pendingMu.RUnlock()
-	
+
 	if !exists {
 		return // No pending request for this ID
 	}
-	
+
 	select {
 	case ch <- resp:
 	default:
@@ -779,11 +780,11 @@ func (c *client) handleNotification(ctx context.Context, resp *jsonrpcResponse) 
 	if c.config.NotificationHandler == nil {
 		return
 	}
-	
+
 	// Extract method from notification (not in standard response format)
 	// In a real implementation, notifications would have method field
 	method := "notification"
-	
+
 	// Handle the notification
 	_ = c.config.NotificationHandler.HandleNotification(ctx, method, resp.Result)
 }

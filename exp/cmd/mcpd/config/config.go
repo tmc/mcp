@@ -16,7 +16,7 @@ type ServerMode string
 const (
 	// ModeSingle starts one server process for all connections
 	ModeSingle ServerMode = "once"
-	
+
 	// ModePerConnection starts a new server process for each connection
 	ModePerConnection ServerMode = "per-connection"
 )
@@ -28,9 +28,9 @@ type Config struct {
 	ServerArgs    []string
 
 	// Network options
-	ListenAddr    string
-	SocketPath    string
-	TCPAddr       string
+	ListenAddr string
+	SocketPath string
+	TCPAddr    string
 
 	// Streaming options
 	HTTPAddr      string
@@ -40,8 +40,8 @@ type Config struct {
 	StreamTimeout time.Duration
 
 	// Process management
-	Mode          ServerMode
-	Timeout       time.Duration
+	Mode    ServerMode
+	Timeout time.Duration
 
 	// Logging options
 	TraceFile     string
@@ -51,15 +51,15 @@ type Config struct {
 	Verbose       bool
 
 	// Interactive mode
-	Interactive   bool
-	NoTTYPrompt   bool
+	Interactive bool
+	NoTTYPrompt bool
 }
 
 // New creates a new default configuration
 func New() *Config {
 	return &Config{
-		Mode:      ModeSingle,
-		Verbose:   false,
+		Mode:    ModeSingle,
+		Verbose: false,
 	}
 }
 
@@ -88,21 +88,21 @@ func (c *Config) SetListenAddr(tcpAddr, socketPath string) error {
 	if tcpAddr != "" && socketPath != "" {
 		return errors.New("cannot specify both TCP address and Unix socket path")
 	}
-	
+
 	if tcpAddr != "" {
 		// Use TCP
 		c.TCPAddr = tcpAddr
 		c.ListenAddr = "tcp://" + tcpAddr
 		return nil
 	}
-	
+
 	// Use Unix socket
 	if socketPath == "" {
 		// Generate a default socket path
 		tmpDir := os.TempDir()
 		socketPath = filepath.Join(tmpDir, fmt.Sprintf("mcpd-%d.sock", os.Getpid()))
 	}
-	
+
 	c.SocketPath = socketPath
 	c.ListenAddr = "unix://" + socketPath
 	return nil
@@ -217,10 +217,10 @@ func (c *Config) GetSocketPathForDiscovery() (string, error) {
 	if !strings.HasPrefix(c.ListenAddr, "unix://") {
 		return c.ListenAddr, nil
 	}
-	
+
 	// Extract path from unix:// prefix
 	path := strings.TrimPrefix(c.ListenAddr, "unix://")
-	
+
 	// Convert to absolute path if not already
 	if !filepath.IsAbs(path) {
 		absPath, err := filepath.Abs(path)
@@ -229,6 +229,6 @@ func (c *Config) GetSocketPathForDiscovery() (string, error) {
 		}
 		return "unix://" + absPath, nil
 	}
-	
+
 	return c.ListenAddr, nil
 }

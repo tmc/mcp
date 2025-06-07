@@ -11,18 +11,18 @@ import (
 // This follows the pattern of sql.Open, http.NewClient, etc.
 func NewClient(opts ...ClientOption) Client {
 	config := &ClientConfig{
-		Timeout:     30 * time.Second,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
+		Timeout:    30 * time.Second,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
 		ClientInfo: ClientInfo{Name: "sdk2-client", Version: "0.1.0"},
 	}
-	
+
 	for _, opt := range opts {
 		opt(config)
 	}
-	
+
 	return &client{
-		config: *config,
+		config:  *config,
 		pending: make(map[int64]chan *jsonrpcResponse),
 		done:    make(chan struct{}),
 	}
@@ -34,11 +34,11 @@ func NewServer(opts ...ServerOption) *Server {
 	server := &Server{
 		Handler: DefaultServeMux,
 	}
-	
+
 	for _, opt := range opts {
 		opt(server)
 	}
-	
+
 	return server
 }
 
@@ -54,18 +54,18 @@ func NewServeMux() *ServeMux {
 func NewRequest(method string, params interface{}) (*Request, error) {
 	var paramBytes []byte
 	var err error
-	
+
 	if params != nil {
 		paramBytes, err = json.Marshal(params)
 		if err != nil {
 			return nil, fmt.Errorf("marshal params: %w", err)
 		}
 	}
-	
+
 	return &Request{
-		Method: method,
-		Params: json.RawMessage(paramBytes),
-		Proto:  ProtocolVersion,
+		Method:  method,
+		Params:  json.RawMessage(paramBytes),
+		Proto:   ProtocolVersion,
 		Context: context.Background(),
 	}, nil
 }
@@ -143,14 +143,14 @@ func MustNewResourceReferenceContent(uri string) ResourceReferenceContent {
 func NewTool(name, description string, schema interface{}) (Tool, error) {
 	var schemaBytes json.RawMessage
 	var err error
-	
+
 	if schema != nil {
 		schemaBytes, err = json.Marshal(schema)
 		if err != nil {
 			return Tool{}, fmt.Errorf("marshal schema: %w", err)
 		}
 	}
-	
+
 	return Tool{
 		Name:        name,
 		Description: description,
@@ -185,14 +185,14 @@ func NewResource(uri, name, description, mimeType string) Resource {
 func NewPrompt(name, description string, schema interface{}) (Prompt, error) {
 	var schemaBytes json.RawMessage
 	var err error
-	
+
 	if schema != nil {
 		schemaBytes, err = json.Marshal(schema)
 		if err != nil {
 			return Prompt{}, fmt.Errorf("marshal schema: %w", err)
 		}
 	}
-	
+
 	return Prompt{
 		Name:            name,
 		Description:     description,

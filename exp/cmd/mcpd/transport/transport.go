@@ -30,7 +30,7 @@ func (t *TraceLogger) LogClientToServer(data []byte) error {
 	if t.File == nil {
 		return nil
 	}
-	
+
 	timestamp := formatTimestamp(time.Now(), t.TimeFormat)
 	_, err := fmt.Fprintf(t.File, "mcp-recv %s # %s\n", data, timestamp)
 	return err
@@ -41,7 +41,7 @@ func (t *TraceLogger) LogServerToClient(data []byte) error {
 	if t.File == nil {
 		return nil
 	}
-	
+
 	timestamp := formatTimestamp(time.Now(), t.TimeFormat)
 	_, err := fmt.Fprintf(t.File, "mcp-send %s # %s\n", data, timestamp)
 	return err
@@ -63,16 +63,16 @@ func formatTimestamp(t time.Time, format string) string {
 
 // Listener manages incoming connections
 type Listener struct {
-	Addr           string
-	Network        string
-	SocketPath     string
-	TraceLogger    *TraceLogger
-	PromptHandler  *InteractivePromptHandler
+	Addr          string
+	Network       string
+	SocketPath    string
+	TraceLogger   *TraceLogger
+	PromptHandler *InteractivePromptHandler
 
-	listener       net.Listener
-	shutdownCh     chan struct{}
-	connections    map[net.Conn]struct{}
-	mu             sync.Mutex
+	listener    net.Listener
+	shutdownCh  chan struct{}
+	connections map[net.Conn]struct{}
+	mu          sync.Mutex
 }
 
 // NewListener creates a new transport listener
@@ -82,19 +82,19 @@ func NewListener(addr string) (*Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	t := &Listener{
 		Addr:        addr,
 		Network:     network,
 		connections: make(map[net.Conn]struct{}),
 		shutdownCh:  make(chan struct{}),
 	}
-	
+
 	// Store socket path for cleanup if using Unix sockets
 	if network == "unix" {
 		t.SocketPath = address
 	}
-	
+
 	return t, nil
 }
 
@@ -124,7 +124,7 @@ func (t *Listener) Listen() error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", t.Addr, err)
 	}
-	
+
 	slog.Info("Listening for connections", "network", t.Network, "address", t.getAddress())
 	return nil
 }
@@ -134,13 +134,13 @@ func (t *Listener) getAddress() string {
 	if t.Network == "unix" {
 		return t.SocketPath
 	}
-	
+
 	// For TCP, extract address from "tcp://address"
 	parts := strings.SplitN(t.Addr, "://", 2)
 	if len(parts) > 1 {
 		return parts[1]
 	}
-	
+
 	return t.Addr
 }
 
@@ -149,18 +149,18 @@ func (t *Listener) Accept() (net.Conn, error) {
 	if t.listener == nil {
 		return nil, fmt.Errorf("listener not started")
 	}
-	
+
 	// Accept a connection
 	conn, err := t.listener.Accept()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Track the connection
 	t.mu.Lock()
 	t.connections[conn] = struct{}{}
 	t.mu.Unlock()
-	
+
 	slog.Info("Accepted connection", "remote", conn.RemoteAddr().String())
 	return conn, nil
 }
@@ -207,7 +207,7 @@ func (t *Listener) Close() error {
 func (t *Listener) RemoveConnection(conn net.Conn) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	delete(t.connections, conn)
 }
 
@@ -220,15 +220,15 @@ func parseAddr(addr string) (network, address string, err error) {
 	if len(parts) != 2 {
 		return "", "", fmt.Errorf("invalid address format: %s, expected network://address", addr)
 	}
-	
+
 	network, address = parts[0], parts[1]
-	
+
 	switch network {
 	case "tcp", "tcp4", "tcp6", "unix":
 		// These are supported
 	default:
 		return "", "", fmt.Errorf("unsupported network: %s", network)
 	}
-	
+
 	return network, address, nil
 }

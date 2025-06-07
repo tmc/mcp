@@ -19,14 +19,14 @@ import (
 
 // Command-line flags
 var (
-	testPath        = flag.String("run", "testdata/*.txt", "Path to test file or directory")
-	conformance     = flag.String("conformance", "", "Run conformance tests. Optional version value selects a specific version suite (e.g. '2025-03-26')")
-	verbose         = flag.Bool("v", false, "Verbose output")
-	showHelp        = flag.Bool("help", false, "Show help message")
-	enableCoverage  = flag.Bool("coverage", false, "Enable coverage instrumentation")
-	debugOnFailure  = flag.Bool("debug", false, "Enable debug shell on test failure")
-	httpPort        = flag.Int("http-port", 8765, "Starting port number for HTTP tests")
-	extendedTests   = flag.Bool("extended", false, "Run extended tests")
+	testPath       = flag.String("run", "testdata/*.txt", "Path to test file or directory")
+	conformance    = flag.String("conformance", "", "Run conformance tests. Optional version value selects a specific version suite (e.g. '2025-03-26')")
+	verbose        = flag.Bool("v", false, "Verbose output")
+	showHelp       = flag.Bool("help", false, "Show help message")
+	enableCoverage = flag.Bool("coverage", false, "Enable coverage instrumentation")
+	debugOnFailure = flag.Bool("debug", false, "Enable debug shell on test failure")
+	httpPort       = flag.Int("http-port", 8765, "Starting port number for HTTP tests")
+	extendedTests  = flag.Bool("extended", false, "Run extended tests")
 )
 
 func main() {
@@ -50,11 +50,11 @@ func main() {
 	// Set base environment
 	os.Setenv("MCP_CONFORMANCE", "true")
 	os.Setenv("MCP_HTTP_PORT", strconv.Itoa(*httpPort))
-	
+
 	if *verbose {
 		os.Setenv("MCP_VERBOSE", "true")
 	}
-	
+
 	if *extendedTests {
 		os.Setenv("MCP_EXTENDED_TESTS", "true")
 	}
@@ -93,7 +93,7 @@ func main() {
 	// Create mcpscripttest options
 	options := mcpscripttest.DefaultOptions()
 	options.DebugMode = *debugOnFailure
-	
+
 	// Store the server command for tests to use
 	os.Setenv("MCP_SERVER_COMMAND", strings.Join(args, " "))
 
@@ -146,7 +146,7 @@ func main() {
 			} else {
 				// Check in standard locations
 				stdPaths := []string{
-					filepath.Join("testdata", "mcp_conformance", resolvedPath + ".txt"),
+					filepath.Join("testdata", "mcp_conformance", resolvedPath+".txt"),
 					filepath.Join("testdata", "mcp_conformance", resolvedPath),
 				}
 
@@ -176,7 +176,7 @@ func main() {
 
 	// Run the tests using standalone runner to avoid testing.Short() panic
 	failures := runner.RunTestsStandalone(resolvedPath)
-	
+
 	// Report results
 	if failures == 0 {
 		fmt.Println("\nALL TESTS PASSED")
@@ -189,9 +189,9 @@ func main() {
 // detectServerCapabilities probes the provided server to determine what features it supports
 func detectServerCapabilities(args []string) (map[string]bool, error) {
 	capabilities := make(map[string]bool)
-	
+
 	// Default capabilities
-	capabilities["stdio"] = true    // Assume stdio is always supported
+	capabilities["stdio"] = true // Assume stdio is always supported
 	capabilities["http"] = false
 	capabilities["sse"] = false
 	capabilities["websocket"] = false
@@ -199,34 +199,34 @@ func detectServerCapabilities(args []string) (map[string]bool, error) {
 	capabilities["resources"] = false
 	capabilities["prompts"] = false
 	capabilities["logging"] = false
-	capabilities["batch"] = true    // Assume batch is supported by default
+	capabilities["batch"] = true // Assume batch is supported by default
 
 	// Try to start the server
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	
+
 	// Capture stdout and stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return capabilities, fmt.Errorf("failed to create stdout pipe: %v", err)
 	}
-	
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return capabilities, fmt.Errorf("failed to create stderr pipe: %v", err)
 	}
-	
+
 	// Start the server
 	if err := cmd.Start(); err != nil {
 		return capabilities, fmt.Errorf("failed to start server: %v", err)
 	}
-	
+
 	// Read stdout and stderr in goroutines
 	stdoutCh := make(chan string, 100)
 	stderrCh := make(chan string, 100)
-	
+
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
@@ -234,7 +234,7 @@ func detectServerCapabilities(args []string) (map[string]bool, error) {
 		}
 		close(stdoutCh)
 	}()
-	
+
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
@@ -242,13 +242,13 @@ func detectServerCapabilities(args []string) (map[string]bool, error) {
 		}
 		close(stderrCh)
 	}()
-	
+
 	// Wait for output for a short time to see if we can detect HTTP support
 	timeout := time.After(5 * time.Second)
-	
+
 	httpDetected := false
 	sseDetected := false
-	
+
 detectionLoop:
 	for {
 		select {
@@ -278,7 +278,7 @@ detectionLoop:
 			break detectionLoop
 		}
 	}
-	
+
 	// If we didn't detect HTTP from output, try connecting to the port
 	if !httpDetected {
 		conn, err := net.DialTimeout("tcp", fmt.Sprintf("localhost:%d", *httpPort), 1*time.Second)
@@ -286,7 +286,7 @@ detectionLoop:
 			conn.Close()
 			httpDetected = true
 		}
-		
+
 		// Make a quick HTTP request to check if it responds
 		if !httpDetected {
 			resp, err := http.Get(fmt.Sprintf("http://localhost:%d", *httpPort))
@@ -296,18 +296,18 @@ detectionLoop:
 			}
 		}
 	}
-	
+
 	// Set detected capabilities
 	capabilities["http"] = httpDetected
 	capabilities["sse"] = sseDetected
-	
+
 	// Clean up
 	cmd.Process.Kill()
 	cmd.Wait()
-	
+
 	// If we want to do a more thorough test, we could also probe for capabilities
 	// by sending requests to the server, but for now this simple detection is enough
-	
+
 	return capabilities, nil
 }
 

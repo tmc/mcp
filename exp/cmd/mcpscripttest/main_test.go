@@ -12,7 +12,7 @@ func TestConformance(t *testing.T) {
 
 	// Set up test args
 	os.Args = []string{"mcpscripttest", "-conformance"}
-	
+
 	// Add server command if provided
 	if len(oldArgs) > 1 {
 		os.Args = append(os.Args, oldArgs[1:]...)

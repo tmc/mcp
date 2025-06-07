@@ -1,4 +1,5 @@
 //go:build ignore
+
 package main
 
 import (
@@ -13,13 +14,13 @@ import (
 // from stdin when provided.
 func main() {
 	fmt.Fprintln(os.Stderr, "Long-running server started and waiting for input...")
-	
+
 	// Print periodic heartbeat messages to stderr so we know it's still alive
 	done := make(chan bool)
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-done:
@@ -29,14 +30,14 @@ func main() {
 			}
 		}
 	}()
-	
+
 	// Read from stdin in a loop
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
 		processCommand(line)
 	}
-	
+
 	close(done)
 	fmt.Fprintln(os.Stderr, "Server shutting down")
 }
@@ -44,20 +45,20 @@ func main() {
 // processCommand handles input commands
 func processCommand(line string) {
 	line = strings.TrimSpace(line)
-	
+
 	// Skip empty lines
 	if line == "" {
 		return
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "Received command: %s\n", line)
-	
+
 	// Check for JSON-RPC command
 	if strings.HasPrefix(line, "{") && strings.Contains(line, "\"method\"") {
 		handleJSONRPC(line)
 		return
 	}
-	
+
 	// Handle simple text commands
 	if line == "help" {
 		fmt.Println("{\"result\": \"Available commands: help, echo, prompt, password, time, exit\"}")
@@ -104,7 +105,7 @@ func handleJSONRPC(jsonStr string) {
 			}
 		}
 	}
-	
+
 	// Echo back the JSON as the result if we couldn't parse it
 	fmt.Printf("{\"result\": \"Received JSON: %s\"}\n", jsonStr)
 }

@@ -10,10 +10,10 @@ import (
 type Provider interface {
 	// Middleware returns HTTP middleware that enforces authentication
 	Middleware(next http.Handler) http.Handler
-	
+
 	// Name returns the provider name (e.g., "local", "google", "github")
 	Name() string
-	
+
 	// IsConfigured returns true if the provider is properly configured
 	IsConfigured() bool
 }
@@ -31,13 +31,13 @@ type UserInfo struct {
 type SessionStore interface {
 	// Create creates a new session for the user
 	Create(userInfo UserInfo) (sessionID string, err error)
-	
+
 	// Validate validates a session and returns user info
 	Validate(sessionID string) (userInfo UserInfo, valid bool)
-	
+
 	// Destroy destroys a session
 	Destroy(sessionID string) error
-	
+
 	// Cleanup removes expired sessions
 	Cleanup() error
 }
@@ -46,10 +46,10 @@ type SessionStore interface {
 type UserStore interface {
 	// Authenticate verifies user credentials
 	Authenticate(username, password string) (userInfo UserInfo, valid bool)
-	
+
 	// GetUser retrieves user information by username
 	GetUser(username string) (userInfo UserInfo, exists bool)
-	
+
 	// ListUsers returns all usernames
 	ListUsers() []string
 }
@@ -58,22 +58,22 @@ type UserStore interface {
 type Config struct {
 	// Provider type (local, google, github, etc.)
 	Provider string
-	
+
 	// Session configuration
 	SessionTimeout time.Duration
 	SecureCookies  bool
 	CookieDomain   string
-	
+
 	// URLs
 	LoginPath    string
 	LogoutPath   string
 	CallbackPath string
-	
+
 	// For external OAuth providers
 	ClientID     string
 	ClientSecret string
 	RedirectURL  string
-	
+
 	// For local authentication
 	AuthorizedUsers []string
 }
@@ -83,7 +83,7 @@ func NewConfig() *Config {
 	return &Config{
 		SessionTimeout: 24 * time.Hour,
 		LoginPath:      "/login",
-		LogoutPath:     "/logout", 
+		LogoutPath:     "/logout",
 		CallbackPath:   "/auth/callback",
 		SecureCookies:  false, // Will be set to true for HTTPS
 	}
@@ -126,13 +126,13 @@ func (c *Config) SetSecurityOptions(secureCookies bool, domain string) *Config {
 type LocalConfig struct {
 	// File-based users
 	UsersFile string
-	
+
 	// Command-line users (username:password,username2:password2)
 	UsersString string
-	
+
 	// Persistence file for JSON user store
 	PersistFile string
-	
+
 	// In-memory users map (for programmatic setup)
 	Users map[string]string
 }

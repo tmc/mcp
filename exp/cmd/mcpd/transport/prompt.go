@@ -23,10 +23,10 @@ type InteractivePromptHandler struct {
 	TraceLogger *TraceLogger
 	termWidth   int
 	termHeight  int
-	savedState  *term.State    // Saved terminal state for restoration
-	inRawMode   bool           // Whether terminal is currently in raw mode
-	inPrompt    bool           // Whether we're currently handling a prompt
-	promptMutex sync.Mutex     // Mutex to protect terminal state changes
+	savedState  *term.State // Saved terminal state for restoration
+	inRawMode   bool        // Whether terminal is currently in raw mode
+	inPrompt    bool        // Whether we're currently handling a prompt
+	promptMutex sync.Mutex  // Mutex to protect terminal state changes
 }
 
 // PromptParameters contains parameters for a prompt request
@@ -48,9 +48,9 @@ type PromptResponse struct {
 
 const (
 	// ANSI escape codes
-	bell        = "\a"
-	clearLine   = "\r\033[K"
-	
+	bell      = "\a"
+	clearLine = "\r\033[K"
+
 	// Default prompt timeout in seconds
 	defaultPromptTimeout = 60
 )
@@ -58,16 +58,16 @@ const (
 // NewInteractivePromptHandler creates a new interactive prompt handler
 func NewInteractivePromptHandler(enabled bool) *InteractivePromptHandler {
 	handler := &InteractivePromptHandler{
-		Enabled: enabled,
-		StdinFd: int(os.Stdin.Fd()),
+		Enabled:  enabled,
+		StdinFd:  int(os.Stdin.Fd()),
 		StderrFd: int(os.Stderr.Fd()),
 	}
-	
+
 	// Initialize terminal dimensions if interactive
 	if enabled && term.IsTerminal(handler.StderrFd) {
 		handler.HandleResize()
 	}
-	
+
 	return handler
 }
 
@@ -98,7 +98,7 @@ func (h *InteractivePromptHandler) HandleResize() {
 func (h *InteractivePromptHandler) HandleSuspend() {
 	h.promptMutex.Lock()
 	defer h.promptMutex.Unlock()
-	
+
 	// Restore terminal state if we're currently in raw mode
 	if h.inRawMode && h.savedState != nil {
 		slog.Debug("Restoring terminal state before suspension")
@@ -111,11 +111,11 @@ func (h *InteractivePromptHandler) HandleSuspend() {
 func (h *InteractivePromptHandler) HandleResume() {
 	h.promptMutex.Lock()
 	defer h.promptMutex.Unlock()
-	
+
 	// We don't re-enter raw mode here since the appropriate prompt
 	// function will do that when it continues. Just update terminal info.
 	h.HandleResize()
-	
+
 	if h.inPrompt {
 		// If we were in a prompt when suspended, indicate this to the user
 		fmt.Fprintln(os.Stderr, "\nResumed prompt session...")
@@ -126,28 +126,28 @@ func (h *InteractivePromptHandler) HandleResume() {
 func (h *InteractivePromptHandler) HandlePrompt(message []byte) (PromptResponse, error) {
 	// Default response for non-interactive mode
 	response := PromptResponse{
-		Status: "error_no_tty",
+		Status:       "error_no_tty",
 		ErrorMessage: "No interactive TTY available for prompt",
 	}
-	
+
 	// Parse the message
 	var jsonMsg map[string]interface{}
 	if err := json.Unmarshal(message, &jsonMsg); err != nil {
 		return response, fmt.Errorf("failed to parse prompt message: %w", err)
 	}
-	
+
 	// Check if this is an interactive/promptUser request
 	method, _ := jsonMsg["method"].(string)
 	if method != "interactive/promptUser" {
 		return response, fmt.Errorf("not an interactive/promptUser request: %s", method)
 	}
-	
+
 	// Extract parameters
 	paramsJson, ok := jsonMsg["params"].(map[string]interface{})
 	if !ok {
 		return response, fmt.Errorf("invalid params in promptUser request")
 	}
-	
+
 	// Convert to PromptParameters
 	params := PromptParameters{
 		PromptMessage: getStringParam(paramsJson, "prompt_message", "Enter input:"),
@@ -155,7 +155,7 @@ func (h *InteractivePromptHandler) HandlePrompt(message []byte) (PromptResponse,
 		InputType:     getStringParam(paramsJson, "input_type", "text"),
 		DefaultValue:  getStringParam(paramsJson, "default_value", ""),
 	}
-	
+
 	// Get timeout
 	if timeoutJson, ok := paramsJson["timeout_seconds"]; ok {
 		if timeout, ok := timeoutJson.(float64); ok {
@@ -165,17 +165,17 @@ func (h *InteractivePromptHandler) HandlePrompt(message []byte) (PromptResponse,
 	if params.TimeoutSecs <= 0 {
 		params.TimeoutSecs = defaultPromptTimeout
 	}
-	
+
 	// Set input ID in response
 	response.InputID = params.InputID
-	
+
 	// Check if we can prompt interactively
 	if !h.IsInteractive() {
-		slog.Warn("Cannot prompt interactively: no TTY available", 
+		slog.Warn("Cannot prompt interactively: no TTY available",
 			"input_id", params.InputID)
 		return response, nil
 	}
-	
+
 	// Prompt interactively
 	return h.promptInteractive(params)
 }
@@ -212,7 +212,7 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 
 	// Handle different input types
 	var input string
-	
+
 	// Create a channel for input completion
 	doneCh := make(chan struct{})
 	errCh := make(chan error, 1)
@@ -225,11 +225,11 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 		wasAlreadyInPrompt := h.inPrompt
 		h.inPrompt = true
 		h.promptMutex.Unlock()
-		
+
 		// Make sure we mark completion when done
 		defer func() {
 			close(doneCh)
-			
+
 			// Only reset prompt state if we set it (and not if being handled by another goroutine)
 			if !wasAlreadyInPrompt {
 				h.promptMutex.Lock()
@@ -237,11 +237,11 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 				h.promptMutex.Unlock()
 			}
 		}()
-		
+
 		switch params.InputType {
 		case "password":
 			// Read password with robust signal handling
-			
+
 			// Save terminal state before entering raw mode
 			h.promptMutex.Lock()
 			oldState, err := term.GetState(h.StdinFd)
@@ -250,20 +250,20 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 				errCh <- fmt.Errorf("failed to get terminal state: %w", err)
 				return
 			}
-			
+
 			// Save state for signal handling
 			h.savedState = oldState
 			h.promptMutex.Unlock()
-			
+
 			// Set up signal handling for interrupts
 			sigCh := make(chan os.Signal, 1)
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGWINCH)
-			
+
 			// Process signals in background
 			stopSigCh := make(chan struct{})
 			go func() {
 				defer signal.Stop(sigCh)
-				
+
 				for {
 					select {
 					case <-stopSigCh:
@@ -278,10 +278,10 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 								h.inRawMode = false
 							}
 							h.promptMutex.Unlock()
-							
+
 							errCh <- fmt.Errorf("password input interrupted")
 							return
-							
+
 						case syscall.SIGWINCH:
 							// Terminal resize
 							h.HandleResize()
@@ -289,48 +289,48 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 					}
 				}
 			}()
-			
+
 			// Ensure we stop the signal handler when done
 			defer close(stopSigCh)
-			
+
 			// Enter raw mode and track it
 			h.promptMutex.Lock()
 			h.inRawMode = true
 			h.promptMutex.Unlock()
-			
+
 			// Read the password (term.ReadPassword puts terminal in raw mode)
 			var passwordBytes []byte
 			passwordBytes, err = term.ReadPassword(h.StdinFd)
-			
+
 			// ReadPassword returns terminal to cooked mode, update our tracking
 			h.promptMutex.Lock()
 			h.inRawMode = false
 			h.promptMutex.Unlock()
-			
+
 			// Check for errors
 			if err != nil {
 				errCh <- fmt.Errorf("failed to read password: %w", err)
 				return
 			}
-			
+
 			// Print newline after password
 			fmt.Fprintln(os.Stderr)
-			
+
 			// Send password
 			inputCh <- string(passwordBytes)
-			
+
 		case "confirm_yn":
 			// Read y/n confirmation with improved signal handling
-			
+
 			// Setup signal handling
 			sigCh := make(chan os.Signal, 1)
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			
+
 			// Process signals in background
 			stopSigCh := make(chan struct{})
 			go func() {
 				defer signal.Stop(sigCh)
-				
+
 				select {
 				case <-stopSigCh:
 					return
@@ -339,10 +339,10 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 					errCh <- fmt.Errorf("confirmation input interrupted by %v", sig)
 				}
 			}()
-			
+
 			// Ensure we stop the signal handler when done
 			defer close(stopSigCh)
-			
+
 			// Read confirmation
 			reader := bufio.NewReader(os.Stdin)
 			confirm, readErr := reader.ReadString('\n')
@@ -350,7 +350,7 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 				errCh <- fmt.Errorf("failed to read confirmation: %w", readErr)
 				return
 			}
-			
+
 			// Process result
 			confirm = strings.ToLower(strings.TrimSpace(confirm))
 			if confirm == "y" || confirm == "yes" {
@@ -362,17 +362,17 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 			} else {
 				inputCh <- "no" // Default to no
 			}
-			
+
 		default: // "text" and others
 			// Setup signal handling
 			sigCh := make(chan os.Signal, 1)
 			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-			
+
 			// Process signals in background
 			stopSigCh := make(chan struct{})
 			go func() {
 				defer signal.Stop(sigCh)
-				
+
 				select {
 				case <-stopSigCh:
 					return
@@ -381,10 +381,10 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 					errCh <- fmt.Errorf("text input interrupted by %v", sig)
 				}
 			}()
-			
+
 			// Ensure we stop the signal handler when done
 			defer close(stopSigCh)
-			
+
 			// Read line
 			reader := bufio.NewReader(os.Stdin)
 			inputStr, readErr := reader.ReadString('\n')
@@ -403,22 +403,22 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 			inputCh <- inputStr
 		}
 	}()
-	
+
 	// Wait for input or timeout
 	select {
 	case <-doneCh:
 		// Input completed successfully
-		
+
 	case err := <-errCh:
 		// Error reading input
 		fmt.Fprintln(os.Stderr, clearLine+"Error reading input:", err)
 		response.Status = "error"
 		response.ErrorMessage = err.Error()
 		return response, err
-		
+
 	case input = <-inputCh:
 		// Got input
-		
+
 	case <-timeoutCh:
 		// Timeout
 		fmt.Fprintln(os.Stderr, clearLine+"Prompt timed out")
@@ -426,7 +426,7 @@ func (h *InteractivePromptHandler) promptInteractive(params PromptParameters) (P
 		response.ErrorMessage = fmt.Sprintf("Prompt timed out after %d seconds", params.TimeoutSecs)
 		return response, nil
 	}
-	
+
 	response.Value = input
 	return response, nil
 }
@@ -438,7 +438,7 @@ func (h *InteractivePromptHandler) HandleAndGenerateResponse(message []byte) ([]
 	if err != nil {
 		slog.Error("Error handling prompt", "error", err)
 	}
-	
+
 	// Generate a JSON-RPC request to send back to the server
 	request := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -446,13 +446,13 @@ func (h *InteractivePromptHandler) HandleAndGenerateResponse(message []byte) ([]
 		"method":  "interactive/userInput",
 		"params":  promptResp,
 	}
-	
+
 	// Marshal to JSON
 	response, err := json.Marshal(request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal response: %w", err)
 	}
-	
+
 	return response, nil
 }
 

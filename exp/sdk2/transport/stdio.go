@@ -18,10 +18,10 @@ import (
 // This follows the io interfaces pattern in Go stdlib.
 type Transport interface {
 	io.ReadWriteCloser
-	
+
 	// Dial establishes a connection for client use (for network transports)
 	Dial(ctx context.Context) (Conn, error)
-	
+
 	// Listen starts listening for server connections (for network transports)
 	Listen(ctx context.Context) (Listener, error)
 }
@@ -30,19 +30,19 @@ type Transport interface {
 // This follows the net.Conn pattern but is specialized for MCP.
 type Conn interface {
 	io.ReadWriteCloser
-	
+
 	// LocalAddr returns the local address
 	LocalAddr() net.Addr
-	
-	// RemoteAddr returns the remote address  
+
+	// RemoteAddr returns the remote address
 	RemoteAddr() net.Addr
-	
+
 	// SetDeadline sets read and write deadlines
 	SetDeadline(t time.Time) error
-	
+
 	// SetReadDeadline sets the read deadline
 	SetReadDeadline(t time.Time) error
-	
+
 	// SetWriteDeadline sets the write deadline
 	SetWriteDeadline(t time.Time) error
 }
@@ -52,10 +52,10 @@ type Conn interface {
 type Listener interface {
 	// Accept waits for and returns the next connection
 	Accept() (Conn, error)
-	
+
 	// Close closes the listener
 	Close() error
-	
+
 	// Addr returns the listener's address
 	Addr() net.Addr
 }
@@ -96,14 +96,14 @@ func (t *StdioTransport) Write(p []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
-	
+
 	// Auto-flush for line-based protocols like JSON-RPC
 	if len(p) > 0 && p[len(p)-1] == '\n' {
 		if flushErr := t.writer.Flush(); flushErr != nil {
 			return n, flushErr
 		}
 	}
-	
+
 	return n, nil
 }
 
@@ -124,11 +124,11 @@ func (t *StdioTransport) Dial(ctx context.Context) (Conn, error) {
 		}
 		t.conn = conn
 	})
-	
+
 	if t.conn == nil {
 		return nil, fmt.Errorf("stdio transport already used")
 	}
-	
+
 	return t.conn, nil
 }
 
@@ -154,7 +154,7 @@ func (c *stdioConn) Read(p []byte) (int, error) {
 		return 0, io.EOF
 	}
 	c.mu.Unlock()
-	
+
 	return c.transport.Read(p)
 }
 
@@ -165,19 +165,19 @@ func (c *stdioConn) Write(p []byte) (int, error) {
 		return 0, fmt.Errorf("connection closed")
 	}
 	c.mu.Unlock()
-	
+
 	return c.transport.Write(p)
 }
 
 func (c *stdioConn) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.closed {
 		return nil
 	}
 	c.closed = true
-	
+
 	return c.transport.Close()
 }
 
@@ -219,7 +219,7 @@ func (l *stdioListener) Accept() (Conn, error) {
 		return nil, fmt.Errorf("listener closed")
 	}
 	l.mu.Unlock()
-	
+
 	// For stdio, we only accept one connection
 	select {
 	case <-l.accepted:
@@ -227,19 +227,19 @@ func (l *stdioListener) Accept() (Conn, error) {
 	default:
 		close(l.accepted)
 	}
-	
+
 	return l.transport.Dial(context.Background())
 }
 
 func (l *stdioListener) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	if l.closed {
 		return nil
 	}
 	l.closed = true
-	
+
 	return l.transport.Close()
 }
 
@@ -293,13 +293,13 @@ type rwcConn struct {
 	rwc io.ReadWriteCloser
 }
 
-func (c *rwcConn) Read(p []byte) (int, error)  { return c.rwc.Read(p) }
-func (c *rwcConn) Write(p []byte) (int, error) { return c.rwc.Write(p) }
-func (c *rwcConn) Close() error                { return c.rwc.Close() }
-func (c *rwcConn) LocalAddr() net.Addr         { return &rwcAddr{} }
-func (c *rwcConn) RemoteAddr() net.Addr        { return &rwcAddr{} }
-func (c *rwcConn) SetDeadline(t time.Time) error     { return nil }
-func (c *rwcConn) SetReadDeadline(t time.Time) error { return nil }
+func (c *rwcConn) Read(p []byte) (int, error)         { return c.rwc.Read(p) }
+func (c *rwcConn) Write(p []byte) (int, error)        { return c.rwc.Write(p) }
+func (c *rwcConn) Close() error                       { return c.rwc.Close() }
+func (c *rwcConn) LocalAddr() net.Addr                { return &rwcAddr{} }
+func (c *rwcConn) RemoteAddr() net.Addr               { return &rwcAddr{} }
+func (c *rwcConn) SetDeadline(t time.Time) error      { return nil }
+func (c *rwcConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *rwcConn) SetWriteDeadline(t time.Time) error { return nil }
 
 // rwcListener implements Listener for ReadWriteCloser
@@ -312,12 +312,12 @@ type rwcListener struct {
 func (l *rwcListener) Accept() (Conn, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	if l.accepted {
 		return nil, fmt.Errorf("ReadWriteCloser listener only accepts one connection")
 	}
 	l.accepted = true
-	
+
 	return &rwcConn{rwc: l.transport.rwc}, nil
 }
 
@@ -362,10 +362,10 @@ func WriteMessage(w io.Writer, msg *Message) error {
 	if err != nil {
 		return fmt.Errorf("marshal message: %w", err)
 	}
-	
+
 	// Add newline for line-delimited JSON
 	data = append(data, '\n')
-	
+
 	_, err = w.Write(data)
 	return err
 }
@@ -376,11 +376,11 @@ func ReadMessage(r *bufio.Reader) (*Message, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read line: %w", err)
 	}
-	
+
 	var msg Message
 	if err := json.Unmarshal(line, &msg); err != nil {
 		return nil, fmt.Errorf("unmarshal message: %w", err)
 	}
-	
+
 	return &msg, nil
 }

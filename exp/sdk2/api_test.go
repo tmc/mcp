@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/tmc/mcp/exp/sdk2"
-	"log/slog"
-	"github.com/tmc/mcp/testutil"
 )
 
 // TestContentTypeValidation ensures our content types work correctly
@@ -21,20 +19,20 @@ func TestContentTypeValidation(t *testing.T) {
 		if text.ContentType() != "text/plain" {
 			t.Errorf("Expected text/plain, got %s", text.ContentType())
 		}
-		
+
 		// Invalid empty text
 		_, err = sdk2.NewTextContent("")
 		if err == nil {
 			t.Error("Expected empty text to fail validation")
 		}
-		
+
 		// Must constructor should work for valid content
 		validText := sdk2.MustNewTextContent("Valid text")
 		if validText.Text != "Valid text" {
 			t.Error("MustNewTextContent didn't set text correctly")
 		}
 	})
-	
+
 	t.Run("ImageContent", func(t *testing.T) {
 		// Valid image content
 		image, err := sdk2.NewImageContent("base64data", "image/png")
@@ -44,20 +42,20 @@ func TestContentTypeValidation(t *testing.T) {
 		if image.ContentType() != "image/png" {
 			t.Errorf("Expected image/png, got %s", image.ContentType())
 		}
-		
+
 		// Invalid empty data
 		_, err = sdk2.NewImageContent("", "image/png")
 		if err == nil {
 			t.Error("Expected empty data to fail validation")
 		}
-		
+
 		// Invalid empty mime type
 		_, err = sdk2.NewImageContent("data", "")
 		if err == nil {
 			t.Error("Expected empty mime type to fail validation")
 		}
 	})
-	
+
 	t.Run("ResourceReferenceContent", func(t *testing.T) {
 		// Valid resource content
 		resource, err := sdk2.NewResourceReferenceContent("file://example.txt")
@@ -67,7 +65,7 @@ func TestContentTypeValidation(t *testing.T) {
 		if resource.ContentType() != "text/plain" {
 			t.Errorf("Expected text/plain default, got %s", resource.ContentType())
 		}
-		
+
 		// Invalid empty URI
 		_, err = sdk2.NewResourceReferenceContent("")
 		if err == nil {
@@ -85,25 +83,25 @@ func TestToolCreation(t *testing.T) {
 		},
 		"required": []string{"message"},
 	}
-	
+
 	tool, err := sdk2.NewTool("echo", "Echo back input", schema)
 	if err != nil {
 		t.Fatalf("Expected tool creation to succeed: %v", err)
 	}
-	
+
 	if tool.Name != "echo" {
 		t.Errorf("Expected name 'echo', got %s", tool.Name)
 	}
 	if tool.Description != "Echo back input" {
 		t.Errorf("Expected description 'Echo back input', got %s", tool.Description)
 	}
-	
+
 	// Verify schema was marshaled correctly
 	var unmarshaledSchema map[string]any
 	if err := json.Unmarshal(tool.InputSchema, &unmarshaledSchema); err != nil {
 		t.Fatalf("Failed to unmarshal schema: %v", err)
 	}
-	
+
 	// Must constructor should work
 	mustTool := sdk2.MustNewTool("must-echo", "Must echo", schema)
 	if mustTool.Name != "must-echo" {
@@ -114,12 +112,12 @@ func TestToolCreation(t *testing.T) {
 // TestClientOptions ensures functional options work correctly
 func TestClientOptions(t *testing.T) {
 	config := &sdk2.ClientConfig{}
-	
+
 	// Apply options
 	sdk2.WithTimeout(30 * time.Second)(config)
 	sdk2.WithRetries(5, 2*time.Second)(config)
 	sdk2.WithClientInfo("test-client", "1.0.0")(config)
-	
+
 	if config.Timeout != 30*time.Second {
 		t.Errorf("Expected 30s timeout, got %v", config.Timeout)
 	}
@@ -149,11 +147,11 @@ func TestRequestIDHandling(t *testing.T) {
 		{"float ID", float64(123.45), `123.45`},
 		{"null ID", nil, `null`},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			id := sdk2.RequestID{Value: tc.value}
-			
+
 			// Test marshaling
 			data, err := json.Marshal(id)
 			if err != nil {
@@ -162,13 +160,13 @@ func TestRequestIDHandling(t *testing.T) {
 			if string(data) != tc.expected {
 				t.Errorf("Expected %s, got %s", tc.expected, string(data))
 			}
-			
+
 			// Test unmarshaling
 			var unmarshaledID sdk2.RequestID
 			if err := json.Unmarshal(data, &unmarshaledID); err != nil {
 				t.Fatalf("Failed to unmarshal ID: %v", err)
 			}
-			
+
 			// For float64, JSON unmarshaling converts all numbers to float64
 			if tc.value != nil {
 				switch v := tc.value.(type) {
@@ -197,7 +195,7 @@ func TestContentMarshaling(t *testing.T) {
 		sdk2.MustNewImageContent("base64data", "image/png"),
 		sdk2.MustNewResourceReferenceContent("file://example.txt"),
 	}
-	
+
 	for i, content := range contents {
 		t.Run(content.ContentType(), func(t *testing.T) {
 			// Marshal
@@ -205,19 +203,19 @@ func TestContentMarshaling(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to marshal content %d: %v", i, err)
 			}
-			
+
 			// Unmarshal
 			unmarshaledContent, err := sdk2.UnmarshalContent(data)
 			if err != nil {
 				t.Fatalf("Failed to unmarshal content %d: %v", i, err)
 			}
-			
+
 			// Verify type
 			if unmarshaledContent.ContentType() != content.ContentType() {
-				t.Errorf("Content type mismatch: expected %s, got %s", 
+				t.Errorf("Content type mismatch: expected %s, got %s",
 					content.ContentType(), unmarshaledContent.ContentType())
 			}
-			
+
 			// Verify it's valid
 			if err := unmarshaledContent.Valid(); err != nil {
 				t.Errorf("Unmarshaled content is invalid: %v", err)
@@ -234,21 +232,21 @@ func TestServerCreation(t *testing.T) {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
-	
+
 	if server1.Addr != ":stdio" {
 		t.Error("Server addr not set correctly")
 	}
-	
+
 	// Server with options
 	server2 := sdk2.NewServer(
 		sdk2.WithServerInfo("test-server", "1.0.0"),
 		sdk2.WithTimeouts(5*time.Second, 5*time.Second),
 	)
-	
+
 	if server2.ReadTimeout != 5*time.Second {
 		t.Error("Server timeout not set correctly")
 	}
-	
+
 	// Should use DefaultServeMux by default
 	if server2.Handler != sdk2.DefaultServeMux {
 		t.Error("Server should use DefaultServeMux by default")

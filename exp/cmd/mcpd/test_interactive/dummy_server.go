@@ -1,4 +1,5 @@
 //go:build ignore
+
 package main
 
 import (
@@ -14,16 +15,16 @@ import (
 func main() {
 	// Print startup message to stderr
 	fmt.Fprintln(os.Stderr, "Dummy server started")
-	
+
 	// Create a scanner to read lines from stdin
 	scanner := bufio.NewScanner(os.Stdin)
-	
+
 	// Keep running until told to exit
 	for {
 		// Check if there's input available
 		if scanner.Scan() {
 			line := scanner.Text()
-			
+
 			// Process the line (simple echo)
 			processLine(line)
 		} else {
@@ -32,19 +33,19 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
 				break
 			}
-			
+
 			// No more input (EOF)
 			break
 		}
 	}
-	
+
 	fmt.Fprintln(os.Stderr, "Dummy server shutting down")
 }
 
 // processLine handles a line of input
 func processLine(line string) {
 	line = strings.TrimSpace(line)
-	
+
 	// Handle special commands
 	if strings.HasPrefix(line, "sleep") {
 		// Sleep command (e.g., "sleep 5")
@@ -94,7 +95,7 @@ func processLine(line string) {
 			}
 		}
 	}
-	
+
 	// Default echo
 	fmt.Printf("{\"result\": \"unknown command: %s\"}\n", line)
 }

@@ -20,11 +20,11 @@ type MemoryStore struct {
 
 // Session represents a user session
 type Session struct {
-	ID        string           `json:"id"`
-	UserInfo  authtypes.UserInfo   `json:"user_info"`
-	CreatedAt time.Time        `json:"created_at"`
-	ExpiresAt time.Time        `json:"expires_at"`
-	LastSeen  time.Time        `json:"last_seen"`
+	ID        string             `json:"id"`
+	UserInfo  authtypes.UserInfo `json:"user_info"`
+	CreatedAt time.Time          `json:"created_at"`
+	ExpiresAt time.Time          `json:"expires_at"`
+	LastSeen  time.Time          `json:"last_seen"`
 }
 
 // NewMemoryStore creates a new in-memory session store
@@ -33,10 +33,10 @@ func NewMemoryStore(timeout time.Duration) *MemoryStore {
 		sessions: make(map[string]*Session),
 		timeout:  timeout,
 	}
-	
+
 	// Start cleanup goroutine
 	go store.startCleanup()
-	
+
 	return store
 }
 
@@ -44,10 +44,10 @@ func NewMemoryStore(timeout time.Duration) *MemoryStore {
 func (s *MemoryStore) Create(userInfo authtypes.UserInfo) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	sessionID := generateSessionID()
 	now := time.Now()
-	
+
 	session := &Session{
 		ID:        sessionID,
 		UserInfo:  userInfo,
@@ -55,7 +55,7 @@ func (s *MemoryStore) Create(userInfo authtypes.UserInfo) (string, error) {
 		ExpiresAt: now.Add(s.timeout),
 		LastSeen:  now,
 	}
-	
+
 	s.sessions[sessionID] = session
 	return sessionID, nil
 }
@@ -64,21 +64,21 @@ func (s *MemoryStore) Create(userInfo authtypes.UserInfo) (string, error) {
 func (s *MemoryStore) Validate(sessionID string) (authtypes.UserInfo, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	session, exists := s.sessions[sessionID]
 	if !exists {
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	// Check if session has expired
 	if time.Now().After(session.ExpiresAt) {
 		delete(s.sessions, sessionID)
 		return authtypes.UserInfo{}, false
 	}
-	
+
 	// Update last seen time
 	session.LastSeen = time.Now()
-	
+
 	return session.UserInfo, true
 }
 
@@ -86,7 +86,7 @@ func (s *MemoryStore) Validate(sessionID string) (authtypes.UserInfo, bool) {
 func (s *MemoryStore) Destroy(sessionID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	delete(s.sessions, sessionID)
 	return nil
 }
@@ -95,14 +95,14 @@ func (s *MemoryStore) Destroy(sessionID string) error {
 func (s *MemoryStore) Cleanup() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	now := time.Now()
 	for id, session := range s.sessions {
 		if now.After(session.ExpiresAt) {
 			delete(s.sessions, id)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -117,12 +117,12 @@ func (s *MemoryStore) GetSessionCount() int {
 func (s *MemoryStore) GetSessionInfo(sessionID string) (*Session, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	session, exists := s.sessions[sessionID]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Return a copy to avoid race conditions
 	sessionCopy := *session
 	return &sessionCopy, true
@@ -132,16 +132,16 @@ func (s *MemoryStore) GetSessionInfo(sessionID string) (*Session, bool) {
 func (s *MemoryStore) ListActiveSessions() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	var sessions []string
 	now := time.Now()
-	
+
 	for id, session := range s.sessions {
 		if now.Before(session.ExpiresAt) {
 			sessions = append(sessions, id)
 		}
 	}
-	
+
 	return sessions
 }
 
@@ -149,7 +149,7 @@ func (s *MemoryStore) ListActiveSessions() []string {
 func (s *MemoryStore) startCleanup() {
 	ticker := time.NewTicker(time.Hour) // Cleanup every hour
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		s.Cleanup()
 	}
@@ -180,11 +180,11 @@ func SetSessionCookie(w http.ResponseWriter, sessionID string, secure bool, doma
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   24 * 60 * 60, // 24 hours
 	}
-	
+
 	if domain != "" {
 		cookie.Domain = domain
 	}
-	
+
 	http.SetCookie(w, cookie)
 }
 
@@ -196,11 +196,11 @@ func ClearSessionCookie(w http.ResponseWriter, domain string) {
 		Path:   "/",
 		MaxAge: -1,
 	}
-	
+
 	if domain != "" {
 		cookie.Domain = domain
 	}
-	
+
 	http.SetCookie(w, cookie)
 }
 

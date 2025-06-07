@@ -20,11 +20,11 @@ import (
 )
 
 var (
-	addr      = flag.String("addr", ":8080", "HTTP server address")
-	dir       = flag.String("dir", ".", "Directory to monitor for .mcp files")
-	verbose   = flag.Bool("v", false, "Verbose output")
-	quiet     = flag.Bool("q", false, "Quiet mode")
-	open      = flag.Bool("open", false, "Open server in browser on startup")
+	addr    = flag.String("addr", ":8080", "HTTP server address")
+	dir     = flag.String("dir", ".", "Directory to monitor for .mcp files")
+	verbose = flag.Bool("v", false, "Verbose output")
+	quiet   = flag.Bool("q", false, "Quiet mode")
+	open    = flag.Bool("open", false, "Open server in browser on startup")
 )
 
 // FileInfo represents an MCP trace file
@@ -38,16 +38,16 @@ type FileInfo struct {
 
 // Server manages the web server and file watching
 type Server struct {
-	dir      string
-	clients  map[chan string]bool
-	files    map[string]*FileInfo
-	watcher  *fsnotify.Watcher
+	dir     string
+	clients map[chan string]bool
+	files   map[string]*FileInfo
+	watcher *fsnotify.Watcher
 }
 
 func main() {
 	log.SetPrefix("mcptrace-server: ")
 	log.SetFlags(0)
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Serves MCP trace files via HTTP with live updates.\n")
@@ -416,23 +416,23 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleFiles(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var fileList []*FileInfo
 	for _, file := range s.files {
 		fileList = append(fileList, file)
 	}
-	
+
 	// Sort by modification time (newest first)
 	sort.Slice(fileList, func(i, j int) bool {
 		return fileList[i].ModTime.After(fileList[j].ModTime)
 	})
-	
+
 	json.NewEncoder(w).Encode(fileList)
 }
 
 func (s *Server) handleFileContent(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimPrefix(r.URL.Path, "/api/file/")
-	
+
 	var file *FileInfo
 	for _, f := range s.files {
 		if f.Name == filename {
@@ -440,12 +440,12 @@ func (s *Server) handleFileContent(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	
+
 	if file == nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// If raw parameter is set, serve the file directly
 	if r.URL.Query().Get("raw") == "1" {
 		w.Header().Set("Content-Type", "text/plain")
@@ -453,14 +453,14 @@ func (s *Server) handleFileContent(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, file.Path)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(file)
 }
 
 func (s *Server) handleFileView(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimPrefix(r.URL.Path, "/view/")
-	
+
 	var file *FileInfo
 	for _, f := range s.files {
 		if f.Name == filename {
@@ -468,12 +468,12 @@ func (s *Server) handleFileView(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	
+
 	if file == nil {
 		http.NotFound(w, r)
 		return
 	}
-	
+
 	// Use mcptrace-to-html to generate the view
 	// For now, serve a simple HTML page with the file content
 	content, err := os.ReadFile(file.Path)
@@ -481,7 +481,7 @@ func (s *Server) handleFileView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read file", http.StatusInternalServerError)
 		return
 	}
-	
+
 	tmpl := `<!DOCTYPE html>
 <html>
 <head>
@@ -520,7 +520,7 @@ func (s *Server) handleFileView(w http.ResponseWriter, r *http.Request) {
 		ModTime:  file.ModTime.Format("2006-01-02 15:04:05"),
 		Content:  string(content),
 	}
-	
+
 	t := template.Must(template.New("view").Parse(tmpl))
 	t.Execute(w, data)
 }

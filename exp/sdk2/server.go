@@ -27,13 +27,13 @@ func (srv *Server) ListenAndServe() error {
 	if addr == "" {
 		addr = ":stdio"
 	}
-	
+
 	if addr == ":stdio" {
 		// Use stdio listener
 		ln := newStdioListener()
 		return srv.Serve(ln)
 	}
-	
+
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -48,13 +48,13 @@ func (srv *Server) ListenAndServe() error {
 // Serve always returns a non-nil error and closes l.
 func (srv *Server) Serve(l Listener) error {
 	defer l.Close()
-	
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
 			return err
 		}
-		
+
 		go srv.handleConnection(conn)
 	}
 }
@@ -79,8 +79,9 @@ func HandleFunc(pattern string, handler func(ResponseWriter, *Request)) {
 // If addr is blank, ":stdio" is used.
 //
 // Example:
-//   sdk2.HandleFunc("tools/call", myHandler)
-//   sdk2.ListenAndServe(":stdio")
+//
+//	sdk2.HandleFunc("tools/call", myHandler)
+//	sdk2.ListenAndServe(":stdio")
 func ListenAndServe(addr string) error {
 	server := &Server{
 		Addr:    addr,
@@ -101,7 +102,7 @@ func Serve(l Listener) error {
 func Error(w ResponseWriter, error string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	
+
 	errResp := map[string]any{
 		"error": map[string]any{
 			"code":    code,
@@ -135,14 +136,14 @@ type ServeMux struct {
 func (mux *ServeMux) Handle(pattern string, handler Handler) {
 	mux.mu.Lock()
 	defer mux.mu.Unlock()
-	
+
 	if pattern == "" {
 		panic("mcp: invalid pattern")
 	}
 	if handler == nil {
 		panic("mcp: nil handler")
 	}
-	
+
 	mux.handlers[pattern] = handler
 }
 
@@ -160,13 +161,13 @@ func (mux *ServeMux) ServeRequest(w ResponseWriter, r *Request) {
 	mux.mu.RLock()
 	handler, exists := mux.handlers[r.Method]
 	mux.mu.RUnlock()
-	
+
 	if !exists {
 		// Try DefaultMux as fallback
 		NotFound(w, r)
 		return
 	}
-	
+
 	handler.ServeRequest(w, r)
 }
 
@@ -208,10 +209,10 @@ func NotFoundHandler() Handler {
 // handleConnection handles a single connection
 func (srv *Server) handleConnection(conn Conn) {
 	defer conn.Close()
-	
+
 	reader := bufio.NewReader(conn)
 	writer := bufio.NewWriter(conn)
-	
+
 	// Simple JSON-RPC message handling
 	for {
 		// Read a line (JSON-RPC message)
@@ -223,14 +224,14 @@ func (srv *Server) handleConnection(conn Conn) {
 			slog.Error("Failed to read message", "error", err)
 			return
 		}
-		
+
 		// Parse JSON-RPC request
 		var req jsonrpcRequest
 		if err := json.Unmarshal(line, &req); err != nil {
 			slog.Error("Failed to parse JSON-RPC request", "error", err)
 			continue
 		}
-		
+
 		// Handle the request
 		srv.handleRequest(writer, &req)
 	}
@@ -248,14 +249,14 @@ func (srv *Server) handleRequest(writer *bufio.Writer, req *jsonrpcRequest) {
 		mcpReq.ID = &RequestID{Value: req.ID}
 	}
 	mcpReq.Context = context.Background()
-	
+
 	// Create response writer
 	rw := &responseWriter{
 		writer: writer,
 		header: make(Header),
 		id:     req.ID,
 	}
-	
+
 	// Handle special methods
 	switch req.Method {
 	case MethodInitialize:
@@ -270,7 +271,7 @@ func (srv *Server) handleRequest(writer *bufio.Writer, req *jsonrpcRequest) {
 		}
 		handler.ServeRequest(rw, mcpReq)
 	}
-	
+
 	writer.Flush()
 }
 
@@ -281,14 +282,14 @@ func (srv *Server) handleInitialize(w ResponseWriter, r *Request) {
 		ProtocolVersion string     `json:"protocolVersion"`
 		ClientInfo      ClientInfo `json:"clientInfo"`
 	}
-	
+
 	if r.Params != nil {
 		if err := json.Unmarshal(r.Params, &params); err != nil {
 			Error(w, "Invalid initialize parameters", StatusBadRequest)
 			return
 		}
 	}
-	
+
 	// Create response using server info or defaults
 	result := ServerInfo{
 		Name:    "sdk2-server",
@@ -300,7 +301,7 @@ func (srv *Server) handleInitialize(w ResponseWriter, r *Request) {
 			Logging:   &LoggingCapability{},
 		},
 	}
-	
+
 	// Override with configured server info if available
 	if srv.serverInfo != nil {
 		if srv.serverInfo.Name != "" {
@@ -313,7 +314,7 @@ func (srv *Server) handleInitialize(w ResponseWriter, r *Request) {
 			result.Capabilities = srv.serverInfo.Capabilities
 		}
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(StatusOK)
 	json.NewEncoder(w).Encode(result)
@@ -330,7 +331,7 @@ type responseWriter struct {
 	writer *bufio.Writer
 	header Header
 	id     any
-	
+
 	wroteHeader bool
 	statusCode  int
 }
@@ -343,7 +344,7 @@ func (w *responseWriter) Write(data []byte) (int, error) {
 	if !w.wroteHeader {
 		w.WriteHeader(StatusOK)
 	}
-	
+
 	// For JSON-RPC, we need to wrap the response
 	if w.id != nil {
 		resp := jsonrpcResponse{
@@ -351,17 +352,17 @@ func (w *responseWriter) Write(data []byte) (int, error) {
 			ID:      w.id,
 			Result:  json.RawMessage(data),
 		}
-		
+
 		respData, err := json.Marshal(resp)
 		if err != nil {
 			return 0, err
 		}
-		
+
 		// Add newline for line-delimited JSON
 		respData = append(respData, '\n')
 		return w.writer.Write(respData)
 	}
-	
+
 	return w.writer.Write(data)
 }
 
@@ -371,7 +372,7 @@ func (w *responseWriter) WriteHeader(statusCode int) {
 	}
 	w.wroteHeader = true
 	w.statusCode = statusCode
-	
+
 	// For error status codes, send JSON-RPC error
 	if statusCode >= 400 && w.id != nil {
 		resp := jsonrpcResponse{
@@ -382,7 +383,7 @@ func (w *responseWriter) WriteHeader(statusCode int) {
 				Message: StatusText(statusCode),
 			},
 		}
-		
+
 		respData, _ := json.Marshal(resp)
 		respData = append(respData, '\n')
 		w.writer.Write(respData)
@@ -424,7 +425,7 @@ func (l *stdioListener) Accept() (Conn, error) {
 		return nil, fmt.Errorf("listener closed")
 	}
 	l.mu.Unlock()
-	
+
 	// For stdio, we only accept one connection
 	var conn Conn
 	l.once.Do(func() {
@@ -433,12 +434,12 @@ func (l *stdioListener) Accept() (Conn, error) {
 			writer: os.Stdout,
 		}
 	})
-	
+
 	if conn == nil {
 		// Already served one connection
 		return nil, fmt.Errorf("stdio listener only accepts one connection")
 	}
-	
+
 	return conn, nil
 }
 

@@ -164,17 +164,17 @@ func TestConstants(t *testing.T) {
 
 	// Test method constants
 	expectedMethods := map[string]string{
-		MethodInitialize:     "initialize",
-		MethodInitialized:    "notifications/initialized",
-		MethodToolsList:      "tools/list",
-		MethodToolsCall:      "tools/call",
-		MethodResourcesList:  "resources/list",
-		MethodResourcesRead:  "resources/read",
-		MethodPromptsList:    "prompts/list",
-		MethodPromptsGet:     "prompts/get",
-		MethodLoggingLog:     "logging/setLevel",
-		MethodProgress:       "notifications/progress",
-		MethodCancelled:      "notifications/cancelled",
+		MethodInitialize:    "initialize",
+		MethodInitialized:   "notifications/initialized",
+		MethodToolsList:     "tools/list",
+		MethodToolsCall:     "tools/call",
+		MethodResourcesList: "resources/list",
+		MethodResourcesRead: "resources/read",
+		MethodPromptsList:   "prompts/list",
+		MethodPromptsGet:    "prompts/get",
+		MethodLoggingLog:    "logging/setLevel",
+		MethodProgress:      "notifications/progress",
+		MethodCancelled:     "notifications/cancelled",
 	}
 
 	for constant, expected := range expectedMethods {

@@ -14,18 +14,18 @@ import (
 func main() {
 	// Start the calculator server as a subprocess
 	cmd := exec.Command("go", "run", "../calculator/main.go")
-	
+
 	// Get stdin/stdout pipes
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		log.Fatalf("Failed to get stdin pipe: %v", err)
 	}
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatalf("Failed to get stdout pipe: %v", err)
 	}
-	
+
 	// Start the server process
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

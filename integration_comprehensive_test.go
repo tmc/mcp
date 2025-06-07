@@ -19,6 +19,7 @@ func ptr(s string) *string {
 // Comprehensive integration tests covering full MCP workflows
 
 func TestFullClientServerIntegration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -258,6 +259,7 @@ func TestFullClientServerIntegration(t *testing.T) {
 }
 
 func TestNotificationIntegration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -321,6 +323,7 @@ func TestNotificationIntegration(t *testing.T) {
 }
 
 func TestErrorHandlingIntegration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -428,6 +431,7 @@ func TestErrorHandlingIntegration(t *testing.T) {
 }
 
 func TestConcurrentClientServerIntegration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -536,6 +540,7 @@ func TestConcurrentClientServerIntegration(t *testing.T) {
 }
 
 func TestLongRunningIntegration(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("Skipping long-running integration test in short mode")
 	}
@@ -635,6 +640,7 @@ func TestLongRunningIntegration(t *testing.T) {
 }
 
 func TestMemoryIntegration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 

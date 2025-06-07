@@ -114,14 +114,14 @@ func NewServerClientPair(t *testing.T, ctx context.Context, server *mcp.Server) 
 	clientTransport := &mcp.ReadWriteCloserTransport{
 		ReadWriteCloser: clientConn,
 	}
-	
+
 	// Start server in a goroutine
 	serverCtx, serverCancel := context.WithCancel(ctx)
 	serverDone := make(chan error, 1)
 	go func() {
 		serverDone <- server.Serve(serverCtx, serverTransport)
 	}()
-	
+
 	// Create and initialize client
 	client, err := mcp.NewClient(clientTransport)
 	if err != nil {
@@ -130,7 +130,7 @@ func NewServerClientPair(t *testing.T, ctx context.Context, server *mcp.Server) 
 		_ = clientConn.Close()
 		return nil, err
 	}
-	
+
 	// Initialize the client
 	initReq := mcp.InitializeRequest{
 		ClientInfo: mcp.Implementation{
@@ -139,7 +139,7 @@ func NewServerClientPair(t *testing.T, ctx context.Context, server *mcp.Server) 
 		},
 		ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
 	}
-	
+
 	if _, err := client.Initialize(ctx, initReq); err != nil {
 		serverCancel()
 		_ = client.Close()
@@ -147,7 +147,7 @@ func NewServerClientPair(t *testing.T, ctx context.Context, server *mcp.Server) 
 		_ = clientConn.Close()
 		return nil, err
 	}
-	
+
 	return &ServerClientPair{
 		Server: server,
 		Client: client,
@@ -168,27 +168,27 @@ func NewServerClientPairWithOptions(ctx context.Context, server *mcp.Server, ser
 	for _, opt := range serverOpts {
 		opt(server)
 	}
-	
+
 	// Create the basic pair
 	pair, err := NewServerClientPair(nil, ctx, server)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Apply client options (if we need to recreate the client)
 	// For now, options are typically applied during client creation
 	// This is here for future extensibility
-	
+
 	return pair, nil
 }
 
 // TestServerConfig provides common server configuration for tests.
 type TestServerConfig struct {
-	Name     string
-	Version  string
-	Tools    []mcp.Tool
-	Prompts  []mcp.Prompt
-	Options  []mcp.ServerOption
+	Name    string
+	Version string
+	Tools   []mcp.Tool
+	Prompts []mcp.Prompt
+	Options []mcp.ServerOption
 }
 
 // NewTestServer creates a new server configured for testing.
@@ -222,4 +222,3 @@ func NewTestServer(t *testing.T, config *TestServerConfig) *mcp.Server {
 
 	return server
 }
-

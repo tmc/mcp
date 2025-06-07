@@ -376,7 +376,7 @@ func TestServerCapabilitiesReporting(t *testing.T) {
 }
 
 // TestServerErrorHandling tests various error conditions
-func TestServerErrorHandling(t *testing.T) {
+func TestServerErrorHandlingComprehensive(t *testing.T) {
 	server := NewServer("test", "1.0", WithTestLogger(t, slog.LevelDebug))
 
 	// Note: The current implementation doesn't validate empty names/URIs during registration

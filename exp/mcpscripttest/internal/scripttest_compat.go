@@ -32,7 +32,7 @@ func testWithoutDeadline(t *testing.T, ctx context.Context, engine *script.Engin
 	if len(files) == 0 {
 		t.Fatal("no testdata")
 	}
-	
+
 	for _, file := range files {
 		file := file
 		name := strings.TrimSuffix(filepath.Base(file), ".txt")

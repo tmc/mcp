@@ -328,4 +328,3 @@ func printError(filename string, line int, col int, msg string, details ...inter
 	}
 	fmt.Printf("%s:%d:%d: error: %s\n", filename, line, col, msg)
 }
-

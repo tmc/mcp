@@ -236,6 +236,10 @@ func (c *Client) Close() error {
 
 // call is a helper to perform a JSON-RPC call with automatic cancellation notification
 func (c *Client) call(ctx context.Context, method string, params, result interface{}) error {
+	if c.conn == nil {
+		return errors.New("client connection is not established")
+	}
+
 	// Call the method and get the AsyncCall object
 	asyncCall := c.conn.Call(ctx, method, params)
 
@@ -258,7 +262,7 @@ func (c *Client) call(ctx context.Context, method string, params, result interfa
 					// If ID is nil, skip cancellation
 					return
 				}
-				
+
 				cancelParams := map[string]interface{}{
 					"requestId": idValue,
 				}

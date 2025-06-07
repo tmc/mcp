@@ -314,10 +314,15 @@ func TestServerHandleInitialize(t *testing.T) {
 			ctx := context.Background()
 
 			// Convert to jsonrpc2.Request
+			params, _ := tt.request.Params.(json.RawMessage)
+			idRaw, _ := tt.request.ID.(json.RawMessage)
+			var id jsonrpc2.ID
+			json.Unmarshal(idRaw, &id)
+
 			req := &jsonrpc2.Request{
 				Method: tt.request.Method,
-				Params: tt.request.Params,
-				ID:     tt.request.ID,
+				Params: params,
+				ID:     id,
 			}
 
 			handler, exists := server.handlers[string(MethodInitialize)]
@@ -345,8 +350,8 @@ func TestServerHandleInitialize(t *testing.T) {
 				return
 			}
 
-			if initResult.ProtocolVersion != PROTOCOL_VERSION {
-				t.Errorf("Expected protocol version %s, got %s", PROTOCOL_VERSION, initResult.ProtocolVersion)
+			if initResult.ProtocolVersion != "2025-03-26" {
+				t.Errorf("Expected protocol version %s, got %s", "2025-03-26", initResult.ProtocolVersion)
 			}
 
 			if initResult.ServerInfo.Name != server.name {
@@ -363,8 +368,8 @@ func TestServerToolsListHandler(t *testing.T) {
 	tool1 := Tool{Name: "tool1", Description: "First tool"}
 	tool2 := Tool{Name: "tool2", Description: "Second tool"}
 
-	handler := func(ctx context.Context, req CallToolRequest) (CallToolResult, error) {
-		return CallToolResult{}, nil
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		return &CallToolResult{}, nil
 	}
 
 	_ = server.RegisterTool(tool1, handler)
@@ -415,17 +420,22 @@ func TestServerToolsCallHandler(t *testing.T) {
 		Description: "Echoes input",
 	}
 
-	handler := func(ctx context.Context, req CallToolRequest) (CallToolResult, error) {
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 		if req.Name != "echo-tool" {
-			return CallToolResult{}, fmt.Errorf("unexpected tool name: %s", req.Name)
+			return nil, fmt.Errorf("unexpected tool name: %s", req.Name)
 		}
 
-		input, ok := req.Arguments["input"].(string)
+		var args map[string]interface{}
+		if err := json.Unmarshal(req.Arguments, &args); err != nil {
+			return nil, fmt.Errorf("invalid arguments: %v", err)
+		}
+
+		input, ok := args["input"].(string)
 		if !ok {
-			return CallToolResult{}, fmt.Errorf("missing or invalid input")
+			return nil, fmt.Errorf("missing or invalid input")
 		}
 
-		return CallToolResult{
+		return &CallToolResult{
 			Content: []interface{}{
 				map[string]interface{}{
 					"type": "text",
@@ -527,8 +537,8 @@ func TestServerConcurrentOperations(t *testing.T) {
 				Description: fmt.Sprintf("Tool %d", id),
 			}
 
-			handler := func(ctx context.Context, req CallToolRequest) (CallToolResult, error) {
-				return CallToolResult{}, nil
+			handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+				return &CallToolResult{}, nil
 			}
 
 			if err := server.RegisterTool(tool, handler); err != nil {
@@ -564,8 +574,8 @@ func TestServerErrorHandling(t *testing.T) {
 
 	// Register a tool that returns an error
 	tool := Tool{Name: "error-tool", Description: "Always errors"}
-	handler := func(ctx context.Context, req CallToolRequest) (CallToolResult, error) {
-		return CallToolResult{}, fmt.Errorf("tool error: %s", req.Name)
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		return nil, fmt.Errorf("tool error: %s", req.Name)
 	}
 
 	_ = server.RegisterTool(tool, handler)
@@ -597,12 +607,12 @@ func TestServerContextCancellation(t *testing.T) {
 
 	// Register a tool that checks context cancellation
 	tool := Tool{Name: "long-running-tool", Description: "Long running operation"}
-	handler := func(ctx context.Context, req CallToolRequest) (CallToolResult, error) {
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 		select {
 		case <-ctx.Done():
-			return CallToolResult{}, ctx.Err()
+			return nil, ctx.Err()
 		case <-time.After(1 * time.Second):
-			return CallToolResult{
+			return &CallToolResult{
 				Content: []interface{}{
 					map[string]interface{}{
 						"type": "text",

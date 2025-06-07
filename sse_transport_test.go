@@ -1,8 +1,6 @@
 package mcp_test
 
 import (
-	"bytes"
-	"context"
 	"context"
 	"io"
 	"log/slog"
@@ -32,16 +30,13 @@ func TestSSEClientTransport(t *testing.T) {
 	}
 }
 
-// TestSSEServerTransport tests the SSE server transport
-func TestSSEServerTransport(t *testing.T) {
-	// Create a mock ReadWriteCloser
-	mockRWC := &mockReadWriteCloser{}
-// TestSSEServerTransport tests the SSE server transport
 func TestSSEServerTransport(t *testing.T) {
 	// Create a mock ReadWriteCloser
 	mockRWC := &mockReadWriteCloser{
 		readData:    []byte{},
 		writtenData: []byte{},
+		readIndex:   0,
+		closed:      false,
 	}
 
 	transport := mcp.NewSSEServerTransport(mockRWC, slog.Default())
@@ -60,17 +55,6 @@ func TestSSEServerTransport(t *testing.T) {
 	if rwc != mockRWC {
 		t.Error("expected dial to return the same RWC")
 	}
-}
-
-// mockReadWriteCloser is a simple mock that satisfies io.ReadWriteCloser
-type mockReadWriteCloser struct {
-	*bytes.Buffer
-	closed bool
-}
-
-func (m *mockReadWriteCloser) Close() error {
-	m.closed = true
-	return nil
 }
 
 // mockReadWriteCloser implements io.ReadWriteCloser for testing
@@ -105,4 +89,3 @@ func (m *mockReadWriteCloser) Close() error {
 	m.closed = true
 	return nil
 }
-

@@ -8,9 +8,6 @@ import (
 
 // TestMCPShadowScripts runs all scripts in the testdata directory
 func TestMCPShadowScripts(t *testing.T) {
-	// Setup coverage environment automatically
-	mcpscripttest.SetupCoverageEnvironment(t)
-
 	// Run all scripts
 	mcpscripttest.Test(t, "testdata/*.txt")
 }

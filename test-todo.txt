@@ -1,0 +1,234 @@
+# MCP Test TODO: Advanced Testing Patterns from golang-tools Analysis
+
+## Executive Summary
+Based on analysis of the golang-tools MCP implementation, this document outlines sophisticated testing patterns that should be implemented to achieve enterprise-grade test coverage and quality.
+
+## Priority 1: Standards Compliance Testing (CRITICAL)
+
+### JSON Schema Validation Suite Integration
+- [ ] Implement official JSON Schema draft2020-12 test suite integration
+- [ ] Add comprehensive validation testing for all 25+ JSON Schema feature areas:
+  - [ ] additionalProperties.json (88 test cases)
+  - [ ] allOf.json (164 test cases) 
+  - [ ] anyOf.json (147 test cases)
+  - [ ] boolean_schema.json (12 test cases)
+  - [ ] const.json (54 test cases)
+  - [ ] contains.json (116 test cases)
+  - [ ] enum.json (87 test cases)
+  - [ ] if-then-else.json (136 test cases)
+  - [ ] items.json (122 test cases)
+  - [ ] maximum/minimum.json (200+ test cases)
+  - [ ] pattern.json (52 test cases)
+  - [ ] properties.json (167 test cases)
+  - [ ] required.json (63 test cases)
+  - [ ] type.json (156 test cases)
+  - [ ] All others in testdata/draft2020-12/
+
+### MCP Protocol Compliance Testing
+- [ ] Create official MCP protocol specification test suite
+- [ ] Test all protocol message types with edge cases
+- [ ] Validate JSON-RPC 2.0 compliance across all operations
+- [ ] Test protocol version negotiation and compatibility
+
+## Priority 2: End-to-End Integration Testing (HIGH)
+
+### Complete Protocol Lifecycle Testing
+- [ ] Implement full client-server communication tests like golang-tools:
+  ```go
+  func TestEndToEndProtocol(t *testing.T) {
+      // Complete setup, operation, and teardown
+      s := NewServer("testServer", "v1.0.0", nil)
+      c := NewClient("testClient", "v1.0.0", transport, nil)
+      
+      // Test all major operations
+      tools, err := c.ListTools(ctx)
+      result, err := c.CallTool(ctx, "tool", params)
+      resources, err := c.ListResources(ctx)
+      prompts, err := c.ListPrompts(ctx)
+  }
+  ```
+
+### Multi-Transport Integration Testing
+- [ ] **Stdio Transport**: Full subprocess testing with environment isolation
+- [ ] **HTTP/SSE Transport**: Complete web-based protocol testing
+- [ ] **WebSocket Transport**: Real-time bidirectional communication testing
+- [ ] **Local Transport**: In-memory testing for development
+- [ ] **Transport Switching**: Dynamic transport switching during operation
+
+### Connection Lifecycle Management Testing
+- [ ] **Connection establishment** timing and error handling
+- [ ] **Authentication flows** for all supported auth types
+- [ ] **Graceful disconnection** and cleanup verification
+- [ ] **Reconnection logic** and state preservation
+- [ ] **Connection failure recovery** with backoff strategies
+
+## Priority 3: Concurrent Behavior Testing (HIGH)
+
+### Advanced Concurrency Testing (Beyond Current Synctest)
+- [ ] **Multi-client concurrent access** to single server
+- [ ] **Concurrent tool execution** with resource contention
+- [ ] **Context cancellation propagation** through entire stack
+- [ ] **Deadlock detection** in complex scenarios
+- [ ] **Race condition testing** in notification handlers
+- [ ] **Connection pool management** under load
+
+### Channel and Goroutine Testing
+- [ ] **Proper channel closure** in all code paths
+- [ ] **Goroutine leak detection** using runtime.NumGoroutine()
+- [ ] **Resource cleanup verification** under concurrent load
+- [ ] **Panic recovery** in goroutines and proper error propagation
+
+## Priority 4: Type-Safe Generic Testing (MEDIUM)
+
+### Advanced Go Generics Testing
+- [ ] Type inference verification for tool handlers:
+  ```go
+  func testToolHandler[T any](context.Context, *ServerConnection, T) ([]Content, error)
+  func TestNewTool(t *testing.T) {
+      // Verify type-safe tool creation and schema generation
+  }
+  ```
+- [ ] **Generic transport interfaces** with type constraints
+- [ ] **Type-safe JSON marshaling/unmarshaling** verification
+- [ ] **Schema generation from Go types** accuracy testing
+
+### Advanced Type System Testing
+- [ ] **Interface compliance verification** using type assertions
+- [ ] **Method set completeness** testing for interfaces
+- [ ] **Generic constraint satisfaction** testing
+- [ ] **Type conversion safety** testing for protocol types
+
+## Priority 5: Performance and Benchmarking (MEDIUM)
+
+### Missing from golang-tools - Critical Gap to Fill
+- [ ] **Throughput benchmarking** for different message sizes
+- [ ] **Latency measurement** across all transports
+- [ ] **Memory allocation profiling** during typical operations
+- [ ] **CPU usage profiling** under various loads
+- [ ] **Connection scalability testing** (1, 10, 100, 1000 clients)
+- [ ] **Tool execution performance** benchmarks
+- [ ] **JSON parsing/serialization** performance testing
+- [ ] **Transport overhead comparison** (stdio vs HTTP vs WebSocket)
+
+### Advanced Performance Testing
+- [ ] **Memory leak detection** using pprof
+- [ ] **GC pressure analysis** during sustained operation
+- [ ] **Resource exhaustion testing** (file descriptors, memory, etc.)
+- [ ] **Performance regression testing** in CI/CD pipeline
+
+## Priority 6: Error Handling and Edge Cases (HIGH)
+
+### Comprehensive Error Propagation Testing
+- [ ] **Protocol-level error handling** with proper JSON-RPC error codes
+- [ ] **Transport-level failure scenarios** (network interruption, etc.)
+- [ ] **Application-level error propagation** through entire stack
+- [ ] **Error message formatting** and i18n support
+- [ ] **Error recovery strategies** testing
+
+### Edge Case Testing
+- [ ] **Maximum message size handling** and chunking
+- [ ] **Invalid JSON handling** with proper error responses
+- [ ] **Protocol version mismatch** handling
+- [ ] **Resource exhaustion scenarios** (memory, CPU, file descriptors)
+- [ ] **Malformed input handling** with security implications
+- [ ] **Timeout scenarios** in various operations
+
+## Priority 7: Test Infrastructure and Helpers (MEDIUM)
+
+### Advanced Test Infrastructure
+- [ ] **Test helper functions** like golang-tools basicConnection():
+  ```go
+  func basicConnection(t *testing.T, tools ...*Tool) (*ServerConnection, *Client) {
+      t.Helper()
+      // Set up complete test environment
+  }
+  ```
+- [ ] **Test data generators** for complex scenarios
+- [ ] **Mock implementations** for external dependencies
+- [ ] **Test environment isolation** and cleanup
+- [ ] **Parallel test execution** optimization
+
+### Test Organization and Maintainability
+- [ ] **Table-driven tests** for comprehensive coverage
+- [ ] **Sub-test organization** for complex test scenarios
+- [ ] **Test naming conventions** for clarity and searchability
+- [ ] **Test documentation** and examples
+- [ ] **Test categorization** (unit, integration, e2e, performance)
+
+## Priority 8: Mathematical Precision and Data Integrity (LOW)
+
+### Precision Testing
+- [ ] **Floating-point precision** in JSON number handling
+- [ ] **Hash consistency** across equivalent values:
+  ```go
+  nums := []any{5, uint(5), 5.0, json.Number("5"), json.Number("5.00")}
+  // All should hash to the same value
+  ```
+- [ ] **Unicode handling** in text content
+- [ ] **Binary data encoding/decoding** accuracy
+- [ ] **Large number handling** beyond JSON native precision
+
+## Priority 9: Security and Robustness Testing (HIGH)
+
+### Security Testing
+- [ ] **Input sanitization** testing for all user inputs
+- [ ] **JSON injection** attack prevention
+- [ ] **Resource exhaustion** attack prevention
+- [ ] **Authentication bypass** attempt testing
+- [ ] **Authorization boundary** testing
+- [ ] **Sensitive data exposure** prevention
+
+### Robustness Testing
+- [ ] **Fuzzing test implementation** for protocol messages
+- [ ] **Chaos engineering** for transport failures
+- [ ] **Load testing** with sustained high throughput
+- [ ] **Stress testing** beyond normal operational limits
+
+## Priority 10: Documentation and Example Testing (LOW)
+
+### Documentation Testing
+- [ ] **Example code verification** in documentation
+- [ ] **API documentation accuracy** testing
+- [ ] **Tutorial walkthrough** automated testing
+- [ ] **README code snippet** validation
+
+## Implementation Strategy
+
+### Phase 1: Foundation (Weeks 1-2)
+1. Implement test helper infrastructure
+2. Set up official JSON Schema test suite
+3. Create basic end-to-end integration tests
+
+### Phase 2: Core Testing (Weeks 3-4)
+1. Advanced concurrency testing
+2. Multi-transport integration tests
+3. Comprehensive error handling tests
+
+### Phase 3: Performance and Quality (Weeks 5-6)
+1. Performance benchmarking suite
+2. Security and robustness testing
+3. Type-safe generic testing
+
+### Phase 4: Polish and Maintenance (Week 7)
+1. Test documentation and examples
+2. CI/CD integration optimization
+3. Test maintenance automation
+
+## Success Metrics
+
+- **Test Coverage**: >95% line coverage, >90% branch coverage
+- **Standards Compliance**: 100% pass rate on official test suites
+- **Performance**: Benchmarks establish baseline for regression detection
+- **Reliability**: Zero flaky tests, all tests pass consistently
+- **Maintainability**: Test execution time <5 minutes for full suite
+
+## Key Learnings from golang-tools Analysis
+
+1. **Standards compliance testing** is the highest value testing investment
+2. **End-to-end integration testing** catches more real-world issues than unit tests
+3. **Test helper infrastructure** dramatically improves test maintainability
+4. **Concurrent behavior testing** is essential for protocol implementations
+5. **Performance testing** is a critical gap that needs immediate attention
+6. **Type-safe testing** leverages Go's type system for better reliability
+
+This TODO represents a comprehensive testing strategy that would elevate the MCP implementation to enterprise-grade quality standards based on the sophisticated patterns demonstrated in the golang-tools implementation.

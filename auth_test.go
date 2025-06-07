@@ -414,10 +414,10 @@ func TestPKCE(t *testing.T) {
 
 func TestParseAuthorizationHeader(t *testing.T) {
 	tests := []struct {
-		name        string
-		header      string
+		name          string
+		header        string
 		expectedToken string
-		expectError bool
+		expectError   bool
 	}{
 		{
 			name:          "valid bearer token",

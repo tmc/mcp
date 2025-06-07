@@ -24,23 +24,23 @@ const (
 	ResponseTypeCode = "code"
 
 	// OAuth2 error codes
-	ErrorInvalidRequest         = "invalid_request"
-	ErrorInvalidClient          = "invalid_client"
-	ErrorInvalidGrant           = "invalid_grant"
-	ErrorUnauthorizedClient     = "unauthorized_client"
-	ErrorUnsupportedGrantType   = "unsupported_grant_type"
-	ErrorInvalidScope           = "invalid_scope"
-	ErrorAccessDenied           = "access_denied"
+	ErrorInvalidRequest          = "invalid_request"
+	ErrorInvalidClient           = "invalid_client"
+	ErrorInvalidGrant            = "invalid_grant"
+	ErrorUnauthorizedClient      = "unauthorized_client"
+	ErrorUnsupportedGrantType    = "unsupported_grant_type"
+	ErrorInvalidScope            = "invalid_scope"
+	ErrorAccessDenied            = "access_denied"
 	ErrorUnsupportedResponseType = "unsupported_response_type"
-	ErrorServerError            = "server_error"
-	ErrorTemporarilyUnavailable = "temporarily_unavailable"
+	ErrorServerError             = "server_error"
+	ErrorTemporarilyUnavailable  = "temporarily_unavailable"
 
 	// Token types
 	TokenTypeBearer = "Bearer"
 
 	// Default expiration times
-	DefaultAuthCodeExpirationSeconds = 600  // 10 minutes
-	DefaultAccessTokenExpirationSeconds = 3600 // 1 hour
+	DefaultAuthCodeExpirationSeconds     = 600        // 10 minutes
+	DefaultAccessTokenExpirationSeconds  = 3600       // 1 hour
 	DefaultRefreshTokenExpirationSeconds = 86400 * 30 // 30 days
 )
 
@@ -67,13 +67,13 @@ type AuthorizationRequest struct {
 
 // AuthorizationCode represents an OAuth authorization code
 type AuthorizationCode struct {
-	Code                    string    `json:"code"`
-	ClientID                string    `json:"client_id"`
-	RedirectURI             string    `json:"redirect_uri"`
-	Scopes                  []string  `json:"scopes"`
-	CodeChallenge           string    `json:"code_challenge,omitempty"`
-	ExpiresAt               time.Time `json:"expires_at"`
-	RedirectURIExplicit     bool      `json:"redirect_uri_explicit"`
+	Code                string    `json:"code"`
+	ClientID            string    `json:"client_id"`
+	RedirectURI         string    `json:"redirect_uri"`
+	Scopes              []string  `json:"scopes"`
+	CodeChallenge       string    `json:"code_challenge,omitempty"`
+	ExpiresAt           time.Time `json:"expires_at"`
+	RedirectURIExplicit bool      `json:"redirect_uri_explicit"`
 }
 
 // TokenRequest represents an OAuth token request
@@ -147,10 +147,10 @@ type OAuthProvider interface {
 
 // MemoryOAuthProvider provides an in-memory OAuth provider for testing/development
 type MemoryOAuthProvider struct {
-	clients         map[string]*OAuthClientInfo
-	authCodes       map[string]*AuthorizationCode
-	accessTokens    map[string]*AccessToken
-	refreshTokens   map[string]*RefreshToken
+	clients       map[string]*OAuthClientInfo
+	authCodes     map[string]*AuthorizationCode
+	accessTokens  map[string]*AccessToken
+	refreshTokens map[string]*RefreshToken
 }
 
 // NewMemoryOAuthProvider creates a new in-memory OAuth provider
@@ -168,7 +168,7 @@ func (p *MemoryOAuthProvider) RegisterClient(ctx context.Context, req *OAuthClie
 	if req.ClientID == "" {
 		req.ClientID = generateRandomString(32)
 	}
-	
+
 	if req.ClientSecret == "" {
 		req.ClientSecret = generateRandomString(64)
 	}

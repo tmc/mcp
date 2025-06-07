@@ -3,8 +3,6 @@
 package server
 
 import (
-	"context"
-	
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/tmc/mcprepos/mcp/adapters"
 	"github.com/tmc/mcprepos/mcp/adapters/mark3labs"
@@ -14,13 +12,13 @@ import (
 type (
 	MCPServer = server.MCPServer
 	Option    = server.Option
-	
+
 	// Handler function types
-	ToolHandlerFunc     = server.ToolHandlerFunc
-	ResourceHandlerFunc = server.ResourceHandlerFunc
+	ToolHandlerFunc             = server.ToolHandlerFunc
+	ResourceHandlerFunc         = server.ResourceHandlerFunc
 	ResourceTemplateHandlerFunc = server.ResourceTemplateHandlerFunc
-	PromptHandlerFunc   = server.PromptHandlerFunc
-	
+	PromptHandlerFunc           = server.PromptHandlerFunc
+
 	// Other server types
 	StdioServer = server.StdioServer
 	StdioOption = server.StdioOption
@@ -29,14 +27,14 @@ type (
 // NewMCPServer creates a new MCPServer that includes adapter functionality
 func NewMCPServer(name string, version string, options ...server.Option) *MCPServer {
 	s := server.NewMCPServer(name, version, options...)
-	
+
 	// Register the adapter in the global registry
 	adapter := mark3labs.NewAdapter(s, mark3labs.Mark3LabsOptions{
-		ServerName:     name,
-		ServerVersion:  version,
+		ServerName:    name,
+		ServerVersion: version,
 	})
 	adapters.RegisterAdapter(name, adapter)
-	
+
 	// Extend the server with adapter methods
 	return extendServer(s, adapter)
 }
@@ -75,10 +73,10 @@ var (
 	WithPromptCapabilities   = server.WithPromptCapabilities
 	WithLogging              = server.WithLogging
 	WithHooks                = server.WithHooks
-	
+
 	// Stdio server functions
-	NewStdioServer           = server.NewStdioServer
-	ServeStdio               = server.ServeStdio
-	WithErrorLogger          = server.WithErrorLogger
-	WithStdioContextFunc     = server.WithStdioContextFunc
+	NewStdioServer       = server.NewStdioServer
+	ServeStdio           = server.ServeStdio
+	WithErrorLogger      = server.WithErrorLogger
+	WithStdioContextFunc = server.WithStdioContextFunc
 )

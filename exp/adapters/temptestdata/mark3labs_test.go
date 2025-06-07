@@ -119,23 +119,23 @@ func TestMark3LabsServerOriginalAPI(t *testing.T) {
 
 	// Create a stdio server to test the server
 	stdioServer := server.NewStdioServer(s)
-	
+
 	// Create pipes for testing
 	inReader, inWriter := io.Pipe()
 	outReader, outWriter := io.Pipe()
-	
+
 	// Start the server
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- stdioServer.Listen(ctx, inReader, outWriter)
 	}()
-	
+
 	// Give the server a moment to start
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Send initialize request
 	initReq := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -149,41 +149,41 @@ func TestMark3LabsServerOriginalAPI(t *testing.T) {
 			},
 		},
 	}
-	
+
 	reqBytes, _ := json.Marshal(initReq)
-	reqBytes = append(reqBytes, '\n')  // Add newline as required by stdio protocol
-	
+	reqBytes = append(reqBytes, '\n') // Add newline as required by stdio protocol
+
 	// Write request
 	_, err := inWriter.Write(reqBytes)
 	if err != nil {
 		t.Fatalf("Failed to write request: %v", err)
 	}
-	
+
 	// Read response
 	scanner := bufio.NewScanner(outReader)
 	if !scanner.Scan() {
 		t.Fatal("No response received")
 	}
-	
+
 	response := scanner.Bytes()
 	var result map[string]interface{}
 	if err := json.Unmarshal(response, &result); err != nil {
 		t.Fatalf("Failed to unmarshal response: %v", err)
 	}
-	
+
 	// Verify the response
 	if result["jsonrpc"] != "2.0" {
 		t.Errorf("Expected jsonrpc 2.0, got %v", result["jsonrpc"])
 	}
-	
+
 	if resultData, ok := result["result"].(map[string]interface{}); ok {
 		if serverInfo, ok := resultData["serverInfo"].(map[string]interface{}); ok {
 			if serverInfo["name"] != "Mark3Labs Test Server" {
 				t.Errorf("Expected server name 'Mark3Labs Test Server', got %v", serverInfo["name"])
 			}
 		}
-		
-		// Verify capabilities  
+
+		// Verify capabilities
 		if capabilities, ok := resultData["capabilities"].(map[string]interface{}); ok {
 			if capabilities["tools"] == nil {
 				t.Error("Expected tools capability")
@@ -196,11 +196,11 @@ func TestMark3LabsServerOriginalAPI(t *testing.T) {
 			}
 		}
 	}
-	
+
 	// Stop the server
 	cancel()
 	inWriter.Close()
-	
+
 	// Wait for server to exit
 	select {
 	case err := <-errCh:

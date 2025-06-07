@@ -9,32 +9,31 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
-	"github.com/tmc/mcp/exp/adapters/mark3labs"
 	mcpSDK "github.com/tmc/mcp"
+	"github.com/tmc/mcp/exp/adapters/mark3labs"
 	"github.com/tmc/mcp/transport"
 )
 
 func main() {
 	// Create the adapter to bridge mark3labs to SDK
 	adapter := mark3labs.NewAdapter()
-	
+
 	// Create an SDK server that will use the adapter
 	sdkServer := mcpSDK.NewServer(
 		mcpSDK.WithName("mark3labs-test-server"),
 		mcpSDK.WithVersion("1.0.0"),
 		mcpSDK.WithAdapter(adapter),
 	)
-	
+
 	// Initialize adapter with the SDK server
 	ctx := context.Background()
 	if err := adapter.Initialize(ctx, sdkServer); err != nil {
 		log.Fatalf("Failed to initialize adapter: %v", err)
 	}
-	
+
 	// Register mark3labs components directly with the adapter
 	registerMark3LabsComponents(adapter.(*mark3labs.Mark3LabsAdapter))
-	
+
 	// Create transport
 	var t mcpSDK.Transport
 	if len(os.Args) > 1 && os.Args[1] == "--stdio" {
@@ -42,7 +41,7 @@ func main() {
 	} else {
 		log.Fatal("Please specify --stdio flag")
 	}
-	
+
 	// Serve
 	log.Printf("Starting mark3labs test server via adapter...")
 	if err := sdkServer.ServeTransport(ctx, t); err != nil {
@@ -81,7 +80,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 					IsError: true,
 				}, nil
 			}
-			
+
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					mcp.TextContent{
@@ -92,7 +91,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 			}, nil
 		},
 	)
-	
+
 	// Register calculate tool
 	adapter.RegisterTool(
 		mcp.Tool{
@@ -102,8 +101,8 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 				"type": "object",
 				"properties": map[string]interface{}{
 					"operation": map[string]interface{}{
-						"type": "string",
-						"enum": []string{"add", "subtract", "multiply", "divide"},
+						"type":        "string",
+						"enum":        []string{"add", "subtract", "multiply", "divide"},
 						"description": "The operation to perform",
 					},
 					"a": map[string]interface{}{
@@ -122,7 +121,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 			op, _ := req.Params.Arguments["operation"].(string)
 			a, _ := req.Params.Arguments["a"].(float64)
 			b, _ := req.Params.Arguments["b"].(float64)
-			
+
 			var result float64
 			switch op {
 			case "add":
@@ -149,7 +148,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 					IsError: true,
 				}, nil
 			}
-			
+
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					mcp.TextContent{
@@ -160,7 +159,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 			}, nil
 		},
 	)
-	
+
 	// Register test resource
 	adapter.RegisterResource(
 		mcp.Resource{
@@ -175,12 +174,12 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 				"adapter":   "mark3labs",
 				"timestamp": time.Now().Format(time.RFC3339),
 			}
-			
+
 			jsonData, err := json.MarshalIndent(config, "", "  ")
 			if err != nil {
 				return nil, err
 			}
-			
+
 			return []mcp.ResourceContents{
 				mcp.TextResourceContents{
 					URI:      "test://config",
@@ -190,7 +189,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 			}, nil
 		},
 	)
-	
+
 	// Register test prompt
 	adapter.RegisterPrompt(
 		mcp.Prompt{
@@ -206,7 +205,7 @@ func registerMark3LabsComponents(adapter *mark3labs.Mark3LabsAdapter) {
 		},
 		func(ctx context.Context, req mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 			topic := req.Params.Arguments["topic"]
-			
+
 			return &mcp.GetPromptResult{
 				Description: fmt.Sprintf("Generated prompt about %s", topic),
 				Messages: []mcp.PromptMessage{

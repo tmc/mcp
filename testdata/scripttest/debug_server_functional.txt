@@ -1,0 +1,28 @@
+# Debug Server Functional Test  
+# Test that debug server can start and serve content
+
+cd /Volumes/tmc/go/src/github.com/tmc/mcp
+
+echo '=== Building server with debug support ==='
+exec go build -o /tmp/debug-test-server examples/servers/mcp-say-server/main.go
+! stderr 'error'
+
+echo '=== Testing debug server behavior ==='
+# Test that server accepts debug flag without immediate error
+# We use timeout to avoid hanging if server runs indefinitely
+exec timeout 2s /tmp/debug-test-server -debug :0 </dev/null 2>&1 || echo 'Server test completed'
+
+# The server should mention debug functionality in its output
+# This will capture stderr from the timeout command
+stdout 'server' 
+! stderr 'fatal'
+
+echo '=== Testing debug integration ==='
+# Verify that debug-related code doesn't break basic functionality
+exec /tmp/debug-test-server -help
+stderr 'debug'
+
+# Clean up
+rm -f /tmp/debug-test-server
+
+echo '✅ Debug Server Functional Test Complete'

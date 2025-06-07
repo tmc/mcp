@@ -1,0 +1,43 @@
+# Test MCP protocol validation and compliance
+
+# Test protocol version negotiation
+cat > protocol_test.json << EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}}}
+EOF
+
+# Validate JSON structure with mcpspy
+exec mcpspy --pretty < protocol_test.json
+stdout '"jsonrpc": "2.0"'
+stdout '"protocolVersion": "2024-11-05"'
+
+# Test invalid JSON-RPC (missing version)
+cat > invalid.json << EOF
+{"id": 1, "method": "initialize"}
+EOF
+
+# This should still process but note the missing jsonrpc field
+exec mcpspy --pretty < invalid.json
+stdout '"method": "initialize"'
+
+# Test method validation patterns
+cat > methods_test.json << EOF
+{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "test"}}
+{"jsonrpc": "2.0", "id": 3, "method": "resources/list"}
+{"jsonrpc": "2.0", "method": "notifications/initialized"}
+EOF
+
+# Validate all method patterns
+exec mcpspy --pretty < methods_test.json
+stdout 'tools/list'
+stdout 'tools/call'
+stdout 'resources/list'
+stdout 'notifications/initialized'
+
+# Test with mcpdiff for comparison
+cp methods_test.json methods_test2.json
+exec mcpdiff methods_test.json methods_test2.json
+stdout 'identical' 'files are the same'
+
+# Cleanup
+exec rm protocol_test.json invalid.json methods_test.json methods_test2.json

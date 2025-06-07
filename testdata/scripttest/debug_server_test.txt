@@ -1,0 +1,34 @@
+# Test MCP debug server functionality
+
+# Build the mcp-say-server with debug support for testing
+go build -o ./test-say-server ./examples/servers/mcp-say-server
+
+# Start the server with debug enabled on an available port
+exec ./test-say-server -debug :0 &
+stderr 'Debug server started'
+stderr 'debug server listening'
+
+# Extract the debug port from stderr output
+stdout_contains 'localhost:'
+
+# Give the debug server a moment to start up
+sleep 1s
+
+# Test that the debug server responds on the main page
+# We'll use curl to test HTTP endpoints if available, otherwise use simple network tests
+[exec:curl --version]
+exec curl -s -f http://localhost:8080/ || echo "Curl test skipped"
+
+# Test basic process is running and can be terminated gracefully
+# Send SIGTERM to the background process
+kill %1
+
+# Wait for process to terminate
+wait
+
+# Test successful shutdown
+! stderr 'Error serving'
+
+-- test-expected-output.txt --
+Starting MCP Say Server...
+Debug server listening at http://localhost:

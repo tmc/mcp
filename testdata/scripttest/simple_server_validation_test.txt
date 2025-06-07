@@ -1,0 +1,30 @@
+# Simple Server Validation Test
+# Just check if servers can build and start successfully
+
+cd /Volumes/tmc/go/src/github.com/tmc/mcp
+
+# Test that servers can build successfully
+echo '=== Testing mcp-echo-server build ==='
+exec go build -o /tmp/mcp-echo-server examples/servers/mcp-echo-server/main.go
+! stderr 'error'
+
+echo '=== Testing mcp-time-server build ==='
+exec go build -o /tmp/mcp-time-server examples/servers/mcp-time-server/main.go
+! stderr 'error'
+
+echo '=== Testing mcp-say-server build ==='
+exec go build -o /tmp/mcp-say-server examples/servers/mcp-say-server/main.go
+! stderr 'error'
+
+echo '=== Testing mcp-weather-server build ==='
+exec go build -o /tmp/mcp-weather-server examples/servers/mcp-weather-server/main.go
+! stderr 'error'
+
+# Clean up
+rm /tmp/mcp-echo-server
+rm /tmp/mcp-time-server  
+rm /tmp/mcp-say-server
+rm /tmp/mcp-weather-server
+
+echo '✅ Simple Server Validation Complete'
+echo 'All tested servers build successfully'

@@ -14,17 +14,18 @@ import (
 
 // ANSI color codes
 const (
-	reset   = "\033[0m"
-	bold    = "\033[1m"
-	red     = "\033[31m"
-	green   = "\033[32m"
-	yellow  = "\033[33m"
-	blue    = "\033[34m"
-	magenta = "\033[35m"
-	cyan    = "\033[36m"
-	gray    = "\033[90m"
-	bgRed   = "\033[41m"
-	bgGreen = "\033[42m"
+	reset      = "\033[0m"
+	bold       = "\033[1m"
+	red        = "\033[31m"
+	green      = "\033[32m"
+	yellow     = "\033[33m"
+	blue       = "\033[34m"
+	magenta    = "\033[35m"
+	cyan       = "\033[36m"
+	gray       = "\033[90m"
+	bgRed      = "\033[41m"
+	bgGreen    = "\033[42m"
+	brightCyan = "\033[96m"
 )
 
 var (

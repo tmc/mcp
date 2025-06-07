@@ -8,8 +8,6 @@ import (
 	"math"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/tmc/mcp"
@@ -437,16 +435,16 @@ func performAdvancedMath(function string, x, y float64) (CalculationResult, erro
 
 func calculateStatistics(numbers []float64) StatisticsResult {
 	count := len(numbers)
-	
+
 	// Calculate sum
 	sum := 0.0
 	for _, num := range numbers {
 		sum += num
 	}
-	
+
 	// Calculate mean
 	mean := sum / float64(count)
-	
+
 	// Find min and max
 	min := numbers[0]
 	max := numbers[0]
@@ -458,7 +456,7 @@ func calculateStatistics(numbers []float64) StatisticsResult {
 			max = num
 		}
 	}
-	
+
 	// Calculate median
 	sorted := make([]float64, len(numbers))
 	copy(sorted, numbers)
@@ -469,14 +467,14 @@ func calculateStatistics(numbers []float64) StatisticsResult {
 			}
 		}
 	}
-	
+
 	var median float64
 	if count%2 == 0 {
 		median = (sorted[count/2-1] + sorted[count/2]) / 2
 	} else {
 		median = sorted[count/2]
 	}
-	
+
 	// Calculate standard deviation
 	variance := 0.0
 	for _, num := range numbers {
@@ -484,7 +482,7 @@ func calculateStatistics(numbers []float64) StatisticsResult {
 	}
 	variance /= float64(count)
 	stdDev := math.Sqrt(variance)
-	
+
 	return StatisticsResult{
 		Numbers: numbers,
 		Count:   count,
@@ -505,14 +503,14 @@ func convertUnits(value float64, fromUnit, toUnit string) (map[string]interface{
 			return nil, err
 		}
 		return map[string]interface{}{
-			"original_value": value,
-			"original_unit":  fromUnit,
+			"original_value":  value,
+			"original_unit":   fromUnit,
 			"converted_value": result,
 			"converted_unit":  toUnit,
 			"conversion_type": "temperature",
 		}, nil
 	}
-	
+
 	// Length conversions
 	if isLengthUnit(fromUnit) && isLengthUnit(toUnit) {
 		result, err := convertLength(value, fromUnit, toUnit)
@@ -520,14 +518,14 @@ func convertUnits(value float64, fromUnit, toUnit string) (map[string]interface{
 			return nil, err
 		}
 		return map[string]interface{}{
-			"original_value": value,
-			"original_unit":  fromUnit,
+			"original_value":  value,
+			"original_unit":   fromUnit,
 			"converted_value": result,
 			"converted_unit":  toUnit,
 			"conversion_type": "length",
 		}, nil
 	}
-	
+
 	// Weight conversions
 	if isWeightUnit(fromUnit) && isWeightUnit(toUnit) {
 		result, err := convertWeight(value, fromUnit, toUnit)
@@ -535,14 +533,14 @@ func convertUnits(value float64, fromUnit, toUnit string) (map[string]interface{
 			return nil, err
 		}
 		return map[string]interface{}{
-			"original_value": value,
-			"original_unit":  fromUnit,
+			"original_value":  value,
+			"original_unit":   fromUnit,
 			"converted_value": result,
 			"converted_unit":  toUnit,
 			"conversion_type": "weight",
 		}, nil
 	}
-	
+
 	// Volume conversions
 	if isVolumeUnit(fromUnit) && isVolumeUnit(toUnit) {
 		result, err := convertVolume(value, fromUnit, toUnit)
@@ -550,14 +548,14 @@ func convertUnits(value float64, fromUnit, toUnit string) (map[string]interface{
 			return nil, err
 		}
 		return map[string]interface{}{
-			"original_value": value,
-			"original_unit":  fromUnit,
+			"original_value":  value,
+			"original_unit":   fromUnit,
 			"converted_value": result,
 			"converted_unit":  toUnit,
 			"conversion_type": "volume",
 		}, nil
 	}
-	
+
 	return nil, fmt.Errorf("incompatible unit types: %s and %s", fromUnit, toUnit)
 }
 
@@ -605,7 +603,7 @@ func convertTemperature(value float64, from, to string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown temperature unit: %s", from)
 	}
-	
+
 	// Convert from Celsius to target
 	switch to {
 	case "celsius":
@@ -636,7 +634,7 @@ func convertLength(value float64, from, to string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown length unit: %s", from)
 	}
-	
+
 	// Convert from meters to target
 	switch to {
 	case "meters":
@@ -667,7 +665,7 @@ func convertWeight(value float64, from, to string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown weight unit: %s", from)
 	}
-	
+
 	// Convert from kilograms to target
 	switch to {
 	case "kilograms":
@@ -694,7 +692,7 @@ func convertVolume(value float64, from, to string) (float64, error) {
 	default:
 		return 0, fmt.Errorf("unknown volume unit: %s", from)
 	}
-	
+
 	// Convert from liters to target
 	switch to {
 	case "liters":

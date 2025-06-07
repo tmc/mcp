@@ -1,0 +1,57 @@
+# Test Puppeteer server error handling with aggressive timeouts
+
+# Set aggressive environment variables
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+env MCP_TOOL_TIMEOUT=4s
+
+# Start server
+bg bash 'go run main.go'
+sleep 1s
+
+# Test invalid method call
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"invalid/method\"}" | go run main.go
+'
+stdout 'error'
+
+# Test invalid tool name
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"invalid_tool\"}}" | go run main.go
+'
+stdout 'error'
+
+# Test missing arguments
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\"}}" | go run main.go
+'
+stdout 'error'
+
+# Test invalid URL
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"not-a-url\"}}}" | timeout 5s go run main.go
+'
+stdout 'error'
+
+# Test unreachable URL (should fail gracefully)
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"http://1.2.3.4:12345\"}}}" | timeout 5s go run main.go
+'
+stdout 'error'
+
+# Test malformed JSON (should handle gracefully)
+bash 'echo "invalid json" | go run main.go'
+stdout 'error'
+
+# Test empty request (should handle gracefully)  
+bash 'echo "" | go run main.go'
+stdout 'error'
+
+# Test timeout on slow page (should fail fast)
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"tools/call\", \"params\": {\"name\": \"screenshot\", \"arguments\": {\"url\": \"http://httpbin.org/delay/10\"}}}" | timeout 6s go run main.go
+'
+stdout 'error'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

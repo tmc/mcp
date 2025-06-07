@@ -1,0 +1,21 @@
+# Test AWS Knowledge Base server performance under stress
+
+env MCP_ULTRA_TIMEOUT=25ms
+env MCP_EXTREME_TIMEOUT=100ms
+
+# Performance test - rapid initialize calls
+exec timeout 3s go run . &
+pid=$!
+sleep 1
+
+# Rapid fire multiple initialize calls
+exec echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"perf-test","version":"1.0.0"}}}' | timeout 2s go run .
+exec echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | timeout 2s go run .
+exec echo '{"jsonrpc":"2.0","id":3,"method":"ping","params":{}}' | timeout 2s go run .
+
+# Test rapid tool listing
+exec echo '{"jsonrpc":"2.0","id":4,"method":"tools/list","params":{}}' | timeout 1s go run .
+exec echo '{"jsonrpc":"2.0","id":5,"method":"tools/list","params":{}}' | timeout 1s go run .
+
+# Clean up
+exec kill $pid || true

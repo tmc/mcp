@@ -1,0 +1,64 @@
+# Test error handling for memory server
+export MEMORY_FILE_PATH="test_memory_error.json"
+rm -f test_memory_error.json
+
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test create_entities without entities parameter
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_entities","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_entities","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test create_entities with invalid JSON
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":"invalid_json"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":"invalid_json"}}}' > /dev/stdin
+echo ""
+
+# Test create_relations without relations parameter
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_relations","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_relations","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test create_relations with invalid JSON
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"create_relations","arguments":{"relations":"invalid_json"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"create_relations","arguments":{"relations":"invalid_json"}}}' > /dev/stdin
+echo ""
+
+# Test add_observations without observations parameter
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"add_observations","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"add_observations","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test add_observations with invalid JSON
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":"invalid_json"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":"invalid_json"}}}' > /dev/stdin
+echo ""
+
+# Create an entity first for observation tests
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"TestEntity","entityType":"test","observations":[]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"TestEntity","entityType":"test","observations":[]}]}}}' > /dev/stdin
+echo ""
+
+# Test add_observations to non-existent entity
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"NonExistentEntity","contents":["some observation"]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"NonExistentEntity","contents":["some observation"]}]}}}' > /dev/stdin
+echo ""
+
+# Test add_observations with missing entityName
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"contents":["some observation"]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"contents":["some observation"]}]}}}' > /dev/stdin
+echo ""
+
+# Test add_observations with missing contents
+echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"TestEntity"}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"TestEntity"}]}}}' > /dev/stdin
+echo ""
+
+# Test search_memory with invalid query type
+echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":123}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":123}}}' > /dev/stdin
+echo ""
+
+# Test invalid tool name
+echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"invalid_tool","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"invalid_tool","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+rm -f test_memory_error.json
+sleep 1

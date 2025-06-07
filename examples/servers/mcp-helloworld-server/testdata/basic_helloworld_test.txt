@@ -1,0 +1,101 @@
+# Basic HelloWorld server test with aggressive timeouts
+
+# Set aggressive timeouts for rapid testing
+env MCP_TEST_TIMEOUT=1500ms
+env MCP_SERVER_TIMEOUT=1s
+env MCP_TOOL_TIMEOUT=800ms
+
+# Start the server with aggressive timeout
+exec timeout 8s go run . &
+wait 150ms
+
+# Test basic greeting with default parameters
+cat > basic_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<basic_greeting.json)" | mcpcat -'
+stdout 'Hello, World!'
+
+# Test greeting with custom name
+cat > custom_name.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Alice"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<custom_name.json)" | mcpcat -'
+stdout 'Hello, Alice!'
+
+# Test fortune
+cat > fortune_request.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "fortune",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<fortune_request.json)" | mcpcat -'
+stdout 'tree|future|journey|success|started|innovation|life|dream|moment|think'
+
+# Test list languages
+cat > list_languages.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "list_languages",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<list_languages.json)" | mcpcat -'
+stdout 'Supported languages'
+stdout 'english'
+stdout 'spanish'
+stdout 'french'
+
+# Test greeting with fortune
+cat > greeting_fortune.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting_with_fortune",
+    "arguments": {
+      "name": "Bob"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<greeting_fortune.json)" | mcpcat -'
+stdout 'Hello, Bob!'
+stdout 'Your fortune:'
+
+# Cleanup
+exec rm -f basic_greeting.json custom_name.json fortune_request.json list_languages.json greeting_fortune.json

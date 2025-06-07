@@ -1,0 +1,17 @@
+# Test AWS Knowledge Base tools functionality
+
+# Test query_knowledge_base tool call (mock - will fail without AWS credentials but should show proper error handling)
+exec echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query_knowledge_base","arguments":{"knowledge_base_id":"test-kb-123","query":"What is the weather today?","max_results":5}}}' | timeout 10s go run .
+stderr 'failed to query knowledge base'
+
+# Test retrieve_and_generate tool call (mock - will fail without AWS credentials but should show proper error handling)  
+exec echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"retrieve_and_generate","arguments":{"knowledge_base_id":"test-kb-123","input_text":"Explain the weather patterns"}}}' | timeout 10s go run .
+stderr 'failed to retrieve and generate'
+
+# Test invalid tool call - missing required parameters
+exec echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"query_knowledge_base","arguments":{}}}' | timeout 5s go run .
+stderr 'knowledge_base_id is required'
+
+# Test invalid tool call - empty query
+exec echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"query_knowledge_base","arguments":{"knowledge_base_id":"test-kb-123","query":""}}}' | timeout 5s go run .
+stderr 'query is required'

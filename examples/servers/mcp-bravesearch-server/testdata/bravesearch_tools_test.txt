@@ -1,0 +1,13 @@
+# Test Brave Search server tool definitions (with fake API key)
+env BRAVE_API_KEY=fake_api_key_for_testing
+exec go run . --timeout=5s
+stdin tools_request.json
+wait 5s
+stdout '"tools"'
+stdout '"web_search"'
+stdout '"news_search"'
+stdout '"image_search"'
+stdout '"video_search"'
+
+-- tools_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

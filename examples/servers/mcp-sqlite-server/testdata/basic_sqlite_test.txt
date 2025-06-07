@@ -1,0 +1,90 @@
+# Basic SQLite server test with aggressive timeouts
+
+# Set aggressive timeouts for rapid testing
+env MCP_TEST_TIMEOUT=2s
+env MCP_SERVER_TIMEOUT=1s
+env MCP_TOOL_TIMEOUT=1s
+env SQLITE_DB_PATH=$WORK/test.db
+
+# Start the server with aggressive timeout
+exec timeout 10s go run . &
+wait 200ms
+
+# Test get_schema on empty database
+cat > schema_request.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "get_schema",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<schema_request.json)" | mcpcat -'
+stdout '\[\]|empty'
+
+# Test creating a table with aggressive timeout
+cat > create_table.json << EOF
+{
+  "jsonrpc": "2.0", 
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_statement",
+    "arguments": {
+      "statement": "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<create_table.json)" | mcpcat -'
+stdout 'executed successfully|Rows affected'
+
+# Test inserting data with tight timeout
+cat > insert_data.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3, 
+  "method": "tools/call",
+  "params": {
+    "name": "execute_statement",
+    "arguments": {
+      "statement": "INSERT INTO users (name, email) VALUES ('John Doe', 'john@example.com')"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<insert_data.json)" | mcpcat -'
+stdout 'executed successfully|Rows affected: 1'
+
+# Test querying data with rapid response requirement
+cat > query_data.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call", 
+  "params": {
+    "name": "execute_query",
+    "arguments": {
+      "query": "SELECT * FROM users"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<query_data.json)" | mcpcat -'
+stdout '"name": "John Doe"'
+stdout '"email": "john@example.com"'
+
+# Test schema retrieval after table creation
+bash 'timeout 2s echo "$(<schema_request.json)" | mcpcat -'
+stdout '"name": "users"'
+stdout '"type": "table"'
+
+# Cleanup
+exec rm -f schema_request.json create_table.json insert_data.json query_data.json

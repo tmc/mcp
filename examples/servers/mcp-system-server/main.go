@@ -48,13 +48,13 @@ type ProcessInfo struct {
 }
 
 type DiskInfo struct {
-	Path        string `json:"path"`
-	Size        string `json:"size,omitempty"`
-	Used        string `json:"used,omitempty"`
-	Available   string `json:"available,omitempty"`
-	UsePercent  string `json:"use_percent,omitempty"`
-	Filesystem  string `json:"filesystem,omitempty"`
-	Mountpoint  string `json:"mountpoint,omitempty"`
+	Path       string `json:"path"`
+	Size       string `json:"size,omitempty"`
+	Used       string `json:"used,omitempty"`
+	Available  string `json:"available,omitempty"`
+	UsePercent string `json:"use_percent,omitempty"`
+	Filesystem string `json:"filesystem,omitempty"`
+	Mountpoint string `json:"mountpoint,omitempty"`
 }
 
 type NetworkInfo struct {
@@ -378,13 +378,13 @@ func registerSystemTools(server *mcp.Server) {
 
 func getSystemInfo(includeEnv bool) (SystemInfo, error) {
 	hostname, _ := os.Hostname()
-	
+
 	currentUser, _ := user.Current()
 	username := currentUser.Username
 	homeDir := currentUser.HomeDir
-	
+
 	workingDir, _ := os.Getwd()
-	
+
 	info := SystemInfo{
 		OS:           runtime.GOOS,
 		Architecture: runtime.GOARCH,
@@ -395,7 +395,7 @@ func getSystemInfo(includeEnv bool) (SystemInfo, error) {
 		HomeDir:      homeDir,
 		WorkingDir:   workingDir,
 	}
-	
+
 	if includeEnv {
 		info.Environment = make(map[string]string)
 		for _, env := range os.Environ() {
@@ -405,24 +405,24 @@ func getSystemInfo(includeEnv bool) (SystemInfo, error) {
 			}
 		}
 	}
-	
+
 	// Try to get uptime (Unix-like systems only)
 	if runtime.GOOS != "windows" {
 		if uptime, err := getUptime(); err == nil {
 			info.Uptime = uptime
 		}
 	}
-	
+
 	return info, nil
 }
 
 func listProcesses(limit int, filter string) ([]ProcessInfo, error) {
 	var processes []ProcessInfo
-	
+
 	if runtime.GOOS == "windows" {
 		return getWindowsProcesses(limit, filter)
 	}
-	
+
 	return getUnixProcesses(limit, filter)
 }
 
@@ -432,28 +432,28 @@ func getUnixProcesses(limit int, filter string) ([]ProcessInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to run ps command: %v", err)
 	}
-	
+
 	lines := strings.Split(string(output), "\n")
 	var processes []ProcessInfo
-	
+
 	// Skip header line
 	for i, line := range lines[1:] {
 		if i >= limit {
 			break
 		}
-		
+
 		fields := strings.Fields(line)
 		if len(fields) < 11 {
 			continue
 		}
-		
+
 		name := fields[10]
 		if filter != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(filter)) {
 			continue
 		}
-		
+
 		pid, _ := strconv.Atoi(fields[1])
-		
+
 		process := ProcessInfo{
 			PID:    pid,
 			Name:   name,
@@ -461,14 +461,14 @@ func getUnixProcesses(limit int, filter string) ([]ProcessInfo, error) {
 			Memory: fields[3] + "%",
 			Status: fields[7],
 		}
-		
+
 		if len(fields) > 11 {
 			process.Command = strings.Join(fields[10:], " ")
 		}
-		
+
 		processes = append(processes, process)
 	}
-	
+
 	return processes, nil
 }
 
@@ -478,45 +478,45 @@ func getWindowsProcesses(limit int, filter string) ([]ProcessInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to run tasklist command: %v", err)
 	}
-	
+
 	lines := strings.Split(string(output), "\n")
 	var processes []ProcessInfo
-	
+
 	// Skip header line
 	for i, line := range lines[1:] {
 		if i >= limit {
 			break
 		}
-		
+
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		
+
 		// Parse CSV-like output
 		fields := strings.Split(line, ",")
 		if len(fields) < 5 {
 			continue
 		}
-		
+
 		name := strings.Trim(fields[0], "\"")
 		if filter != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(filter)) {
 			continue
 		}
-		
+
 		pidStr := strings.Trim(fields[1], "\"")
 		pid, _ := strconv.Atoi(pidStr)
-		
+
 		memory := strings.Trim(fields[4], "\"")
-		
+
 		process := ProcessInfo{
 			PID:    pid,
 			Name:   name,
 			Memory: memory,
 		}
-		
+
 		processes = append(processes, process)
 	}
-	
+
 	return processes, nil
 }
 
@@ -525,15 +525,15 @@ func getDiskUsage(path string) (DiskInfo, error) {
 	if err != nil {
 		return DiskInfo{}, err
 	}
-	
+
 	info := DiskInfo{
 		Path: absPath,
 	}
-	
+
 	if runtime.GOOS == "windows" {
 		return getWindowsDiskUsage(absPath)
 	}
-	
+
 	return getUnixDiskUsage(absPath)
 }
 
@@ -543,12 +543,12 @@ func getUnixDiskUsage(path string) (DiskInfo, error) {
 	if err != nil {
 		return DiskInfo{Path: path}, nil // Return basic info even if df fails
 	}
-	
+
 	lines := strings.Split(string(output), "\n")
 	if len(lines) < 2 {
 		return DiskInfo{Path: path}, nil
 	}
-	
+
 	fields := strings.Fields(lines[1])
 	if len(fields) >= 6 {
 		return DiskInfo{
@@ -561,7 +561,7 @@ func getUnixDiskUsage(path string) (DiskInfo, error) {
 			Mountpoint: fields[5],
 		}, nil
 	}
-	
+
 	return DiskInfo{Path: path}, nil
 }
 
@@ -570,19 +570,19 @@ func getWindowsDiskUsage(path string) (DiskInfo, error) {
 	if len(path) < 2 {
 		return DiskInfo{Path: path}, nil
 	}
-	
+
 	drive := path[:2] // e.g., "C:"
-	
+
 	cmd := exec.Command("fsutil", "volume", "diskfree", drive)
 	output, err := cmd.Output()
 	if err != nil {
 		return DiskInfo{Path: path}, nil
 	}
-	
+
 	info := DiskInfo{
 		Path: path,
 	}
-	
+
 	// Parse fsutil output (very basic parsing)
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
@@ -596,45 +596,45 @@ func getWindowsDiskUsage(path string) (DiskInfo, error) {
 			}
 		}
 	}
-	
+
 	return info, nil
 }
 
 func getEnvironmentVariables(filter string) map[string]string {
 	envVars := make(map[string]string)
-	
+
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) == 2 {
 			key := parts[0]
 			value := parts[1]
-			
+
 			if filter == "" || strings.Contains(strings.ToLower(key), strings.ToLower(filter)) {
 				envVars[key] = value
 			}
 		}
 	}
-	
+
 	return envVars
 }
 
 func executeCommand(command string, args []string, timeoutSecs int) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
 	defer cancel()
-	
+
 	cmd := exec.CommandContext(ctx, command, args...)
-	
+
 	startTime := time.Now()
 	output, err := cmd.CombinedOutput()
 	duration := time.Since(startTime)
-	
+
 	result := map[string]interface{}{
 		"command":  command,
 		"args":     args,
 		"output":   string(output),
 		"duration": duration.String(),
 	}
-	
+
 	if err != nil {
 		result["error"] = err.Error()
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -643,7 +643,7 @@ func executeCommand(command string, args []string, timeoutSecs int) (map[string]
 	} else {
 		result["exit_code"] = 0
 	}
-	
+
 	return result, nil
 }
 
@@ -656,24 +656,24 @@ func getUptime() (string, error) {
 		}
 		return strings.TrimSpace(string(output)), nil
 	}
-	
+
 	if runtime.GOOS == "linux" {
 		data, err := os.ReadFile("/proc/uptime")
 		if err != nil {
 			return "", err
 		}
-		
+
 		fields := strings.Fields(string(data))
 		if len(fields) > 0 {
 			uptimeSeconds, err := strconv.ParseFloat(fields[0], 64)
 			if err != nil {
 				return "", err
 			}
-			
+
 			duration := time.Duration(uptimeSeconds) * time.Second
 			return duration.String(), nil
 		}
 	}
-	
+
 	return "", fmt.Errorf("uptime not supported on this platform")
 }

@@ -1,0 +1,70 @@
+# Git Tools Functionality Test
+# Tests all git tools with various git operations
+
+# Build the git server binary
+go build -o mcp-git-server .
+
+# Create a test git repository with content
+mkdir test_git_repo
+cd test_git_repo
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+echo "# Test Repo" > README.md
+git add README.md
+git commit -m "Initial commit"
+echo "More content" >> README.md
+echo "Another file" > file2.txt
+
+# Test all git tools
+exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_log","arguments":{"repository":".","max_count":5}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_branches","arguments":{"repository":"."}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_diff","arguments":{"repository":"."}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_add","arguments":{"repository":".","files":["README.md","file2.txt"]}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_commit","arguments":{"repository":".","message":"Add more content and new file"}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_create_branch","arguments":{"repository":".","branch":"feature-branch"}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_branches","arguments":{"repository":"."}},"id":11}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_switch_branch","arguments":{"repository":".","branch":"main"}},"id":12}
+EOF
+
+# Verify git status shows modified files initially
+stdout 'M README.md'
+stdout '?? file2.txt'
+
+# Verify git log shows commits
+stdout 'Initial commit'
+
+# Verify git branches shows main branch
+stdout 'main'
+
+# Verify git diff shows changes
+stdout 'More content'
+
+# Verify git add works
+stdout 'Successfully added files'
+
+# Verify status after add shows staged files
+stdout 'M  README.md'
+stdout 'A  file2.txt'
+
+# Verify git commit works
+stdout 'Add more content and new file'
+
+# Verify branch creation
+stdout 'feature-branch'
+
+# Verify branches shows both branches
+stdout 'feature-branch'
+stdout 'main'
+
+# Verify branch switching
+stdout 'main'
+
+# Cleanup
+cd ..
+rm -rf test_git_repo

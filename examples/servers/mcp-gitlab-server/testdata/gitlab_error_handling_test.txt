@@ -1,0 +1,20 @@
+# GitLab Server Error Handling Test
+
+env GOCOVERDIR=$WORK/covdata
+mkdir $WORK/covdata
+
+# Test error handling with invalid arguments
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_repositories", "arguments": {}}}
+EOF
+
+stderr 'invalid arguments'
+
+# Test error handling with missing required fields
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "create_issue", "arguments": {"project_id": "123"}}}
+EOF
+
+stderr 'invalid arguments'

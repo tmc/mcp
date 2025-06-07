@@ -1,0 +1,41 @@
+# Basic Google Maps server functionality test
+
+# Set aggressive timeout environment
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+env MCP_TOOL_TIMEOUT=1500ms
+
+# Start the Google Maps server in background
+server_command 'go run main.go'
+
+# Wait for server startup
+wait 1s
+
+# Test search_places tool
+echo '{"jsonrpc": "2.0", "id": "test1", "method": "tools/call", "params": {"name": "search_places", "arguments": {"query": "restaurant", "location": "San Francisco"}}}' | mcpspy
+stdout 'Places found'
+stdout 'restaurant'
+stdout 'Sample Restaurant'
+
+# Test get_directions tool
+echo '{"jsonrpc": "2.0", "id": "test2", "method": "tools/call", "params": {"name": "get_directions", "arguments": {"origin": "San Francisco", "destination": "Oakland", "mode": "driving"}}}' | mcpspy
+stdout 'Directions from San Francisco to Oakland'
+stdout 'driving'
+stdout 'miles'
+
+# Test geocode tool
+echo '{"jsonrpc": "2.0", "id": "test3", "method": "tools/call", "params": {"name": "geocode", "arguments": {"address": "123 Main St, San Francisco"}}}' | mcpspy
+stdout 'Geocoded address'
+stdout 'Latitude'
+stdout 'Longitude'
+
+# Test reverse_geocode tool
+echo '{"jsonrpc": "2.0", "id": "test4", "method": "tools/call", "params": {"name": "reverse_geocode", "arguments": {"lat": 37.7749, "lng": -122.4194}}}' | mcpspy
+stdout 'Reverse geocoded coordinates'
+stdout 'San Francisco'
+
+# Test get_place_details tool
+echo '{"jsonrpc": "2.0", "id": "test5", "method": "tools/call", "params": {"name": "get_place_details", "arguments": {"place_id": "ChIJd8BlQ2BZwokRAFUEcm_qrcA"}}}' | mcpspy
+stdout 'Place Details'
+stdout 'Sample Restaurant'
+stdout 'Rating'

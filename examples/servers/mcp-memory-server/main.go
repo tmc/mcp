@@ -43,7 +43,7 @@ func NewKnowledgeGraphManager() *KnowledgeGraphManager {
 		wd, _ := os.Getwd()
 		memoryPath = filepath.Join(wd, memoryPath)
 	}
-	
+
 	return &KnowledgeGraphManager{
 		filePath: memoryPath,
 	}
@@ -242,7 +242,7 @@ func (kg *KnowledgeGraphManager) searchMemory(query string) (*KnowledgeGraph, er
 func main() {
 	// Create server with name and version
 	srv := mcp.NewServer("memory-server", "1.0.0")
-	
+
 	// Initialize knowledge graph manager
 	kgManager := NewKnowledgeGraphManager()
 
@@ -380,7 +380,7 @@ func main() {
 			return nil, fmt.Errorf("failed to marshal response: %w", err)
 		}
 
-		log.Printf("Memory search for query: '%s', found %d entities and %d relations", 
+		log.Printf("Memory search for query: '%s', found %d entities and %d relations",
 			query, len(results.Entities), len(results.Relations))
 
 		return &modelcontextprotocol.CallToolResult{

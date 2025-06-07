@@ -1,0 +1,16 @@
+# Test Google Drive server tool definitions (with fake credentials)
+env GOOGLE_CREDENTIALS=fake_credentials.json  
+env GOOGLE_TOKEN=fake_token.json
+exec go run . --timeout=5s
+stdin tools_request.json
+wait 5s
+stdout '"error"'
+
+-- tools_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}
+
+-- fake_credentials.json --
+{"client_id":"fake","client_secret":"fake","redirect_uris":["http://localhost"]}
+
+-- fake_token.json --
+{"access_token":"fake","refresh_token":"fake","token_type":"Bearer"}

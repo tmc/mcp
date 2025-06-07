@@ -1,0 +1,147 @@
+# HelloWorld server multi-language test with aggressive timeouts
+
+# Set aggressive timeouts for language testing  
+env MCP_TEST_TIMEOUT=2s
+env MCP_SERVER_TIMEOUT=1200ms
+env MCP_TOOL_TIMEOUT=1s
+
+# Start the server
+exec timeout 15s go run . &
+wait 150ms
+
+# Test Spanish greeting
+cat > spanish_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Carlos",
+      "language": "spanish"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<spanish_greeting.json)" | mcpcat -'
+stdout 'Hola, Carlos!'
+
+# Test French greeting
+cat > french_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Marie",
+      "language": "french"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<french_greeting.json)" | mcpcat -'
+stdout 'Bonjour, Marie!'
+
+# Test German greeting
+cat > german_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Hans",
+      "language": "german"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<german_greeting.json)" | mcpcat -'
+stdout 'Hallo, Hans!'
+
+# Test Japanese greeting
+cat > japanese_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "田中",
+      "language": "japanese"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<japanese_greeting.json)" | mcpcat -'
+stdout 'こんにちは, 田中!'
+
+# Test Chinese greeting  
+cat > chinese_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "李明",
+      "language": "chinese"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<chinese_greeting.json)" | mcpcat -'
+stdout '你好, 李明!'
+
+# Test case insensitive language
+cat > case_test.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Test",
+      "language": "ENGLISH"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<case_test.json)" | mcpcat -'
+stdout 'Hello, Test!'
+
+# Test Portuguese greeting with fortune
+cat > portuguese_fortune.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting_with_fortune",
+    "arguments": {
+      "name": "João",
+      "language": "portuguese"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<portuguese_fortune.json)" | mcpcat -'
+stdout 'Olá, João!'
+stdout 'Your fortune:'
+
+# Cleanup
+exec rm -f spanish_greeting.json french_greeting.json german_greeting.json japanese_greeting.json chinese_greeting.json case_test.json portuguese_fortune.json

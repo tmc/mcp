@@ -1,0 +1,32 @@
+# Say Performance Test
+# Tests performance with aggressive timeouts
+
+# Build the say server binary
+go build -o mcp-say-server .
+
+# Test with aggressive timeout (10 seconds - say commands can take time)
+timeout 10s exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Quick test"}},"id":3}
+EOF
+
+# Verify operations complete within timeout
+stdout '"name":"say"'
+stdout 'Successfully spoke'
+stdout 'Quick test'
+
+# Test rapid sequential calls (each say waits for completion)
+timeout 15s exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"One"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Two"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Three"}},"id":5}
+EOF
+
+# Verify sequential calls work
+stdout 'One'
+stdout 'Two'
+stdout 'Three'

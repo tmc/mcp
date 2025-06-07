@@ -1,0 +1,44 @@
+# Filesystem Error Handling Test
+# Tests error scenarios and security restrictions
+
+# Build the filesystem server binary
+go build -o mcp-filesystem-server .
+
+# Create a temporary test directory
+mkdir test_dir
+cd test_dir
+
+# Test error handling scenarios
+exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"nonexistent.txt"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"../../../etc/passwd"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"/etc"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"../outside.txt","content":"test"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"test.txt"}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_file_info","arguments":{"path":"/root"}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"invalid_tool","arguments":{}},"id":10}
+EOF
+
+# Verify file not found error
+stdout 'failed to read file'
+
+# Verify access denied errors
+stdout 'access denied.*outside allowed directories'
+
+# Verify missing argument errors
+stdout 'missing required argument.*path'
+stdout 'missing required argument.*content'
+
+# Verify tool not found error
+stdout '"error"'
+stdout 'method not found'
+
+# Cleanup
+cd ..
+rm -rf test_dir
+
+# Test starting server without arguments (should fail)
+! exec ./mcp-filesystem-server

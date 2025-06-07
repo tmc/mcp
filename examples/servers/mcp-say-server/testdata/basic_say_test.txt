@@ -1,0 +1,27 @@
+# Basic MCP Say Server Test
+# Tests server startup, initialization, and basic protocol handling
+
+# Build the say server binary
+go build -o mcp-say-server .
+
+# Test basic MCP protocol initialization
+exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"mcp-say-server"'
+stdout '"version":"0.1.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify say tool is listed
+stdout '"name":"say"'
+stdout '"description":"Convert text to speech using macOS say command"'
+
+# Verify ping response
+stdout '"result":"pong"'

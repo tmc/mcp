@@ -1,0 +1,6 @@
+# Test Google Drive server error handling with missing files
+env GOOGLE_CREDENTIALS=nonexistent.json
+env GOOGLE_TOKEN=nonexistent.json
+exec go run . --timeout=5s
+wait 5s
+stdout 'Failed to read'

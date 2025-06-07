@@ -1,0 +1,48 @@
+# Basic Slack server functionality test
+
+# Set aggressive timeout environment
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+env MCP_TOOL_TIMEOUT=1500ms
+
+# Start the Slack server in background
+server_command 'go run main.go'
+
+# Wait for server startup
+wait 1s
+
+# Test send_message tool
+echo '{"jsonrpc": "2.0", "id": "test1", "method": "tools/call", "params": {"name": "send_message", "arguments": {"channel": "#general", "text": "Hello World!"}}}' | mcpspy
+stdout 'Message sent to #general'
+stdout 'Hello World!'
+stdout 'Message ID'
+
+# Test list_channels tool
+echo '{"jsonrpc": "2.0", "id": "test2", "method": "tools/call", "params": {"name": "list_channels", "arguments": {"limit": 5}}}' | mcpspy
+stdout 'Channels'
+stdout '#general'
+stdout '#random'
+
+# Test get_channel_history tool
+echo '{"jsonrpc": "2.0", "id": "test3", "method": "tools/call", "params": {"name": "get_channel_history", "arguments": {"channel": "#general", "limit": 3}}}' | mcpspy
+stdout 'Recent messages'
+stdout '@alice'
+stdout '@bob'
+
+# Test create_channel tool
+echo '{"jsonrpc": "2.0", "id": "test4", "method": "tools/call", "params": {"name": "create_channel", "arguments": {"name": "test-channel", "is_private": false}}}' | mcpspy
+stdout 'Created public channel'
+stdout '#test-channel'
+stdout 'Channel ID'
+
+# Test invite_to_channel tool
+echo '{"jsonrpc": "2.0", "id": "test5", "method": "tools/call", "params": {"name": "invite_to_channel", "arguments": {"channel": "#test-channel", "users": "U123456,U789012"}}}' | mcpspy
+stdout 'Invited users'
+stdout '#test-channel'
+stdout 'U123456,U789012'
+
+# Test get_user_info tool
+echo '{"jsonrpc": "2.0", "id": "test6", "method": "tools/call", "params": {"name": "get_user_info", "arguments": {"user": "U123456"}}}' | mcpspy
+stdout 'User info'
+stdout 'Alice Johnson'
+stdout 'alice@company.com'

@@ -1,0 +1,84 @@
+# SQLite server error handling test with aggressive timeouts
+
+# Set ultra-aggressive timeouts for error scenarios
+env MCP_TEST_TIMEOUT=1s
+env MCP_SERVER_TIMEOUT=800ms
+env MCP_TOOL_TIMEOUT=600ms
+env SQLITE_DB_PATH=$WORK/error_test.db
+
+# Start the server
+exec timeout 8s go run . &
+wait 150ms
+
+# Test invalid SQL syntax with rapid error reporting
+cat > invalid_sql.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_query",
+    "arguments": {
+      "query": "SELCT * FROM nonexistent"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<invalid_sql.json)" | mcpcat -'
+stdout 'Error executing query|syntax error'
+
+# Test query on nonexistent table
+cat > nonexistent_table.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_query", 
+    "arguments": {
+      "query": "SELECT * FROM nonexistent_table"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<nonexistent_table.json)" | mcpcat -'
+stdout 'Error executing query|no such table'
+
+# Test missing required parameter
+cat > missing_param.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_query",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<missing_param.json)" | mcpcat -'
+stdout 'query parameter is required'
+
+# Test invalid parameter type
+cat > invalid_param.json << EOF
+{
+  "jsonrpc": "2.0", 
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_statement",
+    "arguments": {
+      "statement": 123
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<invalid_param.json)" | mcpcat -'
+stdout 'statement parameter is required and must be a string'
+
+# Cleanup
+exec rm -f invalid_sql.json nonexistent_table.json missing_param.json invalid_param.json

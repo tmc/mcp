@@ -1,0 +1,27 @@
+# Basic GitLab Server Test
+
+env GOCOVERDIR=$WORK/covdata
+mkdir $WORK/covdata
+
+# Test server initialization and basic tool listing
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+EOF
+
+stdout '"name": "gitlab-server"'
+stdout '"search_repositories"'
+stdout '"get_project"'
+stdout '"list_issues"'
+stdout '"create_issue"'
+
+# Test repository search
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_repositories", "arguments": {"query": "test", "limit": 5}}}
+EOF
+
+stdout '"query": "test"'
+stdout '"limit": 5'
+stdout '"results"'
+stdout 'project-test'

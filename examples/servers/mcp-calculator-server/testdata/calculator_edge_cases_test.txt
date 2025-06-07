@@ -1,0 +1,63 @@
+# Calculator Edge Cases Test
+# Tests boundary conditions and special cases
+
+# Build the calculator server binary
+go build -o mcp-calculator-server .
+
+# Test edge cases and boundary conditions
+exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":0,"b":0}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"multiply","a":1e10,"b":1e10}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"divide","a":1,"b":3}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"power","x":2,"y":0}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"power","x":0,"y":0}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"sin","x":0}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"cos","x":1.5708}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"abs","x":-5}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":[1]}},"id":11}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":[1,1,1,1,1]}},"id":12}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":0,"from_unit":"celsius","to_unit":"kelvin"}},"id":13}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":-273.15,"from_unit":"celsius","to_unit":"kelvin"}},"id":14}
+EOF
+
+# Verify zero operations
+stdout '"result":0'
+stdout '"operation":"add"'
+
+# Verify large number multiplication
+stdout '"result":1e\+20'
+
+# Verify fraction result
+stdout '"result":0.333'
+
+# Verify power edge cases
+stdout '"result":1'
+stdout '"operation":"power"'
+
+# Verify trigonometric functions
+stdout '"result":0'
+stdout '"operation":"sin"'
+stdout '"result":6.123233995736766e-17'
+stdout '"operation":"cos"'
+
+# Verify absolute value
+stdout '"result":5'
+stdout '"operation":"abs"'
+
+# Verify single element statistics
+stdout '"count":1'
+stdout '"mean":1'
+stdout '"median":1'
+stdout '"standard_deviation":0'
+
+# Verify identical elements statistics
+stdout '"count":5'
+stdout '"mean":1'
+stdout '"median":1'
+stdout '"standard_deviation":0'
+
+# Verify absolute zero conversion
+stdout '"converted_value":273.15'
+stdout '"converted_value":0'

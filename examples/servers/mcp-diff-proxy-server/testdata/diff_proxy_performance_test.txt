@@ -1,0 +1,81 @@
+# Diff proxy server performance test with ultra-aggressive timeouts
+
+# Set ultra-aggressive timeouts to test performance limits
+env MCP_TEST_TIMEOUT=500ms
+env MCP_SERVER_TIMEOUT=400ms
+env MCP_TOOL_TIMEOUT=300ms
+
+# Start server with minimal startup time allowance
+exec timeout 10s go run . &
+wait 100ms
+
+# Test rapid text diff generation
+cat > rapid_text_diff.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": "Speed test text",
+      "text2": "Speed test text modified"
+    }
+  }
+}
+EOF
+
+bash 'timeout 500ms echo "$(<rapid_text_diff.json)" | mcpcat -'
+stdout 'Speed test text'
+stdout 'modified|diff'
+
+# Create small test files for rapid file diff
+echo "rapid1" > rapid1.txt
+echo "rapid2" > rapid2.txt
+
+# Test rapid file diff
+cat > rapid_file_diff.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "file_diff",
+    "arguments": {
+      "file1": "rapid1.txt",
+      "file2": "rapid2.txt"
+    }
+  }
+}
+EOF
+
+bash 'timeout 500ms echo "$(<rapid_file_diff.json)" | mcpcat -'
+stdout 'rapid1|rapid2|diff'
+
+# Test rapid identical text diff (should be very fast)
+cat > rapid_identical.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": "same",
+      "text2": "same"
+    }
+  }
+}
+EOF
+
+bash 'timeout 500ms echo "$(<rapid_identical.json)" | mcpcat -'
+stdout 'identical|Texts are identical'
+
+# Test rapid sequential operations
+bash 'start=$(date +%s%N); timeout 250ms echo "$(<rapid_identical.json)" | mcpcat - > /dev/null; timeout 250ms echo "$(<rapid_identical.json)" | mcpcat - > /dev/null; end=$(date +%s%N); duration=$((($end - $start) / 1000000)); echo "2-diff-ops: ${duration}ms"; test $duration -lt 800'
+
+# Test multiple rapid text diffs
+bash 'timeout 300ms echo "$(<rapid_text_diff.json)" | mcpcat - | grep -q "modified" && timeout 300ms echo "$(<rapid_identical.json)" | mcpcat - | grep -q "identical"'
+
+# Cleanup
+exec rm -f rapid_text_diff.json rapid_file_diff.json rapid_identical.json rapid1.txt rapid2.txt

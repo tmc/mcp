@@ -1,0 +1,108 @@
+# HelloWorld server error handling test with aggressive timeouts
+
+# Set ultra-aggressive timeouts for error scenarios
+env MCP_TEST_TIMEOUT=1s  
+env MCP_SERVER_TIMEOUT=800ms
+env MCP_TOOL_TIMEOUT=600ms
+
+# Start the server
+exec timeout 6s go run . &
+wait 100ms
+
+# Test unknown language
+cat > unknown_language.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Test",
+      "language": "klingon"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<unknown_language.json)" | mcpcat -'
+stdout "Unknown language 'klingon'"
+stdout 'Available languages:'
+stdout 'english'
+
+# Test empty name (should default to World)
+cat > empty_name.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "",
+      "language": "english"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<empty_name.json)" | mcpcat -'
+stdout 'Hello, World!'
+
+# Test unknown language with fortune
+cat > unknown_language_fortune.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting_with_fortune",
+    "arguments": {
+      "name": "Test",
+      "language": "martian"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<unknown_language_fortune.json)" | mcpcat -'
+stdout "Unknown language 'martian'"
+stdout 'Available languages:'
+
+# Test invalid tool name (should be handled by framework)
+cat > invalid_tool.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "nonexistent_tool",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<invalid_tool.json)" | mcpcat -'
+stdout 'tool not found|unknown tool|error'
+
+# Test special characters in name
+cat > special_chars.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "José María",
+      "language": "spanish"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1s echo "$(<special_chars.json)" | mcpcat -'
+stdout 'Hola, José María!'
+
+# Cleanup
+exec rm -f unknown_language.json empty_name.json unknown_language_fortune.json invalid_tool.json special_chars.json

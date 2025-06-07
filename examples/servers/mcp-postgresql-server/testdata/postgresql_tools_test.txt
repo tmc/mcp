@@ -1,0 +1,13 @@
+# Test PostgreSQL server tool definitions
+exec go run . "postgres://invalid" --timeout=5s
+stdin tools_request.json
+wait 5s
+stdout '"tools"'
+stdout '"list_tables"'
+stdout '"describe_table"'  
+stdout '"execute_query"'
+stdout '"list_schemas"'
+stdout '"arguments"'
+
+-- tools_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

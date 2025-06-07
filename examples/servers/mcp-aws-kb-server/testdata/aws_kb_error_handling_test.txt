@@ -1,0 +1,21 @@
+# Test AWS Knowledge Base server error handling
+
+# Test invalid JSON-RPC request
+exec echo '{"jsonrpc":"2.0","id":1,"method":"invalid_method","params":{}}' | timeout 5s go run .
+stderr 'method not found'
+
+# Test malformed JSON
+exec echo 'invalid json' | timeout 5s go run .
+stderr 'invalid character'
+
+# Test missing method
+exec echo '{"jsonrpc":"2.0","id":1,"params":{}}' | timeout 5s go run .
+stderr 'missing method'
+
+# Test invalid tool arguments
+exec echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"query_knowledge_base","arguments":"invalid"}}' | timeout 5s go run .
+stderr 'invalid arguments'
+
+# Test nonexistent tool
+exec echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}' | timeout 5s go run .
+stderr 'tool not found'

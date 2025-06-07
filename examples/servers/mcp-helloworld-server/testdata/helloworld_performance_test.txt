@@ -1,0 +1,89 @@
+# HelloWorld server performance test with ultra-aggressive timeouts
+
+# Set ultra-aggressive timeouts to test performance limits
+env MCP_TEST_TIMEOUT=400ms
+env MCP_SERVER_TIMEOUT=300ms 
+env MCP_TOOL_TIMEOUT=250ms
+
+# Start server with minimal startup time allowance
+exec timeout 8s go run . &
+wait 80ms
+
+# Test rapid greeting generation
+cat > rapid_greeting.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting",
+    "arguments": {
+      "name": "Speed"
+    }
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<rapid_greeting.json)" | mcpcat -'
+stdout 'Hello, Speed!'
+
+# Test rapid fortune retrieval
+cat > rapid_fortune.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "fortune",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<rapid_fortune.json)" | mcpcat -'
+stdout 'tree|future|journey|success|started|innovation|life|dream|moment|think'
+
+# Test rapid language listing
+cat > rapid_languages.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "list_languages",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<rapid_languages.json)" | mcpcat -'
+stdout 'Supported languages'
+
+# Test rapid greeting with fortune (more complex operation)
+cat > rapid_complex.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "greeting_with_fortune",
+    "arguments": {
+      "name": "Flash",
+      "language": "spanish"
+    }
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<rapid_complex.json)" | mcpcat -'
+stdout 'Hola, Flash!'
+stdout 'Your fortune:'
+
+# Test rapid sequential operations
+bash 'start=$(date +%s%N); timeout 200ms echo "$(<rapid_greeting.json)" | mcpcat - > /dev/null; timeout 200ms echo "$(<rapid_fortune.json)" | mcpcat - > /dev/null; end=$(date +%s%N); duration=$((($end - $start) / 1000000)); echo "2-op duration: ${duration}ms"; test $duration -lt 600'
+
+# Test multiple rapid greetings
+bash 'timeout 300ms echo "$(<rapid_greeting.json)" | mcpcat - | grep -q "Hello, Speed" && timeout 300ms echo "$(<rapid_greeting.json)" | mcpcat - | grep -q "Hello, Speed" && timeout 300ms echo "$(<rapid_greeting.json)" | mcpcat - | grep -q "Hello, Speed"'
+
+# Cleanup
+exec rm -f rapid_greeting.json rapid_fortune.json rapid_languages.json rapid_complex.json

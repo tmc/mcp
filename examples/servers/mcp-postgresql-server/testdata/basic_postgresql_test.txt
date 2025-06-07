@@ -1,0 +1,12 @@
+# Test basic PostgreSQL server functionality
+exec go run . --timeout=10s
+stdin server_request.json
+wait 10s
+stdout '"method":"tools/list"'
+stdout '"name":"list_tables"'
+stdout '"name":"describe_table"'
+stdout '"name":"execute_query"'
+stdout '"name":"list_schemas"'
+
+-- server_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

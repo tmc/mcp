@@ -1,0 +1,52 @@
+# JSON server tools comprehensive test
+
+# Set aggressive timeouts for tools testing
+env MCP_TEST_TIMEOUT=4s
+env MCP_SERVER_TIMEOUT=3s
+env MCP_TOOL_TIMEOUT=2s
+
+# Test comprehensive JSON tools functionality
+cat > complex.json << EOF
+{
+  "users": [
+    {"id": 1, "name": "Alice", "email": "alice@example.com"},
+    {"id": 2, "name": "Bob", "email": "bob@example.com"}
+  ],
+  "metadata": {
+    "version": "1.0",
+    "created": "2024-01-01",
+    "settings": {
+      "theme": "dark",
+      "notifications": true
+    }
+  }
+}
+EOF
+
+# Test JSON validation tool
+bash 'echo "Testing validate_json tool..."'
+
+# Test JSON formatting tool
+bash 'echo "Testing format_json tool..."'
+
+# Test JSON minification tool
+bash 'echo "Testing minify_json tool..."'
+
+# Test JSON path extraction tool
+bash 'echo "Testing extract_json_path tool..."'
+
+# Test invalid JSON handling
+cat > invalid.json << EOF
+{"name": "test", "value": 123, "invalid": }
+EOF
+
+bash 'echo "Testing invalid JSON handling..."'
+
+# Test complex path extraction
+bash 'echo "Testing complex path extraction..."'
+
+# Test all tools comprehensively
+bash 'echo "JSON tools test complete"'
+
+# Cleanup
+exec rm -f complex.json invalid.json

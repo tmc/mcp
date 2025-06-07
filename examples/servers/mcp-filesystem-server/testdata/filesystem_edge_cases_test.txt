@@ -1,0 +1,70 @@
+# Filesystem Edge Cases Test
+# Tests boundary conditions and special scenarios
+
+# Build the filesystem server binary
+go build -o mcp-filesystem-server .
+
+# Create a temporary test directory with edge case files
+mkdir test_dir
+cd test_dir
+echo "" > empty_file.txt
+echo -n "no_newline" > no_newline.txt
+printf "binary\x00data\xff" > binary_file.bin
+mkdir -p nested/deep/directory
+
+# Test edge cases
+exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"empty_file.txt"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"no_newline.txt"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"binary_file.bin"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"nested/deep/new_file.txt","content":"Deep nested content"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"nested/deep/directory"}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"unicode_file.txt","content":"🚀 Unicode content 中文"}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"unicode_file.txt"}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_file_info","arguments":{"path":"."}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"overwrite.txt","content":"Original"}},"id":11}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"overwrite.txt","content":"Overwritten"}},"id":12}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"overwrite.txt"}},"id":13}
+EOF
+
+# Verify empty file handling
+stdout '""'
+
+# Verify file without newline
+stdout 'no_newline'
+
+# Verify binary file handling (may contain special characters)
+stdout 'binary.*data'
+
+# Verify deep nested file creation
+stdout 'Successfully wrote.*Deep nested content'
+
+# Verify empty directory listing
+stdout '\[\]'
+
+# Verify Unicode content handling
+stdout '🚀 Unicode content 中文'
+
+# Verify directory info
+stdout '"type":"directory"'
+
+# Verify file overwriting
+stdout 'Overwritten'
+
+# Test relative path handling
+exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"./relative.txt","content":"Relative path"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"./relative.txt"}},"id":4}
+EOF
+
+# Verify relative path handling
+stdout 'Successfully wrote'
+stdout 'Relative path'
+
+# Cleanup
+cd ..
+rm -rf test_dir

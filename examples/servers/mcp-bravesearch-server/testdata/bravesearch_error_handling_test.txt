@@ -1,0 +1,10 @@
+# Test Brave Search server error handling with invalid API key
+env BRAVE_API_KEY=invalid_key
+exec go run . --timeout=10s
+stdin error_request.json
+wait 10s
+stdout '"result"'
+stdout '"isError"'
+
+-- error_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"web_search","arguments":{"query":"test search"}}}

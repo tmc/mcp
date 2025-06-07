@@ -18,6 +18,6 @@ require (
 	rsc.io/script v0.0.2 // indirect
 )
 
-replace github.com/tmc/mcp => ../../../
-
 replace github.com/tmc/mcp/exp/mcpscripttest => ../../../exp/mcpscripttest
+
+replace github.com/tmc/mcp => ../../..

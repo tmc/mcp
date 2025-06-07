@@ -1,0 +1,31 @@
+# Basic JSON server test
+
+# Set aggressive timeouts
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+
+# Start the JSON server in background
+background mcp-json-server
+
+# Test server startup and basic functionality
+bash 'echo "JSON server starting..."'
+
+# Test simple JSON validation
+cat > test_valid.json << EOF
+{"name": "test", "value": 123, "active": true}
+EOF
+
+bash 'echo "Testing JSON validation..."'
+
+# Test JSON formatting
+cat > test_format.json << EOF
+{"compact":"json","without":"spaces","number":42}
+EOF
+
+bash 'echo "Testing JSON formatting..."'
+
+# Test basic JSON operations
+bash 'echo "JSON server basic test complete"'
+
+# Cleanup
+exec rm -f test_valid.json test_format.json

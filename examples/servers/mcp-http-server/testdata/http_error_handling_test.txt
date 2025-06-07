@@ -1,0 +1,51 @@
+# Test HTTP server error handling with aggressive timeouts
+
+# Set aggressive environment variables
+env MCP_TEST_TIMEOUT=2s
+env MCP_SERVER_TIMEOUT=1s
+env MCP_TOOL_TIMEOUT=800ms
+
+# Start server
+bg bash 'go run main.go'
+sleep 500ms
+
+# Test invalid method call
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"invalid/method\"}" | go run main.go
+'
+stdout 'error'
+
+# Test invalid tool name
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"invalid_tool\"}}" | go run main.go
+'
+stdout 'error'
+
+# Test missing arguments
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\"}}" | go run main.go
+'
+stdout 'error'
+
+# Test invalid URL
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"not-a-url\"}}}" | go run main.go
+'
+stdout 'error'
+
+# Test timeout on non-responsive server (should fail fast)
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"http://1.2.3.4:12345\"}}}" | timeout 3s go run main.go
+'
+stdout 'error'
+
+# Test malformed JSON (should handle gracefully)
+bash 'echo "invalid json" | go run main.go'
+stdout 'error'
+
+# Test empty request (should handle gracefully)
+bash 'echo "" | go run main.go'
+stdout 'error'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

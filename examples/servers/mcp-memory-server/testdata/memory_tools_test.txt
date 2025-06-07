@@ -1,0 +1,44 @@
+# Test comprehensive memory tools functionality
+export MEMORY_FILE_PATH="test_memory.json"
+rm -f test_memory.json
+
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test create_entities with multiple entities
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"Alice","entityType":"person","observations":["software engineer","works at TechCorp"]},{"name":"Bob","entityType":"person","observations":["project manager"]},{"name":"TechCorp","entityType":"company","observations":["tech startup","founded in 2020"]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"Alice","entityType":"person","observations":["software engineer","works at TechCorp"]},{"name":"Bob","entityType":"person","observations":["project manager"]},{"name":"TechCorp","entityType":"company","observations":["tech startup","founded in 2020"]}]}}}' > /dev/stdin
+echo ""
+
+# Test create_relations
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_relations","arguments":{"relations":[{"from":"Alice","to":"TechCorp","relationType":"works_at"},{"from":"Bob","to":"TechCorp","relationType":"works_at"},{"from":"Alice","to":"Bob","relationType":"colleague"}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_relations","arguments":{"relations":[{"from":"Alice","to":"TechCorp","relationType":"works_at"},{"from":"Bob","to":"TechCorp","relationType":"works_at"},{"from":"Alice","to":"Bob","relationType":"colleague"}]}}}' > /dev/stdin
+echo ""
+
+# Test add_observations
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"Alice","contents":["expert in Go programming","leads the backend team"]},{"entityName":"Bob","contents":["certified Scrum Master"]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"add_observations","arguments":{"observations":[{"entityName":"Alice","contents":["expert in Go programming","leads the backend team"]},{"entityName":"Bob","contents":["certified Scrum Master"]}]}}}' > /dev/stdin
+echo ""
+
+# Test search_memory with specific query
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"Alice"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"Alice"}}}' > /dev/stdin
+echo ""
+
+# Test search_memory with company query
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"TechCorp"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"TechCorp"}}}' > /dev/stdin
+echo ""
+
+# Test search_memory with observation content
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"Go programming"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":"Go programming"}}}' > /dev/stdin
+echo ""
+
+# Test search_memory with empty query (should return all)
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":""}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"search_memory","arguments":{"query":""}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+rm -f test_memory.json
+sleep 1

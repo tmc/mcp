@@ -1,0 +1,31 @@
+# Test Puppeteer server performance with aggressive timeouts
+
+# Set aggressive environment variables (allowing for browser startup)
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+env MCP_TOOL_TIMEOUT=4s
+
+# Start server and test performance
+bg bash 'go run main.go'
+sleep 1s
+
+# Test rapid tool listing (should be fast)
+bash 'for i in {1..3}; do echo "{\"jsonrpc\": \"2.0\", \"id\": $i, \"method\": \"tools/list\"}" | timeout 2s go run main.go > /dev/null & done; wait'
+
+# Test concurrent requests handling
+bash 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"get_content\", \"arguments\": {\"url\": \"https://httpbin.org/html\"}}}" | timeout 6s go run main.go'
+stdout 'content'
+
+# Test server startup time (should be reasonable)
+bash 'start_time=$(date +%s%N); go run main.go <<< "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" > /dev/null; end_time=$(date +%s%N); duration=$((($end_time - $start_time) / 1000000)); echo "Startup + response time: ${duration}ms"; test $duration -lt 4000'
+
+# Test memory efficiency (quick list response)
+bash 'echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/list\"}" | timeout 2s go run main.go'
+stdout '"tools"'
+
+# Test simple page load performance
+bash 'echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"data:text/html,<h1>Test</h1>\"}}}" | timeout 5s go run main.go'
+stdout 'navigated'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

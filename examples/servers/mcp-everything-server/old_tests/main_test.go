@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tmc/mcp"
 	"log/slog"
+
+	"github.com/tmc/mcp"
 )
 
 // TestRegisterTools tests that all expected tools are registered
@@ -28,7 +29,7 @@ func TestRegisterTools(t *testing.T) {
 	// Check that we have the expected tools
 	expectedTools := []string{"current_time", "echo", "random"}
 	toolMap := make(map[string]bool)
-	
+
 	for _, tool := range result.Tools {
 		toolMap[tool.Name] = true
 	}

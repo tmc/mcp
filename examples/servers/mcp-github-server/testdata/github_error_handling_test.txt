@@ -1,0 +1,10 @@
+# Test GitHub server error handling with invalid token
+env GITHUB_TOKEN=invalid_token
+exec go run . --timeout=10s
+stdin error_request.json
+wait 10s
+stdout '"result"'
+stdout '"isError"'
+
+-- error_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_repository","arguments":{"owner":"nonexistent","repo":"nonexistent"}}}

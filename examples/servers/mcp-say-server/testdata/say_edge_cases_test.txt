@@ -1,0 +1,28 @@
+# Say Edge Cases Test
+# Tests boundary conditions and special scenarios
+
+# Build the say server binary
+go build -o mcp-say-server .
+
+# Test edge cases
+exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Unicode: 🚀 中文 émoji"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Very long text that goes on and on and tests the limits of the text to speech system with a lot of words to see how it handles longer inputs"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Numbers: 123 456 789"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Special chars: !@#$%^&*()"}},"id":6}
+EOF
+
+# Verify unicode text handling
+stdout 'Successfully spoke'
+stdout 'Unicode: 🚀 中文 émoji'
+
+# Verify long text handling
+stdout 'Very long text'
+
+# Verify numbers handling
+stdout 'Numbers: 123 456 789'
+
+# Verify special characters handling
+stdout 'Special chars'

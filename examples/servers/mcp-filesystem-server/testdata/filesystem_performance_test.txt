@@ -1,0 +1,58 @@
+# Filesystem Performance Test
+# Tests performance with aggressive timeouts
+
+# Build the filesystem server binary
+go build -o mcp-filesystem-server .
+
+# Create a temporary test directory
+mkdir test_dir
+cd test_dir
+
+# Test with aggressive timeout (2 seconds)
+timeout 2s exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"test1.txt","content":"Test content 1"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"test1.txt"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"."}},"id":5}
+EOF
+
+# Verify operations complete within timeout
+stdout '"name":"write_file"'
+stdout 'Successfully wrote'
+stdout 'Test content 1'
+stdout '"name":"test1.txt"'
+
+# Test rapid sequential operations
+timeout 3s exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"rapid1.txt","content":"Content 1"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"rapid2.txt","content":"Content 2"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"rapid3.txt","content":"Content 3"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"rapid1.txt"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"rapid2.txt"}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"rapid3.txt"}},"id":8}
+EOF
+
+# Verify rapid operations are handled correctly
+stdout 'Content 1'
+stdout 'Content 2'
+stdout 'Content 3'
+
+# Test with larger content (should still be fast)
+timeout 2s exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"large.txt","content":"$(printf 'Large content line %d\n' {1..100})"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_file_info","arguments":{"path":"large.txt"}},"id":4}
+EOF
+
+# Verify large file handling
+stdout 'Successfully wrote'
+stdout '"size"'
+
+# Cleanup
+cd ..
+rm -rf test_dir

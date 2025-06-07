@@ -1,0 +1,35 @@
+# Fetch Tools Functionality Test
+# Tests fetch tools with valid public URLs
+
+# Build the fetch server binary
+go build -o mcp-fetch-server .
+
+# Note: These tests use httpbin.org which is a reliable testing service
+# If it's unavailable, tests may fail but that's expected behavior
+exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/get"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/json"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch_text","arguments":{"url":"https://httpbin.org/html"}},"id":5}
+EOF
+
+# Verify get_headers functionality
+stdout '"statusCode":200'
+stdout '"Content-Type"'
+stdout '"Server"'
+
+# Verify fetch functionality
+stdout '"content"'
+stdout '"contentType"'
+stdout '"size"'
+stdout '"url":"https://httpbin.org/json"'
+
+# Verify fetch_text functionality
+stdout '"text"'
+stdout '"originalSize"'
+stdout '"textSize"'
+stdout '"url":"https://httpbin.org/html"'
+
+# Headers should contain standard HTTP headers
+stdout '"headers"'

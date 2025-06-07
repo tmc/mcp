@@ -55,12 +55,12 @@ func TestGolangToolsAdapter(t *testing.T) {
 func TestAdapterRegistry(t *testing.T) {
 	// Test that adapters are registered
 	registry := adapters.DefaultRegistry
-	
+
 	_, ok := registry.Get("mark3labs")
 	if !ok {
 		t.Error("mark3labs adapter not registered")
 	}
-	
+
 	_, ok = registry.Get("golang-tools")
 	if !ok {
 		t.Error("golang-tools adapter not registered")

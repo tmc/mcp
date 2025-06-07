@@ -8,7 +8,6 @@ import (
 
 	"github.com/tmc/mcp/exp/adapters"
 	"github.com/tmc/mcp/modelcontextprotocol"
-	
 	// The golang-tools types would normally be imported here
 	// mcp "golang.org/x/tools/internal/mcp"
 	// mcpProtocol "golang.org/x/tools/internal/mcp/protocol"
@@ -48,11 +47,11 @@ type Prompt struct {
 type GolangToolsAdapter struct {
 	server       Server
 	golangServer interface{} // This would be *mcp.Server from golang-tools
-	
+
 	// Store tools and prompts locally
 	tools   []ToolDefinition
 	prompts []PromptDefinition
-	
+
 	// Map to store handlers
 	toolHandlers   map[string]ToolHandler
 	promptHandlers map[string]PromptHandler
@@ -129,7 +128,7 @@ func (a *GolangToolsAdapter) Initialize(ctx context.Context, srv interface{}) er
 			a.server = s
 		}
 	}
-	
+
 	// Extract server info from the SDK server if available
 	var info ServerInfo
 	if a.server != nil {
@@ -141,7 +140,7 @@ func (a *GolangToolsAdapter) Initialize(ctx context.Context, srv interface{}) er
 			ProtocolVersion: "2024-11-05",
 		}
 	}
-	
+
 	// Create the golang-tools server (simulated since we don't have the actual implementation)
 	// In a real implementation, this would call the golang-tools NewServer function
 	a.golangServer = struct {
@@ -149,12 +148,12 @@ func (a *GolangToolsAdapter) Initialize(ctx context.Context, srv interface{}) er
 		Version      string
 		Instructions string
 	}{Name: info.Name, Version: info.Version, Instructions: info.Instructions}
-	
+
 	// Initialize tools and prompts from the SDK server
 	if err := a.initializeFeatures(ctx); err != nil {
 		return fmt.Errorf("failed to initialize features: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -179,7 +178,7 @@ func (a *GolangToolsAdapter) HandleRequest(ctx context.Context, method string, p
 // GetCapabilities returns the server capabilities
 func (a *GolangToolsAdapter) GetCapabilities() modelcontextprotocol.ServerCapabilities {
 	caps := modelcontextprotocol.ServerCapabilities{}
-	
+
 	// Check if we have tools registered
 	if len(a.tools) > 0 {
 		toolsListChanged := false
@@ -187,7 +186,7 @@ func (a *GolangToolsAdapter) GetCapabilities() modelcontextprotocol.ServerCapabi
 			ListChanged: &toolsListChanged,
 		}
 	}
-	
+
 	// Check if we have prompts registered
 	if len(a.prompts) > 0 {
 		promptsListChanged := false
@@ -195,14 +194,14 @@ func (a *GolangToolsAdapter) GetCapabilities() modelcontextprotocol.ServerCapabi
 			ListChanged: &promptsListChanged,
 		}
 	}
-	
+
 	return caps
 }
 
 func (a *GolangToolsAdapter) handleInitialize(ctx context.Context, params any) (any, error) {
 	// Return initialization result using the SDK server's info
 	info := a.server.GetServerInfo()
-	
+
 	return modelcontextprotocol.InitializeResult{
 		ProtocolVersion: info.ProtocolVersion,
 		ServerInfo: modelcontextprotocol.Implementation{
@@ -222,14 +221,14 @@ func (a *GolangToolsAdapter) handleListTools(ctx context.Context, params any) (a
 			Type:       "object",
 			Properties: make(map[string]json.RawMessage),
 		}
-		
+
 		tools[i] = modelcontextprotocol.Tool{
 			Name:        tool.Name,
 			Description: &tool.Description,
 			InputSchema: schema,
 		}
 	}
-	
+
 	return modelcontextprotocol.ListToolsResult{
 		Tools: tools,
 	}, nil
@@ -241,20 +240,20 @@ func (a *GolangToolsAdapter) handleCallTool(ctx context.Context, params any) (an
 	if !ok {
 		return nil, fmt.Errorf("invalid parameters type: %T", params)
 	}
-	
+
 	name, ok := paramMap["name"].(string)
 	if !ok {
 		return nil, fmt.Errorf("missing or invalid tool name")
 	}
-	
+
 	arguments, _ := paramMap["arguments"].(map[string]interface{})
-	
+
 	// Find the tool handler
 	handler, ok := a.toolHandlers[name]
 	if !ok {
 		return nil, fmt.Errorf("tool not found: %s", name)
 	}
-	
+
 	// Convert arguments to json.RawMessage
 	argMap := make(map[string]json.RawMessage)
 	for k, v := range arguments {
@@ -264,22 +263,22 @@ func (a *GolangToolsAdapter) handleCallTool(ctx context.Context, params any) (an
 		}
 		argMap[k] = json.RawMessage(bytes)
 	}
-	
+
 	// Create a mock server connection
 	mockConn := &mockServerConnection{server: a.golangServer}
-	
+
 	// Call the handler
 	result, err := handler(ctx, mockConn, argMap)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert result to SDK protocol
 	content := make([]modelcontextprotocol.Content, len(result.Content))
 	for i, c := range result.Content {
 		content[i] = convertContent(c)
 	}
-	
+
 	return modelcontextprotocol.CallToolResult{
 		Content: content,
 		IsError: &result.IsError,
@@ -304,7 +303,7 @@ func (a *GolangToolsAdapter) handleListPrompts(ctx context.Context, params any) 
 			Arguments:   args,
 		}
 	}
-	
+
 	return modelcontextprotocol.ListPromptsResult{
 		Prompts: prompts,
 	}, nil
@@ -316,20 +315,20 @@ func (a *GolangToolsAdapter) handleGetPrompt(ctx context.Context, params any) (a
 	if !ok {
 		return nil, fmt.Errorf("invalid parameters type: %T", params)
 	}
-	
+
 	name, ok := paramMap["name"].(string)
 	if !ok {
 		return nil, fmt.Errorf("missing or invalid prompt name")
 	}
-	
+
 	arguments, _ := paramMap["arguments"].(map[string]interface{})
-	
+
 	// Find the prompt handler
 	handler, ok := a.promptHandlers[name]
 	if !ok {
 		return nil, fmt.Errorf("prompt not found: %s", name)
 	}
-	
+
 	// Convert arguments to map[string]string
 	argMap := make(map[string]string)
 	for k, v := range arguments {
@@ -337,16 +336,16 @@ func (a *GolangToolsAdapter) handleGetPrompt(ctx context.Context, params any) (a
 			argMap[k] = str
 		}
 	}
-	
+
 	// Create a mock server connection
 	mockConn := &mockServerConnection{server: a.golangServer}
-	
+
 	// Call the handler
 	result, err := handler(ctx, mockConn, argMap)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert messages to SDK protocol
 	messages := make([]modelcontextprotocol.PromptMessage, len(result.Messages))
 	for i, msg := range result.Messages {
@@ -355,7 +354,7 @@ func (a *GolangToolsAdapter) handleGetPrompt(ctx context.Context, params any) (a
 			Content: convertContent(msg.Content),
 		}
 	}
-	
+
 	return modelcontextprotocol.GetPromptResult{
 		Description: result.Description,
 		Messages:    messages,
@@ -372,7 +371,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				Name:        tool.Name,
 				Description: tool.Description,
 			}
-			
+
 			// Convert input schema if available
 			if tool.InputSchema != nil {
 				var schema interface{}
@@ -380,10 +379,10 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 					golangTool.InputSchema = schema
 				}
 			}
-			
+
 			// Store the tool
 			a.tools = append(a.tools, golangTool)
-			
+
 			// Create and store the handler
 			toolName := tool.Name // Capture for closure
 			a.toolHandlers[toolName] = func(ctx context.Context, conn interface{}, args map[string]json.RawMessage) (*ToolResult, error) {
@@ -392,19 +391,19 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				if err != nil {
 					return nil, err
 				}
-				
+
 				// Convert result to golang-tools format
 				callResult, ok := result.(modelcontextprotocol.CallToolResult)
 				if !ok {
 					return nil, fmt.Errorf("unexpected tool result type: %T", result)
 				}
-				
+
 				// Convert content
 				golangContent := make([]Content, len(callResult.Content))
 				for i, c := range callResult.Content {
 					golangContent[i] = convertSDKContentToGolang(c)
 				}
-				
+
 				return &ToolResult{
 					Content: golangContent,
 					IsError: callResult.IsError,
@@ -412,7 +411,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 			}
 		}
 	}
-	
+
 	// Get prompts from SDK server and register them
 	if prompts := a.server.GetPrompts(); len(prompts) > 0 {
 		for _, prompt := range prompts {
@@ -421,7 +420,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				Name:        prompt.Name,
 				Description: prompt.Description,
 			}
-			
+
 			// Convert prompt arguments
 			args := make([]PromptArgument, len(prompt.Arguments))
 			for i, arg := range prompt.Arguments {
@@ -432,10 +431,10 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				}
 			}
 			golangPrompt.Arguments = args
-			
+
 			// Store the prompt
 			a.prompts = append(a.prompts, golangPrompt)
-			
+
 			// Create and store the handler
 			promptName := prompt.Name // Capture for closure
 			a.promptHandlers[promptName] = func(ctx context.Context, conn interface{}, args map[string]string) (*PromptResult, error) {
@@ -444,13 +443,13 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 				if err != nil {
 					return nil, err
 				}
-				
+
 				// Convert result to golang-tools format
 				getResult, ok := result.(modelcontextprotocol.GetPromptResult)
 				if !ok {
 					return nil, fmt.Errorf("unexpected prompt result type: %T", result)
 				}
-				
+
 				// Convert messages
 				messages := make([]PromptMessage, len(getResult.Messages))
 				for i, msg := range getResult.Messages {
@@ -459,7 +458,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 						Content: convertSDKContentToGolang(msg.Content),
 					}
 				}
-				
+
 				return &PromptResult{
 					Description: getResult.Description,
 					Messages:    messages,
@@ -467,7 +466,7 @@ func (a *GolangToolsAdapter) initializeFeatures(ctx context.Context) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -507,7 +506,7 @@ func convertContent(content Content) modelcontextprotocol.Content {
 			}
 		}
 	}
-	
+
 	// Default to text content
 	return modelcontextprotocol.TextContent{
 		Type: "text",
@@ -533,7 +532,7 @@ func convertSDKContentToGolang(content modelcontextprotocol.Content) Content {
 		golangContent := Content{
 			Type: "resource",
 		}
-		
+
 		switch r := c.Resource.(type) {
 		case modelcontextprotocol.TextResourceContents:
 			golangContent.Resource = &Resource{
@@ -549,7 +548,7 @@ func convertSDKContentToGolang(content modelcontextprotocol.Content) Content {
 				Blob:     &blob,
 			}
 		}
-		
+
 		return golangContent
 	default:
 		// Default to text content

@@ -41,7 +41,7 @@ func usingMark3LabsAdapter() {
 }
 
 func usingGolangToolsAdapter() {
-	// Create golang-tools adapter  
+	// Create golang-tools adapter
 	adapter := golang_tools.NewAdapter()
 
 	// Import golang-tools server (this would typically be done by importing golang-tools server code)

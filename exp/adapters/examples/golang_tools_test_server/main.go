@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
-	"github.com/tmc/mcp/exp/adapters/golang_tools"
 	"github.com/tmc/mcp"
+	"github.com/tmc/mcp/exp/adapters/golang_tools"
 	"github.com/tmc/mcp/protocol"
 	"github.com/tmc/mcp/server"
 	"github.com/tmc/mcp/transport"
@@ -22,7 +21,7 @@ func main() {
 		server.WithVersion("1.0.0"),
 		server.WithInstructions("Test server demonstrating golang-tools adapter"),
 	)
-	
+
 	// Add test tools to the SDK server
 	sdkServer.AddTool(
 		"echo",
@@ -39,7 +38,7 @@ func main() {
 		}`),
 		echoToolHandler,
 	)
-	
+
 	sdkServer.AddTool(
 		"calculate",
 		"Performs basic arithmetic operations",
@@ -64,7 +63,7 @@ func main() {
 		}`),
 		calculateToolHandler,
 	)
-	
+
 	// Add test prompt
 	sdkServer.AddPrompt(
 		"test-prompt",
@@ -78,23 +77,23 @@ func main() {
 		},
 		testPromptHandler,
 	)
-	
+
 	// Create golang-tools adapter
 	adapter := golang_tools.NewAdapter()
-	
+
 	// Initialize adapter with the SDK server
 	ctx := context.Background()
 	if err := adapter.Initialize(ctx, sdkServer); err != nil {
 		log.Fatalf("Failed to initialize adapter: %v", err)
 	}
-	
+
 	// Create server with adapter
 	adapterServer := server.NewServer(
 		server.WithName("golang-tools-adapted"),
 		server.WithVersion("1.0.0"),
 		server.WithAdapter(adapter),
 	)
-	
+
 	// Create transport
 	var t mcp.Transport
 	if len(os.Args) > 1 && os.Args[1] == "--stdio" {
@@ -102,7 +101,7 @@ func main() {
 	} else {
 		log.Fatal("Please specify --stdio flag")
 	}
-	
+
 	// Serve using the adapter
 	log.Printf("Starting golang-tools test server via adapter...")
 	if err := adapterServer.ServeTransport(ctx, t); err != nil {
@@ -116,7 +115,7 @@ func echoToolHandler(ctx context.Context, name string, arguments json.RawMessage
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return nil, err
 	}
-	
+
 	message, ok := args["message"].(string)
 	if !ok {
 		return protocol.CallToolResult{
@@ -129,7 +128,7 @@ func echoToolHandler(ctx context.Context, name string, arguments json.RawMessage
 			IsError: true,
 		}, nil
 	}
-	
+
 	return protocol.CallToolResult{
 		Content: []protocol.Content{
 			protocol.TextContent{
@@ -145,11 +144,11 @@ func calculateToolHandler(ctx context.Context, name string, arguments json.RawMe
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return nil, err
 	}
-	
+
 	op, _ := args["operation"].(string)
 	a, _ := args["a"].(float64)
 	b, _ := args["b"].(float64)
-	
+
 	var result float64
 	switch op {
 	case "add":
@@ -176,7 +175,7 @@ func calculateToolHandler(ctx context.Context, name string, arguments json.RawMe
 			IsError: true,
 		}, nil
 	}
-	
+
 	return protocol.CallToolResult{
 		Content: []protocol.Content{
 			protocol.TextContent{
@@ -190,7 +189,7 @@ func calculateToolHandler(ctx context.Context, name string, arguments json.RawMe
 // Prompt handler
 func testPromptHandler(ctx context.Context, name string, arguments map[string]string) (interface{}, error) {
 	topic := arguments["topic"]
-	
+
 	return protocol.GetPromptResult{
 		Description: fmt.Sprintf("Generated prompt about %s", topic),
 		Messages: []protocol.PromptMessage{

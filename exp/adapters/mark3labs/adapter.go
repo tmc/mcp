@@ -52,14 +52,14 @@ func NewAdapter() adapters.Adapter {
 // Initialize sets up the adapter with the target server
 func (a *Mark3LabsAdapter) Initialize(ctx context.Context, srv interface{}) error {
 	a.server = srv
-	
+
 	// Initialize mark3labs server with default options
 	// Note: We'll create a simple mock since mark3labs implementation isn't available
 	// a.mark3labsServer = server.NewMCPServer(
 	//     server.WithName("mark3labs-adapter"),
 	//     server.WithVersion("0.1.0"),
 	// )
-	
+
 	return nil
 }
 
@@ -151,7 +151,7 @@ func (a *Mark3LabsAdapter) handleListTools(ctx context.Context, params any) (any
 			Name:        tool.Name,
 			Description: tool.Description,
 		}
-		
+
 		// Convert input schema if present
 		if tool.RawInputSchema != nil {
 			protoTool.InputSchema = tool.RawInputSchema
@@ -161,10 +161,10 @@ func (a *Mark3LabsAdapter) handleListTools(ctx context.Context, params any) (any
 				protoTool.InputSchema = json.RawMessage(schemaData)
 			}
 		}
-		
+
 		protoTools = append(protoTools, protoTool)
 	}
-	
+
 	return modelcontextprotocol.ListToolsResult{
 		Tools: protoTools,
 	}, nil
@@ -174,7 +174,7 @@ func (a *Mark3LabsAdapter) handleCallTool(ctx context.Context, params any) (any,
 	if callParams, ok := params.(map[string]interface{}); ok {
 		name, _ := callParams["name"].(string)
 		args, _ := callParams["arguments"].(map[string]interface{})
-		
+
 		// Find the tool handler in mark3labs server
 		if serverTool, ok := a.tools[name]; ok {
 			// Create mark3labs CallToolRequest
@@ -185,18 +185,18 @@ func (a *Mark3LabsAdapter) handleCallTool(ctx context.Context, params any) (any,
 			}
 			req.Params.Name = name
 			req.Params.Arguments = args
-			
+
 			// Call tool handler
 			result, err := serverTool.Handler(ctx, req)
 			if err != nil {
 				return nil, err
 			}
-			
+
 			// Convert mark3labs CallToolResult to protocol
 			return a.convertToolResult(result), nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("tool not found")
 }
 
@@ -214,7 +214,7 @@ func (a *Mark3LabsAdapter) handleListResources(ctx context.Context, params any) 
 		}
 		protoResources = append(protoResources, protoResource)
 	}
-	
+
 	return modelcontextprotocol.ListResourcesResult{
 		Resources: protoResources,
 	}, nil
@@ -224,7 +224,7 @@ func (a *Mark3LabsAdapter) handleListResources(ctx context.Context, params any) 
 func (a *Mark3LabsAdapter) handleReadResource(ctx context.Context, params any) (any, error) {
 	if readParams, ok := params.(map[string]interface{}); ok {
 		uri, _ := readParams["uri"].(string)
-		
+
 		// Find the resource handler
 		if entry, ok := a.resources[uri]; ok {
 			// Create mark3labs ReadResourceRequest
@@ -234,25 +234,25 @@ func (a *Mark3LabsAdapter) handleReadResource(ctx context.Context, params any) (
 				},
 			}
 			req.Params.URI = uri
-			
+
 			// Call resource handler
 			contents, err := entry.handler(ctx, req)
 			if err != nil {
 				return nil, err
 			}
-			
+
 			// Convert mark3labs resource contents to protocol
 			protoContents := make([]modelcontextprotocol.ResourceContents, 0, len(contents))
 			for _, content := range contents {
 				protoContents = append(protoContents, a.convertResourceContents(content))
 			}
-			
+
 			return modelcontextprotocol.ReadResourceResult{
 				Contents: protoContents,
 			}, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("resource not found")
 }
 
@@ -266,7 +266,7 @@ func (a *Mark3LabsAdapter) handleListPrompts(ctx context.Context, params any) (a
 			Name:        prompt.Name,
 			Description: prompt.Description,
 		}
-		
+
 		// Convert arguments if present
 		if len(prompt.Arguments) > 0 {
 			protoPrompt.Arguments = make([]modelcontextprotocol.PromptArgument, 0, len(prompt.Arguments))
@@ -279,10 +279,10 @@ func (a *Mark3LabsAdapter) handleListPrompts(ctx context.Context, params any) (a
 				protoPrompt.Arguments = append(protoPrompt.Arguments, protoArg)
 			}
 		}
-		
+
 		protoPrompts = append(protoPrompts, protoPrompt)
 	}
-	
+
 	return modelcontextprotocol.ListPromptsResult{
 		Prompts: protoPrompts,
 	}, nil
@@ -293,7 +293,7 @@ func (a *Mark3LabsAdapter) handleGetPrompt(ctx context.Context, params any) (any
 	if getParams, ok := params.(map[string]interface{}); ok {
 		name, _ := getParams["name"].(string)
 		args, _ := getParams["arguments"].(map[string]string)
-		
+
 		// Find the prompt handler
 		if entry, ok := a.prompts[name]; ok {
 			// Create mark3labs GetPromptRequest
@@ -304,18 +304,18 @@ func (a *Mark3LabsAdapter) handleGetPrompt(ctx context.Context, params any) (any
 			}
 			req.Params.Name = name
 			req.Params.Arguments = args
-			
+
 			// Call prompt handler
 			result, err := entry.handler(ctx, req)
 			if err != nil {
 				return nil, err
 			}
-			
+
 			// Convert mark3labs GetPromptResult to protocol
 			return a.convertPromptResult(result), nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("prompt not found")
 }
 
@@ -325,11 +325,11 @@ func (a *Mark3LabsAdapter) convertToolResult(result *mcp.CallToolResult) *modelc
 		Content: make([]modelcontextprotocol.Content, 0, len(result.Content)),
 		IsError: result.IsError,
 	}
-	
+
 	for _, content := range result.Content {
 		protoResult.Content = append(protoResult.Content, a.convertContent(content))
 	}
-	
+
 	return protoResult
 }
 
@@ -392,12 +392,12 @@ func (a *Mark3LabsAdapter) convertPromptResult(result *mcp.GetPromptResult) *mod
 		Description: result.Description,
 		Messages:    make([]modelcontextprotocol.PromptMessage, 0, len(result.Messages)),
 	}
-	
+
 	for _, msg := range result.Messages {
 		protoMsg := modelcontextprotocol.PromptMessage{
 			Role: modelcontextprotocol.Role(msg.Role),
 		}
-		
+
 		// Convert content
 		if textContent, ok := msg.Content.(mcp.TextContent); ok {
 			protoMsg.Content = modelcontextprotocol.TextContent{
@@ -411,10 +411,10 @@ func (a *Mark3LabsAdapter) convertPromptResult(result *mcp.GetPromptResult) *mod
 				MimeType: imageContent.MIMEType,
 			}
 		}
-		
+
 		protoResult.Messages = append(protoResult.Messages, protoMsg)
 	}
-	
+
 	return protoResult
 }
 

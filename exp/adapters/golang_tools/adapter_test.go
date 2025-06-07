@@ -59,7 +59,7 @@ func (m *mockServer) GetPrompt(ctx context.Context, name string, args map[string
 
 func TestGolangToolsAdapter_Initialize(t *testing.T) {
 	adapter := NewAdapter()
-	
+
 	mockSrv := &mockServer{
 		info: server.ServerInfo{
 			Name:            "test-server",
@@ -88,12 +88,12 @@ func TestGolangToolsAdapter_Initialize(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := context.Background()
 	if err := adapter.Initialize(ctx, mockSrv); err != nil {
 		t.Fatalf("Failed to initialize adapter: %v", err)
 	}
-	
+
 	// Test GetCapabilities
 	caps := adapter.GetCapabilities()
 	if caps.Tools == nil {
@@ -106,7 +106,7 @@ func TestGolangToolsAdapter_Initialize(t *testing.T) {
 
 func TestGolangToolsAdapter_HandleRequest(t *testing.T) {
 	adapter := NewAdapter()
-	
+
 	mockSrv := &mockServer{
 		info: server.ServerInfo{
 			Name:            "test-server",
@@ -121,58 +121,58 @@ func TestGolangToolsAdapter_HandleRequest(t *testing.T) {
 			},
 		},
 	}
-	
+
 	ctx := context.Background()
 	if err := adapter.Initialize(ctx, mockSrv); err != nil {
 		t.Fatalf("Failed to initialize adapter: %v", err)
 	}
-	
+
 	// Test initialize
 	result, err := adapter.HandleRequest(ctx, "initialize", nil)
 	if err != nil {
 		t.Fatalf("Failed to handle initialize: %v", err)
 	}
-	
+
 	initResult, ok := result.(protocol.InitializeResult)
 	if !ok {
 		t.Fatalf("Expected InitializeResult, got %T", result)
 	}
-	
+
 	if initResult.ServerInfo.Name != "test-server" {
 		t.Errorf("Expected server name 'test-server', got %s", initResult.ServerInfo.Name)
 	}
-	
+
 	// Test list tools
 	result, err = adapter.HandleRequest(ctx, "tools/list", nil)
 	if err != nil {
 		t.Fatalf("Failed to handle tools/list: %v", err)
 	}
-	
+
 	listResult, ok := result.(protocol.ListToolsResult)
 	if !ok {
 		t.Fatalf("Expected ListToolsResult, got %T", result)
 	}
-	
+
 	if len(listResult.Tools) != 1 {
 		t.Errorf("Expected 1 tool, got %d", len(listResult.Tools))
 	}
-	
+
 	// Test call tool
 	params := map[string]interface{}{
 		"name":      "test-tool",
 		"arguments": map[string]interface{}{"key": "value"},
 	}
-	
+
 	result, err = adapter.HandleRequest(ctx, "tools/call", params)
 	if err != nil {
 		t.Fatalf("Failed to handle tools/call: %v", err)
 	}
-	
+
 	callResult, ok := result.(protocol.CallToolResult)
 	if !ok {
 		t.Fatalf("Expected CallToolResult, got %T", result)
 	}
-	
+
 	if len(callResult.Content) != 1 {
 		t.Errorf("Expected 1 content item, got %d", len(callResult.Content))
 	}
@@ -184,7 +184,7 @@ func TestGolangToolsAdapter_ContentConversion(t *testing.T) {
 		Type: "text",
 		Text: "Hello",
 	}
-	
+
 	golangContent := convertSDKContentToGolang(textContent)
 	if golangContent.Type != "text" {
 		t.Errorf("Expected type 'text', got %s", golangContent.Type)
@@ -192,14 +192,14 @@ func TestGolangToolsAdapter_ContentConversion(t *testing.T) {
 	if golangContent.Text != "Hello" {
 		t.Errorf("Expected text 'Hello', got %s", golangContent.Text)
 	}
-	
+
 	// Test image content conversion
 	imageContent := protocol.ImageContent{
 		Type:     "image",
 		Data:     "base64data",
 		MimeType: "image/png",
 	}
-	
+
 	golangContent = convertSDKContentToGolang(imageContent)
 	if golangContent.Type != "image" {
 		t.Errorf("Expected type 'image', got %s", golangContent.Type)

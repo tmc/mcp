@@ -99,6 +99,14 @@ func (c *Client) OnNotification(handler func(notification JSONRPCNotification)) 
 
 // Initialize performs the initial MCP handshake with the server.
 func (c *Client) Initialize(ctx context.Context, request InitializeRequest) (*InitializeResult, error) {
+	// Check if already initialized
+	c.initMu.Lock()
+	if c.initialized {
+		c.initMu.Unlock()
+		return nil, errors.New("client already initialized")
+	}
+	c.initMu.Unlock()
+
 	if request.ProtocolVersion == "" {
 		request.ProtocolVersion = LATEST_PROTOCOL_VERSION
 	}
@@ -244,8 +252,15 @@ func (c *Client) call(ctx context.Context, method string, params, result interfa
 			// Send cancellation notification if there's a specific cause
 			// or if the context was cancelled (not just deadline exceeded)
 			if cause != nil && (cause != context.Canceled || cause == context.Canceled) {
+				// Get the raw ID value to ensure proper marshaling
+				idValue := asyncCall.ID().Raw()
+				if idValue == nil {
+					// If ID is nil, skip cancellation
+					return
+				}
+				
 				cancelParams := map[string]interface{}{
-					"requestId": asyncCall.ID(),
+					"requestId": idValue,
 				}
 
 				// Add reason from the cause

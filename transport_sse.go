@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+
 	// "encoding/json" // Not directly needed here if sseRWCAdapter deals with bytes for JSON-RPC layer
 	"fmt"
 	"io"

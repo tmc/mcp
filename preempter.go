@@ -18,8 +18,8 @@ type CancellablePreempter struct {
 
 // CancelledNotificationParams matches the MCP spec for `notifications/cancelled`.
 type CancelledNotificationParams struct {
-	RequestID json.RawMessage `json:"requestId"`
-	Reason    string          `json:"reason,omitempty"`
+	RequestID interface{} `json:"requestId"`
+	Reason    string      `json:"reason,omitempty"`
 }
 
 // Preempt implements the jsonrpc2.Preempter interface.
@@ -41,10 +41,22 @@ func (p *CancellablePreempter) Preempt(ctx context.Context, req *jsonrpc2.Reques
 			return nil, fmt.Errorf("%w: invalid cancellation params: %s", jsonrpc2.ErrInvalidRequest, errUnmarshal.Error())
 		}
 
+		logger.InfoContext(ctx, "Debug: cancellation params received", "params", string(req.Params), "requestId_raw", params.RequestID)
+
+		// Convert the requestId to jsonrpc2.ID
 		var rpcID jsonrpc2.ID
-		if errUnmarshal := json.Unmarshal(params.RequestID, &rpcID); errUnmarshal != nil {
-			logger.ErrorContext(ctx, "Failed to unmarshal cancellation requestId", "error", errUnmarshal, "requestId", string(params.RequestID))
-			return nil, fmt.Errorf("%w: invalid requestId in cancellation: %s", jsonrpc2.ErrInvalidRequest, errUnmarshal.Error())
+		switch v := params.RequestID.(type) {
+		case float64:
+			// JSON numbers unmarshal as float64
+			rpcID = jsonrpc2.Int64ID(int64(v))
+		case string:
+			rpcID = jsonrpc2.StringID(v)
+		case nil:
+			logger.ErrorContext(ctx, "RequestID is nil in cancellation")
+			return nil, fmt.Errorf("%w: nil requestId in cancellation", jsonrpc2.ErrInvalidRequest)
+		default:
+			logger.ErrorContext(ctx, "Unexpected requestId type", "type", fmt.Sprintf("%T", v), "value", v)
+			return nil, fmt.Errorf("%w: invalid requestId type %T", jsonrpc2.ErrInvalidRequest, v)
 		}
 
 		logger.InfoContext(ctx, "Received cancellation notification, attempting to cancel in-flight request",

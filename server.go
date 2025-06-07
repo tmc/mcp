@@ -9,11 +9,29 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"sync"
+	"testing"
 
-	"github.com/tmc/mcp/internal/jsonrpc2util"
 	"golang.org/x/exp/jsonrpc2"
 )
+
+// serverBinder is a custom binder that includes cancellation support
+type serverBinder struct {
+	handler jsonrpc2.Handler
+	logger  *slog.Logger
+}
+
+// Bind implements the jsonrpc2.Binder interface
+func (b *serverBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
+	return jsonrpc2.ConnectionOptions{
+		Handler: b.handler,
+		Preempter: &CancellablePreempter{
+			Conn:   conn,
+			Logger: b.logger,
+		},
+	}, nil
+}
 
 // Server implements a Model Context Protocol server that can handle various
 // types of requests including resources, prompts, and tools.
@@ -35,6 +53,10 @@ type Server struct {
 
 	mu       sync.RWMutex
 	handlers map[string]jsonrpc2.HandlerFunc
+
+	// Track active tool contexts for cancellation workaround
+	activeToolsMu sync.RWMutex
+	activeTools   map[string]context.CancelFunc
 }
 
 type toolDefinition struct {
@@ -88,6 +110,18 @@ var defaultServerOptions = []ServerOption{
 // NewServer creates a new MCP server.
 func NewServer(name, version string, opts ...ServerOption) *Server {
 	opts = append(defaultServerOptions, opts...)
+	
+	// Create a test-aware default logger
+	var defaultLogger *slog.Logger
+	if isInTest() && isShortTest() {
+		// In short test mode, use a very quiet logger
+		defaultLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+	} else {
+		defaultLogger = slog.Default()
+	}
+	
 	s := &Server{
 		name:          name,
 		version:       version,
@@ -98,7 +132,8 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 		prompts:       make(map[string]promptDefinition),
 		handlers:      make(map[string]jsonrpc2.HandlerFunc),
 		dispatch:      NewDispatcher(),
-		logger:        slog.Default(),
+		logger:        defaultLogger,
+		activeTools:   make(map[string]context.CancelFunc),
 	}
 
 	// Apply options
@@ -514,12 +549,17 @@ func (s *Server) RegisterTool(tool Tool, handler ToolHandlerFunc) error {
 		handler: handler,
 	}
 
-	s.logger.Info("Tool registered successfully", "name", tool.Name)
-
-	if s.capabilities.Tools != nil && s.capabilities.Tools.ListChanged {
-		s.logger.Debug("Sending tool list changed notification")
-		go s.dispatch.NotifyListChanged(context.Background(), MethodToolListChanged)
+	// Initialize and set tools capability
+	if s.capabilities.Tools == nil {
+		s.capabilities.Tools = &struct {
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{}
 	}
+	s.capabilities.Tools.ListChanged = true
+
+	s.logger.Info("Tool registered successfully", "name", tool.Name)
+	s.logger.Debug("Sending tool list changed notification")
+	go s.dispatch.NotifyListChanged(context.Background(), MethodToolListChanged)
 
 	return nil
 }
@@ -540,6 +580,14 @@ func (s *Server) RegisterPrompt(prompt Prompt, handler GetPromptHandlerFunc) err
 		prompt:  prompt,
 		handler: handler,
 	}
+
+	// Initialize and set prompts capability
+	if s.capabilities.Prompts == nil {
+		s.capabilities.Prompts = &struct {
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{}
+	}
+	s.capabilities.Prompts.ListChanged = true
 
 	s.logger.Info("Prompt registered successfully", "name", prompt.Name)
 	s.logger.Debug("Sending prompt list changed notification")
@@ -564,6 +612,15 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 		resource: resource,
 		handler:  handler,
 	}
+
+	// Initialize and set resources capability
+	if s.capabilities.Resources == nil {
+		s.capabilities.Resources = &struct {
+			Subscribe   bool `json:"subscribe,omitempty"`
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{}
+	}
+	s.capabilities.Resources.ListChanged = true
 
 	s.logger.Info("Resource registered successfully", "uri", resource.URI)
 	s.logger.Debug("Sending resource list changed notification")
@@ -602,9 +659,10 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 	// Create a handler for the connection
 	handler := jsonrpc2.HandlerFunc(s.handleRequest)
 
-	// Create a binder for the connection
-	binder := jsonrpc2util.ConnectionBinder{
-		Handler: handler,
+	// Create a custom binder that includes cancellation support
+	binder := &serverBinder{
+		handler: handler,
+		logger:  slog.Default(),
 	}
 
 	// Create the connection
@@ -614,9 +672,23 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 	}
 	defer conn.Close()
 
-	// Wait for the context to be cancelled
-	<-ctx.Done()
-	return ctx.Err()
+	// Wait for either context cancellation or connection to finish
+	// The connection will automatically handle incoming requests via the handler
+	done := make(chan error, 1)
+	go func() {
+		done <- conn.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-done:
+		// Connection finished, return any error
+		if err != nil {
+			return fmt.Errorf("connection error: %w", err)
+		}
+		return nil
+	}
 }
 
 // withInferredServerName sets the server name to the default value using go build info.
@@ -631,7 +703,9 @@ func withInferredServerName() ServerOption {
 // withInferredServerVersion sets the server version to the default value using go build info.
 func withInferredServerVersion() ServerOption {
 	return func(s *Server) {
-		s.version = inferServerVersion()
+		if s.version == "" {
+			s.version = inferServerVersion()
+		}
 	}
 }
 
@@ -655,4 +729,16 @@ func inferServerVersion() string {
 		return bi.Main.Version
 	}
 	return "unknown"
+}
+
+// isInTest returns true if we're running in a test environment
+func isInTest() bool {
+	return strings.HasSuffix(os.Args[0], ".test") || 
+		   strings.Contains(os.Args[0], "/_test/") ||
+		   os.Getenv("GOTEST") == "1"
+}
+
+// isShortTest returns true if we're running tests in short mode
+func isShortTest() bool {
+	return testing.Short()
 }

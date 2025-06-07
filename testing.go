@@ -20,6 +20,11 @@ type testLogHandler struct {
 }
 
 func (h *testLogHandler) Enabled(_ context.Context, level slog.Level) bool {
+	// Check if running in short mode - be much quieter
+	if testing.Short() && !h.verbose {
+		return level >= slog.LevelError
+	}
+	
 	// Without -v: Show INFO and above
 	// With -v: Show DEBUG and above
 	if !h.verbose {
@@ -29,6 +34,11 @@ func (h *testLogHandler) Enabled(_ context.Context, level slog.Level) bool {
 }
 
 func (h *testLogHandler) Handle(_ context.Context, record slog.Record) error {
+	// In short mode and non-verbose, don't output anything to avoid cluttering test output
+	if testing.Short() && !h.verbose {
+		return nil
+	}
+	
 	if h.logger != nil {
 		h.logger.Logf("[%s] %s", record.Level, record.Message)
 	}

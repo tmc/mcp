@@ -80,6 +80,16 @@ type JSONRPCError struct {
 	Data    json.RawMessage `json:"data,omitempty"`
 }
 
+func (e *JSONRPCError) Error() string {
+	if e == nil {
+		return "mcp: nil JSON-RPC error"
+	}
+	if e.Data != nil {
+		return e.Message + ": " + string(e.Data)
+	}
+	return e.Message
+}
+
 // Implementation describes the name and version of an MCP client or server.
 type Implementation struct {
 	Name    string `json:"name"`

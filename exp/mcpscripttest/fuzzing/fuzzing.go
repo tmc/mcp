@@ -27,27 +27,27 @@ func NewFuzzGenerator(seed int64) *FuzzGenerator {
 // Generate creates a valid scripttest script for fuzzing
 func (g *FuzzGenerator) Generate() string {
 	var lines []string
-	
+
 	// Start with a comment
 	lines = append(lines, "# Generated test script for fuzzing")
 	lines = append(lines, "")
-	
+
 	// Generate random number of commands (between 3 and 15)
 	numCommands := g.rng.Intn(13) + 3
-	
+
 	for i := 0; i < numCommands; i++ {
 		line := g.generateCommand()
 		if line != "" {
 			lines = append(lines, line)
 		}
 	}
-	
+
 	// Ensure we have at least one exec command to make the test meaningful
 	if !containsExec(lines) {
 		lines = append(lines, "exec echo 'test complete'")
 		lines = append(lines, "stdout 'test complete'")
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 
@@ -64,7 +64,7 @@ func containsExec(lines []string) bool {
 func (g *FuzzGenerator) generateCommand() string {
 	// Weighted selection of command types
 	cmdType := g.rng.Intn(100)
-	
+
 	switch {
 	case cmdType < 40: // 40% chance of core commands
 		return g.generateCoreCommand()
@@ -82,7 +82,7 @@ func (g *FuzzGenerator) generateCommand() string {
 
 func (g *FuzzGenerator) generateCoreCommand() string {
 	cmd := g.schema.CoreCommands[g.rng.Intn(len(g.schema.CoreCommands))]
-	
+
 	switch cmd.Name {
 	case "exec":
 		return g.generateExecCommand()
@@ -120,7 +120,7 @@ func (g *FuzzGenerator) generateCoreCommand() string {
 
 func (g *FuzzGenerator) generateMCPCommand() string {
 	cmd := g.schema.MCPCommands[g.rng.Intn(len(g.schema.MCPCommands))]
-	
+
 	switch cmd.Name {
 	case "mcp-send":
 		return fmt.Sprintf("mcp-send %s", g.randomJSONRPC())
@@ -138,7 +138,7 @@ func (g *FuzzGenerator) generateMCPCommand() string {
 func (g *FuzzGenerator) generateDirective() string {
 	directives := []string{"!", "?", "[linux]", "[!windows]", "skip"}
 	directive := directives[g.rng.Intn(len(directives))]
-	
+
 	switch directive {
 	case "!":
 		return fmt.Sprintf("! exec %s", g.randomCommand())
@@ -252,7 +252,7 @@ func (g *FuzzGenerator) randomJSONRPC() string {
 	methods := []string{"initialize", "tools/list", "tools/call", "resources/list"}
 	id := g.rng.Intn(100) + 1
 	method := methods[g.rng.Intn(len(methods))]
-	
+
 	return fmt.Sprintf(`{"jsonrpc":"2.0","method":"%s","id":%d}`, method, id)
 }
 

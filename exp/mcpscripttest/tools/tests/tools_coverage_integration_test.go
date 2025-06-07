@@ -1,10 +1,11 @@
 package tests
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/tmc/mcp/exp/mcpscripttest"
 
 	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )

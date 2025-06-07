@@ -1,7 +1,6 @@
 package fuzzing
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"fmt"
 	"io"
 	"os"
@@ -12,28 +11,28 @@ import (
 
 // Visualizer provides live visualization of fuzzing activity
 type Visualizer struct {
-	mu          sync.Mutex
-	writer      io.Writer
-	enabled     bool
+	mu           sync.Mutex
+	writer       io.Writer
+	enabled      bool
 	showRejected bool
-	
+
 	// Statistics
-	totalTested    int64
-	totalAccepted  int64
-	totalRejected  int64
-	lastUpdate     time.Time
-	
+	totalTested   int64
+	totalAccepted int64
+	totalRejected int64
+	lastUpdate    time.Time
+
 	// Display options
 	clearScreen    bool
 	showStats      bool
 	showScript     bool
 	maxScriptLines int
 	updateInterval time.Duration
-	
+
 	// Current state
-	currentScript  string
-	currentStatus  string
-	lastError      error
+	currentScript string
+	currentStatus string
+	lastError     error
 }
 
 // NewVisualizer creates a new fuzzing visualizer
@@ -55,25 +54,25 @@ func NewVisualizer(opts VisualizerOptions) *Visualizer {
 type VisualizerOptions struct {
 	// Writer is where to write the visualization (default: os.Stdout)
 	Writer io.Writer
-	
+
 	// Enabled determines if visualization is active
 	Enabled bool
-	
+
 	// ShowRejected shows scripts that fail validation
 	ShowRejected bool
-	
+
 	// ClearScreen clears the terminal between updates
 	ClearScreen bool
-	
+
 	// ShowStats displays fuzzing statistics
 	ShowStats bool
-	
+
 	// ShowScript displays the current script being tested
 	ShowScript bool
-	
+
 	// MaxScriptLines limits how many lines of script to show
 	MaxScriptLines int
-	
+
 	// UpdateInterval controls how often to update the display
 	UpdateInterval time.Duration
 }
@@ -97,10 +96,10 @@ func (v *Visualizer) StartTest(script string) {
 	if !v.enabled {
 		return
 	}
-	
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	v.totalTested++
 	v.currentScript = script
 	v.currentStatus = "testing"
@@ -112,13 +111,13 @@ func (v *Visualizer) AcceptScript(script string) {
 	if !v.enabled {
 		return
 	}
-	
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	v.totalAccepted++
 	v.currentStatus = "accepted"
-	
+
 	// Only update display for accepted scripts (or if ShowRejected is true)
 	if v.shouldUpdate() {
 		v.updateDisplay()
@@ -130,14 +129,14 @@ func (v *Visualizer) RejectScript(script string, err error) {
 	if !v.enabled {
 		return
 	}
-	
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	v.totalRejected++
 	v.currentStatus = "rejected"
 	v.lastError = err
-	
+
 	// Only update display if ShowRejected is true
 	if v.showRejected && v.shouldUpdate() {
 		v.updateDisplay()
@@ -157,54 +156,54 @@ func (v *Visualizer) shouldUpdate() bool {
 // updateDisplay refreshes the visualization
 func (v *Visualizer) updateDisplay() {
 	var output strings.Builder
-	
+
 	// Clear screen if requested
 	if v.clearScreen {
 		output.WriteString("\033[H\033[2J") // ANSI escape codes to clear screen
 	}
-	
+
 	// Header
 	output.WriteString("=== MCPScriptTest Fuzzer ===\n\n")
-	
+
 	// Statistics
 	if v.showStats {
 		output.WriteString(fmt.Sprintf("Total Tested:  %d\n", v.totalTested))
-		output.WriteString(fmt.Sprintf("Accepted:      %d (%.1f%%)\n", 
-			v.totalAccepted, 
+		output.WriteString(fmt.Sprintf("Accepted:      %d (%.1f%%)\n",
+			v.totalAccepted,
 			float64(v.totalAccepted)/float64(max(v.totalTested, 1))*100))
-		output.WriteString(fmt.Sprintf("Rejected:      %d (%.1f%%)\n", 
+		output.WriteString(fmt.Sprintf("Rejected:      %d (%.1f%%)\n",
 			v.totalRejected,
 			float64(v.totalRejected)/float64(max(v.totalTested, 1))*100))
 		output.WriteString(fmt.Sprintf("Status:        %s\n", v.currentStatus))
 		output.WriteString("\n")
 	}
-	
+
 	// Current script
 	if v.showScript && v.currentScript != "" {
 		output.WriteString("Current Script:\n")
 		output.WriteString("---------------\n")
-		
+
 		lines := strings.Split(v.currentScript, "\n")
 		displayLines := lines
 		if len(lines) > v.maxScriptLines {
 			displayLines = lines[:v.maxScriptLines]
 		}
-		
+
 		for i, line := range displayLines {
 			output.WriteString(fmt.Sprintf("%3d: %s\n", i+1, line))
 		}
-		
+
 		if len(lines) > v.maxScriptLines {
 			output.WriteString(fmt.Sprintf("... (%d more lines)\n", len(lines)-v.maxScriptLines))
 		}
 		output.WriteString("\n")
 	}
-	
+
 	// Error if rejected and showing rejected
 	if v.currentStatus == "rejected" && v.lastError != nil && v.showRejected {
 		output.WriteString(fmt.Sprintf("Error: %v\n\n", v.lastError))
 	}
-	
+
 	// Write to output
 	fmt.Fprint(v.writer, output.String())
 }
@@ -214,13 +213,13 @@ func (v *Visualizer) UpdateCoverage(coverage float64, newLines int) {
 	if !v.enabled {
 		return
 	}
-	
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	// Add coverage info to the current status
 	v.currentStatus = fmt.Sprintf("accepted (coverage: %.1f%%, +%d lines)", coverage, newLines)
-	
+
 	if v.shouldUpdate() {
 		v.updateDisplay()
 	}
@@ -231,21 +230,21 @@ func (v *Visualizer) Close() {
 	if !v.enabled {
 		return
 	}
-	
+
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	
+
 	// Final statistics
 	var output strings.Builder
 	output.WriteString("\n=== Final Statistics ===\n")
 	output.WriteString(fmt.Sprintf("Total Tested:  %d\n", v.totalTested))
-	output.WriteString(fmt.Sprintf("Accepted:      %d (%.1f%%)\n", 
-		v.totalAccepted, 
+	output.WriteString(fmt.Sprintf("Accepted:      %d (%.1f%%)\n",
+		v.totalAccepted,
 		float64(v.totalAccepted)/float64(max(v.totalTested, 1))*100))
-	output.WriteString(fmt.Sprintf("Rejected:      %d (%.1f%%)\n", 
+	output.WriteString(fmt.Sprintf("Rejected:      %d (%.1f%%)\n",
 		v.totalRejected,
 		float64(v.totalRejected)/float64(max(v.totalTested, 1))*100))
-	
+
 	fmt.Fprint(v.writer, output.String())
 }
 

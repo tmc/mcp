@@ -77,7 +77,7 @@ func SetupTestCoverage(t *testing.T, opts *CoverageOptions) func() {
 		if opts.VerboseOutput {
 			t.Logf("Test-specific coverage directory: %s", testCoverDir)
 		}
-		
+
 		if err := os.MkdirAll(testCoverDir, 0755); err != nil {
 			if opts.VerboseOutput {
 				t.Logf("Warning: Failed to create test-specific coverage directory: %v", err)
@@ -100,12 +100,12 @@ func SetupTestCoverage(t *testing.T, opts *CoverageOptions) func() {
 		if opts.VerboseOutput {
 			t.Log("Cleaning up coverage data...")
 		}
-		
+
 		// Restore original GOCOVERDIR
 		if originalCoverDir != testCoverDir {
 			//t.Setenv("GOCOVERDIR", originalCoverDir)
 		}
-		
+
 		// Merge coverage data back to the original directory
 		cmd := exec.Command("go", "tool", "covdata", "merge", "-pcombine", "-i", testCoverDir, "-o", originalCoverDir)
 		if err := cmd.Run(); err != nil {

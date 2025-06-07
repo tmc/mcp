@@ -33,7 +33,7 @@ func init() {
 	flag.BoolVar(&fromTests, "from-tests", false, "Start paths from test files")
 	flag.BoolVar(&toPrograms, "to-programs", false, "End paths at programs")
 	flag.BoolVar(&verbose, "verbose", false, "Verbose output")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "testgraph - Combine testcallgraph with digraph analysis\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
@@ -73,22 +73,22 @@ type Edge struct {
 
 func main() {
 	flag.Parse()
-	
+
 	if testFile == "" && flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(0)
 	}
-	
+
 	if testFile == "" && flag.NArg() > 0 {
 		testFile = flag.Arg(0)
 	}
-	
+
 	// Build the graph
 	graph, err := buildGraph(testFile)
 	if err != nil {
 		log.Fatalf("Error building graph: %v", err)
 	}
-	
+
 	// Setup output
 	var out io.Writer = os.Stdout
 	if outputFile != "" {
@@ -99,7 +99,7 @@ func main() {
 		defer f.Close()
 		out = f
 	}
-	
+
 	// Output the graph
 	switch format {
 	case "json":
@@ -109,7 +109,7 @@ func main() {
 	default:
 		outputDigraph(out, graph)
 	}
-	
+
 	// If a query is specified, run it
 	if query != "" {
 		runQuery(graph, query)
@@ -121,20 +121,20 @@ func buildGraph(testPath string) (*Graph, error) {
 		Nodes: make(map[string]*Node),
 		Edges: []Edge{},
 	}
-	
+
 	// Get all test files
 	files, err := getTestFiles(testPath)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	stitcher := testcallgraph.NewEnhancedStitcher()
-	
+
 	for _, file := range files {
 		if verbose {
 			log.Printf("Analyzing %s...", file)
 		}
-		
+
 		// Add test file node
 		testID := filepath.Base(file)
 		graph.Nodes[testID] = &Node{
@@ -145,20 +145,20 @@ func buildGraph(testPath string) (*Graph, error) {
 				"fullPath": file,
 			},
 		}
-		
+
 		// Analyze the test
 		if err := stitcher.AnalyzeScriptTest(file); err != nil {
 			log.Printf("Error analyzing %s: %v", file, err)
 			continue
 		}
-		
+
 		// Get connections
 		edges := stitcher.CreateCallGraphConnections(file)
-		
+
 		for _, edge := range edges {
 			// Extract program name from the To field
 			programID := extractProgramID(edge.To)
-			
+
 			// Add program node if not exists
 			if _, exists := graph.Nodes[programID]; !exists {
 				graph.Nodes[programID] = &Node{
@@ -170,7 +170,7 @@ func buildGraph(testPath string) (*Graph, error) {
 					},
 				}
 			}
-			
+
 			// Add edge
 			graph.Edges = append(graph.Edges, Edge{
 				From: testID,
@@ -184,7 +184,7 @@ func buildGraph(testPath string) (*Graph, error) {
 			})
 		}
 	}
-	
+
 	return graph, nil
 }
 
@@ -193,11 +193,11 @@ func getTestFiles(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if !info.IsDir() {
 		return []string{path}, nil
 	}
-	
+
 	var files []string
 	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -208,7 +208,7 @@ func getTestFiles(path string) ([]string, error) {
 		}
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -243,7 +243,7 @@ func outputDot(w io.Writer, graph *Graph) {
 	fmt.Fprintf(w, "digraph testgraph {\n")
 	fmt.Fprintf(w, "  rankdir=LR;\n")
 	fmt.Fprintf(w, "  node [shape=box];\n\n")
-	
+
 	// Define nodes
 	for id, node := range graph.Nodes {
 		style := ""
@@ -254,9 +254,9 @@ func outputDot(w io.Writer, graph *Graph) {
 		}
 		fmt.Fprintf(w, "  \"%s\" [%s];\n", id, style)
 	}
-	
+
 	fmt.Fprintf(w, "\n")
-	
+
 	// Define edges
 	for _, edge := range graph.Edges {
 		label := edge.Type
@@ -265,7 +265,7 @@ func outputDot(w io.Writer, graph *Graph) {
 		}
 		fmt.Fprintf(w, "  \"%s\" -> \"%s\" [label=\"%s\"];\n", edge.From, edge.To, label)
 	}
-	
+
 	fmt.Fprintf(w, "}\n")
 }
 
@@ -286,28 +286,28 @@ func runQuery(graph *Graph, query string) {
 		log.Fatalf("Error creating temp file: %v", err)
 	}
 	defer os.Remove(tmpfile.Name())
-	
+
 	// Write graph to temp file
 	outputDigraph(tmpfile, graph)
 	tmpfile.Close()
-	
+
 	// Run digraph command
 	cmdParts := strings.Fields(query)
 	if len(cmdParts) == 0 {
 		return
 	}
-	
+
 	allArgs := append([]string{cmdParts[0]}, cmdParts[1:]...)
 	cmd := exec.Command("digraph", allArgs...)
 	cmd.Stdin, err = os.Open(tmpfile.Name())
 	if err != nil {
 		log.Fatalf("Error opening temp file: %v", err)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatalf("Error running digraph: %v\n%s", err, output)
 	}
-	
+
 	fmt.Print(string(output))
 }

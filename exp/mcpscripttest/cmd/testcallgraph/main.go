@@ -55,27 +55,27 @@ func init() {
 }
 
 type Result struct {
-	TestFile    string                              `json:"test_file"`
-	Executions  []testcallgraph.ProgramExecution   `json:"executions"`
-	Edges       []testcallgraph.CallGraphEdge      `json:"edges"`
-	Programs    map[string]int                      `json:"programs"`    // program -> count
-	CommandTypes map[string]int                     `json:"command_types"` // command type -> count
+	TestFile     string                           `json:"test_file"`
+	Executions   []testcallgraph.ProgramExecution `json:"executions"`
+	Edges        []testcallgraph.CallGraphEdge    `json:"edges"`
+	Programs     map[string]int                   `json:"programs"`      // program -> count
+	CommandTypes map[string]int                   `json:"command_types"` // command type -> count
 }
 
 func main() {
 	flag.Parse()
-	
+
 	// If no flags and no args, show help
 	if testFile == "" && flag.NArg() == 0 {
 		flag.Usage()
 		os.Exit(0)
 	}
-	
+
 	// Get test file from args if not specified via flag
 	if testFile == "" && flag.NArg() > 0 {
 		testFile = flag.Arg(0)
 	}
-	
+
 	// Setup output
 	var out io.Writer = os.Stdout
 	if outputFile != "" {
@@ -86,7 +86,7 @@ func main() {
 		defer f.Close()
 		out = f
 	}
-	
+
 	// Process files
 	files, err := getTestFiles(testFile)
 	if err != nil {
@@ -105,21 +105,21 @@ func main() {
 		stitcher = testcallgraph.NewEnhancedStitcher()
 	}
 	results := make([]*Result, 0)
-	
+
 	for _, file := range files {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "Analyzing %s...\n", file)
 		}
-		
+
 		result, err := analyzeFile(stitcher, file)
 		if err != nil {
 			log.Printf("Error analyzing %s: %v", file, err)
 			continue
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	// Output results
 	switch format {
 	case "json":
@@ -129,7 +129,7 @@ func main() {
 	default:
 		outputText(out, results)
 	}
-	
+
 	// Show statistics if requested
 	if showStats {
 		printStats(results)
@@ -148,11 +148,11 @@ func getTestFiles(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if !info.IsDir() {
 		return []string{path}, nil
 	}
-	
+
 	// Find all .txt files in directory
 	var files []string
 	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
@@ -164,7 +164,7 @@ func getTestFiles(path string) ([]string, error) {
 		}
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -236,35 +236,35 @@ func outputText(w io.Writer, results []*Result) {
 		outputAnalysis(w, results, analyze)
 		return
 	}
-	
+
 	if listCmds {
 		outputCommandList(w, results)
 		return
 	}
-	
+
 	for _, result := range results {
 		fmt.Fprintf(w, "=== %s ===\n", result.TestFile)
-		
+
 		if len(result.Executions) == 0 {
 			fmt.Fprintf(w, "No program executions found\n\n")
 			continue
 		}
-		
+
 		fmt.Fprintf(w, "\nProgram Executions:\n")
 		for _, exec := range result.Executions {
 			serverStr := ""
 			if exec.IsServer {
 				serverStr = " [SERVER]"
 			}
-			fmt.Fprintf(w, "  Line %d: %s -> %s (%s)%s\n", 
+			fmt.Fprintf(w, "  Line %d: %s -> %s (%s)%s\n",
 				exec.Line, exec.Command, exec.Program, exec.ExecutedBy, serverStr)
 		}
-		
+
 		fmt.Fprintf(w, "\nCall Graph Edges:\n")
 		for _, edge := range result.Edges {
 			fmt.Fprintf(w, "  %s\n", edge)
 		}
-		
+
 		fmt.Fprintf(w, "\n")
 	}
 }
@@ -279,30 +279,30 @@ func outputDot(w io.Writer, results []*Result) {
 	fmt.Fprintf(w, "digraph testcallgraph {\n")
 	fmt.Fprintf(w, "  rankdir=LR;\n")
 	fmt.Fprintf(w, "  node [shape=box];\n\n")
-	
+
 	// Collect all unique nodes
 	testNodes := make(map[string]bool)
 	programNodes := make(map[string]bool)
-	
+
 	for _, result := range results {
 		testNodes[filepath.Base(result.TestFile)] = true
 		for _, edge := range result.Edges {
 			programNodes[edge.To] = true
 		}
 	}
-	
+
 	// Define test nodes
 	fmt.Fprintf(w, "  // Test files\n")
 	for node := range testNodes {
 		fmt.Fprintf(w, "  \"%s\" [style=filled,fillcolor=lightblue];\n", node)
 	}
-	
+
 	// Define program nodes
 	fmt.Fprintf(w, "\n  // Programs\n")
 	for node := range programNodes {
 		fmt.Fprintf(w, "  \"%s\" [style=filled,fillcolor=lightgreen];\n", node)
 	}
-	
+
 	// Add edges
 	fmt.Fprintf(w, "\n  // Edges\n")
 	for _, result := range results {
@@ -312,17 +312,17 @@ func outputDot(w io.Writer, results []*Result) {
 			if edge.IsServer {
 				label += " [SERVER]"
 			}
-			fmt.Fprintf(w, "  \"%s\" -> \"%s\" [label=\"%s\"];\n", 
+			fmt.Fprintf(w, "  \"%s\" -> \"%s\" [label=\"%s\"];\n",
 				testNode, edge.To, label)
 		}
 	}
-	
+
 	fmt.Fprintf(w, "}\n")
 }
 
 func outputAnalysis(w io.Writer, results []*Result, program string) {
 	fmt.Fprintf(w, "=== Analysis: %s ===\n\n", program)
-	
+
 	found := false
 	for _, result := range results {
 		var matches []testcallgraph.ProgramExecution
@@ -331,18 +331,18 @@ func outputAnalysis(w io.Writer, results []*Result, program string) {
 				matches = append(matches, exec)
 			}
 		}
-		
+
 		if len(matches) > 0 {
 			found = true
 			fmt.Fprintf(w, "%s:\n", result.TestFile)
 			for _, exec := range matches {
-				fmt.Fprintf(w, "  Line %d: %s (%s)\n", 
+				fmt.Fprintf(w, "  Line %d: %s (%s)\n",
 					exec.Line, exec.Command, exec.ExecutedBy)
 			}
 			fmt.Fprintf(w, "\n")
 		}
 	}
-	
+
 	if !found {
 		fmt.Fprintf(w, "No occurrences of %s found\n", program)
 	}
@@ -350,15 +350,15 @@ func outputAnalysis(w io.Writer, results []*Result, program string) {
 
 func outputCommandList(w io.Writer, results []*Result) {
 	commands := make(map[string]int)
-	
+
 	for _, result := range results {
 		for _, exec := range result.Executions {
 			commands[exec.ExecutedBy]++
 		}
 	}
-	
+
 	fmt.Fprintf(w, "=== Custom Commands Found ===\n\n")
-	
+
 	// Sort by frequency
 	type cmdCount struct {
 		cmd   string
@@ -371,7 +371,7 @@ func outputCommandList(w io.Writer, results []*Result) {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].count > sorted[j].count
 	})
-	
+
 	for _, cc := range sorted {
 		fmt.Fprintf(w, "%s: %d occurrences\n", cc.cmd, cc.count)
 	}
@@ -383,7 +383,7 @@ func printStats(results []*Result) {
 	programs := make(map[string]int)
 	commands := make(map[string]int)
 	serverCount := 0
-	
+
 	for _, result := range results {
 		totalExecs += len(result.Executions)
 		for prog, count := range result.Programs {
@@ -398,14 +398,14 @@ func printStats(results []*Result) {
 			}
 		}
 	}
-	
+
 	fmt.Fprintf(os.Stderr, "\n=== Statistics ===\n")
 	fmt.Fprintf(os.Stderr, "Files analyzed: %d\n", totalFiles)
 	fmt.Fprintf(os.Stderr, "Total executions: %d\n", totalExecs)
 	fmt.Fprintf(os.Stderr, "Unique programs: %d\n", len(programs))
 	fmt.Fprintf(os.Stderr, "Server processes: %d\n", serverCount)
 	fmt.Fprintf(os.Stderr, "\nTop programs:\n")
-	
+
 	// Sort programs by frequency
 	type progCount struct {
 		prog  string
@@ -418,7 +418,7 @@ func printStats(results []*Result) {
 	sort.Slice(sortedProgs, func(i, j int) bool {
 		return sortedProgs[i].count > sortedProgs[j].count
 	})
-	
+
 	for i := 0; i < 5 && i < len(sortedProgs); i++ {
 		fmt.Fprintf(os.Stderr, "  %s: %d\n", sortedProgs[i].prog, sortedProgs[i].count)
 	}

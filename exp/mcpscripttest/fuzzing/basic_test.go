@@ -1,9 +1,8 @@
 package fuzzing
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
-	"testing"
 	"strings"
+	"testing"
 )
 
 // TestFuzzGenerator tests the basic fuzzing generator
@@ -35,15 +34,15 @@ func TestSpecializedGenerators(t *testing.T) {
 	// Test MCP trace generator
 	mcpGen := NewMCPTraceGenerator(42)
 	script := mcpGen.Generate()
-	
+
 	if !strings.Contains(script, "mcp-trace") {
 		t.Error("MCP generator didn't produce mcp-trace commands")
 	}
-	
+
 	// Test safe file operations generator
 	safeGen := NewSafeFileOperationsGenerator(42)
 	script = safeGen.Generate()
-	
+
 	if strings.Contains(script, "rm -rf") {
 		t.Error("Safe generator produced dangerous commands")
 	}
@@ -56,7 +55,7 @@ func TestSmartGenerator(t *testing.T) {
 			DisabledCommands: map[string]bool{},
 		},
 		EnableIntrospection: true,
-		CommonTestBinaries: true,
+		CommonTestBinaries:  true,
 	}
 
 	smartGen := NewSmartGenerator(42, config)
@@ -86,13 +85,13 @@ func TestVisualization(t *testing.T) {
 // TestBinaryIntrospection tests binary introspection
 func TestBinaryIntrospection(t *testing.T) {
 	intro := NewBinaryIntrospector()
-	
+
 	// Test introspection of a known binary
 	info, err := intro.IntrospectBinary("echo")
 	if err != nil {
 		t.Skipf("Could not introspect echo binary: %v", err)
 	}
-	
+
 	if info.Path != "echo" {
 		t.Errorf("Wrong binary path: %s", info.Path)
 	}

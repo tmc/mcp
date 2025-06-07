@@ -34,14 +34,14 @@ var bashCmd = script.Command(
 		ctx := s.Context()
 		// Temporarily disable timeout to debug context cancellation issues
 		/*
-		timeout := 60 * time.Second // Reasonable default timeout
-		if timeoutStr := os.Getenv("MCP_BASH_TIMEOUT"); timeoutStr != "" {
-			if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
-				timeout = parsedTimeout
+			timeout := 60 * time.Second // Reasonable default timeout
+			if timeoutStr := os.Getenv("MCP_BASH_TIMEOUT"); timeoutStr != "" {
+				if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
+					timeout = parsedTimeout
+				}
 			}
-		}
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
 		*/
 
 		// Check if coverage is enabled via environment variable from script state

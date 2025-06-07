@@ -14,19 +14,19 @@ import (
 func ExampleCustomConditions() {
 	// Create options with custom conditions
 	options := mcpscripttest.DefaultOptions()
-	
+
 	// Add custom conditions for your implementation
 	options.CustomConditions = map[string]script.Cond{
 		"supports_custom_feature": customFeatureCondition,
 		"has_database_access":     databaseAccessCondition,
 		"api_version":             apiVersionCondition,
 	}
-	
+
 	// Use these options when creating an engine or running tests
 	_ = options // engine := mcpscripttest.NewEngine(options)
-	
+
 	// You can now use these conditions in your test scripts:
-	// 
+	//
 	// # Skip this test if custom feature is not supported
 	// supports_custom_feature
 	//
@@ -35,9 +35,9 @@ func ExampleCustomConditions() {
 	//
 	// # Skip this test if API version is less than specified
 	// api_version 2.0
-	
+
 	// Example of how to use the engine with these conditions
-	fmt.Println("Custom conditions added to engine:", 
+	fmt.Println("Custom conditions added to engine:",
 		len(options.CustomConditions))
 }
 

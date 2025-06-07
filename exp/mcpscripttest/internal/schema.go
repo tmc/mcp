@@ -27,8 +27,8 @@ func GetSchema() *Schema {
 	return &Schema{
 		CoreCommands: []Command{
 			{
-				Name:  "exec",
-				Usage: "exec [command] [args...]",
+				Name:        "exec",
+				Usage:       "exec [command] [args...]",
 				Description: "Execute a command and capture its output",
 				Examples: []string{
 					"exec echo hello",
@@ -37,8 +37,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "stdin",
-				Usage: "stdin [content]",
+				Name:        "stdin",
+				Usage:       "stdin [content]",
 				Description: "Provide input to the next exec command",
 				Examples: []string{
 					"stdin {\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"id\":1}",
@@ -46,8 +46,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "stdout",
-				Usage: "stdout [expected content]",
+				Name:        "stdout",
+				Usage:       "stdout [expected content]",
 				Description: "Assert that the previous command's stdout contains the expected content",
 				Examples: []string{
 					"stdout \"result\"",
@@ -55,8 +55,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "stderr",
-				Usage: "stderr [expected content]",
+				Name:        "stderr",
+				Usage:       "stderr [expected content]",
 				Description: "Assert that the previous command's stderr contains the expected content",
 				Examples: []string{
 					"stderr error:",
@@ -64,8 +64,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "cat",
-				Usage: "cat [filename]",
+				Name:        "cat",
+				Usage:       "cat [filename]",
 				Description: "Display the contents of a file",
 				Examples: []string{
 					"cat output.json",
@@ -73,8 +73,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "cp",
-				Usage: "cp [source] [destination]",
+				Name:        "cp",
+				Usage:       "cp [source] [destination]",
 				Description: "Copy a file from source to destination",
 				Examples: []string{
 					"cp template.json test.json",
@@ -82,8 +82,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "mv",
-				Usage: "mv [source] [destination]",
+				Name:        "mv",
+				Usage:       "mv [source] [destination]",
 				Description: "Move/rename a file from source to destination",
 				Examples: []string{
 					"mv old.txt new.txt",
@@ -91,8 +91,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "rm",
-				Usage: "rm [filename]",
+				Name:        "rm",
+				Usage:       "rm [filename]",
 				Description: "Remove a file",
 				Examples: []string{
 					"rm temp.txt",
@@ -100,8 +100,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "mkdir",
-				Usage: "mkdir [directory]",
+				Name:        "mkdir",
+				Usage:       "mkdir [directory]",
 				Description: "Create a directory",
 				Examples: []string{
 					"mkdir output",
@@ -109,8 +109,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "cd",
-				Usage: "cd [directory]",
+				Name:        "cd",
+				Usage:       "cd [directory]",
 				Description: "Change the current directory",
 				Examples: []string{
 					"cd testdir",
@@ -118,8 +118,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "env",
-				Usage: "env [NAME=value]",
+				Name:        "env",
+				Usage:       "env [NAME=value]",
 				Description: "Set an environment variable",
 				Examples: []string{
 					"env GOCOVERDIR=/tmp/coverage",
@@ -127,8 +127,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "cmp",
-				Usage: "cmp [file1] [file2]",
+				Name:        "cmp",
+				Usage:       "cmp [file1] [file2]",
 				Description: "Compare two files for equality",
 				Examples: []string{
 					"cmp expected.json actual.json",
@@ -136,8 +136,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "grep",
-				Usage: "grep [pattern] [file]",
+				Name:        "grep",
+				Usage:       "grep [pattern] [file]",
 				Description: "Search for a pattern in a file",
 				Examples: []string{
 					"grep error server.log",
@@ -145,8 +145,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "sleep",
-				Usage: "sleep [duration]",
+				Name:        "sleep",
+				Usage:       "sleep [duration]",
 				Description: "Sleep for the specified duration",
 				Examples: []string{
 					"sleep 1s",
@@ -154,8 +154,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "wait",
-				Usage: "wait [process]",
+				Name:        "wait",
+				Usage:       "wait [process]",
 				Description: "Wait for a background process to complete",
 				Examples: []string{
 					"wait $server",
@@ -165,8 +165,8 @@ func GetSchema() *Schema {
 		},
 		MCPCommands: []Command{
 			{
-				Name:  "mcp-send",
-				Usage: "mcp-send [json-rpc message]",
+				Name:        "mcp-send",
+				Usage:       "mcp-send [json-rpc message]",
 				Description: "Send a JSON-RPC message to an MCP server",
 				Examples: []string{
 					`mcp-send {"jsonrpc":"2.0","method":"initialize","id":1}`,
@@ -174,8 +174,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "mcp-recv",
-				Usage: "mcp-recv [expected pattern]",
+				Name:        "mcp-recv",
+				Usage:       "mcp-recv [expected pattern]",
 				Description: "Receive and assert on a JSON-RPC response",
 				Examples: []string{
 					`mcp-recv "result"`,
@@ -183,8 +183,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "mcp-serve",
-				Usage: "mcp-serve -- [server command]",
+				Name:        "mcp-serve",
+				Usage:       "mcp-serve -- [server command]",
 				Description: "Start an MCP server and capture its communication",
 				Examples: []string{
 					"mcp-serve -- go run server.go",
@@ -192,8 +192,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "mcp-trace",
-				Usage: "mcp-trace [output.mcp]",
+				Name:        "mcp-trace",
+				Usage:       "mcp-trace [output.mcp]",
 				Description: "Enable MCP trace recording to the specified file",
 				Examples: []string{
 					"mcp-trace server.mcp",
@@ -203,8 +203,8 @@ func GetSchema() *Schema {
 		},
 		Directives: []Command{
 			{
-				Name:  "!",
-				Usage: "! [command]",
+				Name:        "!",
+				Usage:       "! [command]",
 				Description: "Negate the expected result (expect command to fail)",
 				Examples: []string{
 					"! exec false",
@@ -212,8 +212,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "?",
-				Usage: "? [command]",
+				Name:        "?",
+				Usage:       "? [command]",
 				Description: "Ignore the exit status of the command",
 				Examples: []string{
 					"? exec grep pattern file.txt",
@@ -221,8 +221,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "#",
-				Usage: "# [comment]",
+				Name:        "#",
+				Usage:       "# [comment]",
 				Description: "Add a comment (ignored by the test runner)",
 				Examples: []string{
 					"# This is a test comment",
@@ -230,8 +230,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "skip",
-				Usage: "skip [condition]",
+				Name:        "skip",
+				Usage:       "skip [condition]",
 				Description: "Skip the test based on a condition",
 				Examples: []string{
 					"skip windows",
@@ -239,8 +239,8 @@ func GetSchema() *Schema {
 				},
 			},
 			{
-				Name:  "[condition]",
-				Usage: "[condition] [command]",
+				Name:        "[condition]",
+				Usage:       "[condition] [command]",
 				Description: "Conditionally execute a command",
 				Examples: []string{
 					"[linux] exec chmod +x script.sh",
@@ -298,10 +298,10 @@ func dumpCommands(w io.Writer, commands []Command) {
 // GenerateMarkdown generates a Markdown documentation of the schema
 func GenerateMarkdown(s *Schema) string {
 	var b strings.Builder
-	
+
 	b.WriteString("# MCPScriptTest Command Reference\n\n")
 	b.WriteString("This document describes all available commands and directives in MCPScriptTest.\n\n")
-	
+
 	b.WriteString("## Core Commands\n\n")
 	b.WriteString("These are the standard scripttest commands available in all tests.\n\n")
 	for _, cmd := range s.CoreCommands {
@@ -316,7 +316,7 @@ func GenerateMarkdown(s *Schema) string {
 			b.WriteString("```\n\n")
 		}
 	}
-	
+
 	b.WriteString("## MCP-Specific Commands\n\n")
 	b.WriteString("These commands are specific to testing MCP servers and clients.\n\n")
 	for _, cmd := range s.MCPCommands {
@@ -331,7 +331,7 @@ func GenerateMarkdown(s *Schema) string {
 			b.WriteString("```\n\n")
 		}
 	}
-	
+
 	b.WriteString("## Directives and Modifiers\n\n")
 	b.WriteString("These modify how commands are executed or control test flow.\n\n")
 	for _, cmd := range s.Directives {
@@ -346,6 +346,6 @@ func GenerateMarkdown(s *Schema) string {
 			b.WriteString("```\n\n")
 		}
 	}
-	
+
 	return b.String()
 }

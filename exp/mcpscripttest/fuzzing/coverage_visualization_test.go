@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/fuzzing"
 )
 
@@ -14,7 +14,7 @@ func TestCoverageVisualization(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping visualization test in short mode")
 	}
-	
+
 	// Create a simple "server" that accepts certain commands
 	acceptedCommands := map[string]bool{
 		"exec echo hello":   true,
@@ -24,7 +24,7 @@ func TestCoverageVisualization(t *testing.T) {
 		"mcp-send {":        true,
 		"mcp-recv response": true,
 	}
-	
+
 	// Create visualizer with custom options
 	vizOpts := fuzzing.DefaultVisualizerOptions()
 	vizOpts.Enabled = true
@@ -33,28 +33,28 @@ func TestCoverageVisualization(t *testing.T) {
 	vizOpts.ShowRejected = true // Show both accepted and rejected scripts
 	vizOpts.MaxScriptLines = 10
 	viz := fuzzing.NewVisualizer(vizOpts)
-	
+
 	// Create run options with visualizer
 	opts := fuzzing.DefaultRunOptions()
 	opts.Iterations = 50
 	opts.Verbose = false // Let visualizer handle output
 	opts.Visualizer = viz
-	
+
 	// Track which commands were tested
 	testedCommands := make(map[string]int)
-	
+
 	// Run fuzzing with visualization
 	err := fuzzing.Run(func(script string) error {
 		// Parse the script and validate commands
 		lines := strings.Split(script, "\n")
 		validCommands := 0
-		
+
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			
+
 			// Track all commands
 			testedCommands[line]++
 
@@ -71,19 +71,19 @@ func TestCoverageVisualization(t *testing.T) {
 				validCommands++
 			}
 		}
-		
+
 		// Accept scripts with at least 2 valid commands
 		if validCommands >= 2 {
 			return nil
 		}
-		
+
 		return errors.New("not enough valid commands")
 	}, opts)
-	
+
 	if err != nil {
 		t.Fatalf("Fuzzing failed: %v", err)
 	}
-	
+
 	// Report which commands were tested
 	t.Logf("Commands tested during fuzzing:")
 	for cmd, count := range testedCommands {

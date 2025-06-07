@@ -16,12 +16,12 @@ type BinaryIntrospector struct {
 
 // BinaryInfo contains information about a binary's interface
 type BinaryInfo struct {
-	Path          string
-	SupportsHelp  bool
-	HelpOutput    string
-	Flags         []FlagInfo
-	ValidExamples []string
-	AcceptsStdin  bool
+	Path                       string
+	SupportsHelp               bool
+	HelpOutput                 string
+	Flags                      []FlagInfo
+	ValidExamples              []string
+	AcceptsStdin               bool
 	SupportsCooperativeFuzzing bool
 }
 
@@ -78,68 +78,68 @@ func (bi *BinaryIntrospector) IntrospectBinary(binaryPath string) (*BinaryInfo, 
 func (bi *BinaryIntrospector) getHelpOutput(binaryPath string) (string, error) {
 	// Try different help flags
 	helpFlags := []string{"--help", "-h", "-help", "help", "-?"}
-	
+
 	for _, flag := range helpFlags {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		
+
 		cmd := exec.CommandContext(ctx, binaryPath, flag)
 		output, err := cmd.CombinedOutput()
-		
+
 		// Check if we got help text (even if exit code is non-zero)
 		outputStr := string(output)
-		if strings.Contains(outputStr, "Usage:") || 
-		   strings.Contains(outputStr, "usage:") ||
-		   strings.Contains(outputStr, "Options:") ||
-		   strings.Contains(outputStr, "Flags:") {
+		if strings.Contains(outputStr, "Usage:") ||
+			strings.Contains(outputStr, "usage:") ||
+			strings.Contains(outputStr, "Options:") ||
+			strings.Contains(outputStr, "Flags:") {
 			return outputStr, nil
 		}
-		
+
 		// Some programs output help to stderr with exit code 0
 		if err == nil && len(output) > 50 {
 			return outputStr, nil
 		}
 	}
-	
+
 	return "", fmt.Errorf("could not get help output")
 }
 
 // parseFlags extracts flag information from help text
 func (bi *BinaryIntrospector) parseFlags(helpText string) []FlagInfo {
 	var flags []FlagInfo
-	
+
 	lines := strings.Split(helpText, "\n")
 	inFlagsSection := false
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		
+
 		// Look for flags section
 		if strings.Contains(strings.ToLower(line), "flags:") ||
-		   strings.Contains(strings.ToLower(line), "options:") {
+			strings.Contains(strings.ToLower(line), "options:") {
 			inFlagsSection = true
 			continue
 		}
-		
+
 		// Exit flags section on empty line or new section
 		if inFlagsSection && (line == "" || strings.HasSuffix(line, ":")) {
 			inFlagsSection = false
 			continue
 		}
-		
+
 		if inFlagsSection {
 			// Parse flag line (common patterns)
 			// -h, --help    Show help
 			// --verbose     Enable verbose output
 			// -o <file>     Output file
-			
+
 			flag := parseFlagLine(line)
 			if flag.Name != "" {
 				flags = append(flags, flag)
 			}
 		}
 	}
-	
+
 	return flags
 }
 
@@ -147,20 +147,20 @@ func (bi *BinaryIntrospector) parseFlags(helpText string) []FlagInfo {
 func parseFlagLine(line string) FlagInfo {
 	// Simple parser for common flag formats
 	flag := FlagInfo{}
-	
+
 	// Remove leading whitespace
 	line = strings.TrimSpace(line)
-	
+
 	// Common patterns:
 	// -h, --help           Show help
 	// --verbose            Enable verbose
 	// -o, --output <file>  Output file
-	
+
 	parts := strings.Fields(line)
 	if len(parts) < 2 {
 		return flag
 	}
-	
+
 	// Extract flag names
 	for i, part := range parts {
 		if strings.HasPrefix(part, "--") {
@@ -179,7 +179,7 @@ func parseFlagLine(line string) FlagInfo {
 			break
 		}
 	}
-	
+
 	return flag
 }
 
@@ -187,27 +187,27 @@ func parseFlagLine(line string) FlagInfo {
 func (bi *BinaryIntrospector) checkStdinAcceptance(binaryPath string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	cmd := exec.CommandContext(ctx, binaryPath)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return false
 	}
-	
+
 	// Start the command
 	if err := cmd.Start(); err != nil {
 		return false
 	}
-	
+
 	// Try to write to stdin
 	go func() {
 		stdin.Write([]byte("test\n"))
 		stdin.Close()
 	}()
-	
+
 	// Wait for completion
 	cmd.Wait()
-	
+
 	// If it didn't immediately fail, it probably accepts stdin
 	return true
 }
@@ -215,10 +215,10 @@ func (bi *BinaryIntrospector) checkStdinAcceptance(binaryPath string) bool {
 // generateExamples creates example command lines based on introspection
 func (bi *BinaryIntrospector) generateExamples(info *BinaryInfo) []string {
 	var examples []string
-	
+
 	// Basic execution
 	examples = append(examples, info.Path)
-	
+
 	// With common flags
 	for _, flag := range info.Flags {
 		if flag.ShortName != "" && flag.Type == "bool" {
@@ -228,7 +228,7 @@ func (bi *BinaryIntrospector) generateExamples(info *BinaryInfo) []string {
 			examples = append(examples, fmt.Sprintf("%s %s value", info.Path, flag.Name))
 		}
 	}
-	
+
 	return examples
 }
 
@@ -238,38 +238,38 @@ func (bi *BinaryIntrospector) ValidateCommand(command string) (bool, error) {
 	if len(parts) == 0 {
 		return false, fmt.Errorf("empty command")
 	}
-	
+
 	binaryPath := parts[0]
 	args := parts[1:]
-	
+
 	// Quick validation by running with --help or similar
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	
+
 	// Try to run with the given args but in a safe way
 	cmd := exec.CommandContext(ctx, binaryPath, args...)
 	cmd.Stdout = &bytes.Buffer{}
 	cmd.Stderr = &bytes.Buffer{}
-	
+
 	err := cmd.Run()
-	
+
 	// If it runs without error or exits cleanly, it's probably valid
 	if err == nil {
 		return true, nil
 	}
-	
+
 	// Check for specific error types
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		// Exit code 0 or 1 is usually OK (many tools use 1 for --help)
 		if exitErr.ExitCode() <= 1 {
 			return true, nil
 		}
-		
+
 		// Check stderr for "unknown flag" or similar
 		stderr := cmd.Stderr.(*bytes.Buffer).String()
 		if strings.Contains(stderr, "unknown flag") ||
-		   strings.Contains(stderr, "invalid") ||
-		   strings.Contains(stderr, "unrecognized") {
+			strings.Contains(stderr, "invalid") ||
+			strings.Contains(stderr, "unrecognized") {
 			return false, fmt.Errorf("invalid arguments")
 		}
 	}
@@ -294,7 +294,7 @@ func (bi *BinaryIntrospector) checkCooperativeFuzzing(binaryPath string) bool {
 	// Check if the output looks like JSON with binary_name field
 	outputStr := string(output)
 	return strings.Contains(outputStr, "\"binary_name\"") &&
-	       strings.Contains(outputStr, "\"flags\"")
+		strings.Contains(outputStr, "\"flags\"")
 }
 
 // GenerateCommand uses a binary's cooperative fuzzing support to generate a command

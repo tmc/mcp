@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
 
@@ -18,7 +18,7 @@ var (
 func main() {
 	config := tools.TestBinaryConfig{
 		BinaryName: "test_echo",
-		
+
 		SupportedFlags: []tools.FlagDefinition{
 			{
 				Name:        "--uppercase",
@@ -41,44 +41,44 @@ func main() {
 				Description: "Separator between repetitions",
 			},
 		},
-		
+
 		AcceptsStdin: true,
-		
+
 		RequiredArgs: []tools.ArgDefinition{
 			{
 				Name:        "message",
 				Description: "Message to echo",
 			},
 		},
-		
+
 		GenerateFunc: generateCommand,
 		ValidateFunc: validateArgs,
 		ExecuteFunc:  execute,
 	}
-	
+
 	tools.TestMainWithFuzzing(config)
 }
 
 // generateCommand generates a valid test_echo command
 func generateCommand(seed int64) (string, error) {
 	rng := rand.New(rand.NewSource(seed))
-	
+
 	parts := []string{"test_echo"}
-	
+
 	// Randomly add flags
 	if rng.Float64() < 0.3 {
 		parts = append(parts, "-u")
 	}
-	
+
 	if rng.Float64() < 0.3 {
 		parts = append(parts, fmt.Sprintf("-n %d", rng.Intn(5)+1))
 	}
-	
+
 	if rng.Float64() < 0.2 {
 		seps := []string{" ", ", ", " - ", " | "}
 		parts = append(parts, fmt.Sprintf("-s '%s'", seps[rng.Intn(len(seps))]))
 	}
-	
+
 	// Add message
 	messages := []string{
 		"hello world",
@@ -87,9 +87,9 @@ func generateCommand(seed int64) (string, error) {
 		"echo $(date)",
 		"line1\nline2",
 	}
-	
+
 	parts = append(parts, fmt.Sprintf("'%s'", messages[rng.Intn(len(messages))]))
-	
+
 	return strings.Join(parts, " "), nil
 }
 
@@ -98,13 +98,13 @@ func validateArgs(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing required message argument")
 	}
-	
+
 	// Check that repeat count is positive
 	flag.Parse()
 	if *repeat < 1 {
 		return fmt.Errorf("repeat count must be positive")
 	}
-	
+
 	return nil
 }
 
@@ -112,26 +112,26 @@ func validateArgs(args []string) error {
 func execute() error {
 	flag.Parse()
 	args := flag.Args()
-	
+
 	if len(args) == 0 {
 		return fmt.Errorf("missing message argument")
 	}
-	
+
 	message := strings.Join(args, " ")
-	
+
 	// Apply transformations
 	if *uppercase {
 		message = strings.ToUpper(message)
 	}
-	
+
 	// Repeat with separator
 	parts := make([]string, *repeat)
 	for i := 0; i < *repeat; i++ {
 		parts[i] = message
 	}
-	
+
 	fmt.Println(strings.Join(parts, *separator))
-	
+
 	// Also read and echo stdin if available
 	if tools.IsStdinAvailable() {
 		// Read from stdin
@@ -141,7 +141,7 @@ func execute() error {
 			fmt.Printf("From stdin: %s\n", input)
 		}
 	}
-	
+
 	return nil
 }
 

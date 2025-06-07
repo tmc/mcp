@@ -1,11 +1,12 @@
 package tests
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/tmc/mcp/exp/mcpscripttest"
 
 	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
@@ -53,7 +54,7 @@ func TestToolInstallationWithCoverage(t *testing.T) {
 	} else {
 		// Check if the output contains coverage-related build settings
 		outputStr := string(output)
-		if !containsAny(outputStr, 
+		if !containsAny(outputStr,
 			"build	-cover=",
 			"build	-buildmode=",
 			"cover") {

@@ -2,6 +2,7 @@ package examples
 
 import (
 	"testing"
+
 	"github.com/tmc/mcp/exp/mcpscripttest/fuzzing"
 )
 

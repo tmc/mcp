@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
 	"testing"
+
+	"github.com/tmc/mcp/exp/mcpscripttest"
 )
 
 func TestStitchingCompleteDemo(t *testing.T) {

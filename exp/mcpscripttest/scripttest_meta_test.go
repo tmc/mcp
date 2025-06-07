@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/tools"
 )
 

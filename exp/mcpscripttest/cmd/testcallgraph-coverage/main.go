@@ -37,7 +37,7 @@ func init() {
 	flag.BoolVar(&differential, "diff", false, "Show differential coverage")
 	flag.StringVar(&baseline, "baseline", "", "Baseline coverage for differential analysis")
 	flag.Float64Var(&threshold, "threshold", 0.0, "Only show tests with coverage increase above threshold")
-	
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "testcallgraph-coverage - Combine testcallgraph with coverage analysis\n\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
@@ -64,30 +64,30 @@ type CoverageData struct {
 }
 
 type TestCoverageResult struct {
-	TestFile     string                           `json:"test_file"`
-	Programs     []string                         `json:"programs"`
-	Edges        []testcallgraph.CallGraphEdge    `json:"edges"`
-	Coverage     map[string]CoverageData          `json:"coverage"`
-	TotalCoverage float64                         `json:"total_coverage"`
-	Differential  *DifferentialCoverage           `json:"differential,omitempty"`
+	TestFile      string                        `json:"test_file"`
+	Programs      []string                      `json:"programs"`
+	Edges         []testcallgraph.CallGraphEdge `json:"edges"`
+	Coverage      map[string]CoverageData       `json:"coverage"`
+	TotalCoverage float64                       `json:"total_coverage"`
+	Differential  *DifferentialCoverage         `json:"differential,omitempty"`
 }
 
 type DifferentialCoverage struct {
-	Baseline      float64            `json:"baseline"`
-	Current       float64            `json:"current"`
-	Increase      float64            `json:"increase"`
-	NewPackages   []string           `json:"new_packages"`
-	ImprovedPkgs  map[string]float64 `json:"improved_packages"`
+	Baseline     float64            `json:"baseline"`
+	Current      float64            `json:"current"`
+	Increase     float64            `json:"increase"`
+	NewPackages  []string           `json:"new_packages"`
+	ImprovedPkgs map[string]float64 `json:"improved_packages"`
 }
 
 func main() {
 	flag.Parse()
-	
+
 	if testFile == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
-	
+
 	// Setup output
 	var out io.Writer = os.Stdout
 	if outputFile != "" {
@@ -98,37 +98,37 @@ func main() {
 		defer f.Close()
 		out = f
 	}
-	
+
 	// Analyze test files
 	files, err := getTestFiles(testFile)
 	if err != nil {
 		log.Fatalf("Error finding test files: %v", err)
 	}
-	
+
 	stitcher := testcallgraph.NewEnhancedStitcher()
 	results := make([]*TestCoverageResult, 0)
-	
+
 	for _, file := range files {
 		if verbose {
 			fmt.Fprintf(os.Stderr, "Analyzing %s...\n", file)
 		}
-		
+
 		result, err := analyzeTestWithCoverage(stitcher, file)
 		if err != nil {
 			log.Printf("Error analyzing %s: %v", file, err)
 			continue
 		}
-		
+
 		// Apply threshold filter
 		if differential && threshold > 0 {
 			if result.Differential == nil || result.Differential.Increase < threshold {
 				continue
 			}
 		}
-		
+
 		results = append(results, result)
 	}
-	
+
 	// Output results
 	switch format {
 	case "json":
@@ -143,11 +143,11 @@ func getTestFiles(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if !info.IsDir() {
 		return []string{path}, nil
 	}
-	
+
 	var files []string
 	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -158,7 +158,7 @@ func getTestFiles(path string) ([]string, error) {
 		}
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -167,29 +167,29 @@ func analyzeTestWithCoverage(stitcher *testcallgraph.EnhancedStitcher, file stri
 	if err := stitcher.AnalyzeScriptTest(file); err != nil {
 		return nil, err
 	}
-	
+
 	executions := stitcher.TestToProgramMap[file]
 	edges := stitcher.CreateCallGraphConnections(file)
-	
+
 	// Extract unique programs
 	programMap := make(map[string]bool)
 	for _, exec := range executions {
 		programMap[exec.Program] = true
 	}
-	
+
 	programs := make([]string, 0, len(programMap))
 	for prog := range programMap {
 		programs = append(programs, prog)
 	}
 	sort.Strings(programs)
-	
+
 	result := &TestCoverageResult{
 		TestFile: file,
 		Programs: programs,
 		Edges:    edges,
 		Coverage: make(map[string]CoverageData),
 	}
-	
+
 	// Get coverage data if available
 	if coverageDir != "" {
 		coverage, err := getCoverageData(coverageDir)
@@ -198,7 +198,7 @@ func analyzeTestWithCoverage(stitcher *testcallgraph.EnhancedStitcher, file stri
 		}
 		result.Coverage = coverage
 		result.TotalCoverage = calculateTotalCoverage(coverage)
-		
+
 		// Get differential coverage if requested
 		if differential && baseline != "" {
 			diff, err := getDifferentialCoverage(baseline, coverageDir)
@@ -208,7 +208,7 @@ func analyzeTestWithCoverage(stitcher *testcallgraph.EnhancedStitcher, file stri
 			result.Differential = diff
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -219,32 +219,32 @@ func getCoverageData(coverDir string) (map[string]CoverageData, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	coverage := make(map[string]CoverageData)
 	scanner := bufio.NewScanner(strings.NewReader(string(output)))
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" || !strings.Contains(line, "\t") {
 			continue
 		}
-		
+
 		parts := strings.Fields(line)
 		if len(parts) < 2 {
 			continue
 		}
-		
+
 		pkg := parts[0]
 		percentStr := strings.TrimSuffix(parts[1], "%")
 		percent := 0.0
 		fmt.Sscanf(percentStr, "%f", &percent)
-		
+
 		coverage[pkg] = CoverageData{
 			Package:  pkg,
 			Coverage: percent,
 		}
 	}
-	
+
 	return coverage, scanner.Err()
 }
 
@@ -252,12 +252,12 @@ func calculateTotalCoverage(coverage map[string]CoverageData) float64 {
 	if len(coverage) == 0 {
 		return 0.0
 	}
-	
+
 	total := 0.0
 	for _, data := range coverage {
 		total += data.Coverage
 	}
-	
+
 	return total / float64(len(coverage))
 }
 
@@ -266,21 +266,21 @@ func getDifferentialCoverage(baselineDir, currentDir string) (*DifferentialCover
 	if err != nil {
 		return nil, err
 	}
-	
+
 	currentCov, err := getCoverageData(currentDir)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	diff := &DifferentialCoverage{
 		Baseline:     calculateTotalCoverage(baselineCov),
 		Current:      calculateTotalCoverage(currentCov),
 		NewPackages:  make([]string, 0),
 		ImprovedPkgs: make(map[string]float64),
 	}
-	
+
 	diff.Increase = diff.Current - diff.Baseline
-	
+
 	// Find new packages and improvements
 	for pkg, current := range currentCov {
 		if baseline, exists := baselineCov[pkg]; exists {
@@ -292,19 +292,19 @@ func getDifferentialCoverage(baselineDir, currentDir string) (*DifferentialCover
 			diff.NewPackages = append(diff.NewPackages, pkg)
 		}
 	}
-	
+
 	return diff, nil
 }
 
 func outputText(w io.Writer, results []*TestCoverageResult) {
 	for _, result := range results {
 		fmt.Fprintf(w, "=== %s ===\n", result.TestFile)
-		
+
 		fmt.Fprintf(w, "\nPrograms executed: %s\n", strings.Join(result.Programs, ", "))
-		
+
 		if len(result.Coverage) > 0 {
 			fmt.Fprintf(w, "\nCoverage by package:\n")
-			
+
 			// Sort packages by coverage
 			type pkgCov struct {
 				pkg string
@@ -317,24 +317,24 @@ func outputText(w io.Writer, results []*TestCoverageResult) {
 			sort.Slice(sorted, func(i, j int) bool {
 				return sorted[i].cov > sorted[j].cov
 			})
-			
+
 			for _, pc := range sorted {
 				fmt.Fprintf(w, "  %s: %.1f%%\n", pc.pkg, pc.cov)
 			}
-			
+
 			fmt.Fprintf(w, "\nTotal coverage: %.1f%%\n", result.TotalCoverage)
 		}
-		
+
 		if result.Differential != nil {
 			fmt.Fprintf(w, "\nDifferential coverage:\n")
 			fmt.Fprintf(w, "  Baseline: %.1f%%\n", result.Differential.Baseline)
 			fmt.Fprintf(w, "  Current:  %.1f%%\n", result.Differential.Current)
 			fmt.Fprintf(w, "  Increase: %+.1f%%\n", result.Differential.Increase)
-			
+
 			if len(result.Differential.NewPackages) > 0 {
 				fmt.Fprintf(w, "  New packages: %s\n", strings.Join(result.Differential.NewPackages, ", "))
 			}
-			
+
 			if len(result.Differential.ImprovedPkgs) > 0 {
 				fmt.Fprintf(w, "  Improved packages:\n")
 				for pkg, improvement := range result.Differential.ImprovedPkgs {
@@ -342,7 +342,7 @@ func outputText(w io.Writer, results []*TestCoverageResult) {
 				}
 			}
 		}
-		
+
 		fmt.Fprintf(w, "\nCall graph connections: %d\n", len(result.Edges))
 		fmt.Fprintf(w, "\n")
 	}

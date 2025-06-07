@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"rsc.io/script"
-	
+
 	"github.com/tmc/mcp/exp/mcpscripttest/coverage"
 )
 
@@ -140,7 +140,7 @@ func setupTestSpecificCoverage(testName string, opts *coverage.CoverageOptions) 
 	// Create a test-specific subdirectory
 	testID := strings.TrimSuffix(testName, filepath.Ext(testName))
 	testCoverDir := filepath.Join(coverDir, testID)
-	
+
 	// Create the directory
 	err := os.MkdirAll(testCoverDir, 0755)
 	if err != nil {

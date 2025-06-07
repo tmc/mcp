@@ -3,6 +3,8 @@ package mcp_test
 import (
 	"bytes"
 	"context"
+	"context"
+	"io"
 	"log/slog"
 	"testing"
 	"time"
@@ -34,6 +36,13 @@ func TestSSEClientTransport(t *testing.T) {
 func TestSSEServerTransport(t *testing.T) {
 	// Create a mock ReadWriteCloser
 	mockRWC := &mockReadWriteCloser{}
+// TestSSEServerTransport tests the SSE server transport
+func TestSSEServerTransport(t *testing.T) {
+	// Create a mock ReadWriteCloser
+	mockRWC := &mockReadWriteCloser{
+		readData:    []byte{},
+		writtenData: []byte{},
+	}
 
 	transport := mcp.NewSSEServerTransport(mockRWC, slog.Default())
 	if transport == nil {
@@ -63,3 +72,37 @@ func (m *mockReadWriteCloser) Close() error {
 	m.closed = true
 	return nil
 }
+
+// mockReadWriteCloser implements io.ReadWriteCloser for testing
+type mockReadWriteCloser struct {
+	readData    []byte
+	writtenData []byte
+	readIndex   int
+	closed      bool
+}
+
+func (m *mockReadWriteCloser) Read(p []byte) (n int, err error) {
+	if m.closed {
+		return 0, io.EOF
+	}
+	if m.readIndex >= len(m.readData) {
+		return 0, io.EOF
+	}
+	n = copy(p, m.readData[m.readIndex:])
+	m.readIndex += n
+	return n, nil
+}
+
+func (m *mockReadWriteCloser) Write(p []byte) (n int, err error) {
+	if m.closed {
+		return 0, io.ErrClosedPipe
+	}
+	m.writtenData = append(m.writtenData, p...)
+	return len(p), nil
+}
+
+func (m *mockReadWriteCloser) Close() error {
+	m.closed = true
+	return nil
+}
+

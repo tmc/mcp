@@ -53,6 +53,12 @@ func TestServerToolRegistration(t *testing.T) {
 	}
 }
 
+type testResourceContents struct {
+	Text string `json:"text"`
+}
+
+func (c *testResourceContents) resourceContents() {}
+
 func TestServerResourceRegistrationBasic(t *testing.T) {
 	server := NewServer("test", "1.0")
 

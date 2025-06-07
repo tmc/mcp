@@ -36,7 +36,11 @@ func TestJSONRPC2MessageTypes(t *testing.T) {
 
 	// Test message types
 	var msg jsonrpc2.Message
-	msg = &req
+	msg.Version = "2.0"
+	idData, _ := req.ID.MarshalJSON()
+	msg.ID = idData
+	msg.Method = req.Method
+	msg.Params = req.Params
 	fmt.Printf("Message type: %T\n", msg)
 }
 

@@ -1,0 +1,34 @@
+# Test basic mcpcat functionality
+go build -o mcpcat .
+
+# Create a test MCP trace file
+cat > test.mcp << 'EOF'
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+mcp-recv {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+mcp-send {"jsonrpc":"2.0","id":2,"result":{"tools":[]}}
+EOF
+
+# Test basic output
+./mcpcat test.mcp
+stdout 'mcp-recv.*initialize'
+stdout 'mcp-send.*protocolVersion'
+stdout 'mcp-recv.*tools/list'
+stdout 'mcp-send.*tools'
+
+# Test colored output
+./mcpcat -color test.mcp
+stdout 'mcp-recv.*initialize'
+
+# Test with non-existent file
+! ./mcpcat nonexistent.mcp
+stderr 'error.*nonexistent.mcp'
+
+# Test reading from stdin
+cat test.mcp | ./mcpcat
+stdout 'mcp-recv.*initialize'
+stdout 'mcp-send.*protocolVersion'
+
+# Clean up
+rm -f mcpcat test.mcp

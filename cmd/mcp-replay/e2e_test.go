@@ -125,10 +125,9 @@ func runPipelineTest(t *testing.T, mcpReplayPath, testMcpFile, clientTraceFile, 
 		"-mock-server",
 		"-v",
 		"-timeout", "1s",
-		"-trace", serverTraceFile,
-		"-f", serverInputFile,
 		"-auto-respond",
-		"-json")
+		"-json",
+		serverInputFile)
 	serverCmd.Stdin = os.Stdin
 
 	// Capture output to a file
@@ -151,9 +150,8 @@ func runPipelineTest(t *testing.T, mcpReplayPath, testMcpFile, clientTraceFile, 
 		"-mock-client",
 		"-v",
 		"-timeout", "1s",
-		"-trace", clientTraceFile,
-		"-f", clientInputFile,
-		"-json")
+		"-json",
+		clientInputFile)
 	clientCmd.Stdin = os.Stdin
 
 	// Capture output to a file

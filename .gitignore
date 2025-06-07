@@ -1,11 +1,3 @@
-**/.claude/settings.local.json
 .cover
 *cov*.out
-example_server_design_exploration/
-.bash_history*
-cat_output*.txt
 *.log
-**/mcp-*
-!**/mcp-*.go
-!**/mcp-*-server/
-explain_*.sh

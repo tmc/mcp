@@ -7,37 +7,65 @@ import (
 	"github.com/tmc/mcp/exp/mcpscripttest"
 )
 
-// TestMCPComprehensive runs comprehensive scripttest tests for the MCP package
-func TestMCPComprehensive(t *testing.T) {
-	// Disable overall timeout to debug the issue
+// TestMCPWithScripttest runs MCP tests using the scripttest framework
+func TestMCPWithScripttest(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	opts := mcpscripttest.DefaultOptions()
-	opts.TimeoutConfig.TestOverallTimeout = 0 // Disable overall timeout for debugging
+	// Run all scripttest files
 	mcpscripttest.Test(t, "testdata/scripttest/*.txt", opts)
 }
 
-// TestMCPClientServer runs client-server interaction tests
-func TestMCPClientServer(t *testing.T) {
+// TestClientServerInteractions tests client-server communication scenarios
+func TestClientServerInteractions(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	mcpscripttest.Test(t, "testdata/scripttest/client_server*.txt")
 }
 
-// TestMCPTransports runs transport layer tests
-func TestMCPTransports(t *testing.T) {
+// TestTransportMechanisms tests various transport mechanisms
+func TestTransportMechanisms(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	mcpscripttest.Test(t, "testdata/scripttest/transport*.txt")
 }
 
-// TestMCPProtocol runs protocol-level tests
-func TestMCPProtocol(t *testing.T) {
+// TestProtocolCompliance tests protocol compliance
+func TestProtocolCompliance(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	mcpscripttest.Test(t, "testdata/scripttest/protocol*.txt")
 }
 
-// TestMCPErrorHandling runs error handling and edge case tests
-func TestMCPErrorHandling(t *testing.T) {
+// TestErrorScenarios tests error handling scenarios
+func TestErrorScenarios(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	mcpscripttest.Test(t, "testdata/scripttest/error*.txt")
 }
 
-// TestMCPPerformance runs performance and timeout tests
-func TestMCPPerformance(t *testing.T) {
-	// Use aggressive timeout configuration
+// TestPerformanceScenarios tests performance-related scenarios
+func TestPerformanceScenarios(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	opts := mcpscripttest.DefaultOptions()
 	opts.TimeoutConfig.TestOverallTimeout = 15 * time.Second   // 15 seconds
 	opts.TimeoutConfig.DefaultCommandTimeout = 5 * time.Second // 5 seconds

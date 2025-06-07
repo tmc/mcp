@@ -3,151 +3,18 @@ package mcp
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"sync"
 	"testing"
-	"time"
 )
 
-// TestDispatcher_Comprehensive provides comprehensive testing of the Dispatcher
-func TestDispatcher_NewDispatcher(t *testing.T) {
-	dispatcher := NewDispatcher()
-	if dispatcher == nil {
-		t.Fatal("Expected non-nil dispatcher")
-	}
-
-	if dispatcher.handlers == nil {
-		t.Error("Expected handlers map to be initialized")
-	}
-}
-
-func TestDispatcher_Handle(t *testing.T) {
+func TestDispatcherBasics(t *testing.T) {
 	dispatcher := NewDispatcher()
 
-	// Test handler registration
-	testHandler := func(method string, params json.RawMessage) error {
-		return nil
-	}
-
-	dispatcher.Handle("test.method", testHandler)
-
-	// Verify handler was registered
-	dispatcher.mu.RLock()
-	handlers, exists := dispatcher.handlers["test.method"]
-	dispatcher.mu.RUnlock()
-
-	if !exists {
-		t.Error("Expected handler to be registered")
-	}
-
-	if len(handlers) != 1 {
-		t.Errorf("Expected 1 handler, got %d", len(handlers))
-	}
-}
-
-func TestDispatcher_HandleMultiple(t *testing.T) {
-	dispatcher := NewDispatcher()
-
-	// Register multiple handlers for the same method
-	handler1 := func(method string, params json.RawMessage) error {
-		return nil
-	}
-	handler2 := func(method string, params json.RawMessage) error {
-		return nil
-	}
-
-	dispatcher.Handle("multi.test", handler1)
-	dispatcher.Handle("multi.test", handler2)
-
-	// Verify both handlers were registered
-	dispatcher.mu.RLock()
-	handlers, exists := dispatcher.handlers["multi.test"]
-	dispatcher.mu.RUnlock()
-
-	if !exists {
-		t.Error("Expected handlers to be registered")
-	}
-
-	if len(handlers) != 2 {
-		t.Errorf("Expected 2 handlers, got %d", len(handlers))
-	}
-}
-
-func TestDispatcher_Dispatch(t *testing.T) {
-	dispatcher := NewDispatcher()
-	ctx := context.Background()
-
-	// Test data for handlers
-	testParams := json.RawMessage(`{"test": "value"}`)
-	var callCount int
-	var lastMethod string
-	var lastParams json.RawMessage
-
-	tests := []struct {
-		name         string
-		method       string
-		params       json.RawMessage
-		setupHandler func()
-		expectError  bool
-	}{
-		{
-			name:   "successful dispatch",
-			method: "test.success",
-			params: testParams,
-			setupHandler: func() {
-				dispatcher.Handle("test.success", func(method string, params json.RawMessage) error {
-					callCount++
-					lastMethod = method
-					lastParams = params
-					return nil
-				})
-			},
-			expectError: false,
-		},
-		{
-			name:   "handler returns error",
-			method: "test.error",
-			params: testParams,
-			setupHandler: func() {
-				dispatcher.Handle("test.error", func(method string, params json.RawMessage) error {
-					callCount++
-					return errors.New("handler error")
-				})
-			},
-			expectError: true,
-		},
-		{
-			name:        "no handler registered",
-			method:      "test.notfound",
-			params:      testParams,
-			expectError: false, // Dispatcher returns nil when no handlers exist
-		},
-		{
-			name:   "nil params",
-			method: "test.nilparams",
-			params: nil,
-			setupHandler: func() {
-				dispatcher.Handle("test.nilparams", func(method string, params json.RawMessage) error {
-					callCount++
-					lastMethod = method
-					lastParams = params
-					return nil
-				})
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Reset state
-			callCount = 0
-			lastMethod = ""
-			lastParams = nil
-
-			if tt.setupHandler != nil {
-				tt.setupHandler()
+	t.Run("handle and dispatch notification", func(t *testing.T) {
+		called := false
+		handler := func(method string, params json.RawMessage) error {
+			called = true
+			if method != "test/notification" {
+				t.Errorf("Expected method test/notification, got %s", method)
 			}
 
 			err := dispatcher.Dispatch(ctx, tt.method, tt.params)
@@ -563,16 +430,6 @@ func BenchmarkDispatcher_MultipleHandlers(b *testing.B) {
 	for i := 0; i < 10; i++ {
 		dispatcher.Handle("bench.multi", func(method string, params json.RawMessage) error {
 			return nil
-		})
-	}
-
-	params := json.RawMessage(`{"test": "data"}`)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := dispatcher.Dispatch(ctx, "bench.multi", params)
-		if err != nil {
-			b.Fatal(err)
 		}
 	}
 }

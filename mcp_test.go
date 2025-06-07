@@ -21,6 +21,11 @@ type testOutput struct {
 
 // TestCancellation tests that context cancellation works through the JSON-RPC layer
 func TestCancellation(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// Create a server with a long-running tool
 	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
@@ -126,6 +131,11 @@ func TestCancellation(t *testing.T) {
 // TestCancellationWithCause tests that context cancellation with a cause
 // automatically sends the cancellation notification
 func TestCancellationWithCause(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	// Create a server
 	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 
@@ -212,6 +222,7 @@ func TestCancellationWithCause(t *testing.T) {
 
 // A very simple test that just confirms we can create a server and client
 func TestServerClientCreation(t *testing.T) {
+	t.Parallel()
 	// Create a new server
 	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
 

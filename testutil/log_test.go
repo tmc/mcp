@@ -14,14 +14,14 @@ func TestLogLevels(t *testing.T) {
 	server := mcp.NewServer("log-test-server", "1.0.0",
 		testutil.WithTestLogger(t, slog.LevelDebug),
 	)
-	
+
 	// Create a simple tool that logs at different levels
 	tool := mcp.Tool{
 		Name:        "log_tester",
 		Description: "Tests logging at different levels",
 		InputSchema: []byte(`{"type": "object"}`),
 	}
-	
+
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		// Use a logger that goes through the test handler
 		logger := testutil.TestLogger(t)
@@ -33,17 +33,17 @@ func TestLogLevels(t *testing.T) {
 		return &mcp.CallToolResult{
 			Content: []any{
 				mcp.TextContent{
-					Type: "text", 
+					Type: "text",
 					Text: "Logged at all levels",
 				},
 			},
 		}, nil
 	}
-	
+
 	if err := server.RegisterTool(tool, handler); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Create connected pair
 	ctx := context.Background()
 	pair, err := testutil.NewServerClientPair(t, ctx, server)
@@ -51,16 +51,16 @@ func TestLogLevels(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pair.Cleanup()
-	
+
 	// Call the tool to trigger logs
 	result, err := pair.Client.CallTool(ctx, mcp.CallToolRequest{
-		Name: "log_tester",
+		Name:      "log_tester",
 		Arguments: []byte(`{}`),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	t.Logf("Tool result: %+v", result)
 }
 
@@ -92,15 +92,15 @@ func TestLogConfiguration(t *testing.T) {
 			desc:  "Only ERROR visible",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("Testing %s: %s", tt.name, tt.desc)
-			
+
 			server := mcp.NewServer("test-server", "1.0.0",
 				testutil.WithTestLogger(t, tt.level),
 			)
-			
+
 			// Just create the pair to test logger setup
 			pair, err := testutil.NewServerClientPair(t, context.Background(), server)
 			if err != nil {

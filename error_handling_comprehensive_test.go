@@ -72,7 +72,7 @@ func TestClientErrorHandlingComprehensive(t *testing.T) {
 	}
 }
 
-func TestServerErrorHandlingComprehensive(t *testing.T) {
+func TestErrorHandlingComprehensive(t *testing.T) {
 	_ = context.Background()
 
 	// Test server with invalid handler registration

@@ -1,0 +1,7 @@
+# Test basic Google Drive server functionality (without credentials)
+env GOOGLE_CREDENTIALS=
+env GOOGLE_TOKEN=
+exec go run . --timeout=5s
+wait 5s
+stdout 'GOOGLE_CREDENTIALS'
+stdout 'GOOGLE_TOKEN'

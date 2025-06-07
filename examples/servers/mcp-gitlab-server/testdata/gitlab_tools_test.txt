@@ -1,0 +1,34 @@
+# GitLab Server Tools Test
+
+env GOCOVERDIR=$WORK/covdata
+mkdir $WORK/covdata
+
+# Test get_project tool
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_project", "arguments": {"project_id": "123"}}}
+EOF
+
+stdout '"id": "123"'
+stdout '"name": "Example Project"'
+stdout '"default_branch": "main"'
+
+# Test list_issues tool
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "list_issues", "arguments": {"project_id": "123", "state": "opened"}}}
+EOF
+
+stdout '"project_id": "123"'
+stdout '"state": "opened"'
+stdout '"issues"'
+
+# Test create_issue tool
+exec timeout 30s go run . <<EOF
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "clientInfo": {"name": "test", "version": "1.0"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "create_issue", "arguments": {"project_id": "123", "title": "Test Issue", "description": "A test issue", "labels": ["bug", "test"]}}}
+EOF
+
+stdout '"message": "Issue created successfully"'
+stdout '"title": "Test Issue"'
+stdout '"labels"'

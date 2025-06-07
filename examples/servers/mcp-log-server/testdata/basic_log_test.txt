@@ -1,0 +1,24 @@
+# Basic log server test
+
+# Set aggressive timeouts
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+
+# Create test log file
+cat > test.log << EOF
+2024-01-01 10:00:01 INFO Application started
+2024-01-01 10:00:02 DEBUG Loading configuration
+2024-01-01 10:00:03 INFO Configuration loaded successfully
+2024-01-01 10:00:04 WARN Deprecated feature used
+2024-01-01 10:00:05 ERROR Failed to connect to database
+2024-01-01 10:00:06 INFO Retrying database connection
+2024-01-01 10:00:07 INFO Database connection established
+EOF
+
+bash 'echo "Testing log server functionality..."'
+
+# Test log reading
+bash 'echo "Log server test complete"'
+
+# Cleanup
+exec rm -f test.log

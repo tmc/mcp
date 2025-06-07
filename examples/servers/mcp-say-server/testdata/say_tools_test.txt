@@ -1,0 +1,20 @@
+# Say Tools Functionality Test
+# Tests say tool functionality
+
+# Build the say server binary
+go build -o mcp-say-server .
+
+# Test say tool (note: will actually invoke say command on macOS)
+exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Hello from MCP test"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Testing voice","voice":"Samantha"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Faster speech","rate":250}},"id":5}
+EOF
+
+# Verify say tool responses
+stdout 'Successfully spoke'
+stdout 'Hello from MCP test'
+stdout 'Testing voice'
+stdout 'Faster speech'

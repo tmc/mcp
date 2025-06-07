@@ -1,0 +1,106 @@
+# Basic diff proxy server test with aggressive timeouts
+
+# Set aggressive timeouts for rapid testing
+env MCP_TEST_TIMEOUT=2s
+env MCP_SERVER_TIMEOUT=1500ms
+env MCP_TOOL_TIMEOUT=1s
+
+# Start the server with aggressive timeout
+exec timeout 8s go run . &
+wait 200ms
+
+# Test text_diff with simple strings
+cat > text_diff_request.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": "Hello world\nLine 2",
+      "text2": "Hello world\nLine 2 modified"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<text_diff_request.json)" | mcpcat -'
+stdout 'Line 2'
+stdout 'modified|diff'
+
+# Test text_diff with identical texts
+cat > identical_text.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": "Same text",
+      "text2": "Same text"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<identical_text.json)" | mcpcat -'
+stdout 'identical|Texts are identical'
+
+# Create test files for file_diff
+cat > file1.txt << EOF
+First file content
+Line 2
+Line 3
+EOF
+
+cat > file2.txt << EOF
+First file content
+Line 2 modified
+Line 3
+Line 4 added
+EOF
+
+# Test file_diff
+cat > file_diff_request.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "file_diff",
+    "arguments": {
+      "file1": "file1.txt",
+      "file2": "file2.txt"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<file_diff_request.json)" | mcpcat -'
+stdout 'modified|added|diff'
+
+# Test file_diff with identical files
+cp file1.txt file1_copy.txt
+
+cat > identical_files.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "file_diff",
+    "arguments": {
+      "file1": "file1.txt",
+      "file2": "file1_copy.txt"
+    }
+  }
+}
+EOF
+
+bash 'timeout 2s echo "$(<identical_files.json)" | mcpcat -'
+stdout 'identical|Files are identical'
+
+# Cleanup
+exec rm -f text_diff_request.json identical_text.json file_diff_request.json identical_files.json file1.txt file2.txt file1_copy.txt

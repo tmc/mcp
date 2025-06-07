@@ -62,7 +62,7 @@ func main() {
 
 	// Create stdio transport
 	stdioTransport := &StdioTransport{}
-	
+
 	// Serve via stdio
 	log.Println("Starting protocol server via stdio...")
 	if err := server.Serve(ctx, stdioTransport); err != nil {

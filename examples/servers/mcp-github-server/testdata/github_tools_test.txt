@@ -1,0 +1,15 @@
+# Test GitHub server tool definitions (with fake token)
+env GITHUB_TOKEN=fake_token_for_testing
+exec go run . --timeout=5s
+stdin tools_request.json
+wait 5s
+stdout '"tools"'
+stdout '"get_repository"'
+stdout '"list_repositories"'
+stdout '"get_file_content"'
+stdout '"list_branches"'
+stdout '"create_issue"'
+stdout '"list_issues"'
+
+-- tools_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

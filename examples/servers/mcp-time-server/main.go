@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -32,13 +33,35 @@ type TimeConversionResult struct {
 	TimeDifference string     `json:"time_difference"`
 }
 
+// Main is the exported main function for testing
+func Main() {
+	main()
+}
+
 func main() {
+	// Parse flags
+	var testMode = flag.Bool("test-mode", false, "run in test mode (blocks indefinitely)")
+	flag.Parse()
+
+	// Check environment variable as well
+	if os.Getenv("MCP_TIME_SERVER_TEST_MODE") == "true" {
+		*testMode = true
+	}
+
 	// Redirect logs to stderr to keep stdout clean for the protocol
 	log.SetOutput(os.Stderr)
 	log.Println("Starting MCP Time Server...")
 
 	// Create a context that can be canceled
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	var ctx context.Context
+	var cancel context.CancelFunc
+	
+	if *testMode {
+		log.Println("Running in test mode - will block indefinitely")
+		ctx, cancel = context.WithCancel(context.Background())
+	} else {
+		ctx, cancel = signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	}
 	defer cancel()
 
 	// Get local timezone
@@ -193,7 +216,7 @@ func getCurrentTime(timezone string) (TimeResult, error) {
 	}
 
 	now := time.Now().In(loc)
-	
+
 	// Check if DST is in effect
 	isDST := isDaylightSaving(now)
 
@@ -271,10 +294,10 @@ func isDaylightSaving(t time.Time) bool {
 	// Get the time zone offset for January 1st (definitely not DST in northern hemisphere)
 	jan1 := time.Date(t.Year(), 1, 1, 12, 0, 0, 0, t.Location())
 	_, jan1Offset := jan1.Zone()
-	
+
 	// Get the current offset
 	_, currentOffset := t.Zone()
-	
+
 	// If current offset is greater than January offset, we're likely in DST
 	return currentOffset > jan1Offset
 }

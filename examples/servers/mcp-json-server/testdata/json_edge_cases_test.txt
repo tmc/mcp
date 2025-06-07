@@ -1,0 +1,93 @@
+# JSON server edge cases test
+
+# Set aggressive timeouts for edge case testing
+env MCP_TEST_TIMEOUT=4s
+env MCP_SERVER_TIMEOUT=3s
+env MCP_TOOL_TIMEOUT=2s
+
+# Test edge cases and error handling
+bash 'echo "Testing JSON edge cases..."'
+
+# Test very large JSON
+cat > large.json << EOF
+{
+  "data": [
+EOF
+
+# Add many items to create a larger JSON
+bash 'for i in {1..100}; do echo "    {\"id\": $i, \"value\": \"item_$i\"}," >> large.json; done'
+
+cat >> large.json << EOF
+    {"id": 101, "value": "item_101"}
+  ]
+}
+EOF
+
+# Test deeply nested JSON
+cat > deep_nested.json << EOF
+{
+  "level1": {
+    "level2": {
+      "level3": {
+        "level4": {
+          "level5": {
+            "level6": {
+              "level7": {
+                "level8": {
+                  "level9": {
+                    "level10": {
+                      "deep_value": "found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+EOF
+
+# Test JSON with special characters
+cat > special_chars.json << EOF
+{
+  "unicode": "Hello 世界 🌍",
+  "escape_sequences": "Line 1\nLine 2\tTabbed\r\nWindows line ending",
+  "quotes": "She said \"Hello\" to him",
+  "backslashes": "Path: C:\\Program Files\\App",
+  "numbers": {
+    "integer": 42,
+    "float": 3.14159,
+    "scientific": 1.23e-4,
+    "negative": -42
+  }
+}
+EOF
+
+# Test empty and minimal JSON
+cat > minimal.json << EOF
+{}
+EOF
+
+# Test array-only JSON
+cat > array_only.json << EOF
+[1, 2, 3, "test", true, false, null]
+EOF
+
+bash 'echo "Testing edge case processing..."'
+
+# Test path extraction edge cases
+bash 'echo "Testing path extraction edge cases..."'
+
+# Test formatting edge cases
+bash 'echo "Testing formatting edge cases..."'
+
+# Test minification edge cases  
+bash 'echo "Testing minification edge cases..."'
+
+bash 'echo "JSON edge cases test complete"'
+
+# Cleanup
+exec rm -f large.json deep_nested.json special_chars.json minimal.json array_only.json

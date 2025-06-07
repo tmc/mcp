@@ -1,0 +1,50 @@
+# Calculator Error Handling Test
+# Tests error scenarios and invalid inputs
+
+# Build the calculator server binary
+go build -o mcp-calculator-server .
+
+# Test error handling scenarios
+exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"divide","a":10,"b":0}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"invalid","a":1,"b":2}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":"invalid","b":2}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"sqrt","x":-1}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"log","x":0}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"asin","x":2}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":[]}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":["invalid"]}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":100,"from_unit":"celsius","to_unit":"meters"}},"id":11}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"invalid_tool","arguments":{}},"id":12}
+EOF
+
+# Verify division by zero error
+stdout '"isError":true'
+stdout 'division by zero'
+
+# Verify invalid operation error
+stdout 'unsupported operation'
+
+# Verify invalid parameter type error
+stdout 'parameter.*must be a number'
+
+# Verify square root of negative number error
+stdout 'cannot take square root of negative number'
+
+# Verify log of zero error
+stdout 'cannot take.*log.*non-positive number'
+
+# Verify asin out of range error
+stdout 'asin input must be between -1 and 1'
+
+# Verify empty array error
+stdout 'numbers array cannot be empty'
+
+# Verify incompatible units error
+stdout 'incompatible unit types'
+
+# Verify tool not found error
+stdout '"error"'
+stdout 'method not found'

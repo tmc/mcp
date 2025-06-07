@@ -1,0 +1,44 @@
+# Test basic HTTP server functionality with aggressive timeouts
+
+# Set aggressive environment variables
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+env MCP_TOOL_TIMEOUT=1s
+
+# Start HTTP server
+bg bash 'go run main.go'
+sleep 1s
+
+# Test list_tools capability
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" | go run main.go
+'
+stdout '"name": "http_request"'
+stdout '"name": "http_get"'
+stdout '"name": "http_post"'
+
+# Test GET request tool
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"https://httpbin.org/get\"}}}" | go run main.go
+'
+stdout '"status_code": 200'
+stdout '"method": "GET"'
+
+# Test POST request tool  
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"http_post\", \"arguments\": {\"url\": \"https://httpbin.org/post\", \"body\": \"{\\\"test\\\": true}\"}}}" | go run main.go
+'
+stdout '"status_code": 200'
+stdout '"method": "POST"'
+
+# Test invalid URL handling with timeout
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"invalid-url\"}}}" | go run main.go
+'
+stdout 'error'
+
+# Test server response time (should complete quickly)
+bash 'start_time=$(date +%s%N); echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/list\"}" | go run main.go > /dev/null; end_time=$(date +%s%N); duration=$((($end_time - $start_time) / 1000000)); echo "Response time: ${duration}ms"; test $duration -lt 2000'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

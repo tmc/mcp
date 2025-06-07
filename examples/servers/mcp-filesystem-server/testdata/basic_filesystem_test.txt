@@ -1,0 +1,41 @@
+# Basic MCP Filesystem Server Test
+# Tests server startup, initialization, and basic protocol handling
+
+# Build the filesystem server binary
+go build -o mcp-filesystem-server .
+
+# Create a temporary test directory
+mkdir test_dir
+cd test_dir
+
+# Test basic MCP protocol initialization with current directory as allowed
+exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"filesystem-server"'
+stdout '"version":"1.0.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify all filesystem tools are listed
+stdout '"name":"read_file"'
+stdout '"description":"Read the contents of a file"'
+stdout '"name":"write_file"'
+stdout '"description":"Write content to a file"'
+stdout '"name":"list_directory"'
+stdout '"description":"List the contents of a directory"'
+stdout '"name":"get_file_info"'
+stdout '"description":"Get information about a file or directory"'
+
+# Verify ping response
+stdout '"result":"pong"'
+
+# Cleanup
+cd ..
+rm -rf test_dir

@@ -1,0 +1,52 @@
+# Test error handling and edge cases for system server
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test invalid tool name
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"invalid_tool","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"invalid_tool","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test invalid JSON arguments
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_system_info","arguments":"invalid_json"}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_system_info","arguments":"invalid_json"}}' > /dev/stdin
+echo ""
+
+# Test get_disk_usage with invalid path
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":"/nonexistent/path/that/does/not/exist"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":"/nonexistent/path/that/does/not/exist"}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with invalid command
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"nonexistent_command_xyz123"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"nonexistent_command_xyz123"}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with empty command
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":""}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":""}}}' > /dev/stdin
+echo ""
+
+# Test execute_command without command parameter
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"execute_command","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"execute_command","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with timeout that should trigger
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["10"],"timeout":1}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["10"],"timeout":1}}}' > /dev/stdin
+echo ""
+
+# Test list_processes with invalid limit
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":"invalid"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":"invalid"}}}' > /dev/stdin
+echo ""
+
+# Test edge case: negative limit for list_processes
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":-5}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":-5}}}' > /dev/stdin
+echo ""
+
+# Test edge case: very large limit for list_processes
+echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":10000}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":10000}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1

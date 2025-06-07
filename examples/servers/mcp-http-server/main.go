@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -24,14 +23,14 @@ const (
 )
 
 type HTTPResponse struct {
-	URL         string              `json:"url"`
-	Method      string              `json:"method"`
-	StatusCode  int                 `json:"status_code"`
-	Status      string              `json:"status"`
-	Headers     map[string][]string `json:"headers"`
-	Body        string              `json:"body"`
-	Size        int                 `json:"size"`
-	Duration    string              `json:"duration"`
+	URL        string              `json:"url"`
+	Method     string              `json:"method"`
+	StatusCode int                 `json:"status_code"`
+	Status     string              `json:"status"`
+	Headers    map[string][]string `json:"headers"`
+	Body       string              `json:"body"`
+	Size       int                 `json:"size"`
+	Duration   string              `json:"duration"`
 }
 
 type HTTPClient struct {

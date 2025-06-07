@@ -1,0 +1,42 @@
+# Fetch Performance Test
+# Tests performance with aggressive timeouts
+
+# Build the fetch server binary
+go build -o mcp-fetch-server .
+
+# Test with aggressive timeout (5 seconds)
+timeout 5s exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/get"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/json"}},"id":4}
+EOF
+
+# Verify operations complete within timeout
+stdout '"name":"fetch"'
+stdout '"statusCode":200'
+stdout '"content"'
+
+# Test rapid sequential calls
+timeout 10s exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/get"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/json"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/xml"}},"id":5}
+EOF
+
+# Verify rapid calls are handled correctly
+stdout '"statusCode":200'
+
+# Test with small response size limits (should handle small responses quickly)
+timeout 3s exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/uuid"}},"id":3}
+EOF
+
+# Verify small responses are handled quickly
+stdout '"content"'
+stdout '"size"'

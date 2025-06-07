@@ -1,0 +1,38 @@
+# Fetch Edge Cases Test
+# Tests boundary conditions and special scenarios
+
+# Build the fetch server binary
+go build -o mcp-fetch-server .
+
+# Test edge cases
+exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/status/404"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/status/500"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"https://httpbin.org/redirect/1"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"https://httpbin.org/delay/1"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch_text","arguments":{"url":"https://httpbin.org/xml"}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"HTTPS://HTTPBIN.ORG/GET"}},"id":8}
+EOF
+
+# Verify 404 error handling
+stdout 'HTTP error.*404'
+
+# Verify 500 error handling  
+stdout 'HTTP error.*500'
+
+# Verify redirect handling (should work or show redirect response)
+stdout '"statusCode"'
+
+# Verify delayed response handling (within timeout)
+stdout '"content"'
+
+# Verify XML content handling
+stdout '"contentType".*xml'
+
+# Verify case-insensitive URL handling
+stdout '"url":"HTTPS://HTTPBIN.ORG/GET"'
+
+# Should handle uppercase URLs properly
+stdout '"statusCode":200'

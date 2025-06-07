@@ -1,0 +1,87 @@
+# SQLite server performance test with ultra-aggressive timeouts
+
+# Set ultra-aggressive timeouts to test performance limits
+env MCP_TEST_TIMEOUT=500ms
+env MCP_SERVER_TIMEOUT=400ms
+env MCP_TOOL_TIMEOUT=300ms
+env SQLITE_DB_PATH=$WORK/perf_test.db
+
+# Start server with minimal startup time allowance
+exec timeout 6s go run . &
+wait 100ms
+
+# Test rapid table creation
+cat > rapid_create.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_statement",
+    "arguments": {
+      "statement": "CREATE TABLE speed_test (id INTEGER PRIMARY KEY, value TEXT)"
+    }
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<rapid_create.json)" | mcpcat -'
+stdout 'executed successfully'
+
+# Test rapid bulk insert
+cat > bulk_insert.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_statement",
+    "arguments": {
+      "statement": "INSERT INTO speed_test (value) VALUES ('test1'), ('test2'), ('test3'), ('test4'), ('test5')"
+    }
+  }
+}
+EOF
+
+bash 'timeout 400ms echo "$(<bulk_insert.json)" | mcpcat -'
+stdout 'Rows affected: 5'
+
+# Test rapid query execution
+cat > rapid_query.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "execute_query",
+    "arguments": {
+      "query": "SELECT COUNT(*) as count FROM speed_test"
+    }
+  }
+}
+EOF
+
+bash 'timeout 300ms echo "$(<rapid_query.json)" | mcpcat -'
+stdout '"count": 5'
+
+# Test rapid schema access
+cat > rapid_schema.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "get_schema",
+    "arguments": {}
+  }
+}
+EOF
+
+bash 'timeout 300ms echo "$(<rapid_schema.json)" | mcpcat -'
+stdout '"name": "speed_test"'
+
+# Test rapid sequential operations
+bash 'start=$(date +%s%N); timeout 200ms echo "$(<rapid_query.json)" | mcpcat - > /dev/null; timeout 200ms echo "$(<rapid_schema.json)" | mcpcat - > /dev/null; end=$(date +%s%N); duration=$((($end - $start) / 1000000)); echo "2-op duration: ${duration}ms"; test $duration -lt 500'
+
+# Cleanup
+exec rm -f rapid_create.json bulk_insert.json rapid_query.json rapid_schema.json

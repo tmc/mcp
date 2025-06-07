@@ -1,0 +1,62 @@
+# Test edge cases and boundary conditions for system server
+timeout 45s bash << 'EOF'
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test empty filter for processes
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":""}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":""}}}' > /dev/stdin
+echo ""
+
+# Test very specific filter that likely won't match
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":"nonexistent_process_xyz123"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":"nonexistent_process_xyz123"}}}' > /dev/stdin
+echo ""
+
+# Test zero limit for processes
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":0}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":0}}}' > /dev/stdin
+echo ""
+
+# Test get_disk_usage with empty path
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":""}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":""}}}' > /dev/stdin
+echo ""
+
+# Test get_disk_usage with relative path
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":".."}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":".."}}}' > /dev/stdin
+echo ""
+
+# Test get_env_vars with empty filter
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":""}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":""}}}' > /dev/stdin
+echo ""
+
+# Test get_env_vars with case-sensitive filter
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":"path"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":"path"}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with empty args array
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":[]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":[]}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with special characters in args
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":["Special chars: !@#$%^&*(){}[]<>?"],"timeout":5}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":["Special chars: !@#$%^&*(){}[]<>?"],"timeout":5}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with very short timeout
+echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["0.1"],"timeout":1}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["0.1"],"timeout":1}}}' > /dev/stdin
+echo ""
+
+# Test execute_command that returns non-zero exit code
+echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"false","timeout":5}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"false","timeout":5}}}' > /dev/stdin
+echo ""
+
+# Test mixed-type arguments that should be handled gracefully
+echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":5,"filter":"go","extra_param":"ignored"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":5,"filter":"go","extra_param":"ignored"}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1
+EOF

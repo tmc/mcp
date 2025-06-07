@@ -1,0 +1,49 @@
+# Test HTTP server edge cases with aggressive timeouts
+
+# Set aggressive environment variables
+env MCP_TEST_TIMEOUT=2s
+env MCP_SERVER_TIMEOUT=1s
+env MCP_TOOL_TIMEOUT=800ms
+
+# Start server
+bg bash 'go run main.go'
+sleep 500ms
+
+# Test very long URL (should handle gracefully)
+bash '
+url="https://httpbin.org/get?$(printf "param%d=value%d&" {1..50})"
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"$url\"}}}" | timeout 3s go run main.go
+'
+stdout '"status_code"'
+
+# Test POST with large body
+bash '
+large_body=$(printf "data%s" {1..100})
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"http_post\", \"arguments\": {\"url\": \"https://httpbin.org/post\", \"body\": \"$large_body\"}}}" | timeout 3s go run main.go
+'
+stdout '"status_code"'
+
+# Test special characters in URL
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"http_get\", \"arguments\": {\"url\": \"https://httpbin.org/get?test=hello%20world&special=%21%40%23\"}}}" | go run main.go
+'
+stdout '"status_code": 200'
+
+# Test custom headers
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"http_request\", \"arguments\": {\"url\": \"https://httpbin.org/headers\", \"method\": \"GET\", \"headers\": {\"Custom-Header\": \"test-value\"}}}}" | go run main.go
+'
+stdout '"Custom-Header"'
+stdout '"test-value"'
+
+# Test rapid sequential requests (stress test)
+bash 'for i in {1..5}; do echo "{\"jsonrpc\": \"2.0\", \"id\": $i, \"method\": \"tools/list\"}" | timeout 1s go run main.go > /dev/null; done'
+
+# Test Unicode in request body
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"http_post\", \"arguments\": {\"url\": \"https://httpbin.org/post\", \"body\": \"{\\\"unicode\\\": \\\"こんにちは\\\"}\", \"headers\": {\"Content-Type\": \"application/json\"}}}}" | go run main.go
+'
+stdout '"status_code": 200'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

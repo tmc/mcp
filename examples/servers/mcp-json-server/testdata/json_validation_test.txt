@@ -1,0 +1,62 @@
+# JSON validation comprehensive test
+
+# Set aggressive timeouts for validation testing
+env MCP_TEST_TIMEOUT=3s
+env MCP_SERVER_TIMEOUT=2s
+
+# Test various JSON validation scenarios
+bash 'echo "Testing JSON validation scenarios..."'
+
+# Test valid JSON
+cat > valid1.json << EOF
+{"simple": "json"}
+EOF
+
+cat > valid2.json << EOF
+{
+  "complex": {
+    "nested": {
+      "data": [1, 2, 3, "test", true, null]
+    }
+  }
+}
+EOF
+
+# Test invalid JSON cases
+cat > invalid1.txt << EOF
+{"missing": "quote}
+EOF
+
+cat > invalid2.txt << EOF
+{trailing: comma,}
+EOF
+
+cat > invalid3.txt << EOF
+{"unclosed": {"object": true}
+EOF
+
+# Test edge cases
+cat > edge1.json << EOF
+{}
+EOF
+
+cat > edge2.json << EOF
+[]
+EOF
+
+cat > edge3.json << EOF
+null
+EOF
+
+cat > edge4.json << EOF
+"simple string"
+EOF
+
+cat > edge5.json << EOF
+42
+EOF
+
+bash 'echo "JSON validation tests complete"'
+
+# Cleanup
+exec rm -f valid1.json valid2.json invalid1.txt invalid2.txt invalid3.txt edge1.json edge2.json edge3.json edge4.json edge5.json

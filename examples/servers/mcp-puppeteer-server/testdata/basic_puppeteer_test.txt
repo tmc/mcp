@@ -1,0 +1,42 @@
+# Test basic Puppeteer server functionality with aggressive timeouts
+
+# Set aggressive environment variables (Puppeteer needs more time for browser startup)
+env MCP_TEST_TIMEOUT=5s
+env MCP_SERVER_TIMEOUT=3s
+env MCP_TOOL_TIMEOUT=4s
+
+# Start Puppeteer server
+bg bash 'go run main.go'
+sleep 2s
+
+# Test list_tools capability
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" | go run main.go
+'
+stdout '"name": "navigate"'
+stdout '"name": "screenshot"'
+stdout '"name": "get_content"'
+
+# Test navigate tool
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"https://example.com\"}}}" | timeout 8s go run main.go
+'
+stdout 'navigated'
+
+# Test get_content tool  
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"get_content\", \"arguments\": {\"url\": \"https://example.com\"}}}" | timeout 8s go run main.go
+'
+stdout 'Example Domain'
+
+# Test screenshot tool
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"screenshot\", \"arguments\": {\"url\": \"https://example.com\"}}}" | timeout 10s go run main.go
+'
+stdout 'screenshot'
+
+# Test server response time (should complete reasonably fast)
+bash 'start_time=$(date +%s%N); echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/list\"}" | go run main.go > /dev/null; end_time=$(date +%s%N); duration=$((($end_time - $start_time) / 1000000)); echo "Response time: ${duration}ms"; test $duration -lt 3000'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

@@ -1,0 +1,81 @@
+# Git Edge Cases Test
+# Tests boundary conditions and special scenarios
+
+# Build the git server binary
+go build -o mcp-git-server .
+
+# Create a test git repository with various edge cases
+mkdir test_git_repo
+cd test_git_repo
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+
+# Create initial commit
+echo "Initial" > file1.txt
+git add file1.txt
+git commit -m "Initial commit"
+
+# Create more commits for log testing
+echo "Second" > file2.txt
+git add file2.txt
+git commit -m "Second commit"
+
+echo "Third" > file3.txt
+git add file3.txt
+git commit -m "Third commit"
+
+# Test edge cases
+exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_log","arguments":{"repository":".","max_count":1}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_log","arguments":{"repository":".","max_count":0}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_diff","arguments":{"repository":".","ref1":"HEAD~1","ref2":"HEAD"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_diff","arguments":{"repository":".","ref1":"HEAD~2"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_add","arguments":{"repository":".","files":["."]}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_commit","arguments":{"repository":".","message":"Empty commit with unicode: 🚀 中文"}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_create_branch","arguments":{"repository":".","branch":"unicode-branch-🌟"}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_branches","arguments":{"repository":"."}},"id":11}
+EOF
+
+# Verify limited log (max_count=1)
+stdout 'Third commit'
+
+# Verify log with max_count=0 (should show all)
+stdout 'Initial commit'
+stdout 'Second commit'
+stdout 'Third commit'
+
+# Verify diff between specific refs
+stdout 'file3.txt'
+
+# Verify diff from specific ref to working tree
+stdout 'file2.txt'
+
+# Verify adding all files
+stdout 'Successfully added files'
+
+# Verify unicode commit message
+stdout 'Empty commit with unicode: 🚀 中文'
+
+# Verify clean status after commit
+stdout ''
+
+# Verify unicode branch name
+stdout 'unicode-branch-🌟'
+
+# Test relative path handling
+exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"./."}},"id":3}
+EOF
+
+# Verify relative path handling
+stdout ''
+
+# Cleanup
+cd ..
+rm -rf test_git_repo

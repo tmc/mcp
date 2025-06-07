@@ -1,0 +1,10 @@
+# Test basic GitHub server functionality (without token)
+env GITHUB_TOKEN=
+exec go run . --timeout=5s
+stdin server_request.json
+wait 5s
+stdout '"error"'
+stdout 'GITHUB_TOKEN'
+
+-- server_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

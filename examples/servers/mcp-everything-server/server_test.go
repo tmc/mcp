@@ -19,7 +19,7 @@ func TestServerBuild(t *testing.T) {
 		t.Fatalf("Failed to build server: %v", err)
 	}
 	defer os.Remove("test-mcp-everything-server")
-	
+
 	// Check that the binary exists
 	if _, err := os.Stat("test-mcp-everything-server"); os.IsNotExist(err) {
 		t.Fatal("Built binary does not exist")
@@ -127,7 +127,7 @@ func TestServerProtocol(t *testing.T) {
 		if tools, ok := result["tools"].([]interface{}); ok {
 			expectedTools := []string{"echo", "current_time", "random"}
 			foundTools := make(map[string]bool)
-			
+
 			for _, tool := range tools {
 				if toolMap, ok := tool.(map[string]interface{}); ok {
 					if name, ok := toolMap["name"].(string); ok {

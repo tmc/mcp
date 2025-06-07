@@ -103,7 +103,7 @@ func (s *PuppeteerServer) screenshot(ctx context.Context, request mcp.CallToolRe
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(buf)
-	
+
 	s.mu.Lock()
 	s.screenshots[ssArgs.Name] = encoded
 	s.mu.Unlock()
@@ -122,8 +122,8 @@ func (s *PuppeteerServer) screenshot(ctx context.Context, request mcp.CallToolRe
 		})
 	} else {
 		content = append(content, map[string]interface{}{
-			"type": "image",
-			"data": encoded,
+			"type":     "image",
+			"data":     encoded,
 			"mimeType": "image/png",
 		})
 	}
@@ -324,8 +324,8 @@ func (s *PuppeteerServer) getScreenshot(ctx context.Context, request mcp.CallToo
 		})
 	} else {
 		content = append(content, map[string]interface{}{
-			"type": "image",
-			"data": screenshot,
+			"type":     "image",
+			"data":     screenshot,
 			"mimeType": "image/png",
 		})
 	}

@@ -1,0 +1,65 @@
+# Git Performance Test
+# Tests performance with aggressive timeouts
+
+# Build the git server binary
+go build -o mcp-git-server .
+
+# Create a test git repository
+mkdir test_git_repo
+cd test_git_repo
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+echo "# Test Repo" > README.md
+git add README.md
+git commit -m "Initial commit"
+
+# Test with aggressive timeout (3 seconds)
+timeout 3s exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_log","arguments":{"repository":".","max_count":1}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_branches","arguments":{"repository":"."}},"id":5}
+EOF
+
+# Verify operations complete within timeout
+stdout '"name":"git_status"'
+stdout 'Initial commit'
+stdout 'main'
+
+# Test rapid sequential git operations
+timeout 5s exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_log","arguments":{"repository":".","max_count":1}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_branches","arguments":{"repository":"."}},"id":7}
+EOF
+
+# Verify rapid calls are handled correctly
+stdout 'main'
+
+# Test with multiple file operations (should be fast)
+echo "File 1" > file1.txt
+echo "File 2" > file2.txt
+echo "File 3" > file3.txt
+
+timeout 4s exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_add","arguments":{"repository":".","files":["file1.txt","file2.txt","file3.txt"]}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_commit","arguments":{"repository":".","message":"Add multiple files"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"."}},"id":5}
+EOF
+
+# Verify multiple file operations are handled quickly
+stdout 'Successfully added files'
+stdout 'Add multiple files'
+
+# Cleanup
+cd ..
+rm -rf test_git_repo

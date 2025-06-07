@@ -1,0 +1,50 @@
+# Calculator Tools Functionality Test
+# Tests all calculator tools with various inputs
+
+# Build the calculator server binary
+go build -o mcp-calculator-server .
+
+# Test all calculator tools
+exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":10,"b":5}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"multiply","a":7,"b":8}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"divide","a":15,"b":3}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"sqrt","x":16}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"power","x":2,"y":3}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"sin","x":1.5708}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":[1,2,3,4,5]}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":100,"from_unit":"celsius","to_unit":"fahrenheit"}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":1,"from_unit":"kilometers","to_unit":"miles"}},"id":11}
+EOF
+
+# Verify basic arithmetic results
+stdout '"result":15'
+stdout '"operation":"add"'
+stdout '"result":56'
+stdout '"operation":"multiply"'
+stdout '"result":5'
+stdout '"operation":"divide"'
+
+# Verify advanced math results
+stdout '"result":4'
+stdout '"operation":"sqrt"'
+stdout '"result":8'
+stdout '"operation":"power"'
+stdout '"result":1'
+stdout '"operation":"sin"'
+
+# Verify statistics results
+stdout '"count":5'
+stdout '"sum":15'
+stdout '"mean":3'
+stdout '"median":3'
+stdout '"min":1'
+stdout '"max":5'
+
+# Verify unit conversion results
+stdout '"converted_value":212'
+stdout '"conversion_type":"temperature"'
+stdout '"converted_value":0.621371'
+stdout '"conversion_type":"length"'

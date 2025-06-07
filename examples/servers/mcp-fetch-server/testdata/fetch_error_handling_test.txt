@@ -1,0 +1,47 @@
+# Fetch Error Handling Test
+# Tests error scenarios and security restrictions
+
+# Build the fetch server binary
+go build -o mcp-fetch-server .
+
+# Test error handling scenarios
+exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"ftp://example.com/test"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"http://localhost:8080/test"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"http://127.0.0.1/test"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"http://192.168.1.1/test"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{"url":"invalid-url"}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch","arguments":{}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_headers","arguments":{"url":"http://10.0.0.1/test"}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"fetch_text","arguments":{"url":"javascript:alert('xss')"}},"id":10}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"invalid_tool","arguments":{}},"id":11}
+EOF
+
+# Verify unsupported scheme error
+stdout 'unsupported scheme.*ftp'
+
+# Verify private IP blocking
+stdout 'private IP addresses are not allowed'
+
+# Verify localhost blocking
+stdout 'private IP addresses are not allowed.*localhost'
+stdout 'private IP addresses are not allowed.*127'
+
+# Verify invalid URL error
+stdout 'invalid URL'
+
+# Verify missing argument error
+stdout 'missing required argument.*url'
+
+# Verify private network ranges blocked
+stdout 'private IP addresses are not allowed.*192.168'
+stdout 'private IP addresses are not allowed.*10'
+
+# Verify unsupported schemes blocked
+stdout 'unsupported scheme.*javascript'
+
+# Verify tool not found error
+stdout '"error"'
+stdout 'method not found'

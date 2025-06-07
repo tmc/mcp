@@ -1,0 +1,28 @@
+# Test basic todo server functionality
+go run . &
+server_pid=$!
+sleep 2
+
+# Test initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test list tools
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > /dev/stdin
+echo ""
+
+# Test add_todo
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Test task","description":"This is a test task","priority":"high"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Test task","description":"This is a test task","priority":"high"}}}' > /dev/stdin
+echo ""
+
+# Test list_todos
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test todo_stats
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1

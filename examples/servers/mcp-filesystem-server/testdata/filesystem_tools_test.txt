@@ -1,0 +1,59 @@
+# Filesystem Tools Functionality Test
+# Tests all filesystem tools with various file operations
+
+# Build the filesystem server binary
+go build -o mcp-filesystem-server .
+
+# Create a temporary test directory with test files
+mkdir test_dir
+cd test_dir
+echo "Hello, World!" > test_file.txt
+echo "Line 1" > multiline.txt
+echo "Line 2" >> multiline.txt
+mkdir subdir
+
+# Test all filesystem tools
+exec ../mcp-filesystem-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"."}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"test_file.txt"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_file_info","arguments":{"path":"test_file.txt"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"write_file","arguments":{"path":"new_file.txt","content":"New content"}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"read_file","arguments":{"path":"new_file.txt"}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_file_info","arguments":{"path":"subdir"}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"subdir"}},"id":9}
+EOF
+
+# Verify directory listing
+stdout '"name":"test_file.txt"'
+stdout '"type":"file"'
+stdout '"name":"multiline.txt"'
+stdout '"name":"subdir"'
+stdout '"type":"directory"'
+
+# Verify file reading
+stdout 'Hello, World!'
+
+# Verify file info
+stdout '"name":"test_file.txt"'
+stdout '"size"'
+stdout '"modified"'
+stdout '"permissions"'
+
+# Verify file writing
+stdout 'Successfully wrote.*bytes'
+
+# Verify new file content
+stdout 'New content'
+
+# Verify directory info
+stdout '"name":"subdir"'
+stdout '"type":"directory"'
+
+# Verify empty directory listing
+stdout '\[\]'
+
+# Cleanup
+cd ..
+rm -rf test_dir

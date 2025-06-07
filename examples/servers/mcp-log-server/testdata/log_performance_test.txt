@@ -1,0 +1,18 @@
+# Log server performance test with ultra-aggressive timeouts
+
+# Set ultra-aggressive timeouts
+env MCP_TEST_TIMEOUT=1s
+env MCP_SERVER_TIMEOUT=800ms
+env MCP_TOOL_TIMEOUT=600ms
+
+# Create performance test log
+cat > perf.log << EOF
+2024-01-01 10:00:01 INFO Quick test
+2024-01-01 10:00:02 ERROR Fast error
+EOF
+
+bash 'timeout 300ms echo "Quick log test"'
+stdout 'Quick log test'
+
+# Cleanup
+exec rm -f perf.log

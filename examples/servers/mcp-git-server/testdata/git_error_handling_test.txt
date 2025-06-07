@@ -1,0 +1,64 @@
+# Git Error Handling Test
+# Tests error scenarios and security restrictions
+
+# Build the git server binary
+go build -o mcp-git-server .
+
+# Create a test git repository
+mkdir test_git_repo
+cd test_git_repo
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+echo "# Test Repo" > README.md
+git add README.md
+git commit -m "Initial commit"
+
+# Test error handling scenarios
+exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"../nonexistent"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{"repository":"/etc"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_status","arguments":{}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_add","arguments":{"repository":".","files":["nonexistent.txt"]}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_commit","arguments":{"repository":"."}},"id":7}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_create_branch","arguments":{"repository":".","branch":"main"}},"id":8}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"git_switch_branch","arguments":{"repository":".","branch":"nonexistent-branch"}},"id":9}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"invalid_tool","arguments":{}},"id":10}
+EOF
+
+# Verify access denied errors
+stdout 'access denied.*repository outside allowed repositories'
+
+# Verify missing argument errors
+stdout 'missing required argument.*repository'
+stdout 'missing required argument.*message'
+
+# Verify git command failures
+stdout 'git command failed'
+
+# Verify branch already exists error
+stdout 'git command failed.*already exists'
+
+# Verify nonexistent branch error
+stdout 'git command failed'
+
+# Verify tool not found error
+stdout '"error"'
+stdout 'method not found'
+
+# Cleanup
+cd ..
+rm -rf test_git_repo
+
+# Test starting server without arguments (should fail)
+! exec ./mcp-git-server
+
+# Test with non-git directory (should fail)
+mkdir not_git_repo
+! exec ./mcp-git-server not_git_repo
+rm -rf not_git_repo
+
+# Test with nonexistent directory (should fail)
+! exec ./mcp-git-server /nonexistent/directory

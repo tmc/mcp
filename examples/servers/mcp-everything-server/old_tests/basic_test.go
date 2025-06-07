@@ -47,7 +47,7 @@ func TestServerBuild(t *testing.T) {
 
 	cmd = exec.CommandContext(ctx, "./test-server", "-timeout", "100ms")
 	err := cmd.Run()
-	
+
 	// We expect the command to exit cleanly after timeout
 	if err != nil && err.Error() != "signal: killed" {
 		// It's OK if the process was killed due to context timeout

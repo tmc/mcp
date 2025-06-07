@@ -1,0 +1,55 @@
+# Test Puppeteer server edge cases with aggressive timeouts
+
+# Set aggressive environment variables
+env MCP_TEST_TIMEOUT=4s
+env MCP_SERVER_TIMEOUT=3s
+env MCP_TOOL_TIMEOUT=5s
+
+# Start server
+bg bash 'go run main.go'
+sleep 1s
+
+# Test data URL (should handle inline content)
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"get_content\", \"arguments\": {\"url\": \"data:text/html,<h1>Test Content</h1><p>Inline HTML</p>\"}}}" | timeout 5s go run main.go
+'
+stdout 'Test Content'
+stdout 'Inline HTML'
+
+# Test very long URL (should handle gracefully)
+bash '
+long_query=$(printf "param%d=value%d&" {1..20})
+echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"https://httpbin.org/get?$long_query\"}}}" | timeout 6s go run main.go
+'
+stdout 'navigated'
+
+# Test JavaScript-heavy page
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"get_content\", \"arguments\": {\"url\": \"data:text/html,<script>document.body.innerHTML='<h1>JS Generated</h1>'</script>\"}}}" | timeout 6s go run main.go
+'
+stdout 'JS Generated'
+
+# Test Unicode content
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"get_content\", \"arguments\": {\"url\": \"data:text/html,<h1>Unicode Test: こんにちは 世界</h1>\"}}}" | timeout 5s go run main.go
+'
+stdout 'こんにちは'
+stdout '世界'
+
+# Test rapid sequential requests (stress test)
+bash 'for i in {1..3}; do echo "{\"jsonrpc\": \"2.0\", \"id\": $i, \"method\": \"tools/list\"}" | timeout 2s go run main.go > /dev/null; done'
+
+# Test screenshot with custom viewport
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"screenshot\", \"arguments\": {\"url\": \"data:text/html,<div style='width:100px;height:100px;background:red;'></div>\", \"width\": 300, \"height\": 200}}}" | timeout 8s go run main.go
+'
+stdout 'screenshot'
+
+# Test HTTPS URL (should handle SSL)
+bash '
+echo "{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"tools/call\", \"params\": {\"name\": \"navigate\", \"arguments\": {\"url\": \"https://httpbin.org/html\"}}}" | timeout 6s go run main.go
+'
+stdout 'navigated'
+
+# Cleanup
+exec pkill -f "go run main.go" || true

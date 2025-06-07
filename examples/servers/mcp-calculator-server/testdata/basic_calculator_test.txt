@@ -1,0 +1,33 @@
+# Basic MCP Calculator Server Test
+# Tests server startup, initialization, and basic protocol handling
+
+# Build the calculator server binary
+go build -o mcp-calculator-server .
+
+# Test basic MCP protocol initialization
+exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"mcp-calculator-server"'
+stdout '"version":"0.1.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify all calculator tools are listed
+stdout '"name":"calculate"'
+stdout '"description":"Perform basic arithmetic calculations'
+stdout '"name":"advanced_math"'
+stdout '"description":"Perform advanced mathematical operations'
+stdout '"name":"statistics"'
+stdout '"description":"Calculate statistical measures'
+stdout '"name":"convert_units"'
+stdout '"description":"Convert between different units'
+
+# Verify ping response
+stdout '"result":"pong"'

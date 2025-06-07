@@ -1,0 +1,5 @@
+# Test basic Brave Search server functionality (without API key)
+env BRAVE_API_KEY=
+exec go run . --timeout=5s
+wait 5s
+stdout 'BRAVE_API_KEY'

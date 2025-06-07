@@ -1,0 +1,42 @@
+# Calculator Performance Test
+# Tests performance with aggressive timeouts
+
+# Build the calculator server binary
+go build -o mcp-calculator-server .
+
+# Test with aggressive timeout (1 second)
+timeout 1s exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":1,"b":2}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"multiply","a":3,"b":4}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"advanced_math","arguments":{"function":"sqrt","x":16}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"statistics","arguments":{"numbers":[1,2,3,4,5,6,7,8,9,10]}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"convert_units","arguments":{"value":100,"from_unit":"celsius","to_unit":"fahrenheit"}},"id":7}
+EOF
+
+# Verify all operations completed within timeout
+stdout '"result":3'
+stdout '"result":12'
+stdout '"result":4'
+stdout '"count":10'
+stdout '"converted_value":212'
+
+# Test rapid sequential calls
+timeout 2s exec mcp-calculator-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":1,"b":1}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":2,"b":2}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":3,"b":3}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":4,"b":4}},"id":6}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"calculate","arguments":{"operation":"add","a":5,"b":5}},"id":7}
+EOF
+
+# Verify rapid calls are handled correctly
+stdout '"result":2'
+stdout '"result":4'
+stdout '"result":6'
+stdout '"result":8'
+stdout '"result":10'

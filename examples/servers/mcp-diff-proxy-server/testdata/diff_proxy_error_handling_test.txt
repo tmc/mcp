@@ -1,0 +1,106 @@
+# Diff proxy server error handling test with aggressive timeouts
+
+# Set ultra-aggressive timeouts for error scenarios
+env MCP_TEST_TIMEOUT=1500ms
+env MCP_SERVER_TIMEOUT=1s
+env MCP_TOOL_TIMEOUT=800ms
+
+# Start the server
+exec timeout 6s go run . &
+wait 150ms
+
+# Test missing required parameters for text_diff
+cat > missing_params.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": "Only one text"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<missing_params.json)" | mcpcat -'
+stdout 'text1 and text2 parameters are required and must be strings'
+
+# Test invalid parameter types for text_diff
+cat > invalid_types.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "text_diff",
+    "arguments": {
+      "text1": 123,
+      "text2": "text"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<invalid_types.json)" | mcpcat -'
+stdout 'text1 and text2 parameters are required and must be strings'
+
+# Test file_diff with nonexistent file
+cat > nonexistent_file.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "file_diff",
+    "arguments": {
+      "file1": "nonexistent1.txt",
+      "file2": "nonexistent2.txt"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<nonexistent_file.json)" | mcpcat -'
+stdout 'Error running diff|No such file or directory'
+
+# Test missing required parameters for file_diff
+cat > missing_file_params.json << EOF
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "file_diff",
+    "arguments": {
+      "file1": "only_one_file.txt"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<missing_file_params.json)" | mcpcat -'
+stdout 'file1 and file2 parameters are required and must be strings'
+
+# Test mcp_diff with nonexistent mcpdiff command
+cat > mcp_diff_fail.json << EOF
+{
+  "jsonrpc": "2.0", 
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "mcp_diff",
+    "arguments": {
+      "file1": "test1.mcp",
+      "file2": "test2.mcp"
+    }
+  }
+}
+EOF
+
+bash 'timeout 1500ms echo "$(<mcp_diff_fail.json)" | mcpcat -'
+stdout 'Error running mcpdiff|executable file not found'
+
+# Cleanup
+exec rm -f missing_params.json invalid_types.json nonexistent_file.json missing_file_params.json mcp_diff_fail.json

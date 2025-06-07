@@ -1,0 +1,9 @@
+# Test PostgreSQL server error handling
+exec go run . --timeout=5s
+stdin error_request.json
+wait 5s
+stdout '"error"'
+stdout 'connection string'
+
+-- error_request.json --
+{"jsonrpc":"2.0","id":1,"method":"tools/list"}

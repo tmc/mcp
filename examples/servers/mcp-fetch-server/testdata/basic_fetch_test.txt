@@ -1,0 +1,31 @@
+# Basic MCP Fetch Server Test
+# Tests server startup, initialization, and basic protocol handling
+
+# Build the fetch server binary
+go build -o mcp-fetch-server .
+
+# Test basic MCP protocol initialization
+exec mcp-fetch-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"fetch-server"'
+stdout '"version":"1.0.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify all fetch tools are listed
+stdout '"name":"fetch"'
+stdout '"description":"Fetch content from a URL"'
+stdout '"name":"fetch_text"'
+stdout '"description":"Fetch content from a URL and convert HTML to plain text"'
+stdout '"name":"get_headers"'
+stdout '"description":"Get HTTP headers for a URL"'
+
+# Verify ping response
+stdout '"result":"pong"'

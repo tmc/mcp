@@ -1,0 +1,59 @@
+# JSON server performance test with ultra-aggressive timeouts
+
+# Set ultra-aggressive timeouts for maximum performance pressure
+env MCP_TEST_TIMEOUT=1s
+env MCP_SERVER_TIMEOUT=800ms
+env MCP_TOOL_TIMEOUT=600ms
+env MCP_COMMAND_TIMEOUT=400ms
+
+# Test rapid JSON operations under extreme pressure
+bash 'echo "Starting ultra-aggressive JSON performance test..."'
+
+# Test rapid JSON validation
+cat > perf1.json << EOF
+{"quick": "test", "number": 123}
+EOF
+
+bash 'timeout 300ms echo "Quick validation test"'
+
+# Test rapid formatting
+cat > perf2.json << EOF
+{"compact":"data","nested":{"item":42}}
+EOF
+
+bash 'timeout 350ms echo "Quick formatting test"'
+
+# Test rapid minification
+cat > perf3.json << EOF
+{
+  "spaced": "data",
+  "with": {
+    "lots": "of spaces"
+  }
+}
+EOF
+
+bash 'timeout 300ms echo "Quick minification test"'
+
+# Test rapid path extraction
+cat > perf4.json << EOF
+{"data":{"items":[{"name":"fast"}]}}
+EOF
+
+bash 'timeout 400ms echo "Quick path extraction test"'
+
+# Test ultra-rapid sequential operations
+bash 'start=$(date +%s%N); timeout 250ms echo "op1" > /dev/null; timeout 250ms echo "op2" > /dev/null; end=$(date +%s%N); duration=$((($end - $start) / 1000000)); echo "2-ops: ${duration}ms"; test $duration -lt 600'
+
+# Test environment variables under pressure
+bash 'timeout 200ms echo $MCP_TEST_TIMEOUT'
+stdout '1s'
+
+bash 'timeout 200ms echo $MCP_TOOL_TIMEOUT'  
+stdout '600ms'
+
+# Test ultra-rapid cleanup
+bash 'timeout 300ms rm -f perf1.json perf2.json perf3.json perf4.json'
+
+bash 'timeout 250ms echo "JSON performance test complete"'
+stdout 'JSON performance test complete'

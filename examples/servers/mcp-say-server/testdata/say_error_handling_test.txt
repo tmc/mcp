@@ -1,0 +1,28 @@
+# Say Error Handling Test
+# Tests error scenarios
+
+# Build the say server binary
+go build -o mcp-say-server .
+
+# Test error handling scenarios
+exec mcp-say-server <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":""}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"text":"Test","voice":"NonexistentVoice"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"invalid_tool","arguments":{}},"id":6}
+EOF
+
+# Verify missing text error
+stdout 'missing required argument.*text'
+
+# Verify empty text handling
+stdout 'text cannot be empty'
+
+# Verify invalid voice handling (may succeed or fail depending on system)
+# This is platform-dependent behavior
+
+# Verify tool not found error
+stdout '"error"'
+stdout 'method not found'

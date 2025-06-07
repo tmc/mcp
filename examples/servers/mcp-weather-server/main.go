@@ -22,21 +22,21 @@ const (
 )
 
 type WeatherResponse struct {
-	Location     string  `json:"location"`
-	Temperature  float64 `json:"temperature"`
-	FeelsLike    float64 `json:"feels_like"`
-	Humidity     int     `json:"humidity"`
-	Pressure     int     `json:"pressure"`
-	Visibility   int     `json:"visibility"`
-	UVIndex      float64 `json:"uv_index,omitempty"`
-	Description  string  `json:"description"`
-	WindSpeed    float64 `json:"wind_speed"`
-	WindDegree   int     `json:"wind_degree"`
-	Cloudiness   int     `json:"cloudiness"`
-	Country      string  `json:"country"`
-	Sunrise      string  `json:"sunrise"`
-	Sunset       string  `json:"sunset"`
-	Timezone     int     `json:"timezone"`
+	Location    string  `json:"location"`
+	Temperature float64 `json:"temperature"`
+	FeelsLike   float64 `json:"feels_like"`
+	Humidity    int     `json:"humidity"`
+	Pressure    int     `json:"pressure"`
+	Visibility  int     `json:"visibility"`
+	UVIndex     float64 `json:"uv_index,omitempty"`
+	Description string  `json:"description"`
+	WindSpeed   float64 `json:"wind_speed"`
+	WindDegree  int     `json:"wind_degree"`
+	Cloudiness  int     `json:"cloudiness"`
+	Country     string  `json:"country"`
+	Sunrise     string  `json:"sunrise"`
+	Sunset      string  `json:"sunset"`
+	Timezone    int     `json:"timezone"`
 }
 
 type ForecastDay struct {
@@ -324,10 +324,10 @@ func getWeatherForecast(apiKey, location, units string) (ForecastResponse, error
 
 	// Group forecast by day (taking daily max/min)
 	dailyForecasts := make(map[string]ForecastDay)
-	
+
 	for _, item := range owResp.List {
 		date := time.Unix(item.Dt, 0).Format("2006-01-02")
-		
+
 		description := "No description"
 		if len(item.Weather) > 0 {
 			description = item.Weather[0].Description

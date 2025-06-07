@@ -1,0 +1,55 @@
+# Basic MCP Git Server Test
+# Tests server startup, initialization, and basic protocol handling
+
+# Build the git server binary
+go build -o mcp-git-server .
+
+# Create a test git repository
+mkdir test_git_repo
+cd test_git_repo
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+echo "# Test Repo" > README.md
+git add README.md
+git commit -m "Initial commit"
+
+# Test basic MCP protocol initialization with current git repo
+exec ../mcp-git-server . <<EOF
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"roots":{"listChanged":true},"sampling":{}}},"id":1}
+{"jsonrpc":"2.0","method":"initialized","params":{}}
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+{"jsonrpc":"2.0","method":"ping","params":{},"id":3}
+EOF
+
+# Verify server information in initialization response
+stdout '"name":"git-server"'
+stdout '"version":"1.0.0"'
+
+# Verify capabilities are reported
+stdout '"tools"'
+
+# Verify all git tools are listed
+stdout '"name":"git_status"'
+stdout '"description":"Get the status of a git repository"'
+stdout '"name":"git_log"'
+stdout '"description":"Get the commit log of a git repository"'
+stdout '"name":"git_branches"'
+stdout '"description":"List branches in a git repository"'
+stdout '"name":"git_diff"'
+stdout '"description":"Show differences in a git repository"'
+stdout '"name":"git_add"'
+stdout '"description":"Add files to git staging area"'
+stdout '"name":"git_commit"'
+stdout '"description":"Create a git commit"'
+stdout '"name":"git_create_branch"'
+stdout '"description":"Create a new git branch"'
+stdout '"name":"git_switch_branch"'
+stdout '"description":"Switch to a different git branch"'
+
+# Verify ping response
+stdout '"result":"pong"'
+
+# Cleanup
+cd ..
+rm -rf test_git_repo

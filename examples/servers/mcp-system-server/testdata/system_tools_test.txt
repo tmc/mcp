@@ -1,0 +1,48 @@
+# Test all system tools with comprehensive parameters
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test list_processes tool
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_processes","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_processes","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test list_processes with limit
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":5}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_processes","arguments":{"limit":5}}}' > /dev/stdin
+echo ""
+
+# Test list_processes with filter
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":"go"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_processes","arguments":{"filter":"go"}}}' > /dev/stdin
+echo ""
+
+# Test get_disk_usage tool
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test get_disk_usage with specific path
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":"/tmp"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_disk_usage","arguments":{"path":"/tmp"}}}' > /dev/stdin
+echo ""
+
+# Test get_env_vars tool
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_env_vars","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_env_vars","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test get_env_vars with filter
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":"PATH"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_env_vars","arguments":{"filter":"PATH"}}}' > /dev/stdin
+echo ""
+
+# Test execute_command tool (safe command)
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":["Hello, World!"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"echo","args":["Hello, World!"]}}}' > /dev/stdin
+echo ""
+
+# Test execute_command with timeout
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["1"],"timeout":5}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"execute_command","arguments":{"command":"sleep","args":["1"],"timeout":5}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1

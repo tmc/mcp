@@ -9,8 +9,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sort"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -26,7 +24,7 @@ type TodoItem struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description,omitempty"`
-	Status      string    `json:"status"` // "pending", "in_progress", "completed", "cancelled"
+	Status      string    `json:"status"`   // "pending", "in_progress", "completed", "cancelled"
 	Priority    string    `json:"priority"` // "low", "medium", "high", "urgent"
 	DueDate     *string   `json:"due_date,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -43,13 +41,13 @@ type TodoManager struct {
 func NewTodoManager() *TodoManager {
 	homeDir, _ := os.UserHomeDir()
 	filePath := filepath.Join(homeDir, ".mcp-todo-server.json")
-	
+
 	tm := &TodoManager{
 		todos:    []TodoItem{},
 		nextID:   1,
 		filePath: filePath,
 	}
-	
+
 	tm.loadFromFile()
 	return tm
 }
@@ -62,17 +60,17 @@ func (tm *TodoManager) loadFromFile() {
 		}
 		return
 	}
-	
+
 	var fileData struct {
 		NextID int        `json:"next_id"`
 		Todos  []TodoItem `json:"todos"`
 	}
-	
+
 	if err := json.Unmarshal(data, &fileData); err != nil {
 		log.Printf("Warning: Could not parse todo file: %v", err)
 		return
 	}
-	
+
 	tm.nextID = fileData.NextID
 	tm.todos = fileData.Todos
 }
@@ -85,18 +83,18 @@ func (tm *TodoManager) saveToFile() error {
 		NextID: tm.nextID,
 		Todos:  tm.todos,
 	}
-	
+
 	data, err := json.MarshalIndent(fileData, "", "  ")
 	if err != nil {
 		return err
 	}
-	
+
 	return os.WriteFile(tm.filePath, data, 0644)
 }
 
 func (tm *TodoManager) addTodo(title, description, priority, dueDate string, tags []string) TodoItem {
 	now := time.Now()
-	
+
 	todo := TodoItem{
 		ID:          tm.nextID,
 		Title:       title,
@@ -107,32 +105,32 @@ func (tm *TodoManager) addTodo(title, description, priority, dueDate string, tag
 		UpdatedAt:   now,
 		Tags:        tags,
 	}
-	
+
 	if dueDate != "" {
 		todo.DueDate = &dueDate
 	}
-	
+
 	tm.todos = append(tm.todos, todo)
 	tm.nextID++
 	tm.saveToFile()
-	
+
 	return todo
 }
 
 func (tm *TodoManager) getTodos(status, priority string, tags []string) []TodoItem {
 	var filtered []TodoItem
-	
+
 	for _, todo := range tm.todos {
 		// Filter by status
 		if status != "" && todo.Status != status {
 			continue
 		}
-		
+
 		// Filter by priority
 		if priority != "" && todo.Priority != priority {
 			continue
 		}
-		
+
 		// Filter by tags
 		if len(tags) > 0 {
 			hasTag := false
@@ -151,23 +149,23 @@ func (tm *TodoManager) getTodos(status, priority string, tags []string) []TodoIt
 				continue
 			}
 		}
-		
+
 		filtered = append(filtered, todo)
 	}
-	
+
 	// Sort by priority and creation date
 	sort.Slice(filtered, func(i, j int) bool {
 		// Priority order: urgent > high > medium > low
 		priorities := map[string]int{"urgent": 4, "high": 3, "medium": 2, "low": 1}
 		priI := priorities[filtered[i].Priority]
 		priJ := priorities[filtered[j].Priority]
-		
+
 		if priI != priJ {
 			return priI > priJ
 		}
 		return filtered[i].CreatedAt.Before(filtered[j].CreatedAt)
 	})
-	
+
 	return filtered
 }
 
@@ -176,29 +174,29 @@ func (tm *TodoManager) updateTodo(id int, status, priority, title, description, 
 		if todo.ID == id {
 			updated := todo
 			updated.UpdatedAt = time.Now()
-			
+
 			if status != nil {
 				if !isValidStatus(*status) {
 					return nil, fmt.Errorf("invalid status: %s", *status)
 				}
 				updated.Status = *status
 			}
-			
+
 			if priority != nil {
 				if !isValidPriority(*priority) {
 					return nil, fmt.Errorf("invalid priority: %s", *priority)
 				}
 				updated.Priority = *priority
 			}
-			
+
 			if title != nil {
 				updated.Title = *title
 			}
-			
+
 			if description != nil {
 				updated.Description = *description
 			}
-			
+
 			if dueDate != nil {
 				if *dueDate == "" {
 					updated.DueDate = nil
@@ -206,17 +204,17 @@ func (tm *TodoManager) updateTodo(id int, status, priority, title, description, 
 					updated.DueDate = dueDate
 				}
 			}
-			
+
 			if tags != nil {
 				updated.Tags = tags
 			}
-			
+
 			tm.todos[i] = updated
 			tm.saveToFile()
 			return &updated, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("todo with ID %d not found", id)
 }
 
@@ -228,7 +226,7 @@ func (tm *TodoManager) deleteTodo(id int) error {
 			return nil
 		}
 	}
-	
+
 	return fmt.Errorf("todo with ID %d not found", id)
 }
 
@@ -246,7 +244,7 @@ func (tm *TodoManager) getStats() map[string]interface{} {
 			"low":    0,
 		},
 	}
-	
+
 	for _, todo := range tm.todos {
 		switch todo.Status {
 		case "pending":
@@ -258,12 +256,12 @@ func (tm *TodoManager) getStats() map[string]interface{} {
 		case "cancelled":
 			stats["cancelled"] = stats["cancelled"].(int) + 1
 		}
-		
+
 		if byPriority, ok := stats["by_priority"].(map[string]int); ok {
 			byPriority[todo.Priority]++
 		}
 	}
-	
+
 	return stats
 }
 

@@ -56,7 +56,7 @@ func (fs *FetchServer) validateURL(urlStr string) error {
 	}
 
 	hostname := parsedURL.Hostname()
-	
+
 	// Check blocked domains first
 	for _, blocked := range fs.blockedDomains {
 		if strings.Contains(hostname, blocked) {
@@ -98,7 +98,7 @@ func isPrivateIP(hostname string) bool {
 		"172.24.", "172.25.", "172.26.", "172.27.",
 		"172.28.", "172.29.", "172.30.", "172.31.",
 	}
-	
+
 	for _, pattern := range privatePatterns {
 		if strings.HasPrefix(hostname, pattern) {
 			return true
@@ -138,7 +138,7 @@ func (fs *FetchServer) fetchURL(urlStr string) (string, string, error) {
 	}
 
 	contentType := resp.Header.Get("Content-Type")
-	
+
 	return string(body), contentType, nil
 }
 
@@ -153,7 +153,7 @@ func (fs *FetchServer) htmlToText(htmlContent string) (string, error) {
 		if n.Type == html.TextNode {
 			return n.Data
 		}
-		
+
 		// Skip script and style tags
 		if n.Type == html.ElementNode && (n.Data == "script" || n.Data == "style") {
 			return ""
@@ -163,7 +163,7 @@ func (fs *FetchServer) htmlToText(htmlContent string) (string, error) {
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			result.WriteString(extractText(c))
 		}
-		
+
 		// Add spacing for block elements
 		if n.Type == html.ElementNode {
 			switch n.Data {
@@ -171,24 +171,24 @@ func (fs *FetchServer) htmlToText(htmlContent string) (string, error) {
 				result.WriteString("\n")
 			}
 		}
-		
+
 		return result.String()
 	}
 
 	text := extractText(doc)
-	
+
 	// Clean up whitespace
 	text = regexp.MustCompile(`\n\s*\n`).ReplaceAllString(text, "\n\n")
 	text = regexp.MustCompile(`[ \t]+`).ReplaceAllString(text, " ")
 	text = strings.TrimSpace(text)
-	
+
 	return text, nil
 }
 
 func main() {
 	// Create server with name and version
 	srv := mcp.NewServer("fetch-server", "1.0.0")
-	
+
 	// Initialize fetch server
 	fs := NewFetchServer()
 
@@ -199,12 +199,12 @@ func main() {
 		if urlRaw, exists = args["url"]; !exists {
 			return nil, fmt.Errorf("missing required argument: url")
 		}
-		
+
 		var urlStr string
 		if err := json.Unmarshal(urlRaw, &urlStr); err != nil {
 			return nil, fmt.Errorf("invalid url argument: %w", err)
 		}
-		
+
 		content, contentType, err := fs.fetchURL(urlStr)
 		if err != nil {
 			return &modelcontextprotocol.CallToolResult{
@@ -217,21 +217,21 @@ func main() {
 				IsError: boolPtr(true),
 			}, nil
 		}
-		
+
 		result := map[string]interface{}{
 			"url":         urlStr,
 			"content":     content,
 			"contentType": contentType,
 			"size":        len(content),
 		}
-		
+
 		responseJSON, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal response: %w", err)
 		}
-		
+
 		log.Printf("Fetched URL: %s (%d bytes, %s)", urlStr, len(content), contentType)
-		
+
 		return &modelcontextprotocol.CallToolResult{
 			Content: []modelcontextprotocol.Content{
 				modelcontextprotocol.TextContent{
@@ -249,12 +249,12 @@ func main() {
 		if urlRaw, exists = args["url"]; !exists {
 			return nil, fmt.Errorf("missing required argument: url")
 		}
-		
+
 		var urlStr string
 		if err := json.Unmarshal(urlRaw, &urlStr); err != nil {
 			return nil, fmt.Errorf("invalid url argument: %w", err)
 		}
-		
+
 		content, contentType, err := fs.fetchURL(urlStr)
 		if err != nil {
 			return &modelcontextprotocol.CallToolResult{
@@ -267,7 +267,7 @@ func main() {
 				IsError: boolPtr(true),
 			}, nil
 		}
-		
+
 		var textContent string
 		if strings.Contains(contentType, "text/html") {
 			textContent, err = fs.htmlToText(content)
@@ -285,22 +285,22 @@ func main() {
 		} else {
 			textContent = content
 		}
-		
+
 		result := map[string]interface{}{
-			"url":         urlStr,
-			"text":        textContent,
-			"contentType": contentType,
+			"url":          urlStr,
+			"text":         textContent,
+			"contentType":  contentType,
 			"originalSize": len(content),
 			"textSize":     len(textContent),
 		}
-		
+
 		responseJSON, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal response: %w", err)
 		}
-		
+
 		log.Printf("Fetched and converted URL: %s (%d -> %d bytes)", urlStr, len(content), len(textContent))
-		
+
 		return &modelcontextprotocol.CallToolResult{
 			Content: []modelcontextprotocol.Content{
 				modelcontextprotocol.TextContent{
@@ -318,12 +318,12 @@ func main() {
 		if urlRaw, exists = args["url"]; !exists {
 			return nil, fmt.Errorf("missing required argument: url")
 		}
-		
+
 		var urlStr string
 		if err := json.Unmarshal(urlRaw, &urlStr); err != nil {
 			return nil, fmt.Errorf("invalid url argument: %w", err)
 		}
-		
+
 		if err := fs.validateURL(urlStr); err != nil {
 			return &modelcontextprotocol.CallToolResult{
 				Content: []modelcontextprotocol.Content{
@@ -342,7 +342,7 @@ func main() {
 		}
 
 		req.Header.Set("User-Agent", fs.userAgent)
-		
+
 		resp, err := fs.client.Do(req)
 		if err != nil {
 			return &modelcontextprotocol.CallToolResult{
@@ -356,26 +356,26 @@ func main() {
 			}, nil
 		}
 		defer resp.Body.Close()
-		
+
 		headers := make(map[string][]string)
 		for name, values := range resp.Header {
 			headers[name] = values
 		}
-		
+
 		result := map[string]interface{}{
 			"url":        urlStr,
 			"statusCode": resp.StatusCode,
 			"status":     resp.Status,
 			"headers":    headers,
 		}
-		
+
 		responseJSON, err := json.MarshalIndent(result, "", "  ")
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal response: %w", err)
 		}
-		
+
 		log.Printf("Got headers for URL: %s (status: %d)", urlStr, resp.StatusCode)
-		
+
 		return &modelcontextprotocol.CallToolResult{
 			Content: []modelcontextprotocol.Content{
 				modelcontextprotocol.TextContent{
@@ -389,7 +389,7 @@ func main() {
 	// Start server with stdio transport
 	transport := mcp.StdioTransport{}
 	log.Printf("Fetch server running on stdio")
-	
+
 	if err := srv.Serve(context.Background(), transport); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

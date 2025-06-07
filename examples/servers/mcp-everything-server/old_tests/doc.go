@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Package old_tests contains obsolete tests. They are kept for reference

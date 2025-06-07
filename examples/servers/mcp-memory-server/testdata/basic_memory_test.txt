@@ -1,0 +1,24 @@
+# Test basic memory server functionality
+go run . &
+server_pid=$!
+sleep 2
+
+# Test initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test list tools
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > /dev/stdin
+echo ""
+
+# Test create_entities
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"Alice","entityType":"person","observations":["works at company X"]}]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"create_entities","arguments":{"entities":[{"name":"Alice","entityType":"person","observations":["works at company X"]}]}}}' > /dev/stdin
+echo ""
+
+# Test search_memory (empty query - should return all)
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_memory","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"search_memory","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1

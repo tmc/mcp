@@ -1,0 +1,70 @@
+# Test comprehensive todo tools functionality
+go run . &
+server_pid=$!
+sleep 2
+
+# Initialize
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test","version":"1.0.0"}}}' > /dev/stdin
+echo ""
+
+# Test add_todo with all parameters
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Complete project","description":"Finish the MCP todo server","priority":"urgent","due_date":"2024-12-31","tags":["work","coding","urgent"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Complete project","description":"Finish the MCP todo server","priority":"urgent","due_date":"2024-12-31","tags":["work","coding","urgent"]}}}' > /dev/stdin
+echo ""
+
+# Test add_todo with minimal parameters
+echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Buy groceries"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Buy groceries"}}}' > /dev/stdin
+echo ""
+
+# Test add_todo with different priorities
+echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Call dentist","priority":"low","tags":["health"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Call dentist","priority":"low","tags":["health"]}}}' > /dev/stdin
+echo ""
+
+echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Review code","priority":"high","tags":["work","review"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"add_todo","arguments":{"title":"Review code","priority":"high","tags":["work","review"]}}}' > /dev/stdin
+echo ""
+
+# Test list_todos with no filter
+echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test list_todos with status filter
+echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_todos","arguments":{"status":"pending"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_todos","arguments":{"status":"pending"}}}' > /dev/stdin
+echo ""
+
+# Test list_todos with priority filter
+echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_todos","arguments":{"priority":"urgent"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_todos","arguments":{"priority":"urgent"}}}' > /dev/stdin
+echo ""
+
+# Test list_todos with tags filter
+echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_todos","arguments":{"tags":["work"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"list_todos","arguments":{"tags":["work"]}}}' > /dev/stdin
+echo ""
+
+# Test update_todo status
+echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":1,"status":"in_progress"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":1,"status":"in_progress"}}}' > /dev/stdin
+echo ""
+
+# Test update_todo multiple fields
+echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":2,"status":"completed","priority":"medium","description":"Updated: grocery shopping completed"}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":2,"status":"completed","priority":"medium","description":"Updated: grocery shopping completed"}}}' > /dev/stdin
+echo ""
+
+# Test update_todo tags
+echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":3,"tags":["personal","health","appointment"]}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"update_todo","arguments":{"id":3,"tags":["personal","health","appointment"]}}}' > /dev/stdin
+echo ""
+
+# Test todo_stats after updates
+echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Test delete_todo
+echo '{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"delete_todo","arguments":{"id":2}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"delete_todo","arguments":{"id":2}}}' > /dev/stdin
+echo ""
+
+# Test final list and stats
+echo '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"list_todos","arguments":{}}}' > /dev/stdin
+echo ""
+
+echo '{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' | nc localhost 2000 || echo '{"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"todo_stats","arguments":{}}}' > /dev/stdin
+echo ""
+
+# Cleanup
+kill $server_pid 2>/dev/null || true
+sleep 1

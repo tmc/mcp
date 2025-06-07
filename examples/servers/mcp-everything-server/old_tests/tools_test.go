@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tmc/mcp"
 	"log/slog"
+
+	"github.com/tmc/mcp"
 )
 
 // TestToolsIntegration tests the tools registered in the everything server
@@ -34,13 +35,13 @@ func TestToolsIntegration(t *testing.T) {
 				if toolDef.tool.Description != "Echo the input" {
 					t.Errorf("Expected description 'Echo the input', got %s", toolDef.tool.Description)
 				}
-				
+
 				// Test the tool handler directly
 				req := mcp.CallToolRequest{
 					Name:      "echo",
 					Arguments: json.RawMessage(`{"message": "test message"}`),
 				}
-				
+
 				result, err := toolDef.handler(context.Background(), req)
 				if err != nil {
 					t.Errorf("Echo tool handler failed: %v", err)
@@ -84,7 +85,7 @@ func TestToolsIntegration(t *testing.T) {
 					Name:      "current_time",
 					Arguments: json.RawMessage(`{"timezone": "UTC"}`),
 				}
-				
+
 				result, err := toolDef.handler(context.Background(), req)
 				if err != nil {
 					t.Errorf("Time tool handler failed: %v", err)
@@ -115,7 +116,7 @@ func TestToolsIntegration(t *testing.T) {
 					Name:      "random",
 					Arguments: json.RawMessage(`{"min": 10, "max": 20}`),
 				}
-				
+
 				result, err := toolDef.handler(context.Background(), req)
 				if err != nil {
 					t.Errorf("Random tool handler failed: %v", err)

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
-	"github.com/tmc/mcp/exp/mcpscripttest/tools"
+	"github.com/tmc/mcp/testing/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest/tools"
 )
 
 func TestMCPRecordParsing(t *testing.T) {

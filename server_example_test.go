@@ -37,9 +37,8 @@ func ExampleServer() {
 	})
 
 	go func() {
-		if err := server.Serve(ctx, serverTransport); err != nil {
-			log.Fatal(err)
-		}
+		// Serve will return an error when the connection closes, which is expected
+		_ = server.Serve(ctx, serverTransport)
 	}()
 
 	client, err := mcp.NewClient(clientTransport)

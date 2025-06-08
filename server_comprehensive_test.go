@@ -62,7 +62,11 @@ func TestServerInitialization(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := NewServer("test", "1.0", tt.opts...)
+			opts := []ServerOption{
+				WithTestLogger(t, slog.LevelDebug),
+			}
+			opts = append(opts, tt.opts...)
+			server := NewServer(t.Name(), "1.0", opts...)
 			if err := tt.checker(server); err != nil {
 				t.Error(err)
 			}

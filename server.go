@@ -109,8 +109,8 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 
 	// Create a test-aware default logger
 	var defaultLogger *slog.Logger
-	if isInTest() && isShortTest() {
-		// In short test mode, use a very quiet logger
+	if isInTest() {
+		// In test mode, use a quiet logger to avoid cluttering test output
 		defaultLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 			Level: slog.LevelError,
 		}))
@@ -656,13 +656,18 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 // Serve starts serving MCP requests using the provided transport.
 // It establishes a JSON-RPC connection and handles incoming requests.
 func (s *Server) Serve(ctx context.Context, transport Transport) error {
+	// Default to stdio transport if none provided
+	if transport == nil {
+		transport = StdioTransport()
+	}
+
 	// Create a handler for the connection
 	handler := jsonrpc2.HandlerFunc(s.handleRequest)
 
 	// Create a custom binder that includes cancellation support
 	binder := &serverBinder{
 		handler: handler,
-		logger:  slog.Default(),
+		logger:  s.logger,
 	}
 
 	// Create the connection

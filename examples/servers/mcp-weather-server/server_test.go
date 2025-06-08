@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 func TestWeatherServerBasic(t *testing.T) {

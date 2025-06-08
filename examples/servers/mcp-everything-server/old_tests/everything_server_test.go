@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 	"rsc.io/script"
 )
 

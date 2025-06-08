@@ -3,7 +3,7 @@ package mcp
 import (
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 // TestSimpleServerValidation tests basic server validation

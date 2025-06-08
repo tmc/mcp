@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -438,13 +439,18 @@ func (t *testIntermittentTransport) Dial(ctx context.Context) (io.ReadWriteClose
 
 type testRandomFailureTransport struct {
 	failureRate float64
+	mu          sync.Mutex
 	callCount   int
 }
 
 func (t *testRandomFailureTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
+	t.mu.Lock()
 	t.callCount++
+	count := t.callCount
+	t.mu.Unlock()
+	
 	// Simple deterministic "random" failure based on call count
-	if float64(t.callCount%10)/10.0 < t.failureRate {
+	if float64(count%10)/10.0 < t.failureRate {
 		return nil, errors.New("random failure")
 	}
 	return &testSuccessfulReadWriteCloser{}, nil

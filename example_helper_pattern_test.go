@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/tmc/mcp"
-	"github.com/tmc/mcp/testutil"
+	"github.com/tmc/mcp/testing/mcptestutil"
 )
 
 // Example demonstrates using the ServerClientPair helper for testing,
@@ -57,7 +57,7 @@ func Example_serverClientPairHelper() {
 	// Note: examples don't have access to testing.T, so we'll skip the logger setup
 	// In real tests, you would pass t as the first parameter
 	ctx := context.Background()
-	pair, err := testutil.NewServerClientPair(nil, ctx, server)
+	pair, err := mcptestutil.NewServerClientPair(nil, ctx, server)
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +94,7 @@ func Example_advancedServerClientPair() {
 
 	// Create the test pair
 	ctx := context.Background()
-	pair, err := testutil.NewServerClientPair(nil, ctx, server)
+	pair, err := mcptestutil.NewServerClientPair(nil, ctx, server)
 	if err != nil {
 		panic(err)
 	}

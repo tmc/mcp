@@ -17,11 +17,6 @@ exec go version
 stdout 'go version'
 
 # Test 3: Simple JSON creation (no tools needed)
-cat > simple.json << EOF
-{"test": "minimal", "status": "ok"}
-EOF
-
-# Test 4: Basic file operations
 exec cat simple.json
 stdout '"test": "minimal"'
 stdout '"status": "ok"'
@@ -52,3 +47,6 @@ exec rm -f simple.json
 # Final success message
 exec echo "Minimal tools test completed successfully"
 stdout 'completed successfully'
+
+-- simple.json --
+{"test": "minimal", "status": "ok"}

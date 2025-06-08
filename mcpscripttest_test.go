@@ -4,7 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest/tools"
 )
 
 // TestMCPScriptTest runs the mcpscripttest tests in testdata directories
@@ -13,6 +14,12 @@ func TestMCPScriptTest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
 
 	// Run tests in testdata/server_coverage
 	t.Run("server_coverage", func(t *testing.T) {
@@ -44,6 +51,12 @@ func TestServerCoverageWithOptions(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
 
 	// Setup custom options
 	opts := mcpscripttest.DefaultOptions()

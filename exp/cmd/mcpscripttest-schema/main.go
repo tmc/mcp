@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 func main() {

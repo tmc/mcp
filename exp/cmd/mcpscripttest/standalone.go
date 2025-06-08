@@ -4,7 +4,7 @@
 package main
 
 import (
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 // standaloneMain provides an alternative entry point that doesn't use the testing package

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 // Command-line flags

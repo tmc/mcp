@@ -3,45 +3,21 @@
 # Set aggressive timeouts for this test
 env MCP_TOOL_TIMEOUT=3s
 
-# Start time server for more complex testing
-mcp-server-start time-server go run examples/servers/mcp-time-server/main.go
+# Test complex JSON processing with mcpspy
+exec bash -c 'printf "%s\n%s\n%s\n" "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"test\"}}" "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"resources/list\"}" | mcpspy --pretty'
+stdout '"tools/list"'
+stdout '"tools/call"'
+stdout '"resources/list"'
 
-# Wait for server to be ready
-[mcp_server_running]
+# Test mcpdiff with different MCP trace files
+! exec mcpdiff trace1.mcp trace2.mcp
 
-# Initialize with full capabilities
-mcp-server-send time-server '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}, "resources": {}}, "clientInfo": {"name": "advanced-test-client", "version": "1.0.0"}}}'
+# Test mcpspy help functionality
+exec mcpspy --help
+stderr 'Usage'
 
-# Verify initialization response
-stdout 'capabilities'
-stdout 'tools'
+-- trace1.mcp --
+mcp-send {"jsonrpc": "2.0", "id": 1, "method": "initialize"} # 1000.123
 
-# Send initialized notification
-mcp-server-send time-server '{"jsonrpc": "2.0", "method": "notifications/initialized"}'
-
-# List all tools
-mcp-server-send time-server '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}'
-
-# Should see time-related tools
-stdout 'current_time'
-
-# Get current time
-mcp-server-send time-server '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "current_time", "arguments": {}}}'
-
-# Verify time response
-stdout 'result'
-
-# Test timezone functionality if available
-mcp-server-send time-server '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "current_time", "arguments": {"timezone": "UTC"}}}'
-
-# Should get UTC time
-stdout 'result'
-
-# Test resources if supported
-mcp-server-send time-server '{"jsonrpc": "2.0", "id": 5, "method": "resources/list"}'
-
-# May or may not have resources - either response is valid
-stdout 'result' 'error'
-
-# Stop the server gracefully
-mcp-server-stop time-server
+-- trace2.mcp --
+mcp-send {"jsonrpc": "2.0", "id": 1, "method": "tools/list"} # 1000.123

@@ -1,28 +1,23 @@
 # Test stdio transport functionality
 
-# Test mcpspy with stdio transport
-exec mcpspy --pretty --disable-json-scanner -c 'echo {"jsonrpc": "2.0", "id": 1, "method": "initialize"}'
-
-# Verify JSON-RPC structure in output
-stdout '"jsonrpc": "2.0"'
-stdout '"id": 1'
-stdout '"method": "initialize"'
+# Test mcpspy basic functionality
+exec mcpspy --help
+stderr 'Usage of mcpspy'
 
 # Test timeout handling with aggressive timeout
 env MCP_TOOL_TIMEOUT=2s
-exec mcpspy --help
-stdout 'Usage'
 
-# Test stdin/stdout handling
-cat > input.json << EOF
-{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05"}}
-EOF
-
-# Test mcpspy with file input
-exec mcpspy --pretty < input.json
+# Test stdin/stdout handling with piped input
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-03-26\"}}" | mcpspy --pretty'
 stdout '"jsonrpc": "2.0"'
 stdout '"method": "initialize"'
-stdout '"protocolVersion": "2024-11-05"'
+stdout '"protocolVersion": "2025-03-26"'
 
-# Cleanup
-exec rm input.json
+# Test multiple JSON objects in sequence
+exec bash -c 'printf "%s\n%s\n" "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\"}" "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/list\"}" | mcpspy --pretty'
+stdout '"initialize"'
+stdout '"tools/list"'
+
+# Test empty input handling
+exec bash -c 'echo "" | mcpspy --pretty'
+# Should not crash

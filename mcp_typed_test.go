@@ -290,9 +290,9 @@ func TestTypedTool_Execution_InvalidInput(t *testing.T) {
 		t.Fatalf("Failed to register typed tool: %v", err)
 	}
 
-	// Prepare an invalid call request (invalid JSON)
+	// Prepare an invalid call request (malformed JSON)
 	request := CallToolRequest{
-		Arguments: json.RawMessage(`{"invalid": "json"}`),
+		Arguments: json.RawMessage(`{"a": "not-a-number", "b": true}`),
 	}
 
 	// Execute the tool

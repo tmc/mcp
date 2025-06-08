@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest/tools"
 )
 
 // TestMCPWithScripttest runs MCP tests using the scripttest framework
@@ -13,6 +14,12 @@ func TestMCPWithScripttest(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
 
 	opts := mcpscripttest.DefaultOptions()
 	// Run all scripttest files
@@ -26,6 +33,12 @@ func TestClientServerInteractions(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
+
 	mcpscripttest.Test(t, "testdata/scripttest/client_server*.txt")
 }
 
@@ -35,6 +48,12 @@ func TestTransportMechanisms(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
 
 	mcpscripttest.Test(t, "testdata/scripttest/transport*.txt")
 }
@@ -46,6 +65,12 @@ func TestProtocolCompliance(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
+
 	mcpscripttest.Test(t, "testdata/scripttest/protocol*.txt")
 }
 
@@ -56,6 +81,12 @@ func TestErrorScenarios(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
+
 	mcpscripttest.Test(t, "testdata/scripttest/error*.txt")
 }
 
@@ -65,6 +96,12 @@ func TestPerformanceScenarios(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
+	// Install MCP tools for the tests
+	cleanup := mcpscripttest.InstallMCPTools(t, &tools.ToolsOptions{
+		Tools: []string{"mcp-probe", "mcpspy", "mcpdiff"},
+	})
+	defer cleanup()
 
 	opts := mcpscripttest.DefaultOptions()
 	opts.TimeoutConfig.TestOverallTimeout = 15 * time.Second   // 15 seconds

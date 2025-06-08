@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.14
 	github.com/aws/aws-sdk-go-v2/service/bedrockagentruntime v1.44.0
 	github.com/tmc/mcp v0.0.0-20000101000000-000000000000
-	github.com/tmc/mcp/exp/mcpscripttest v0.0.0-00010101000000-000000000000
+	github.com/tmc/mcp/testing/mcpscripttest v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -27,6 +27,6 @@ require (
 	github.com/aws/smithy-go v1.22.2 // indirect
 )
 
-replace github.com/tmc/mcp/exp/mcpscripttest => ../../../exp/mcpscripttest
+replace github.com/tmc/mcp/testing/mcpscripttest => ../../../testing/mcpscripttest
 
 replace github.com/tmc/mcp => ../../..

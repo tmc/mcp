@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 // TestLogServerBasic runs basic log server tests

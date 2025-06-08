@@ -15,8 +15,8 @@ require (
 	rsc.io/script v0.0.2 // indirect
 )
 
-require github.com/tmc/mcp/exp/mcpscripttest v0.0.0-00010101000000-000000000000
+require github.com/tmc/mcp/testing/mcpscripttest v0.0.0-00010101000000-000000000000
 
-replace github.com/tmc/mcp/exp/mcpscripttest => ../../../exp/mcpscripttest
+replace github.com/tmc/mcp/testing/mcpscripttest => ../../../testing/mcpscripttest
 
 replace github.com/tmc/mcp => ../../..

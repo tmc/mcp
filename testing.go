@@ -25,9 +25,13 @@ func (h *testLogHandler) Enabled(_ context.Context, level slog.Level) bool {
 		return level >= slog.LevelError
 	}
 
-	// Without -v: Show INFO and above
-	// With -v: Show DEBUG and above
+	// Without -v: Show WARN and above to reduce test output clutter
+	// With -v: Show INFO and above 
+	// With MCP_TEST_DEBUG=1: Show DEBUG and above
 	if !h.verbose {
+		return level >= slog.LevelWarn
+	}
+	if testing.Verbose() {
 		return level >= slog.LevelInfo
 	}
 	return level >= h.level

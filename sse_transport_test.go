@@ -12,7 +12,11 @@ import (
 
 // TestSSEClientTransport tests the SSE client transport
 func TestSSEClientTransport(t *testing.T) {
-	transport, err := mcp.NewSSEClientTransport("http://example.com/sse", slog.Default())
+	// Use a discarding logger for test to avoid log output
+	testLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+	transport, err := mcp.NewSSEClientTransport("http://example.com/sse", testLogger)
 	if err != nil {
 		t.Fatalf("failed to create SSE client transport: %v", err)
 	}
@@ -39,7 +43,11 @@ func TestSSEServerTransport(t *testing.T) {
 		closed:      false,
 	}
 
-	transport := mcp.NewSSEServerTransport(mockRWC, slog.Default())
+	// Use a discarding logger for test to avoid log output
+	testLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+	transport := mcp.NewSSEServerTransport(mockRWC, testLogger)
 	if transport == nil {
 		t.Fatal("expected non-nil transport")
 	}

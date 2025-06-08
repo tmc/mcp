@@ -1,3 +1,0 @@
-exec echo "test2"
-exec grep pattern file
-exec mcpdiff file3 file4

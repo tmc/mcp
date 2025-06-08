@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/tmc/mcp/exp/cmd2mcpserver"
-	"github.com/tmc/mcp/exp/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest"
 )
 
 func TestGenerateServer(t *testing.T) {

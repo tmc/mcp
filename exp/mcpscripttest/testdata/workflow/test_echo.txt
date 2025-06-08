@@ -1,2 +1,0 @@
-exec echo "Hello World"
-exec echo "Test Output"

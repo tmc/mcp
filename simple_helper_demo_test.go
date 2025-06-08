@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/tmc/mcp"
-	"github.com/tmc/mcp/testutil"
+	"github.com/tmc/mcp/testing/mcptestutil"
 )
 
 // TestHelperDemo demonstrates the helper usage
@@ -46,7 +46,7 @@ func TestHelperDemo(t *testing.T) {
 
 	// Create the server/client pair
 	ctx := context.Background()
-	pair, err := testutil.NewServerClientPair(t, ctx, server)
+	pair, err := mcptestutil.NewServerClientPair(t, ctx, server)
 	if err != nil {
 		t.Fatalf("Failed to create server/client pair: %v", err)
 	}

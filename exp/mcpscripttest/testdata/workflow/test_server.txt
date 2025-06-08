@@ -1,3 +1,0 @@
-mcp-server-start myserver go run server.go
-exec echo "Server test"
-exec mcpdiff result1.txt result2.txt

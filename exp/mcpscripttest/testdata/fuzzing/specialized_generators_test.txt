@@ -1,5 +1,0 @@
-# Test specialized generators
-# Verifies that specialized generators create valid targeted scripts
-
-# Skip tests that require Go module context and server setup
-skip 'Fuzzing tests require complex environment setup'

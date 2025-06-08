@@ -1,7 +1,0 @@
-mcpdiff test_diff.txt
-mcpdiff test_server.txt
-echo test_diff.txt
-echo test_echo.txt
-echo test_server.txt
-grep test_diff.txt
-. test_server.txt

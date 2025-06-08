@@ -1,5 +1,0 @@
-# Test smart generator with binary introspection
-# Verifies that the smart generator can analyze binaries and generate valid commands
-
-# Skip tests that require Go module context and server setup
-skip 'Fuzzing tests require complex environment setup'

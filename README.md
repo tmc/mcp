@@ -12,7 +12,7 @@ Model Context Protocol (MCP) is a standardized protocol for AI models to interac
 - Management of tools, resources, and prompts
 - Comprehensive testing and validation utilities
 - **Build Status**: ✅ All packages build successfully
-- **Test Status**: ✅ 22/23 packages passing tests
+- **Test Status**: ✅ ~49.4% test coverage
 
 ## Project Structure
 
@@ -60,7 +60,6 @@ go build ./...
 
 - **mcp-connect**: Connect to MCP servers with various transports (stdio, HTTP, SSE)
 - **mcp-debug**: Debug MCP server interactions and protocol flows
-- **mcp-fake**: Create fake/mock MCP servers for testing
 - **mcp-probe**: Probe and test MCP server capabilities and responses
 - **mcp-proxy**: Proxy MCP traffic for debugging and analysis
 - **mcp-replay**: Record and replay MCP sessions for testing

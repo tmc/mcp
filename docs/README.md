@@ -79,7 +79,7 @@ Core tools for working with MCP:
 
 ## Contributing
 
-See our [Contributing Guide](../CONTRIBUTING.md) for information on how to contribute to the MCP project.
+For information on how to contribute to the MCP project, please see the development documentation and existing code examples.
 
 ## License
 

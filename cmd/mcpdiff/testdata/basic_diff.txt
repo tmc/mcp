@@ -10,7 +10,7 @@ stderr 'Usage.*mcpdiff'
 stderr 'Usage.*mcpdiff'
 
 # Test diffing two files
-exec mcpdiff test1.mcp test2.mcp
+! exec mcpdiff test1.mcp test2.mcp
 stdout 'capabilities'
 
 # Test with identical files

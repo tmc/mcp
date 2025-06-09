@@ -1,0 +1,26 @@
+# Enhanced stitching: Handles custom commands beyond just exec
+
+# Regular exec command
+exec mcpdiff --help
+stderr 'Usage'
+
+# Custom mcpdiff command (without exec)
+mcpdiff trace1.json trace2.json
+
+# MCP tool commands
+mcp-spy -- mcpdiff file1 file2
+mcp-test -- go run ./test/main.go
+
+# Server commands that start long-running processes
+mcp-server-start myserver go run ./cmd/server/main.go
+mcp-serve -- python mcp_server.py
+
+# Commands that interact with existing servers
+mcp-server-send myserver {"method":"test"}
+mcp-server-stop myserver
+
+# Enhanced stitcher handles all these cases:
+# - exec commands (standard)
+# - Custom MCP commands that execute programs
+# - Server commands that start processes
+# - Commands that manage existing processes

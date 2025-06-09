@@ -1,0 +1,25 @@
+# Simple test showing the callgraph gap
+
+# Create a test that calls mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# Run callgraph on this test binary (mcpscripttest)
+exec go list -f '{{.Target}}' github.com/tmc/mcp/exp/cmd/mcpscripttest
+cp stdout scripttest_binary.txt
+
+# Analyze with callgraph
+exec callgraph -algo static $(cat scripttest_binary.txt)
+cp stdout callgraph.txt
+
+# Look for mcpdiff's main - won't find it
+exec grep 'mcpdiff.*main' callgraph.txt
+! stdout .
+
+# Can find exec.Command (how we run programs)
+exec grep 'exec\.Command' callgraph.txt
+stdout 'Command'
+
+# But no connection to mcpdiff specifically
+exec grep -i 'mcpdiff' callgraph.txt
+! stdout .

@@ -1,0 +1,7 @@
+test_server.txt .
+test_server.txt echo
+test_server.txt mcpdiff
+test_diff.txt mcpdiff
+test_diff.txt echo
+test_diff.txt grep
+test_echo.txt echo

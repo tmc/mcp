@@ -1,0 +1,31 @@
+# Test bash coverage for scripts in txtar files
+env MCP_BASH_COVERAGE=1
+env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
+
+# Make the script executable
+exec chmod +x test.sh
+
+# Run a bash script from txtar file
+bash './test.sh hello'
+
+# Check output
+stdout 'Starting test'
+stdout 'Hello from test.sh'
+stdout 'Argument: hello'
+stdout 'You said hello!'
+
+# Check trace file was created
+exec bash -c 'ls $WORK/bash-coverage/ | grep -E "bash-.*\.trace"'
+
+# Look at trace content
+exec bash -c 'cat $WORK/bash-coverage/bash-*.trace | head -5'
+
+-- test.sh --
+#!/bin/bash
+echo "Starting test"
+echo "Hello from test.sh" 
+echo "Argument: $1"
+
+if [ "$1" = "hello" ]; then
+    echo "You said hello!"
+fi

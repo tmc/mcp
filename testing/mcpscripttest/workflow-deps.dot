@@ -1,0 +1,32 @@
+digraph dependencies {
+  rankdir=LR;
+  compound=true;
+  node [shape=box];
+
+  subgraph cluster_program {
+    label="Program";
+    style=filled;
+    fillcolor=lightgreen;
+    "mcpdiff";
+    ".";
+    "echo";
+    "grep";
+  }
+
+  subgraph cluster_test {
+    label="Test";
+    style=filled;
+    fillcolor=lightblue;
+    "test_diff.txt";
+    "test_echo.txt";
+    "test_server.txt";
+  }
+
+  "test_diff.txt" -> "mcpdiff" [tooltip="Line: 1"];
+  "test_diff.txt" -> "echo" [tooltip="Line: 2"];
+  "test_diff.txt" -> "grep" [tooltip="Line: 3"];
+  "test_echo.txt" -> "echo" [label="2",penwidth=2,tooltip="Line: 1"];
+  "test_server.txt" -> "echo" [tooltip="Line: 2"];
+  "test_server.txt" -> "mcpdiff" [tooltip="Line: 3"];
+  "test_server.txt" -> "." [tooltip="Line: 1"];
+}

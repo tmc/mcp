@@ -1,0 +1,37 @@
+# Comprehensive bash callgraph demo
+env MCP_BASH_COVERAGE=1
+env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
+
+# Direct bash command
+bash 'echo "Direct command test"'
+
+# Create and run a script
+exec chmod +x pipeline.sh
+bash './pipeline.sh'
+
+# Show the call graph
+testcallgraph -bash -format text .
+
+-- pipeline.sh --
+#!/bin/bash
+echo "Starting pipeline"
+
+# Call other tools
+mcpdiff file1.mcp file2.mcp || echo "mcpdiff not available"
+
+# Call another script
+if [ -x process.sh ]; then
+    bash ./process.sh
+fi
+
+# Direct command
+echo "Pipeline complete"
+
+-- process.sh --
+#!/bin/bash
+echo "Processing data"
+
+# Simulate some tool calls
+for i in 1 2 3; do
+    echo "Processing step $i"
+done

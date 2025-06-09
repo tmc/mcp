@@ -1,0 +1,37 @@
+# Test for the new analysis tools
+
+# Create test data
+mkdir -p testdata
+exec sh -c 'echo "exec echo test" > testdata/simple.txt'
+exec sh -c 'echo "mcpdiff file1 file2" >> testdata/simple.txt'
+exec sh -c 'echo "mcp-server-start demo go run server.go" >> testdata/simple.txt'
+
+# Test testgraph - digraph integration
+exec testgraph testdata/simple.txt
+stdout 'simple.txt echo'
+stdout 'simple.txt mcpdiff'
+stdout 'simple.txt demo'
+
+# Test cmd-docs - command documentation generator
+exec cmd-docs -source . -cmd mcp-server-start
+stdout 'mcp-server-start'
+stdout 'Description:'
+stdout 'Usage:'
+stdout 'Suggestions:'
+
+# Generate structured edits
+exec cmd-docs -source . -format edits -structured > edits.json
+exec cat edits.json
+stdout '"file":'
+stdout '"new_text":'
+
+# Test apply-edits in dry-run mode
+exec apply-edits -edits edits.json -dry-run
+stdout 'DRY RUN'
+stdout 'Summary:'
+
+# Test coverage-hotspots (would need real coverage data)
+# exec coverage-hotspots -coverage /tmp/coverage -top 5
+# stdout 'Coverage Hotspots'
+
+echo "Analysis tools working correctly"

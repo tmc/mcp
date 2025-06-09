@@ -1,0 +1,47 @@
+# Test for testcallgraph tool
+
+# Create a simple test file to analyze
+mkdir -p testdir
+exec sh -c 'echo "exec echo \"hello\"" > testdir/simple.txt'
+exec sh -c 'echo "exec mcpdiff --help" >> testdir/simple.txt'
+exec sh -c 'echo "mcpdiff file1 file2" >> testdir/simple.txt'
+exec sh -c 'echo "mcp-spy -- trace.json" >> testdir/simple.txt'
+
+# Verify file was created
+exec cat testdir/simple.txt
+stdout 'exec echo'
+stdout 'exec mcpdiff'
+stdout 'mcpdiff file1'
+stdout 'mcp-spy'
+
+# Test basic analysis
+exec testcallgraph testdir/simple.txt
+stdout 'Program Executions:'
+stdout 'echo'
+stdout 'mcpdiff'
+stdout 'mcp-spy'
+stdout 'Call Graph Edges:'
+
+# Test JSON output
+exec testcallgraph -format json testdir/simple.txt
+stdout '"test_file":'
+stdout '"executions":'
+stdout '"edges":'
+
+# Test analyze flag
+exec testcallgraph -analyze mcpdiff testdir/simple.txt
+stdout 'Analysis: mcpdiff'
+stdout 'Line 2:'
+stdout 'Line 3:'
+
+# Test list-commands
+exec testcallgraph -list-commands testdir/simple.txt
+stdout 'Custom Commands Found'
+stdout 'exec:'
+stdout 'mcpdiff:'
+stdout 'mcp-spy:'
+
+# Test help
+exec testcallgraph
+stderr 'Usage:'
+stderr 'Options:'

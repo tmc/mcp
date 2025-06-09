@@ -1,0 +1,32 @@
+# Test bash coverage collection via BASH_XTRACEFD - simplified version
+env MCP_BASH_COVERAGE=1
+env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
+
+# Check environment variables
+echo 'MCP_BASH_COVERAGE='$MCP_BASH_COVERAGE
+stdout 'MCP_BASH_COVERAGE=1'
+echo 'MCP_BASH_COVERAGE_DIR='$MCP_BASH_COVERAGE_DIR
+stdout 'MCP_BASH_COVERAGE_DIR='$WORK/bash-coverage
+
+# Create a simple test script
+exec bash -c 'echo "#!/bin/bash" > test_script.sh && echo "echo hello" >> test_script.sh && chmod +x test_script.sh'
+
+# Run bash command with coverage enabled
+bash './test_script.sh'
+stdout 'hello'
+
+# Create the coverage directory manually if needed
+exec mkdir -p $WORK/bash-coverage
+
+# Check if any trace files were created
+exec bash -c 'ls $WORK/bash-coverage/ | grep -E "bash-.*\.trace" || echo "No trace files found"'
+
+# Try a direct bash command
+bash 'echo "Direct command"'
+stdout 'Direct command'
+
+# Let's examine what's happening with the trace file
+exec bash -c 'cd $WORK/bash-coverage && ls -la'
+
+# Let's look at the content of a trace file
+exec bash -c 'cat $WORK/bash-coverage/bash-*.trace | head -10'

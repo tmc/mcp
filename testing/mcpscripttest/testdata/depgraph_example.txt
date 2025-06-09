@@ -1,0 +1,48 @@
+# Example test file to demonstrate dependency graph tools
+
+# Create test data
+mkdir -p testdata/demo
+exec sh -c 'echo "exec echo test" > testdata/demo/test1.txt'
+exec sh -c 'echo "exec mcpdiff file1 file2" >> testdata/demo/test1.txt'
+exec sh -c 'echo "mcp-server-start demo go run server.go" >> testdata/demo/test1.txt'
+
+exec sh -c 'echo "exec echo test2" > testdata/demo/test2.txt'
+exec sh -c 'echo "exec grep pattern file" >> testdata/demo/test2.txt'
+exec sh -c 'echo "exec mcpdiff file3 file4" >> testdata/demo/test2.txt'
+
+# Generate callgraph
+exec testgraph -format json testdata/demo > callgraph.json
+exec cat callgraph.json
+stdout '"nodes"'
+stdout '"edges"'
+
+# Transform to dependency graph
+exec depgraph -input callgraph.json -format json > depgraph.json
+exec cat depgraph.json
+stdout '"nodesByType"'
+stdout '"statistics"'
+
+# Generate different views
+exec depgraph -input callgraph.json -direction program-to-test -format digraph > reverse.digraph
+exec cat reverse.digraph
+stdout 'echo test1.txt'
+stdout 'mcpdiff test1.txt'
+
+# Generate transitive closure
+exec depgraph -input callgraph.json -type transitive -format dot > transitive.dot
+exec cat transitive.dot
+stdout 'digraph dependencies'
+
+# Generate adjacency matrix
+exec depgraph -input callgraph.json -format matrix > matrix.txt
+exec cat matrix.txt
+stdout 'test1.txt'
+stdout 'test2.txt'
+
+# Show grouped visualization
+exec depgraph -input callgraph.json -format dot -group > grouped.dot
+exec cat grouped.dot
+stdout 'subgraph cluster_test'
+stdout 'subgraph cluster_program'
+
+echo "Dependency graph tools working correctly"

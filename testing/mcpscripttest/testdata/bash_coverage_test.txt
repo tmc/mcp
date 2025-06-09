@@ -1,0 +1,80 @@
+# Test bash coverage collection via BASH_XTRACEFD
+env MCP_BASH_COVERAGE=1
+env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
+
+# Make test scripts executable
+exec chmod +x test_script.sh
+exec chmod +x complex_script.sh
+exec chmod +x tool_script.sh
+
+# Run bash commands with coverage enabled
+bash './test_script.sh hello'
+stdout 'Starting test'
+stdout 'Hello, world!'
+stdout 'Test complete'
+
+# Check that trace was recorded
+exec ls $WORK/bash-coverage/
+stdout 'bash-unknown'
+stdout '.trace'
+
+# Run another command
+bash './test_script.sh goodbye'
+stdout 'Starting test'
+stdout 'Goodbye, world!'
+stdout 'Test complete'
+
+# Verify we have multiple trace files
+exec bash -c 'ls $WORK/bash-coverage/ | wc -l'
+stdout '2'
+
+# Run the complex script
+bash './complex_script.sh'
+stdout 'Hello, Alice!'
+stdout 'Hello, Bob!'
+stdout 'Hello, Charlie!'
+
+# Test with a script that calls other tools
+bash './tool_script.sh'
+stdout 'Testing tool integration'
+stdout 'Tool test complete'
+
+# Disable coverage and run a command
+env MCP_BASH_COVERAGE=0
+bash 'echo "No coverage here"'
+stdout 'No coverage here'
+
+# Verify no new trace files were created (should be 4 from previous runs)
+exec bash -c 'ls $WORK/bash-coverage/ | wc -l'
+stdout '4'
+
+-- test_script.sh --
+#!/bin/bash
+echo "Starting test"
+if [ "$1" = "hello" ]; then
+    echo "Hello, world!"
+else
+    echo "Goodbye, world!"
+fi
+echo "Test complete"
+
+-- complex_script.sh --
+#!/bin/bash
+function greet() {
+    echo "Hello, $1!"
+}
+
+for name in Alice Bob Charlie; do
+    greet $name
+done
+
+if command -v mcpdiff &> /dev/null; then
+    echo "mcpdiff is available"
+fi
+
+-- tool_script.sh --
+#!/bin/bash
+echo "Testing tool integration"
+# This would call mcpdiff if it was built
+# mcpdiff file1.mcp file2.mcp
+echo "Tool test complete"

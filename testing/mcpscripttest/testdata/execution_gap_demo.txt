@@ -1,0 +1,22 @@
+# Demonstration: Static Analysis vs Dynamic Execution Gap
+
+# This scripttest executes several programs
+exec echo "Hello from scripttest"
+stdout 'Hello'
+
+exec mcpdiff --help
+stderr 'Usage'
+
+# Create a Go program that analyzes itself
+mkdir -p demo
+exec cp testdata/analyzer.go demo/analyzer.go
+
+exec go run demo/analyzer.go
+stdout 'Found exec.Command'
+stdout 'Cannot determine target binary statically'
+
+# This demonstrates the fundamental limitation:
+# 1. This scripttest executes echo and mcpdiff
+# 2. Static analysis of this test would only see "exec" commands
+# 3. It can't determine which specific binaries are executed
+# 4. Traditional callgraph tools miss these dynamic connections

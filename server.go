@@ -16,7 +16,10 @@ import (
 	"golang.org/x/exp/jsonrpc2"
 )
 
-// serverBinder is a custom binder that includes cancellation support
+// serverBinder is a custom JSON-RPC binder that provides enhanced server functionality.
+// It wraps the standard JSON-RPC handler with additional capabilities including
+// cancellation support through the CancellablePreempter, which enables proper
+// handling of client-initiated request cancellations.
 type serverBinder struct {
 	handler jsonrpc2.Handler
 	logger  *slog.Logger
@@ -41,7 +44,8 @@ type Server struct {
 	capabilities ServerCapabilities
 	instructions string
 
-	dispatch *Dispatcher
+	dispatch  *Dispatcher
+	validator *ParameterValidator
 
 	logLevel *slog.Level
 	logger   *slog.Logger
@@ -98,6 +102,15 @@ func WithServerInstructions(instructions string) ServerOption {
 	}
 }
 
+// WithValidationConfig sets a custom validation configuration.
+func WithValidationConfig(config *ValidationConfig) ServerOption {
+	return func(s *Server) {
+		if config != nil {
+			s.validator = NewParameterValidator(config)
+		}
+	}
+}
+
 var defaultServerOptions = []ServerOption{
 	withInferredServerName(),
 	withInferredServerVersion(),
@@ -128,6 +141,7 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 		prompts:       make(map[string]promptDefinition),
 		handlers:      make(map[string]jsonrpc2.HandlerFunc),
 		dispatch:      NewDispatcher(),
+		validator:     NewParameterValidator(DefaultValidationConfig()),
 		logger:        defaultLogger,
 		activeTools:   make(map[string]context.CancelFunc),
 		mu:            sync.RWMutex{},
@@ -144,7 +158,10 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 	return s
 }
 
-// flushingReadWriteCloser wraps an io.ReadWriteCloser to ensure flushing after writes
+// flushingReadWriteCloser wraps an io.ReadWriteCloser to ensure immediate flushing after writes.
+// This is essential for MCP communication to ensure messages are delivered promptly rather than
+// being buffered. It attempts multiple flushing strategies (Flush(), Sync()) to accommodate
+// different underlying transport implementations.
 type flushingReadWriteCloser struct {
 	io.ReadWriteCloser
 	logger *slog.Logger
@@ -188,7 +205,11 @@ func (f *flushingReadWriteCloser) Write(p []byte) (n int, err error) {
 	return n, nil
 }
 
-// singleConnListener implements jsonrpc2.Listener for a single client
+// singleConnListener implements jsonrpc2.Listener for single-connection MCP servers.
+// Unlike traditional servers that accept multiple connections, MCP servers typically
+// handle a single long-lived connection (e.g., stdin/stdout). This listener manages
+// the lifecycle of that single connection and properly signals EOF when no more
+// connections are available.
 type singleConnListener struct {
 	conn     io.ReadWriteCloser
 	done     chan struct{}
@@ -267,15 +288,33 @@ func StdioTransport() Transport {
 	}
 }
 
-// handleRequest implements the core JSON-RPC request handler
+// handleRequest implements the core JSON-RPC request handler with enhanced validation and monitoring
 func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
-	// Debug log the entire request for troubleshooting
+	// Apply request size limits before processing
+	if req.Params != nil {
+		if err := s.validator.ValidateRequest(req.Method, req.Params); err != nil {
+			s.logger.Warn("Request validation failed", 
+				"method", req.Method, 
+				"error", err)
+			return nil, err
+		}
+	}
+
+	// Debug log the entire request for troubleshooting (but only if debug enabled)
 	if s.logger.Enabled(ctx, slog.LevelDebug) {
-		reqJSON, _ := json.Marshal(req)
-		s.logger.Debug("Got request",
-			"request", string(reqJSON),
-			"method", req.Method,
-			"id", req.ID)
+		// Limit debug logging for large requests
+		if len(req.Params) > 10*1024 { // 10KB limit for debug logging
+			s.logger.Debug("Got large request",
+				"method", req.Method,
+				"id", req.ID,
+				"params_size", len(req.Params))
+		} else {
+			reqJSON, _ := json.Marshal(req)
+			s.logger.Debug("Got request",
+				"request", string(reqJSON),
+				"method", req.Method,
+				"id", req.ID)
+		}
 	}
 
 	s.mu.RLock()
@@ -284,36 +323,79 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 
 	if !exists {
 		s.logger.Warn("Method not supported", "method", req.Method)
-		return nil, fmt.Errorf("method '%s' not supported", req.Method)
+		return nil, NewNotFoundError("method", req.Method)
 	}
 
-	// Call the handler and get the result
-	result, err := handler(ctx, req)
-	if err != nil {
+	// Call the handler and get the result with timeout protection
+	resultChan := make(chan interface{}, 1)
+	errChan := make(chan error, 1)
+	
+	go func() {
+		result, err := handler(ctx, req)
+		if err != nil {
+			errChan <- err
+		} else {
+			resultChan <- result
+		}
+	}()
+
+	// Wait for result or context cancellation
+	select {
+	case <-ctx.Done():
+		s.logger.Warn("Request cancelled", "method", req.Method)
+		return nil, ctx.Err()
+	case err := <-errChan:
 		s.logger.Warn("Method execution failed",
 			"method", req.Method,
 			"error", err)
-	} else {
+		return nil, err
+	case result := <-resultChan:
 		s.logger.Debug("Method completed successfully",
 			"method", req.Method)
 
-		// Debug log the result
+		// Debug log the result (with size limits)
 		if s.logger.Enabled(ctx, slog.LevelDebug) {
 			resultJSON, _ := json.Marshal(result)
-			s.logger.Debug("Got result", "result", string(resultJSON))
+			if len(resultJSON) > 10*1024 { // 10KB limit for debug logging
+				s.logger.Debug("Got large result", 
+					"method", req.Method,
+					"result_size", len(resultJSON))
+			} else {
+				s.logger.Debug("Got result", "result", string(resultJSON))
+			}
 		}
+		
+		return result, nil
 	}
-
-	return result, err
 }
 
-// registerDefaultHandlers sets up the standard MCP protocol handlers
+// registerDefaultHandlers sets up the standard MCP protocol handlers required by the specification.
+// This function orchestrates the registration of all standard protocol handlers by calling
+// individual registration functions for each handler category.
 func (s *Server) registerDefaultHandlers() {
-	// Register initialize handler
+	s.registerInitializeHandler()
+	s.registerPingHandler()
+	s.registerToolHandlers()
+	s.registerPromptHandlers()
+	s.registerResourceHandlers()
+}
+
+// registerInitializeHandler registers the initialize protocol handler for handshake and capability negotiation
+func (s *Server) registerInitializeHandler() {
 	s.handlers[string(MethodInitialize)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		// Validate request format first
+		if err := s.validator.ValidateRequest(string(MethodInitialize), req.Params); err != nil {
+			return nil, err
+		}
+
 		var params InitializeRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid initialize parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodInitialize), err)
+		}
+
+		// Validate request parameters
+		if err := s.validator.ValidateInitializeRequest(params); err != nil {
+			return nil, err
 		}
 
 		result := InitializeResult{
@@ -328,17 +410,22 @@ func (s *Server) registerDefaultHandlers() {
 
 		return result, nil
 	}
+}
 
-	// Register ping handler
+// registerPingHandler registers the ping handler for server liveness checks
+func (s *Server) registerPingHandler() {
 	s.handlers[string(MethodPing)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		return struct{}{}, nil
 	}
+}
 
+// registerToolHandlers registers the tool management handlers (list and call)
+func (s *Server) registerToolHandlers() {
 	// Register tools/list handler
 	s.handlers[string(MethodToolsList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListToolsRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid tools/list parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodToolsList), err)
 		}
 
 		s.mu.RLock()
@@ -359,9 +446,19 @@ func (s *Server) registerDefaultHandlers() {
 
 	// Register tools/call handler
 	s.handlers[string(MethodToolsCall)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		// Validate request format first
+		if err := s.validator.ValidateRequest(string(MethodToolsCall), req.Params); err != nil {
+			return nil, err
+		}
+
 		var params CallToolRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid tools/call parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodToolsCall), err)
+		}
+
+		// Validate request parameters
+		if err := s.validator.ValidateCallToolRequest(params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -369,7 +466,7 @@ func (s *Server) registerDefaultHandlers() {
 		s.mu.RUnlock()
 
 		if !exists {
-			return nil, fmt.Errorf("tool '%s' not found", params.Name)
+			return nil, NewNotFoundError("tool", params.Name)
 		}
 
 		result, err := toolDef.handler(ctx, params)
@@ -379,12 +476,15 @@ func (s *Server) registerDefaultHandlers() {
 
 		return result, nil
 	}
+}
 
+// registerPromptHandlers registers the prompt management handlers (list and get)
+func (s *Server) registerPromptHandlers() {
 	// Register prompts/list handler
 	s.handlers[string(MethodPromptsList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListPromptsRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid prompts/list parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodPromptsList), err)
 		}
 
 		s.mu.RLock()
@@ -405,9 +505,19 @@ func (s *Server) registerDefaultHandlers() {
 
 	// Register prompts/get handler
 	s.handlers[string(MethodPromptsGet)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		// Validate request format first
+		if err := s.validator.ValidateRequest(string(MethodPromptsGet), req.Params); err != nil {
+			return nil, err
+		}
+
 		var params GetPromptRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid prompts/get parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodPromptsGet), err)
+		}
+
+		// Validate request parameters
+		if err := s.validator.ValidateGetPromptRequest(params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -415,7 +525,7 @@ func (s *Server) registerDefaultHandlers() {
 		s.mu.RUnlock()
 
 		if !exists {
-			return nil, fmt.Errorf("prompt '%s' not found", params.Name)
+			return nil, NewNotFoundError("prompt", params.Name)
 		}
 
 		result, err := promptDef.handler(ctx, params)
@@ -425,12 +535,15 @@ func (s *Server) registerDefaultHandlers() {
 
 		return result, nil
 	}
+}
 
+// registerResourceHandlers registers the resource management handlers (list, read, templates/list)
+func (s *Server) registerResourceHandlers() {
 	// Register resources/list handler
 	s.handlers[string(MethodResourcesList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListResourcesRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid resources/list parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodResourcesList), err)
 		}
 
 		s.mu.RLock()
@@ -451,9 +564,19 @@ func (s *Server) registerDefaultHandlers() {
 
 	// Register resources/read handler
 	s.handlers[string(MethodResourcesRead)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		// Validate request format first
+		if err := s.validator.ValidateRequest(string(MethodResourcesRead), req.Params); err != nil {
+			return nil, err
+		}
+
 		var params ReadResourceRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid resources/read parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodResourcesRead), err)
+		}
+
+		// Validate request parameters
+		if err := s.validator.ValidateReadResourceRequest(params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -478,7 +601,7 @@ func (s *Server) registerDefaultHandlers() {
 			s.mu.RUnlock()
 
 			if !found {
-				return nil, fmt.Errorf("resource '%s' not found", params.URI)
+				return nil, NewNotFoundError("resource", params.URI)
 			}
 
 			contents, err := matchedTemplate.handler(ctx, params)
@@ -509,7 +632,7 @@ func (s *Server) registerDefaultHandlers() {
 	s.handlers[string(MethodResourcesTemplatesList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListResourceTemplatesRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, fmt.Errorf("invalid resources/templates/list parameters: %w", err)
+			return nil, NewParameterErrorFromJSON(string(MethodResourcesTemplatesList), err)
 		}
 
 		s.mu.RLock()
@@ -541,7 +664,7 @@ func (s *Server) RegisterTool(tool Tool, handler ToolHandlerFunc) error {
 
 	if _, exists := s.tools[tool.Name]; exists {
 		s.logger.Warn("Tool already registered", "name", tool.Name)
-		return fmt.Errorf("tool '%s' already registered", tool.Name)
+		return NewAlreadyExistsError("tool", tool.Name)
 	}
 
 	s.tools[tool.Name] = toolDefinition{
@@ -573,7 +696,7 @@ func (s *Server) RegisterPrompt(prompt Prompt, handler GetPromptHandlerFunc) err
 
 	if _, exists := s.prompts[prompt.Name]; exists {
 		s.logger.Warn("Prompt already registered", "name", prompt.Name)
-		return fmt.Errorf("prompt '%s' already registered", prompt.Name)
+		return NewAlreadyExistsError("prompt", prompt.Name)
 	}
 
 	s.prompts[prompt.Name] = promptDefinition{
@@ -605,7 +728,7 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 
 	if _, exists := s.resources[resource.URI]; exists {
 		s.logger.Warn("Resource already registered", "uri", resource.URI)
-		return fmt.Errorf("resource '%s' already registered", resource.URI)
+		return NewAlreadyExistsError("resource", resource.URI)
 	}
 
 	s.resources[resource.URI] = resourceDefinition{
@@ -638,7 +761,7 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 
 	if _, exists := s.resourceTmpls[template.Template]; exists {
 		s.logger.Warn("Resource template already registered", "template", template.Template)
-		return fmt.Errorf("resource template '%s' already registered", template.Template)
+		return NewAlreadyExistsError("resource template", template.Template)
 	}
 
 	s.resourceTmpls[template.Template] = resourceTemplateDefinition{

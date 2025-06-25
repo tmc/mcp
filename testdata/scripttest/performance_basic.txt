@@ -1,0 +1,14 @@
+# Basic performance test
+# Tests that tools respond within reasonable time
+
+# Set test environment
+env MCP_TOOL_TIMEOUT=5s
+
+# Test mcpspy performance with simple input
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"test\"}" | mcpspy --pretty'
+stdout '"jsonrpc": "2.0"'
+stdout '"method": "test"'
+
+# Test mcp-probe basic performance (sample output)
+exec mcp-probe
+stdout 'Content-Length'

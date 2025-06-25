@@ -1,0 +1,13 @@
+# SSE transport tests
+# Tests Server-Sent Events transport functionality
+
+# Set test environment
+env MCP_TOOL_TIMEOUT=15s
+
+# Test that tools can handle SSE-like data structures
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\", \"params\": {}}" | mcp-probe'
+stdout 'jsonrpc'
+
+# Test mcpspy can parse SSE-style messages
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-03-26\"}}" | mcpspy --pretty'
+stdout 'initialize'

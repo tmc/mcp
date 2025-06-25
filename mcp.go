@@ -50,94 +50,21 @@ import (
 
 // RegisterTypedTool registers a type-safe tool handler with automatic JSON marshaling/unmarshaling.
 // Input is the Go type for the tool's input, and Output is the Go type for the tool's output.
+// 
+// Deprecated: Use server.RegisterTypedTool() method instead for better encapsulation.
+// This function is maintained for backward compatibility.
 func RegisterTypedTool[Input any, Output any](
 	server *Server,
 	name string,
 	description string,
 	handler func(context.Context, Input) (Output, error),
 ) error {
-	// Create a JSON schema from the Input type if possible
-	inputSchema, err := createJSONSchema[Input]()
-	if err != nil {
-		return fmt.Errorf("failed to create input schema: %w", err)
+	if server == nil {
+		return fmt.Errorf("server is nil")
 	}
-
-	// Register the tool with the server
-	toolHandler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
-		// Parse the input
-		var input Input
-		if err := json.Unmarshal(req.Arguments, &input); err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []any{
-					map[string]string{
-						"type": "text",
-						"text": fmt.Sprintf("Invalid input: %v", err),
-					},
-				},
-			}, nil
-		}
-
-		// Call the handler
-		output, err := handler(ctx, input)
-		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []any{
-					map[string]string{
-						"type": "text",
-						"text": fmt.Sprintf("Error: %v", err),
-					},
-				},
-			}, nil
-		}
-
-		// Convert the output to a generic map for the content
-		outputJSON, err := json.Marshal(output)
-		if err != nil {
-			return &CallToolResult{
-				IsError: true,
-				Content: []any{
-					map[string]string{
-						"type": "text",
-						"text": fmt.Sprintf("Failed to marshal output: %v", err),
-					},
-				},
-			}, nil
-		}
-
-		var outputMap map[string]any
-		if err := json.Unmarshal(outputJSON, &outputMap); err != nil {
-			// If it can't be unmarshaled as a map, use it as a text result
-			return &CallToolResult{
-				Content: []any{
-					map[string]string{
-						"type": "text",
-						"text": string(outputJSON),
-					},
-				},
-			}, nil
-		}
-
-		// Return the result
-		return &CallToolResult{
-			Content: []any{
-				map[string]any{
-					"type":   "text",
-					"format": "json",
-					"text":   string(outputJSON),
-				},
-			},
-		}, nil
-	}
-
-	// Add the tool with its handler
-	tool := Tool{
-		Name:        name,
-		Description: description,
-		InputSchema: inputSchema,
-	}
-	return server.RegisterTool(tool, toolHandler)
+	
+	// Use the new typed tool registration function
+	return RegisterTypedToolWithServer(server, name, description, handler)
 }
 
 // SchemaCache provides thread-safe caching for JSON schemas to avoid regenerating

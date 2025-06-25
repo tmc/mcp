@@ -316,7 +316,8 @@ func TestWithAppleOptimizations(t *testing.T) {
 
 	// Test applying the option to a server
 	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelDebug))
-	originalServer := *server // Copy for comparison
+	originalName := server.name       // Store name for comparison
+	originalVersion := server.version // Store version for comparison
 
 	// Apply the option
 	option(server)
@@ -327,11 +328,11 @@ func TestWithAppleOptimizations(t *testing.T) {
 	}
 
 	// Basic server functionality should still work
-	if server.name != originalServer.name {
+	if server.name != originalName {
 		t.Error("Server name changed after applying optimizations")
 	}
 
-	if server.version != originalServer.version {
+	if server.version != originalVersion {
 		t.Error("Server version changed after applying optimizations")
 	}
 }

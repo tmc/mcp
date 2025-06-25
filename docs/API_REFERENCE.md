@@ -677,6 +677,618 @@ for _, request := range requests {
 wg.Wait()
 ```
 
+## Real-World Examples
+
+### File System Server
+
+A practical file system MCP server:
+
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "os"
+    "path/filepath"
+    "strings"
+    
+    "github.com/tmc/mcp"
+)
+
+func createFileSystemServer() *mcp.Server {
+    server := mcp.NewServer("filesystem-server", "1.0.0",
+        mcp.WithServerInstructions("Provides safe file system access"))
+    
+    // Register file operations tool
+    registerFileOperations(server)
+    
+    // Register file content resources
+    registerFileResources(server)
+    
+    return server
+}
+
+func registerFileOperations(server *mcp.Server) {
+    tool := mcp.Tool{
+        Name:        "file_operations",
+        Description: "Perform file system operations",
+        InputSchema: json.RawMessage(`{
+            "type": "object",
+            "properties": {
+                "operation": {
+                    "type": "string",
+                    "enum": ["read", "write", "list", "exists", "mkdir"],
+                    "description": "Operation to perform"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "File or directory path"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Content to write (for write operation)"
+                }
+            },
+            "required": ["operation", "path"]
+        }`),
+    }
+    
+    handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+        var params struct {
+            Operation string `json:"operation"`
+            Path      string `json:"path"`
+            Content   string `json:"content,omitempty"`
+        }
+        
+        if err := json.Unmarshal(req.Arguments, &params); err != nil {
+            return &mcp.CallToolResult{
+                IsError: true,
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": fmt.Sprintf("Invalid arguments: %v", err),
+                }},
+            }, nil
+        }
+        
+        // Security check: only allow operations in current directory
+        if !isPathSafe(params.Path) {
+            return &mcp.CallToolResult{
+                IsError: true,
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": "Path not allowed for security reasons",
+                }},
+            }, nil
+        }
+        
+        switch params.Operation {
+        case "read":
+            content, err := os.ReadFile(params.Path)
+            if err != nil {
+                return &mcp.CallToolResult{
+                    IsError: true,
+                    Content: []any{map[string]string{
+                        "type": "text",
+                        "text": fmt.Sprintf("Failed to read file: %v", err),
+                    }},
+                }, nil
+            }
+            return &mcp.CallToolResult{
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": string(content),
+                }},
+            }, nil
+            
+        case "list":
+            entries, err := os.ReadDir(params.Path)
+            if err != nil {
+                return &mcp.CallToolResult{
+                    IsError: true,
+                    Content: []any{map[string]string{
+                        "type": "text",
+                        "text": fmt.Sprintf("Failed to list directory: %v", err),
+                    }},
+                }, nil
+            }
+            
+            var result strings.Builder
+            for _, entry := range entries {
+                if entry.IsDir() {
+                    result.WriteString(fmt.Sprintf("📁 %s/\n", entry.Name()))
+                } else {
+                    info, _ := entry.Info()
+                    result.WriteString(fmt.Sprintf("📄 %s (%d bytes)\n", entry.Name(), info.Size()))
+                }
+            }
+            
+            return &mcp.CallToolResult{
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": result.String(),
+                }},
+            }, nil
+            
+        default:
+            return &mcp.CallToolResult{
+                IsError: true,
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": fmt.Sprintf("Unknown operation: %s", params.Operation),
+                }},
+            }, nil
+        }
+    }
+    
+    server.RegisterTool(tool, handler)
+}
+
+func isPathSafe(path string) bool {
+    absPath, err := filepath.Abs(path)
+    if err != nil {
+        return false
+    }
+    wd, err := os.Getwd()
+    if err != nil {
+        return false
+    }
+    return strings.HasPrefix(absPath, wd)
+}
+```
+
+### API Integration Client
+
+A client that integrates with multiple MCP servers:
+
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "log"
+    "sync"
+    
+    "github.com/tmc/mcp"
+)
+
+type MCPOrchestrator struct {
+    clients map[string]*mcp.Client
+    mu      sync.RWMutex
+}
+
+func NewMCPOrchestrator() *MCPOrchestrator {
+    return &MCPOrchestrator{
+        clients: make(map[string]*mcp.Client),
+    }
+}
+
+func (o *MCPOrchestrator) AddServer(name string, transport mcp.Transport) error {
+    client, err := mcp.NewClient(transport, mcp.WithNotificationHandler(
+        func(notification mcp.JSONRPCNotification) {
+            log.Printf("[%s] Notification: %s", name, notification.Method)
+        },
+    ))
+    if err != nil {
+        return fmt.Errorf("failed to create client for %s: %w", name, err)
+    }
+    
+    // Initialize the client
+    ctx := context.Background()
+    _, err = client.Initialize(ctx, mcp.InitializeRequest{
+        ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+        ClientInfo: mcp.Implementation{
+            Name:    "orchestrator-client",
+            Version: "1.0.0",
+        },
+        Capabilities: mcp.ClientCapabilities{},
+    })
+    if err != nil {
+        client.Close()
+        return fmt.Errorf("failed to initialize client for %s: %w", name, err)
+    }
+    
+    o.mu.Lock()
+    o.clients[name] = client
+    o.mu.Unlock()
+    
+    return nil
+}
+
+func (o *MCPOrchestrator) CallTool(ctx context.Context, serverName, toolName string, args map[string]any) (*mcp.CallToolResult, error) {
+    o.mu.RLock()
+    client, exists := o.clients[serverName]
+    o.mu.RUnlock()
+    
+    if !exists {
+        return nil, fmt.Errorf("server %s not found", serverName)
+    }
+    
+    argsJSON, err := json.Marshal(args)
+    if err != nil {
+        return nil, fmt.Errorf("failed to marshal arguments: %w", err)
+    }
+    
+    return client.CallTool(ctx, mcp.CallToolRequest{
+        Name:      toolName,
+        Arguments: argsJSON,
+    })
+}
+
+// Example usage
+func main() {
+    orchestrator := NewMCPOrchestrator()
+    
+    // Add filesystem server
+    orchestrator.AddServer("filesystem", createStdioTransport("./fs-server"))
+    
+    // Add calculator server  
+    orchestrator.AddServer("calculator", createStdioTransport("./calc-server"))
+    
+    ctx := context.Background()
+    
+    // Use filesystem server
+    result, err := orchestrator.CallTool(ctx, "filesystem", "file_operations", map[string]any{
+        "operation": "list",
+        "path":      ".",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Directory listing: %+v\n", result.Content)
+    
+    // Use calculator server
+    result, err = orchestrator.CallTool(ctx, "calculator", "calculate", map[string]any{
+        "operation": "add",
+        "a":         10,
+        "b":         5,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Calculation result: %+v\n", result.Content)
+}
+```
+
+### Database Integration Server
+
+```go
+package main
+
+import (
+    "context"
+    "database/sql"
+    "encoding/json"
+    "fmt"
+    
+    "github.com/tmc/mcp"
+    _ "github.com/lib/pq" // PostgreSQL driver
+)
+
+type DatabaseServer struct {
+    server *mcp.Server
+    db     *sql.DB
+}
+
+func NewDatabaseServer(dbURL string) (*DatabaseServer, error) {
+    db, err := sql.Open("postgres", dbURL)
+    if err != nil {
+        return nil, err
+    }
+    
+    server := mcp.NewServer("database-server", "1.0.0")
+    
+    ds := &DatabaseServer{
+        server: server,
+        db:     db,
+    }
+    
+    ds.registerTools()
+    ds.registerResources()
+    
+    return ds, nil
+}
+
+func (ds *DatabaseServer) registerTools() {
+    // Register query tool
+    queryTool := mcp.Tool{
+        Name:        "sql_query",
+        Description: "Execute SQL query (SELECT only)",
+        InputSchema: json.RawMessage(`{
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "SQL SELECT query to execute"
+                },
+                "limit": {
+                    "type": "integer",
+                    "default": 100,
+                    "description": "Maximum number of rows to return"
+                }
+            },
+            "required": ["query"]
+        }`),
+    }
+    
+    ds.server.RegisterTool(queryTool, ds.handleQuery)
+    
+    // Register schema inspection tool
+    schemaTool := mcp.Tool{
+        Name:        "describe_table",
+        Description: "Get table schema information",
+        InputSchema: json.RawMessage(`{
+            "type": "object",
+            "properties": {
+                "table_name": {
+                    "type": "string",
+                    "description": "Name of the table to describe"
+                }
+            },
+            "required": ["table_name"]
+        }`),
+    }
+    
+    ds.server.RegisterTool(schemaTool, ds.handleDescribeTable)
+}
+
+func (ds *DatabaseServer) handleQuery(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+    var params struct {
+        Query string `json:"query"`
+        Limit int    `json:"limit"`
+    }
+    params.Limit = 100 // default
+    
+    if err := json.Unmarshal(req.Arguments, &params); err != nil {
+        return &mcp.CallToolResult{
+            IsError: true,
+            Content: []any{map[string]string{
+                "type": "text",
+                "text": fmt.Sprintf("Invalid arguments: %v", err),
+            }},
+        }, nil
+    }
+    
+    // Security: only allow SELECT queries
+    if !isSelectQuery(params.Query) {
+        return &mcp.CallToolResult{
+            IsError: true,
+            Content: []any{map[string]string{
+                "type": "text",
+                "text": "Only SELECT queries are allowed",
+            }},
+        }, nil
+    }
+    
+    rows, err := ds.db.QueryContext(ctx, params.Query)
+    if err != nil {
+        return &mcp.CallToolResult{
+            IsError: true,
+            Content: []any{map[string]string{
+                "type": "text",
+                "text": fmt.Sprintf("Query failed: %v", err),
+            }},
+        }, nil
+    }
+    defer rows.Close()
+    
+    // Get column names
+    columns, err := rows.Columns()
+    if err != nil {
+        return &mcp.CallToolResult{
+            IsError: true,
+            Content: []any{map[string]string{
+                "type": "text",
+                "text": fmt.Sprintf("Failed to get columns: %v", err),
+            }},
+        }, nil
+    }
+    
+    // Collect results
+    var results []map[string]any
+    for rows.Next() && len(results) < params.Limit {
+        values := make([]any, len(columns))
+        valuePtrs := make([]any, len(columns))
+        for i := range values {
+            valuePtrs[i] = &values[i]
+        }
+        
+        if err := rows.Scan(valuePtrs...); err != nil {
+            continue
+        }
+        
+        row := make(map[string]any)
+        for i, col := range columns {
+            row[col] = values[i]
+        }
+        results = append(results, row)
+    }
+    
+    // Format results as JSON
+    resultJSON, err := json.MarshalIndent(results, "", "  ")
+    if err != nil {
+        return &mcp.CallToolResult{
+            IsError: true,
+            Content: []any{map[string]string{
+                "type": "text",
+                "text": fmt.Sprintf("Failed to format results: %v", err),
+            }},
+        }, nil
+    }
+    
+    return &mcp.CallToolResult{
+        Content: []any{
+            map[string]string{
+                "type": "text",
+                "text": fmt.Sprintf("Query returned %d rows:\n%s", len(results), string(resultJSON)),
+            },
+        },
+    }, nil
+}
+
+func isSelectQuery(query string) bool {
+    // Simple check - in production, use a proper SQL parser
+    query = strings.TrimSpace(strings.ToUpper(query))
+    return strings.HasPrefix(query, "SELECT")
+}
+```
+
+## Integration Patterns
+
+### Middleware Pattern
+
+```go
+type MiddlewareFunc func(mcp.ToolHandlerFunc) mcp.ToolHandlerFunc
+
+// Logging middleware
+func LoggingMiddleware(logger *log.Logger) MiddlewareFunc {
+    return func(next mcp.ToolHandlerFunc) mcp.ToolHandlerFunc {
+        return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+            start := time.Now()
+            logger.Printf("[%s] Starting tool call: %s", req.Name, string(req.Arguments))
+            
+            result, err := next(ctx, req)
+            
+            duration := time.Since(start)
+            if err != nil {
+                logger.Printf("[%s] Tool call failed after %v: %v", req.Name, duration, err)
+            } else {
+                logger.Printf("[%s] Tool call completed after %v", req.Name, duration)
+            }
+            
+            return result, err
+        }
+    }
+}
+
+// Authentication middleware
+func AuthMiddleware(validateToken func(string) bool) MiddlewareFunc {
+    return func(next mcp.ToolHandlerFunc) mcp.ToolHandlerFunc {
+        return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+            // Extract token from context or arguments
+            token, ok := ctx.Value("auth_token").(string)
+            if !ok || !validateToken(token) {
+                return &mcp.CallToolResult{
+                    IsError: true,
+                    Content: []any{map[string]string{
+                        "type": "text",
+                        "text": "Authentication required",
+                    }},
+                }, nil
+            }
+            
+            return next(ctx, req)
+        }
+    }
+}
+
+// Apply middleware to tools
+func applyMiddleware(handler mcp.ToolHandlerFunc, middlewares ...MiddlewareFunc) mcp.ToolHandlerFunc {
+    for i := len(middlewares) - 1; i >= 0; i-- {
+        handler = middlewares[i](handler)
+    }
+    return handler
+}
+
+// Usage
+server := mcp.NewServer("my-server", "1.0.0")
+logger := log.New(os.Stdout, "[MCP] ", log.LstdFlags)
+
+enhancedHandler := applyMiddleware(
+    originalHandler,
+    LoggingMiddleware(logger),
+    AuthMiddleware(validateJWT),
+)
+
+server.RegisterTool(tool, enhancedHandler)
+```
+
+### Connection Pooling
+
+```go
+type ClientPool struct {
+    clients chan *mcp.Client
+    factory func() (*mcp.Client, error)
+    maxSize int
+    mu      sync.Mutex
+}
+
+func NewClientPool(maxSize int, factory func() (*mcp.Client, error)) *ClientPool {
+    return &ClientPool{
+        clients: make(chan *mcp.Client, maxSize),
+        factory: factory,
+        maxSize: maxSize,
+    }
+}
+
+func (p *ClientPool) Get(ctx context.Context) (*mcp.Client, error) {
+    select {
+    case client := <-p.clients:
+        // Validate client is still connected
+        if err := client.Ping(ctx); err != nil {
+            client.Close()
+            return p.createNew()
+        }
+        return client, nil
+    default:
+        return p.createNew()
+    }
+}
+
+func (p *ClientPool) Put(client *mcp.Client) {
+    select {
+    case p.clients <- client:
+        // Successfully returned to pool
+    default:
+        // Pool is full, close the client
+        client.Close()
+    }
+}
+
+func (p *ClientPool) createNew() (*mcp.Client, error) {
+    return p.factory()
+}
+
+// Usage with retry logic
+func CallToolWithRetry(pool *ClientPool, ctx context.Context, req mcp.CallToolRequest, maxRetries int) (*mcp.CallToolResult, error) {
+    var lastErr error
+    
+    for attempt := 0; attempt <= maxRetries; attempt++ {
+        client, err := pool.Get(ctx)
+        if err != nil {
+            lastErr = err
+            continue
+        }
+        
+        result, err := client.CallTool(ctx, req)
+        if err == nil {
+            pool.Put(client)
+            return result, nil
+        }
+        
+        // Don't return bad clients to pool
+        client.Close()
+        lastErr = err
+        
+        // Exponential backoff
+        if attempt < maxRetries {
+            delay := time.Duration(1<<uint(attempt)) * time.Second
+            select {
+            case <-time.After(delay):
+                continue
+            case <-ctx.Done():
+                return nil, ctx.Err()
+            }
+        }
+    }
+    
+    return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+}
+```
+
 ## Best Practices
 
 ### Resource Management
@@ -718,31 +1330,247 @@ Define clear schemas for tools:
 tool := mcp.Tool{
     Name:        "process_data",
     Description: "Processes data according to specified rules",
-    InputSchema: map[string]interface{}{
+    InputSchema: json.RawMessage(`{
         "type": "object",
-        "properties": map[string]interface{}{
-            "data": map[string]interface{}{
-                "type":        "array",
-                "items":       map[string]interface{}{"type": "string"},
-                "description": "Array of data items to process",
+        "properties": {
+            "data": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Array of data items to process"
             },
-            "rules": map[string]interface{}{
-                "type":        "object",
+            "rules": {
+                "type": "object",
                 "description": "Processing rules",
-                "properties": map[string]interface{}{
-                    "filter": map[string]interface{}{"type": "string"},
-                    "sort":   map[string]interface{}{"type": "boolean"},
-                },
-            },
+                "properties": {
+                    "filter": {"type": "string"},
+                    "sort": {"type": "boolean"}
+                }
+            }
         },
-        "required": []string{"data"},
-    },
+        "required": ["data"]
+    }`),
+}
+```
+
+## Performance Optimization
+
+### Batch Operations
+
+```go
+// Batch multiple tool calls for efficiency
+type BatchRequest struct {
+    Requests []mcp.CallToolRequest `json:"requests"`
+}
+
+type BatchResult struct {
+    Results []mcp.CallToolResult `json:"results"`
+    Errors  []string             `json:"errors"`
+}
+
+func HandleBatchTool(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+    var batchReq BatchRequest
+    if err := json.Unmarshal(req.Arguments, &batchReq); err != nil {
+        return nil, err
+    }
+    
+    var results []mcp.CallToolResult
+    var errors []string
+    
+    // Process requests in parallel
+    sem := make(chan struct{}, 10) // Limit concurrency
+    var wg sync.WaitGroup
+    var mu sync.Mutex
+    
+    for i, request := range batchReq.Requests {
+        wg.Add(1)
+        go func(idx int, req mcp.CallToolRequest) {
+            defer wg.Done()
+            
+            sem <- struct{}{} // Acquire semaphore
+            defer func() { <-sem }() // Release semaphore
+            
+            result, err := processSingleRequest(ctx, req)
+            
+            mu.Lock()
+            if err != nil {
+                errors = append(errors, fmt.Sprintf("Request %d: %v", idx, err))
+            } else {
+                results = append(results, *result)
+            }
+            mu.Unlock()
+        }(i, request)
+    }
+    
+    wg.Wait()
+    
+    batchResult := BatchResult{
+        Results: results,
+        Errors:  errors,
+    }
+    
+    resultJSON, _ := json.Marshal(batchResult)
+    return &mcp.CallToolResult{
+        Content: []any{map[string]string{
+            "type": "text",
+            "text": string(resultJSON),
+        }},
+    }, nil
+}
+```
+
+### Caching
+
+```go
+type CachedToolHandler struct {
+    handler mcp.ToolHandlerFunc
+    cache   map[string]*mcp.CallToolResult
+    mu      sync.RWMutex
+    ttl     time.Duration
+    lastAccess map[string]time.Time
+}
+
+func NewCachedToolHandler(handler mcp.ToolHandlerFunc, ttl time.Duration) *CachedToolHandler {
+    c := &CachedToolHandler{
+        handler:    handler,
+        cache:      make(map[string]*mcp.CallToolResult),
+        ttl:        ttl,
+        lastAccess: make(map[string]time.Time),
+    }
+    
+    // Start cleanup goroutine
+    go c.cleanup()
+    
+    return c
+}
+
+func (c *CachedToolHandler) Handle(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+    key := c.getCacheKey(req)
+    
+    // Check cache first
+    c.mu.RLock()
+    if result, exists := c.cache[key]; exists {
+        if time.Since(c.lastAccess[key]) < c.ttl {
+            c.mu.RUnlock()
+            return result, nil
+        }
+    }
+    c.mu.RUnlock()
+    
+    // Cache miss or expired, call actual handler
+    result, err := c.handler(ctx, req)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Store in cache
+    c.mu.Lock()
+    c.cache[key] = result
+    c.lastAccess[key] = time.Now()
+    c.mu.Unlock()
+    
+    return result, nil
+}
+
+func (c *CachedToolHandler) getCacheKey(req mcp.CallToolRequest) string {
+    return fmt.Sprintf("%s:%s", req.Name, string(req.Arguments))
+}
+
+func (c *CachedToolHandler) cleanup() {
+    ticker := time.NewTicker(c.ttl)
+    defer ticker.Stop()
+    
+    for range ticker.C {
+        c.mu.Lock()
+        now := time.Now()
+        for key, lastAccess := range c.lastAccess {
+            if now.Sub(lastAccess) > c.ttl {
+                delete(c.cache, key)
+                delete(c.lastAccess, key)
+            }
+        }
+        c.mu.Unlock()
+    }
+}
+```
+
+## Testing Patterns
+
+### Mock Server for Testing
+
+```go
+type MockMCPServer struct {
+    tools     map[string]func(mcp.CallToolRequest) (*mcp.CallToolResult, error)
+    resources map[string][]mcp.ResourceContents
+}
+
+func NewMockMCPServer() *MockMCPServer {
+    return &MockMCPServer{
+        tools:     make(map[string]func(mcp.CallToolRequest) (*mcp.CallToolResult, error)),
+        resources: make(map[string][]mcp.ResourceContents),
+    }
+}
+
+func (m *MockMCPServer) RegisterMockTool(name string, handler func(mcp.CallToolRequest) (*mcp.CallToolResult, error)) {
+    m.tools[name] = handler
+}
+
+func (m *MockMCPServer) RegisterMockResource(uri string, contents []mcp.ResourceContents) {
+    m.resources[uri] = contents
+}
+
+// Test example
+func TestCalculatorTool(t *testing.T) {
+    mock := NewMockMCPServer()
+    
+    mock.RegisterMockTool("calculator", func(req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+        var params struct {
+            Operation string  `json:"operation"`
+            A         float64 `json:"a"`
+            B         float64 `json:"b"`
+        }
+        
+        json.Unmarshal(req.Arguments, &params)
+        
+        var result float64
+        switch params.Operation {
+        case "add":
+            result = params.A + params.B
+        case "subtract":
+            result = params.A - params.B
+        default:
+            return &mcp.CallToolResult{
+                IsError: true,
+                Content: []any{map[string]string{
+                    "type": "text",
+                    "text": "Unknown operation",
+                }},
+            }, nil
+        }
+        
+        return &mcp.CallToolResult{
+            Content: []any{map[string]any{
+                "type": "text",
+                "text": fmt.Sprintf("Result: %g", result),
+            }},
+        }, nil
+    })
+    
+    // Test addition
+    result, err := mock.CallTool(mcp.CallToolRequest{
+        Name: "calculator",
+        Arguments: json.RawMessage(`{"operation":"add","a":5,"b":3}`),
+    })
+    
+    assert.NoError(t, err)
+    assert.False(t, result.IsError)
+    assert.Contains(t, result.Content[0].(map[string]any)["text"], "8")
 }
 ```
 
 ## See Also
 
 - [MCP Specification](https://spec.modelcontextprotocol.io/)
+- [Architecture Overview](architecture/overview.md)
+- [Getting Started Guide](getting-started/quickstart.md)
 - [Examples Repository](../examples/)
-- [Integration Guide](INTEGRATION_GUIDE.md)
-- [Testing Guide](TESTING_GUIDE.md)
+- [Testing Guide](../testing/README.md)

@@ -217,8 +217,8 @@ func (w *workingWriter) Write(ctx context.Context, msg jsonrpc2.Message) (int64,
 	n2, err := w.w.Write([]byte{'\n'})
 	n += n2
 
-	if err := w.w.Flush(); err != nil && err == nil {
-		err = err
+	if flushErr := w.w.Flush(); flushErr != nil && err == nil {
+		err = flushErr
 	}
 
 	return int64(n), err

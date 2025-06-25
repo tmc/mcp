@@ -15,6 +15,7 @@ require (
 require (
 	golang.org/x/exp/event v0.0.0-20220217172124-1812c5b45e43 // indirect
 	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/time v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	rsc.io/uncover v0.0.2 // indirect
 )

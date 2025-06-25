@@ -66,7 +66,11 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	return c, nil
 }
 
-// handleMessage processes incoming JSON-RPC messages
+// handleMessage processes incoming JSON-RPC messages from the server.
+// It distinguishes between notifications (which have no ID) and regular requests.
+// For notifications, it dispatches them to the registered notification handler.
+// For regular requests, it returns a "method not implemented" error since clients
+// typically don't handle incoming requests, only responses.
 func (c *Client) handleMessage(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 	// For notifications, call the notification handler if registered
 	if !req.ID.IsValid() {
@@ -234,7 +238,11 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-// call is a helper to perform a JSON-RPC call with automatic cancellation notification
+// call is a helper method that performs a JSON-RPC call with automatic cancellation notification.
+// When the context is cancelled, it automatically sends a cancellation notification to the server
+// using the notifications/cancelled method. This ensures proper cleanup of server-side operations
+// when clients cancel their requests. The method supports context.WithCancelCause to propagate
+// cancellation reasons to the server.
 func (c *Client) call(ctx context.Context, method string, params, result interface{}) error {
 	if c.conn == nil {
 		return errors.New("client connection is not established")
@@ -287,7 +295,9 @@ func (c *Client) call(ctx context.Context, method string, params, result interfa
 	return err
 }
 
-// checkInitialized ensures the client has been initialized
+// checkInitialized ensures the client has been properly initialized via the Initialize method.
+// This check is performed before any MCP protocol operations to ensure the handshake has
+// completed successfully. Returns an error if Initialize() has not been called.
 func (c *Client) checkInitialized() error {
 	c.initMu.RLock()
 	defer c.initMu.RUnlock()

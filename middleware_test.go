@@ -23,7 +23,7 @@ import (
 type MockHandler struct {
 	calls     []MockCall
 	mu        sync.Mutex
-	responses map[string]Response
+	responses map[string]MCPResponse
 	errors    map[string]error
 	delay     time.Duration
 }
@@ -37,12 +37,12 @@ type MockCall struct {
 func NewMockHandler() *MockHandler {
 	return &MockHandler{
 		calls:     make([]MockCall, 0),
-		responses: make(map[string]Response),
+		responses: make(map[string]MCPResponse),
 		errors:    make(map[string]error),
 	}
 }
 
-func (m *MockHandler) Handle(ctx context.Context, req Request) (Response, error) {
+func (m *MockHandler) Handle(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
@@ -76,7 +76,7 @@ func (m *MockHandler) Handle(ctx context.Context, req Request) (Response, error)
 	}, nil
 }
 
-func (m *MockHandler) SetResponse(method string, response Response) {
+func (m *MockHandler) SetResponse(method string, response MCPResponse) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.responses[method] = response
@@ -112,7 +112,7 @@ func (m *MockHandler) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls = m.calls[:0]
-	m.responses = make(map[string]Response)
+	m.responses = make(map[string]MCPResponse)
 	m.errors = make(map[string]error)
 	m.delay = 0
 }
@@ -156,7 +156,7 @@ func (r *MockRequest) GetContext() context.Context {
 	return r.ctx
 }
 
-func (r *MockRequest) WithContext(ctx context.Context) Request {
+func (r *MockRequest) WithContext(ctx context.Context) MCPRequest {
 	return &MockRequest{
 		method: r.method,
 		id:     r.id,
@@ -305,7 +305,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 			wrappedHandler := middleware.Apply(mockHandler)
 			
 			// Create request with auth context
-			req := NewMockRequest(tt.method, nil)
+			req := MCPRequest(NewMockRequest(tt.method, nil))
 			ctx := req.GetContext()
 			if tt.token != "" {
 				ctx = context.WithValue(ctx, "Authorization", "Bearer "+tt.token)
@@ -491,7 +491,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 			middleware := NewRecoveryMiddleware(nil, tt.includeStack)
 			
 			// Create panicking handler
-			panicHandler := HandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
+			panicHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 				if tt.shouldPanic {
 					panic(tt.panicValue)
 				}
@@ -737,8 +737,6 @@ func TestEnhancedServerMiddleware(t *testing.T) {
 
 func BenchmarkMiddlewareOverhead(b *testing.B) {
 	// Test middleware overhead
-	mockHandler := NewMockHandler()
-	
 	middlewares := []Middleware{
 		NewLoggingMiddleware(LoggingConfig{Level: slog.LevelError}), // Minimal logging
 		NewRecoveryMiddleware(nil, false),
@@ -746,7 +744,7 @@ func BenchmarkMiddlewareOverhead(b *testing.B) {
 	}
 	
 	// Apply all middleware
-	handler := Handler(mockHandler)
+	handler := MCPHandler(NewMockHandler())
 	for _, middleware := range middlewares {
 		handler = middleware.Apply(handler)
 	}

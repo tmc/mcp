@@ -528,10 +528,10 @@ func (mc *MiddlewareChain) Apply(handler MCPHandler) MCPHandler {
 		}
 	}
 	
-	// Apply middleware in priority order
+	// Apply middleware in reverse priority order (higher priority middleware wrap lower priority ones)
 	current := handler
-	for _, middleware := range sortedMiddleware {
-		current = middleware.Apply(current)
+	for i := len(sortedMiddleware) - 1; i >= 0; i-- {
+		current = sortedMiddleware[i].Apply(current)
 	}
 	
 	return current

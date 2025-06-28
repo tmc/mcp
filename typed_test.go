@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 )
@@ -159,17 +160,29 @@ func TestClient_CallToolTyped(t *testing.T) {
 	serverTransport, clientTransport := createInMemoryTransportPair()
 
 	// Start server
-	serverCtx, serverCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	serverCtx, serverCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer serverCancel()
 
+	serverDone := make(chan error, 1)
 	go func() {
+		defer close(serverDone)
 		if err := server.Serve(serverCtx, serverTransport); err != nil && serverCtx.Err() == nil {
-			t.Errorf("Server error: %v", err)
+			serverDone <- err
 		}
 	}()
 
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
+	
+	// Check if server started successfully
+	select {
+	case err := <-serverDone:
+		if err != nil {
+			t.Fatalf("Server failed to start: %v", err)
+		}
+	default:
+		// Server is running
+	}
 
 	// Create client
 	client, err := NewClient(clientTransport)
@@ -179,7 +192,7 @@ func TestClient_CallToolTyped(t *testing.T) {
 	defer client.Close()
 
 	// Initialize client
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	_, err = client.Initialize(ctx, InitializeRequest{
@@ -454,9 +467,49 @@ func TestComplexTypeHandling(t *testing.T) {
 
 // Helper function to create in-memory transport pair for testing
 func createInMemoryTransportPair() (serverTransport, clientTransport Transport) {
-	// This is a simplified implementation for testing
-	// In a real implementation, you'd use something like in-memory pipes
-	return StdioTransport(), StdioTransport()
+	// Create in-memory pipe pair
+	serverReader, clientWriter := io.Pipe()
+	clientReader, serverWriter := io.Pipe()
+	
+	// Create combined closer
+	serverCloser := &multiCloser{closers: []io.Closer{serverReader, serverWriter}}
+	clientCloser := &multiCloser{closers: []io.Closer{clientReader, clientWriter}}
+	
+	// Combine into ReadWriteCloser pairs
+	serverRWC := &rwcCombiner{
+		Reader: serverReader,
+		Writer: serverWriter,
+		Closer: serverCloser,
+	}
+	
+	clientRWC := &rwcCombiner{
+		Reader: clientReader,
+		Writer: clientWriter,
+		Closer: clientCloser,
+	}
+	
+	return &ReadWriteCloserTransport{serverRWC}, &ReadWriteCloserTransport{clientRWC}
+}
+
+// Helper types for combining reader, writer, closer
+type multiCloser struct {
+	closers []io.Closer
+}
+
+func (mc *multiCloser) Close() error {
+	var lastErr error
+	for _, c := range mc.closers {
+		if err := c.Close(); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+type rwcCombiner struct {
+	io.Reader
+	io.Writer
+	io.Closer
 }
 
 // Helper function for string contains check  

@@ -22,7 +22,7 @@ import (
 // DefaultCommands returns all the default extension commands combined.
 func DefaultCommands() map[string]script.Cmd {
 	commands := make(map[string]script.Cmd)
-	
+
 	// Add all extension commands
 	for name, cmd := range bashext.DefaultCommands() {
 		commands[name] = cmd
@@ -36,14 +36,14 @@ func DefaultCommands() map[string]script.Cmd {
 	for name, cmd := range conditionsext.DefaultCommands() {
 		commands[name] = cmd
 	}
-	
+
 	return commands
 }
 
 // DefaultConditions returns all the default extension conditions combined.
 func DefaultConditions() map[string]script.Cond {
 	conditions := make(map[string]script.Cond)
-	
+
 	// Add all extension conditions
 	for name, cond := range bashext.DefaultConditions() {
 		conditions[name] = cond
@@ -57,7 +57,7 @@ func DefaultConditions() map[string]script.Cond {
 	for name, cond := range conditionsext.DefaultConditions() {
 		conditions[name] = cond
 	}
-	
+
 	return conditions
 }
 

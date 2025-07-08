@@ -19,17 +19,17 @@ func DefaultCommands() map[string]script.Cmd {
 // DefaultConditions returns the default MCP server management conditions for mcpscripttest.
 func DefaultConditions() map[string]script.Cond {
 	return map[string]script.Cond{
-		"mcp_server_running":        mcpServerRunningCond,
-		"stdio":                     stdioCond,
-		"http":                      httpCond,
-		"sse":                       sseCond,
-		"http_session":              httpSessionCond,
-		"multi_connection":          multiConnectionCond,
-		"test_server_delay":         testServerDelayCond,
-		"test_server_cancel":        testServerCancelCond,
+		"mcp_server_running":          mcpServerRunningCond,
+		"stdio":                       stdioCond,
+		"http":                        httpCond,
+		"sse":                         sseCond,
+		"http_session":                httpSessionCond,
+		"multi_connection":            multiConnectionCond,
+		"test_server_delay":           testServerDelayCond,
+		"test_server_cancel":          testServerCancelCond,
 		"test_server_validate_stdout": testServerValidateStdoutCond,
-		"server_provided":           serverProvidedCond,
-		"server_arg":                serverArgCond,
+		"server_provided":             serverProvidedCond,
+		"server_arg":                  serverArgCond,
 	}
 }
 

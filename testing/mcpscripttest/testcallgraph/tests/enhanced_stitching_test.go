@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/tmc/mcp/testing/mcpscripttest/testcallgraph"
 	"github.com/tmc/mcp/testing/mcpscripttest"
+	"github.com/tmc/mcp/testing/mcpscripttest/testcallgraph"
 )
 
 func TestEnhancedStitchingDemo(t *testing.T) {

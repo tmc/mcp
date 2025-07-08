@@ -59,7 +59,7 @@ func DefaultToolsWithScripttestOptions() *ToolsOptions {
 		ToolsDir:           "",
 		Tools: []string{
 			// Main MCP tools
-			"mcp-replay", "mcpspy", "mcp-shadow", "mcp-send", "mcpdiff", "mcp-probe", "mcpcat", "mcp-sort", 
+			"mcp-replay", "mcpspy", "mcp-shadow", "mcp-send", "mcpdiff", "mcp-probe", "mcpcat", "mcp-sort",
 			"mcp-connect", "mcp-proxy", "mcp-serve", "mcp-debug",
 			// mcpscripttest analysis tools - only include those that exist and can build
 			"apply-edits", "coverage-by-program", "coverage-hotspots", "depgraph", "digraph-compat",

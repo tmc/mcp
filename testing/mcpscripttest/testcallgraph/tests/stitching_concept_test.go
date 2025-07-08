@@ -63,7 +63,7 @@ func TestStitchingDemonstration(t *testing.T) {
 	}
 
 	edges := stitcher.CreateCallGraphConnections("demo.txt")
-	
+
 	t.Log("Found connections:")
 	foundMcpdiff := false
 	for _, edge := range edges {

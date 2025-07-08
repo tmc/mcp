@@ -50,15 +50,15 @@ type SimpleStitcher struct{}
 func (s *SimpleStitcher) AnalyzeAndStitch(filename, content string) []CallGraphConnection {
 	var connections []CallGraphConnection
 	lines := strings.Split(content, "\n")
-	
+
 	execRegex := regexp.MustCompile(`^\s*exec\s+(\S+)`)
-	
+
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		
+
 		if matches := execRegex.FindStringSubmatch(line); matches != nil {
 			program := matches[1]
 			connections = append(connections, CallGraphConnection{
@@ -69,7 +69,7 @@ func (s *SimpleStitcher) AnalyzeAndStitch(filename, content string) []CallGraphC
 			})
 		}
 	}
-	
+
 	return connections
 }
 
@@ -92,26 +92,26 @@ func (s *EnhancedStitcher) AnalyzeScriptTest(filename string) error {
 		return err
 	}
 	defer file.Close()
-	
+
 	var executions []ProgramExecution
 	scanner := bufio.NewScanner(file)
 	lineNum := 0
-	
+
 	// Regular expressions for different command patterns
 	execRegex := regexp.MustCompile(`^\s*exec\s+(\S+)`)
 	mcpCommandRegex := regexp.MustCompile(`^\s*(mcp-\S+|mcpdiff|mcpspy|mcpcat)\s*`)
 	serverStartRegex := regexp.MustCompile(`^\s*mcp-server-start\s+.*--\s*(.+)`)
 	goRunRegex := regexp.MustCompile(`go\s+run\s+(.+)`)
-	
+
 	for scanner.Scan() {
 		lineNum++
 		line := strings.TrimSpace(scanner.Text())
-		
+
 		// Skip comments and empty lines
 		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
-		
+
 		// Handle exec commands
 		if matches := execRegex.FindStringSubmatch(line); matches != nil {
 			program := filepath.Base(matches[1])
@@ -124,7 +124,7 @@ func (s *EnhancedStitcher) AnalyzeScriptTest(filename string) error {
 			})
 			continue
 		}
-		
+
 		// Handle MCP commands (mcpdiff, mcp-spy, etc.)
 		if matches := mcpCommandRegex.FindStringSubmatch(line); matches != nil {
 			program := matches[1]
@@ -137,17 +137,17 @@ func (s *EnhancedStitcher) AnalyzeScriptTest(filename string) error {
 			})
 			continue
 		}
-		
+
 		// Handle server start commands
 		if matches := serverStartRegex.FindStringSubmatch(line); matches != nil {
 			serverCmd := strings.TrimSpace(matches[1])
 			program := "server"
-			
+
 			// Extract actual program from go run commands
 			if goMatches := goRunRegex.FindStringSubmatch(serverCmd); goMatches != nil {
 				program = filepath.Base(filepath.Dir(goMatches[1]))
 			}
-			
+
 			executions = append(executions, ProgramExecution{
 				Program:    program,
 				Line:       lineNum,
@@ -158,11 +158,11 @@ func (s *EnhancedStitcher) AnalyzeScriptTest(filename string) error {
 			continue
 		}
 	}
-	
+
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	
+
 	s.TestToProgramMap[filename] = executions
 	return nil
 }
@@ -170,18 +170,18 @@ func (s *EnhancedStitcher) AnalyzeScriptTest(filename string) error {
 // CreateCallGraphConnections creates call graph edges from analyzed programs
 func (s *EnhancedStitcher) CreateCallGraphConnections(filename string) []CallGraphEdge {
 	var edges []CallGraphEdge
-	
+
 	executions, exists := s.TestToProgramMap[filename]
 	if !exists {
 		return edges
 	}
-	
+
 	baseFilename := filepath.Base(filename)
-	
+
 	for _, exec := range executions {
 		from := fmt.Sprintf("test:%s:line%d", baseFilename, exec.Line)
 		to := s.generateTargetPath(exec.Program)
-		
+
 		edges = append(edges, CallGraphEdge{
 			From:     from,
 			To:       to,
@@ -189,7 +189,7 @@ func (s *EnhancedStitcher) CreateCallGraphConnections(filename string) []CallGra
 			IsServer: exec.IsServer,
 		})
 	}
-	
+
 	return edges
 }
 
@@ -233,19 +233,19 @@ func NewBashStitcher() *BashStitcher {
 func (s *BashStitcher) CreateBashCallGraph(filename string) []CallGraphEdge {
 	// Get regular edges first
 	edges := s.EnhancedStitcher.CreateCallGraphConnections(filename)
-	
+
 	// Add bash script edges
 	bashExecs, exists := s.BashScriptMap[filename]
 	if !exists {
 		return edges
 	}
-	
+
 	baseFilename := filepath.Base(filename)
-	
+
 	for _, bashExec := range bashExecs {
 		from := fmt.Sprintf("test:%s:line%d", baseFilename, bashExec.Line)
 		to := fmt.Sprintf("bash:%s", bashExec.ScriptPath)
-		
+
 		edges = append(edges, CallGraphEdge{
 			From:     from,
 			To:       to,
@@ -253,33 +253,33 @@ func (s *BashStitcher) CreateBashCallGraph(filename string) []CallGraphEdge {
 			IsServer: false,
 		})
 	}
-	
+
 	return edges
 }
 
 // GetBashCoverageReport returns a bash coverage report
 func (s *BashStitcher) GetBashCoverageReport() string {
 	report := "\n=== Bash Coverage Report ===\n"
-	
+
 	totalScripts := 0
 	for _, scripts := range s.BashScriptMap {
 		totalScripts += len(scripts)
 	}
-	
+
 	if totalScripts == 0 {
 		report += "No bash scripts found\n"
 		return report
 	}
-	
+
 	report += fmt.Sprintf("Total bash scripts executed: %d\n", totalScripts)
 	report += "\nScripts by test file:\n"
-	
+
 	for testFile, scripts := range s.BashScriptMap {
 		report += fmt.Sprintf("\n%s:\n", filepath.Base(testFile))
 		for _, script := range scripts {
 			report += fmt.Sprintf("  - %s (line %d)\n", script.ScriptPath, script.Line)
 		}
 	}
-	
+
 	return report
 }

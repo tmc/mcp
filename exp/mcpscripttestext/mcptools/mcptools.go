@@ -9,21 +9,21 @@ import (
 func DefaultCommands() map[string]script.Cmd {
 	return map[string]script.Cmd{
 		// MCP commands with mcp- prefix
-		"mcp-replay":     mcpReplayCmd,
-		"mcp-spy":        mcpSpyCmd,
-		"mcp-start":      mcpStartCmd,
-		"mcp-test":       mcpTestCmd,
-		"mcp-verify":     mcpVerifyCmd,
-		"mcp-send":       mcpSendCmd,
-		"mcp-recv":       mcpRecvCmd,
-		"mcp-serve":      mcpServeCmd,
+		"mcp-replay":            mcpReplayCmd,
+		"mcp-spy":               mcpSpyCmd,
+		"mcp-start":             mcpStartCmd,
+		"mcp-test":              mcpTestCmd,
+		"mcp-verify":            mcpVerifyCmd,
+		"mcp-send":              mcpSendCmd,
+		"mcp-recv":              mcpRecvCmd,
+		"mcp-serve":             mcpServeCmd,
 		"mcp-scripttest-server": mcpScripttestServerCmd,
-		
+
 		// Tool aliases without prefix
-		"mcpspy":   mcpSpyCmd,
-		"mcpdiff":  mcpDiffCmd,
-		"mcpcat":   mcpcatCmd,
-		"mcp-sort": mcpSortCmd,
+		"mcpspy":     mcpSpyCmd,
+		"mcpdiff":    mcpDiffCmd,
+		"mcpcat":     mcpcatCmd,
+		"mcp-sort":   mcpSortCmd,
 		"mcp-shadow": mcpShadowCmd,
 		"mcp-probe":  mcpProbeCmd,
 

@@ -17,7 +17,7 @@ The package provides functions to install MCP tools with optional coverage instr
 		// Install default MCP tools
 		cleanup := tools.InstallMCPTools(t, nil)
 		defer cleanup()
-		
+
 		// Tools are now available in PATH
 		// Run your tests here
 	}
@@ -30,10 +30,10 @@ When GOCOVERDIR is set, tools are automatically built with coverage instrumentat
 		opts := &tools.ToolsOptions{
 			CoverMode: tools.ToolCoverModeAuto, // Auto-detect from GOCOVERDIR
 		}
-		
+
 		cleanup := tools.InstallMCPTools(t, opts)
 		defer cleanup()
-		
+
 		// Tools will collect coverage data when GOCOVERDIR is set
 	}
 
@@ -69,7 +69,7 @@ You can specify which tools to install:
 		Tools: []string{"mcpdiff", "mcpspy", "mcp-replay"},
 		VerboseOutput: true,
 	}
-	
+
 	cleanup := tools.InstallMCPTools(t, opts)
 	defer cleanup()
 
@@ -81,7 +81,7 @@ after tests. You can specify a custom directory:
 	opts := &tools.ToolsOptions{
 		ToolsDir: "/path/to/tools",
 	}
-	
+
 	cleanup := tools.InstallMCPTools(t, opts)
 	defer cleanup() // Won't delete custom directory
 

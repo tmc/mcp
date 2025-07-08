@@ -10,6 +10,8 @@ The Model Context Protocol (MCP) Go SDK provides a complete, type-safe implement
 - [Core Types](#core-types)
 - [Client API](#client-api) 
 - [Server API](#server-api)
+- [Type-Safe APIs](#type-safe-apis)
+- [Middleware System](#middleware-system)
 - [Transport Layer](#transport-layer)
 - [Error Handling](#error-handling)
 - [Advanced Usage](#advanced-usage)
@@ -509,6 +511,333 @@ Sets custom server instructions.
 
 ```go
 func WithServerInstructions(instructions string) ServerOption
+```
+
+## Type-Safe APIs
+
+The MCP Go SDK provides comprehensive type-safe APIs using Go generics for improved developer experience and compile-time validation.
+
+### Type-Safe Tool Registration
+
+#### RegisterTypedToolWithServer
+
+Registers a type-safe tool handler with automatic JSON schema generation.
+
+```go
+func RegisterTypedToolWithServer[TArg, TResult any](
+    server *Server, 
+    name, description string, 
+    handler func(ctx context.Context, args TArg) (TResult, error)
+) error
+```
+
+**Type Parameters:**
+- `TArg`: Input argument type with validation tags
+- `TResult`: Result type for the tool
+
+**Example:**
+```go
+type CalculateArgs struct {
+    Operation string  `json:"operation" validate:"required,nonempty"`
+    A         float64 `json:"a" validate:"required"`
+    B         float64 `json:"b" validate:"required"`
+}
+
+type CalculateResult struct {
+    Result float64 `json:"result"`
+    Error  string  `json:"error,omitempty"`
+}
+
+err := RegisterTypedToolWithServer(server, "calculate", "Perform arithmetic operations",
+    func(ctx context.Context, args CalculateArgs) (CalculateResult, error) {
+        switch args.Operation {
+        case "add":
+            return CalculateResult{Result: args.A + args.B}, nil
+        case "multiply":
+            return CalculateResult{Result: args.A * args.B}, nil
+        default:
+            return CalculateResult{Error: "unsupported operation"}, nil
+        }
+    })
+```
+
+### Type-Safe Client Methods
+
+#### CallToolTyped
+
+Performs type-safe tool calls with automatic serialization/deserialization.
+
+```go
+func CallToolTyped[TArg, TResult any](
+    client *Client, 
+    ctx context.Context, 
+    name string, 
+    args TArg
+) (*TResult, error)
+```
+
+**Example:**
+```go
+args := CalculateArgs{
+    Operation: "add",
+    A:         10.5,
+    B:         5.3,
+}
+
+result, err := CallToolTyped[CalculateArgs, CalculateResult](client, ctx, "calculate", args)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Result: %f\n", result.Result)
+```
+
+### Generic Handler Framework
+
+#### Handler Interface
+
+Generic handler interface for type-safe request processing.
+
+```go
+type Handler[TRequest, TResponse any] interface {
+    Handle(ctx context.Context, req TRequest) (TResponse, error)
+}
+```
+
+#### HandlerFunc
+
+Function adapter for the Handler interface.
+
+```go
+type HandlerFunc[TRequest, TResponse any] func(ctx context.Context, req TRequest) (TResponse, error)
+```
+
+#### HandlerChain
+
+Composable handler chain with validation support.
+
+```go
+func NewHandlerChain[TRequest, TResponse any](
+    handler Handler[TRequest, TResponse]
+) *HandlerChain[TRequest, TResponse]
+
+func (hc *HandlerChain[TRequest, TResponse]) WithValidation(
+    validator ValidationFunc[TRequest]
+) *HandlerChain[TRequest, TResponse]
+```
+
+### Validation Framework
+
+#### StructValidator
+
+Comprehensive validation using struct tags.
+
+```go
+type StructValidator struct{}
+
+func (v *StructValidator) Validate(ctx context.Context, value interface{}) error
+```
+
+**Supported Tags:**
+- `validate:"required"` - Field must not be zero value
+- `validate:"nonempty"` - String/slice must not be empty
+- `validate:"min=N"` - Minimum value for numbers
+- `validate:"max=N"` - Maximum value for numbers
+
+### Schema Generation
+
+#### GenerateTypedSchema
+
+Generates JSON schema for Go types with caching.
+
+```go
+func GenerateTypedSchema[T any]() (json.RawMessage, error)
+```
+
+#### GenerateOpenAPISchema
+
+Generates OpenAPI-compatible schema.
+
+```go
+func GenerateOpenAPISchema[T any]() (map[string]interface{}, error)
+```
+
+## Middleware System
+
+The MCP Go SDK includes a comprehensive middleware system for cross-cutting concerns like authentication, logging, rate limiting, and monitoring.
+
+### Core Middleware Interface
+
+#### Middleware
+
+Base interface for all middleware components.
+
+```go
+type Middleware interface {
+    Apply(next MCPHandler) MCPHandler
+    Name() string
+    Priority() int
+}
+```
+
+#### MCPHandler
+
+Unified handler interface for middleware integration.
+
+```go
+type MCPHandler interface {
+    Handle(ctx context.Context, req MCPRequest) (MCPResponse, error)
+}
+```
+
+### Built-in Middleware Components
+
+#### Logging Middleware
+
+Configurable request/response logging with structured output.
+
+```go
+func NewLoggingMiddleware(config LoggingConfig) Middleware
+
+type LoggingConfig struct {
+    Level            slog.Level `json:"level"`
+    IncludeRequest   bool       `json:"include_request"`
+    IncludeResponse  bool       `json:"include_response"`
+    SanitizeFields   []string   `json:"sanitize_fields"`
+    RequestFields    []string   `json:"request_fields"`
+    ResponseFields   []string   `json:"response_fields"`
+}
+```
+
+#### Authentication Middleware
+
+OAuth2 token validation with configurable providers.
+
+```go
+func NewAuthenticationMiddleware(config AuthConfig) Middleware
+
+type AuthConfig struct {
+    Provider     OAuthProvider `json:"-"`
+    SkipMethods  []string      `json:"skip_methods"`
+    TokenHeader  string        `json:"token_header"`
+    RequiredScopes []string    `json:"required_scopes"`
+}
+```
+
+#### Rate Limiting Middleware
+
+Per-client rate limiting with burst allowance.
+
+```go
+func NewRateLimitMiddleware(config RateLimitConfig) Middleware
+
+type RateLimitConfig struct {
+    RequestsPerSecond int    `json:"requests_per_second"`
+    BurstSize         int    `json:"burst_size"`
+    KeyExtractor      string `json:"key_extractor"`
+}
+```
+
+#### Metrics Middleware
+
+Request/response metrics collection with Prometheus integration.
+
+```go
+func NewMetricsMiddleware(registry MetricsRegistry) Middleware
+```
+
+#### Recovery Middleware
+
+Panic recovery with structured error responses.
+
+```go
+func NewRecoveryMiddleware(logger *slog.Logger, includeStack bool) Middleware
+```
+
+### Middleware Chain
+
+#### MiddlewareChain
+
+Composable middleware chain with priority-based ordering.
+
+```go
+type MiddlewareChain struct {
+    middlewares []Middleware
+    registry    *MiddlewareRegistry
+    config      *MiddlewareConfig
+    metrics     *MiddlewareMetrics
+}
+
+func (mc *MiddlewareChain) Apply(handler MCPHandler) MCPHandler
+```
+
+### Enhanced Server with Middleware
+
+#### EnhancedServer
+
+Extended server with comprehensive middleware support.
+
+```go
+func NewEnhancedServer(opts ...ServerOption) *EnhancedServer
+func NewEnhancedServerWithName(name, version string, opts ...ServerOption) *EnhancedServer
+
+func (s *EnhancedServer) SetMiddlewareConfig(config *ServerMiddlewareConfig) error
+func (s *EnhancedServer) UseMiddleware(middleware Middleware)
+func (s *EnhancedServer) UseMiddlewareForTransport(transport string, middleware Middleware)
+func (s *EnhancedServer) UseMiddlewareForMethod(method string, middleware Middleware)
+```
+
+#### Configuration
+
+JSON/YAML-based middleware configuration.
+
+```go
+type ServerMiddlewareConfig struct {
+    GlobalConfig     *MiddlewareConfig            `json:"global_config,omitempty"`
+    TransportConfigs map[string]*MiddlewareConfig `json:"transport_configs,omitempty"`
+    MethodConfigs    map[string]*MiddlewareConfig `json:"method_configs,omitempty"`
+    EnableMetrics    bool                         `json:"enable_metrics"`
+}
+
+type MiddlewareConfig struct {
+    Enabled           bool                        `json:"enabled"`
+    DefaultTimeout    time.Duration              `json:"default_timeout"`
+    MaxConcurrency    int                        `json:"max_concurrency"`
+    Logging           *LoggingConfig             `json:"logging,omitempty"`
+    Authentication    *AuthConfig                `json:"authentication,omitempty"`
+    RateLimit         *RateLimitConfig           `json:"rate_limit,omitempty"`
+    Recovery          *RecoveryConfig            `json:"recovery,omitempty"`
+    Metrics           *MetricsConfig             `json:"metrics,omitempty"`
+}
+```
+
+**Example Configuration:**
+```json
+{
+  "enabled": true,
+  "default_timeout": "30s",
+  "max_concurrency": 100,
+  "logging": {
+    "level": "info",
+    "include_request": true,
+    "sanitize_fields": ["password", "token"]
+  },
+  "authentication": {
+    "skip_methods": ["initialize", "ping"],
+    "required_scopes": ["read", "write"]
+  },
+  "rate_limit": {
+    "requests_per_second": 100,
+    "burst_size": 10
+  },
+  "transport_configs": {
+    "http": {
+      "enabled": true,
+      "cors": {"origins": ["*"]},
+      "compression": {"enabled": true}
+    }
+  }
+}
 ```
 
 ## Transport Layer

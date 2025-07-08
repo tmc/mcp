@@ -19,33 +19,33 @@ func DefaultConditions() map[string]script.Cond {
 		"stdio": stdioCond,
 		"http":  httpCond,
 		"sse":   sseCond,
-		
+
 		// Capability conditions
 		"tools":     toolsCond,
 		"resources": resourcesCond,
 		"prompts":   promptsCond,
 		"logging":   loggingCond,
 		"sampling":  samplingCond,
-		
+
 		// Server capability conditions
 		"tools_list_changed":     toolsListChangedCond,
 		"resources_subscribe":    resourcesSubscribeCond,
 		"resources_list_changed": resourcesListChangedCond,
 		"prompts_list_changed":   promptsListChangedCond,
-		
+
 		// Client capability conditions
 		"client_sampling": clientSamplingCond,
 		"client_roots":    clientRootsCond,
-		
+
 		// Protocol version conditions
 		"protocol_version": protocolVersionCond,
-		
+
 		// Implementation info conditions
 		"server_name":    serverNameCond,
 		"server_version": serverVersionCond,
 		"client_name":    clientNameCond,
 		"client_version": clientVersionCond,
-		
+
 		// Test environment conditions
 		"test_coverage": testCoverageCond,
 		"test_debug":    testDebugCond,

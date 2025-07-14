@@ -12,17 +12,53 @@ The simplest possible MCP server that echoes back messages.
 
 ```go
 func main() {
-    server := mcp.NewServer()
+    server := mcp.NewServer("echo-server", "1.0.0")
     
-    server.AddTool("echo", mcp.ToolFunc(func(args map[string]any) (any, error) {
-        message, ok := args["message"].(string)
-        if !ok {
-            return nil, fmt.Errorf("message must be a string")
+    echoTool := mcp.Tool{
+        Name:        "echo",
+        Description: "Echoes back the input message",
+        InputSchema: json.RawMessage(`{
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "Message to echo back"
+                }
+            },
+            "required": ["message"]
+        }`),
+    }
+    
+    handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+        var input struct {
+            Message string `json:"message"`
         }
-        return message, nil
-    }))
+        if err := json.Unmarshal(req.Arguments, &input); err != nil {
+            return &mcp.CallToolResult{
+                IsError: true,
+                Content: []any{
+                    map[string]string{
+                        "type": "text",
+                        "text": "Invalid input: " + err.Error(),
+                    },
+                },
+            }, nil
+        }
+        
+        return &mcp.CallToolResult{
+            Content: []any{
+                map[string]string{
+                    "type": "text",
+                    "text": "Echo: " + input.Message,
+                },
+            },
+        }, nil
+    }
     
-    server.Serve(mcp.NewStdioTransport())
+    server.RegisterTool(echoTool, handler)
+    
+    transport := &mcp.ReadWriteCloserTransport{os.Stdin}
+    server.Serve(context.Background(), transport)
 }
 ```
 
@@ -37,7 +73,7 @@ func main() {
 go run ./examples/servers/mcp-echo-server
 
 # Test with client
-echo '{"jsonrpc":"2.0","id":1,"method":"tools/execute","params":{"name":"echo","arguments":{"message":"Hello!"}}}' | ./mcp-echo-server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello!"}}}' | ./mcp-echo-server
 ```
 
 ### 2. Time Server

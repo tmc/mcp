@@ -82,7 +82,7 @@ Script files contain JSON requests, one per line:
 ```json
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-{"jsonrpc":"2.0","id":3,"method":"tools/execute","params":{"name":"calculator","arguments":{"operation":"add","a":1,"b":2}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"calculator","arguments":{"operation":"add","a":1,"b":2}}}
 ```
 
 ## Interactive Mode
@@ -91,7 +91,7 @@ In interactive mode, you can type commands:
 ```
 > initialize
 > tools/list
-> tools/execute calculator {"operation":"add","a":1,"b":2}
+> tools/call calculator {"operation":"add","a":1,"b":2}
 > exit
 ```
 
@@ -103,7 +103,7 @@ Send one request and exit:
 mcp-connect -request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
 
 # Execute tool
-mcp-connect -cmd="./server" -request='{"jsonrpc":"2.0","id":1,"method":"tools/execute","params":{"name":"echo","arguments":{"message":"test"}}}'
+mcp-connect -cmd="./server" -request='{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}}}' 
 ```
 
 ## Use Cases

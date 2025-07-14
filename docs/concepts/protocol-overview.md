@@ -68,7 +68,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    Client->>Server: tools/execute
+    Client->>Server: tools/call
     Server->>Client: progress notification
     Server->>Client: result
 ```
@@ -151,7 +151,7 @@ Notifications have no ID:
 ### Tool Methods
 
 - `tools/list` - List available tools
-- `tools/execute` - Execute a tool
+- `tools/call` - Execute a tool
 - `tools/cancel` - Cancel execution
 
 ### Resource Methods

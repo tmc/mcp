@@ -81,7 +81,7 @@ Designed for extension:
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "tools/execute",
+  "method": "tools/call",
   "params": {
     "name": "calculate",
     "arguments": {"a": 1, "b": 2}

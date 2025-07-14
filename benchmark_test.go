@@ -354,7 +354,7 @@ func benchmarkJSONUnmarshal(b *testing.B, payloadSize int) {
 func BenchmarkMiddleware_LoggingOverhead(b *testing.B) {
 	// Create base handler
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseImpl{Result: "success"}, nil
+		return &BenchmarkSuccessResponseImpl{Result: "success"}, nil
 	})
 
 	// Create logging middleware
@@ -364,7 +364,7 @@ func BenchmarkMiddleware_LoggingOverhead(b *testing.B) {
 
 	wrappedHandler := loggingMiddleware.Apply(baseHandler)
 
-	req := &MockRequest{
+	req := &BenchmarkMockRequest{
 		method: "test/method",
 		id:     "test-id",
 		params: json.RawMessage(`{"test": "data"}`),
@@ -384,7 +384,7 @@ func BenchmarkMiddleware_LoggingOverhead(b *testing.B) {
 func BenchmarkMiddleware_ChainOverhead(b *testing.B) {
 	// Create base handler
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseImpl{Result: "success"}, nil
+		return &BenchmarkSuccessResponseImpl{Result: "success"}, nil
 	})
 
 	// Test with different chain lengths
@@ -400,7 +400,7 @@ func BenchmarkMiddleware_ChainOverhead(b *testing.B) {
 				handler = middleware.Apply(handler)
 			}
 
-			req := &MockRequest{
+			req := &BenchmarkMockRequest{
 				method: "test/method",
 				id:     "test-id",
 				params: json.RawMessage(`{"test": "data"}`),
@@ -678,31 +678,31 @@ func (m *mockTransport) Close() error {
 }
 
 // MockRequest for middleware benchmarks
-type MockRequest struct {
+type BenchmarkMockRequest struct {
 	method string
 	id     interface{}
 	params json.RawMessage
 	ctx    context.Context
 }
 
-func (r *MockRequest) GetMethod() string {
+func (r *BenchmarkMockRequest) GetMethod() string {
 	return r.method
 }
 
-func (r *MockRequest) GetID() interface{} {
+func (r *BenchmarkMockRequest) GetID() interface{} {
 	return r.id
 }
 
-func (r *MockRequest) GetParams() json.RawMessage {
+func (r *BenchmarkMockRequest) GetParams() json.RawMessage {
 	return r.params
 }
 
-func (r *MockRequest) GetContext() context.Context {
+func (r *BenchmarkMockRequest) GetContext() context.Context {
 	return r.ctx
 }
 
-func (r *MockRequest) WithContext(ctx context.Context) MCPRequest {
-	return &MockRequest{
+func (r *BenchmarkMockRequest) WithContext(ctx context.Context) MCPRequest {
+	return &BenchmarkMockRequest{
 		method: r.method,
 		id:     r.id,
 		params: r.params,
@@ -711,19 +711,19 @@ func (r *MockRequest) WithContext(ctx context.Context) MCPRequest {
 }
 
 // SuccessResponseImpl for testing
-type SuccessResponseImpl struct {
+type BenchmarkSuccessResponseImpl struct {
 	Result interface{}
 }
 
-func (r *SuccessResponseImpl) IsError() bool {
+func (r *BenchmarkSuccessResponseImpl) IsError() bool {
 	return false
 }
 
-func (r *SuccessResponseImpl) GetError() error {
+func (r *BenchmarkSuccessResponseImpl) GetError() error {
 	return nil
 }
 
-func (r *SuccessResponseImpl) GetResult() interface{} {
+func (r *BenchmarkSuccessResponseImpl) GetResult() interface{} {
 	return r.Result
 }
 

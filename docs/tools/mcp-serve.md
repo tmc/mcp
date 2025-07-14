@@ -148,7 +148,7 @@ const response = await fetch('http://localhost:3001', {
   body: JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
-    method: 'tools/execute',
+    method: 'tools/call',
     params: { name: 'calculator', arguments: { a: 1, b: 2 } }
   })
 });

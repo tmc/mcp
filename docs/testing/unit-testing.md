@@ -224,7 +224,7 @@ func TestConcurrentRequests(t *testing.T) {
         go func(id int) {
             defer wg.Done()
             
-            req := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/execute","params":{"name":"slow"}}`, id)
+            req := fmt.Sprintf(`{"jsonrpc":"2.0","id":%d,"method":"tools/call","params":{"name":"slow"}}`, id)
             resp := server.HandleRequest([]byte(req))
             
             var response mcp.Response

@@ -54,7 +54,7 @@ stdout expected-response.json
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "tools/execute",
+  "method": "tools/call",
   "params": {
     "name": "echo",
     "arguments": {"message": "hello"}

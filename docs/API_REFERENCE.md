@@ -468,7 +468,7 @@ type ToolHandlerFunc func(ctx context.Context, req CallToolRequest) (CallToolRes
 Handler function for resource reads.
 
 ```go
-type ReadResourceHandlerFunc func(ctx context.Context, req ReadResourceRequest) (ReadResourceResult, error)
+type ReadResourceHandlerFunc func(ctx context.Context, req ReadResourceRequest) ([]ResourceContents, error)
 ```
 
 #### ResourceTemplateHandlerFunc
@@ -476,7 +476,7 @@ type ReadResourceHandlerFunc func(ctx context.Context, req ReadResourceRequest) 
 Handler function for resource template operations.
 
 ```go
-type ResourceTemplateHandlerFunc func(ctx context.Context, req ResourceTemplateRequest) (ResourceTemplateResult, error)
+type ResourceTemplateHandlerFunc func(ctx context.Context, req ReadResourceRequest) ([]ResourceContents, error)
 ```
 
 #### GetPromptHandlerFunc

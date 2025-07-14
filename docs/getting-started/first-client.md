@@ -503,11 +503,9 @@ func (rm *ResourceManager) isResourceAvailable(uri string) bool {
 }
 
 func (rm *ResourceManager) getResourceTemplates(ctx context.Context) ([]mcp.ResourceTemplate, error) {
-    result, err := rm.manager.client.ListResourceTemplates(ctx, mcp.ListResourceTemplatesRequest{})
-    if err != nil {
-        return nil, err
-    }
-    return result.Templates, nil
+    // Note: ListResourceTemplates is not currently available in the client API
+    // This is a placeholder for when resource templates are supported
+    return nil, fmt.Errorf("resource templates not yet supported")
 }
 
 func (rm *ResourceManager) matchesTemplate(uri, template string) bool {

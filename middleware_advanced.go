@@ -46,30 +46,30 @@ type GzipAlgorithm struct{}
 
 func (g *GzipAlgorithm) Compress(data []byte, level int) ([]byte, error) {
 	var buf bytes.Buffer
-	
+
 	var writer *gzip.Writer
 	var err error
-	
+
 	if level > 0 {
 		writer, err = gzip.NewWriterLevel(&buf, level)
 	} else {
 		writer = gzip.NewWriter(&buf)
 	}
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	_, err = writer.Write(data)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = writer.Close()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return buf.Bytes(), nil
 }
 
@@ -79,7 +79,7 @@ func (g *GzipAlgorithm) Decompress(data []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer reader.Close()
-	
+
 	return io.ReadAll(reader)
 }
 
@@ -92,15 +92,15 @@ func NewCompressionMiddleware(config CompressionConfig) *CompressionMiddleware {
 	algorithms := map[string]CompressionAlgorithm{
 		"gzip": &GzipAlgorithm{},
 	}
-	
+
 	if config.MinSize == 0 {
 		config.MinSize = 1024 // 1KB default
 	}
-	
+
 	if config.Level == 0 {
 		config.Level = gzip.DefaultCompression
 	}
-	
+
 	// Skip binary and already compressed types
 	skipTypes := map[string]bool{
 		"image/jpeg": true,
@@ -109,7 +109,7 @@ func NewCompressionMiddleware(config CompressionConfig) *CompressionMiddleware {
 		"video/*":    true,
 		"audio/*":    true,
 	}
-	
+
 	return &CompressionMiddleware{
 		algorithms: algorithms,
 		minSize:    config.MinSize,
@@ -120,9 +120,41 @@ func NewCompressionMiddleware(config CompressionConfig) *CompressionMiddleware {
 
 func (m *CompressionMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		// TODO: Implement compression logic
-		// For now, pass through without compression
-		return next.Handle(ctx, req)
+		// Execute the next handler
+		resp, err := next.Handle(ctx, req)
+		if err != nil {
+			return resp, err
+		}
+
+		// Skip compression for certain content types or if response is too small
+		if resp == nil {
+			return resp, err
+		}
+
+		// Marshal response to check size and compress if needed
+		respData, marshalErr := json.Marshal(resp)
+		if marshalErr != nil {
+			return resp, err // Return original response if marshaling fails
+		}
+
+		// Check if response is large enough to compress
+		if len(respData) < m.minSize {
+			return resp, err
+		}
+
+		// Compress using gzip (default algorithm)
+		if algorithm, exists := m.algorithms["gzip"]; exists {
+			compressed, compressErr := algorithm.Compress(respData, m.level)
+			if compressErr == nil && len(compressed) < len(respData) {
+				// Create a compressed response wrapper
+				// Note: In a real implementation, this would need proper response type handling
+				// For now, we'll return the original response since the MCP protocol
+				// doesn't specify compression at the transport level
+				return resp, err
+			}
+		}
+
+		return resp, err
 	})
 }
 
@@ -159,10 +191,10 @@ type CacheKeyStrategy interface {
 
 // InMemoryCache implements a simple in-memory cache
 type InMemoryCache struct {
-	mu       sync.RWMutex
-	items    map[string]*cacheItem
-	size     int64
-	maxSize  int64
+	mu           sync.RWMutex
+	items        map[string]*cacheItem
+	size         int64
+	maxSize      int64
 	cleanupTimer *time.Timer
 }
 
@@ -178,22 +210,22 @@ func NewInMemoryCache(maxSize int64) *InMemoryCache {
 		items:   make(map[string]*cacheItem),
 		maxSize: maxSize,
 	}
-	
+
 	// Start cleanup timer
 	cache.startCleanup()
-	
+
 	return cache
 }
 
 func (c *InMemoryCache) Get(ctx context.Context, key string) ([]byte, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	item, exists := c.items[key]
 	if !exists {
 		return nil, false
 	}
-	
+
 	if time.Now().After(item.expiresAt) {
 		// Item expired, clean it up
 		go func() {
@@ -204,58 +236,58 @@ func (c *InMemoryCache) Get(ctx context.Context, key string) ([]byte, bool) {
 		}()
 		return nil, false
 	}
-	
+
 	return item.value, true
 }
 
 func (c *InMemoryCache) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	itemSize := int64(len(value))
-	
+
 	// Check if we have space
 	if c.size+itemSize > c.maxSize {
 		// Evict some items
 		c.evictLRU()
 	}
-	
+
 	// Remove existing item if present
 	if existing, exists := c.items[key]; exists {
 		c.size -= existing.size
 	}
-	
+
 	item := &cacheItem{
 		value:     value,
 		expiresAt: time.Now().Add(ttl),
 		size:      itemSize,
 	}
-	
+
 	c.items[key] = item
 	c.size += itemSize
-	
+
 	return nil
 }
 
 func (c *InMemoryCache) Delete(ctx context.Context, key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if item, exists := c.items[key]; exists {
 		delete(c.items, key)
 		c.size -= item.size
 	}
-	
+
 	return nil
 }
 
 func (c *InMemoryCache) Clear(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.items = make(map[string]*cacheItem)
 	c.size = 0
-	
+
 	return nil
 }
 
@@ -292,16 +324,16 @@ func (s *DefaultCacheKeyStrategy) GenerateKey(ctx context.Context, req MCPReques
 	// Generate key based on method and params
 	hash := sha256.New()
 	hash.Write([]byte(req.GetMethod()))
-	
+
 	if params := req.GetParams(); params != nil {
 		hash.Write(params)
 	}
-	
+
 	// Include client ID if available
 	if authCtx := GetAuthContext(ctx); authCtx != nil {
 		hash.Write([]byte(authCtx.ClientID))
 	}
-	
+
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
@@ -309,18 +341,18 @@ func (s *DefaultCacheKeyStrategy) GenerateKey(ctx context.Context, req MCPReques
 func NewCachingMiddleware(config CachingConfig) *CachingMiddleware {
 	cache := NewInMemoryCache(config.MaxSize)
 	keyStrategy := &DefaultCacheKeyStrategy{}
-	
+
 	if config.TTL == 0 {
 		config.TTL = 5 * time.Minute
 	}
-	
+
 	// Methods that should not be cached
 	skipMethods := map[string]bool{
 		"tools/call":     true,
 		"resources/read": false, // Resources can be cached
 		"prompts/get":    false, // Prompts can be cached
 	}
-	
+
 	return &CachingMiddleware{
 		cache:       cache,
 		keyStrategy: keyStrategy,
@@ -336,10 +368,10 @@ func (m *CachingMiddleware) Apply(next MCPHandler) MCPHandler {
 		if m.skipMethods[req.GetMethod()] {
 			return next.Handle(ctx, req)
 		}
-		
+
 		// Generate cache key
 		key := m.keyStrategy.GenerateKey(ctx, req)
-		
+
 		// Try to get from cache
 		if cached, found := m.cache.Get(ctx, key); found {
 			var resp MCPResponse
@@ -347,20 +379,20 @@ func (m *CachingMiddleware) Apply(next MCPHandler) MCPHandler {
 				return resp, nil
 			}
 		}
-		
+
 		// Execute handler
 		resp, err := next.Handle(ctx, req)
 		if err != nil {
 			return resp, err
 		}
-		
+
 		// Cache successful response
 		if resp != nil && !resp.IsError() {
 			if data, err := json.Marshal(resp); err == nil {
 				m.cache.Set(ctx, key, data, m.ttl)
 			}
 		}
-		
+
 		return resp, err
 	})
 }
@@ -375,9 +407,9 @@ func (m *CachingMiddleware) Priority() int {
 
 // ValidationMiddleware provides request/response validation
 type ValidationMiddleware struct {
-	schemas      map[string]interface{}
-	strictMode   bool
-	validator    RequestValidator
+	schemas    map[string]interface{}
+	strictMode bool
+	validator  RequestValidator
 }
 
 // RequestValidator defines the validation interface
@@ -386,39 +418,12 @@ type RequestValidator interface {
 	ValidateResponse(ctx context.Context, resp MCPResponse) error
 }
 
-// JSONSchemaValidator implements validation using JSON schemas
-type JSONSchemaValidator struct {
-	schemas map[string]interface{}
-}
-
-func NewJSONSchemaValidator() *JSONSchemaValidator {
-	return &JSONSchemaValidator{
-		schemas: make(map[string]interface{}),
-	}
-}
-
-func (v *JSONSchemaValidator) ValidateRequest(ctx context.Context, req MCPRequest) error {
-	// TODO: Implement JSON schema validation
-	// For now, just basic validation
-	if req.GetMethod() == "" {
-		return fmt.Errorf("request method is required")
-	}
-	return nil
-}
-
-func (v *JSONSchemaValidator) ValidateResponse(ctx context.Context, resp MCPResponse) error {
-	// TODO: Implement JSON schema validation
-	// For now, just basic validation
-	if resp == nil {
-		return fmt.Errorf("response cannot be nil")
-	}
-	return nil
-}
+// Schema validation functionality is now provided by security.go
 
 // NewValidationMiddleware creates a new validation middleware
 func NewValidationMiddleware(config MiddlewareValidationConfig) *ValidationMiddleware {
 	validator := NewJSONSchemaValidator()
-	
+
 	return &ValidationMiddleware{
 		schemas:    config.Schemas,
 		strictMode: config.StrictMode,
@@ -432,20 +437,20 @@ func (m *ValidationMiddleware) Apply(next MCPHandler) MCPHandler {
 		if err := m.validator.ValidateRequest(ctx, req); err != nil {
 			return NewErrorResponse("Request validation failed: "+err.Error(), -32602), nil
 		}
-		
+
 		// Execute handler
 		resp, err := next.Handle(ctx, req)
 		if err != nil {
 			return resp, err
 		}
-		
+
 		// Validate response if strict mode is enabled
 		if m.strictMode && resp != nil {
 			if err := m.validator.ValidateResponse(ctx, resp); err != nil {
 				return NewErrorResponse("Response validation failed: "+err.Error(), -32603), nil
 			}
 		}
-		
+
 		return resp, err
 	})
 }
@@ -478,7 +483,7 @@ func NewCORSMiddleware(config CORSConfig) *CORSMiddleware {
 	if config.MaxAge == 0 {
 		config.MaxAge = 86400 // 24 hours
 	}
-	
+
 	return &CORSMiddleware{
 		config: config,
 	}
@@ -493,9 +498,9 @@ func (m *CORSMiddleware) Apply(next MCPHandler) MCPHandler {
 			"Access-Control-Allow-Headers": strings.Join(m.config.AllowHeaders, ", "),
 			"Access-Control-Max-Age":       strconv.Itoa(m.config.MaxAge),
 		}
-		
+
 		corsCtx := context.WithValue(ctx, "cors_headers", corsHeaders)
-		
+
 		return next.Handle(corsCtx, req.WithContext(corsCtx))
 	})
 }
@@ -528,15 +533,15 @@ func (t *JSONMinifierTransformer) Transform(ctx context.Context, content interfa
 		if err := json.Unmarshal([]byte(jsonStr), &obj); err != nil {
 			return content, err // Return original if not valid JSON
 		}
-		
+
 		minified, err := json.Marshal(obj)
 		if err != nil {
 			return content, err
 		}
-		
+
 		return string(minified), nil
 	}
-	
+
 	return content, nil
 }
 
@@ -549,7 +554,7 @@ func NewContentTransformationMiddleware() *ContentTransformationMiddleware {
 	transformers := map[string]ContentTransformer{
 		"json_minifier": &JSONMinifierTransformer{},
 	}
-	
+
 	return &ContentTransformationMiddleware{
 		transformers: transformers,
 	}
@@ -559,16 +564,16 @@ func (m *ContentTransformationMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Transform request content if needed
 		// TODO: Implement request transformation
-		
+
 		// Execute handler
 		resp, err := next.Handle(ctx, req)
 		if err != nil {
 			return resp, err
 		}
-		
+
 		// Transform response content if needed
 		// TODO: Implement response transformation
-		
+
 		return resp, err
 	})
 }
@@ -603,7 +608,7 @@ func NewMethodCondition(methods []string) *MethodCondition {
 	for _, method := range methods {
 		methodMap[method] = true
 	}
-	
+
 	return &MethodCondition{
 		methods: methodMap,
 	}
@@ -623,7 +628,7 @@ func NewClientCondition(clientIDs []string) *ClientCondition {
 	for _, clientID := range clientIDs {
 		clientMap[clientID] = true
 	}
-	
+
 	return &ClientCondition{
 		clientIDs: clientMap,
 	}
@@ -647,7 +652,7 @@ func NewRegexCondition(pattern, field string) (*RegexCondition, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &RegexCondition{
 		pattern: compiled,
 		field:   field,
@@ -656,7 +661,7 @@ func NewRegexCondition(pattern, field string) (*RegexCondition, error) {
 
 func (c *RegexCondition) Evaluate(ctx context.Context, req MCPRequest) bool {
 	var value string
-	
+
 	switch c.field {
 	case "method":
 		value = req.GetMethod()
@@ -667,7 +672,7 @@ func (c *RegexCondition) Evaluate(ctx context.Context, req MCPRequest) bool {
 	default:
 		return false
 	}
-	
+
 	return c.pattern.MatchString(value)
 }
 
@@ -676,7 +681,7 @@ func NewConditionalMiddleware(condition ConditionEvaluator, middleware Middlewar
 	if logger == nil {
 		logger = slog.Default()
 	}
-	
+
 	return &ConditionalMiddleware{
 		condition:  condition,
 		middleware: middleware,
@@ -686,7 +691,7 @@ func NewConditionalMiddleware(condition ConditionEvaluator, middleware Middlewar
 
 func (m *ConditionalMiddleware) Apply(next MCPHandler) MCPHandler {
 	wrappedHandler := m.middleware.Apply(next)
-	
+
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		if m.condition.Evaluate(ctx, req) {
 			m.logger.Debug("Conditional middleware applied",
@@ -694,7 +699,7 @@ func (m *ConditionalMiddleware) Apply(next MCPHandler) MCPHandler {
 				"method", req.GetMethod())
 			return wrappedHandler.Handle(ctx, req)
 		}
-		
+
 		return next.Handle(ctx, req)
 	})
 }

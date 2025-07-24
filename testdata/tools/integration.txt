@@ -12,7 +12,7 @@ stdout '"method": "test"'
 # Test mcpdiff tool integration
 exec bash -c 'echo "mcp-send {\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"test1\"} # 1000.000" > test1.mcp'
 exec bash -c 'echo "mcp-send {\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"test2\"} # 1000.000" > test2.mcp'
-exec mcpdiff test1.mcp test2.mcp
+! exec mcpdiff test1.mcp test2.mcp
 stdout 'test1'
 stdout 'test2'
 

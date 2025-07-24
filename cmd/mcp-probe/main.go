@@ -83,12 +83,12 @@ func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error 
 		"method":  req.Method,
 		"params":  req.Params,
 	}
-	
+
 	// Omit ID for notifications
 	if !req.ID.IsValid() {
 		delete(msg, "id")
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -164,12 +164,12 @@ func (t *HTTPTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
 		"method":  req.Method,
 		"params":  req.Params,
 	}
-	
+
 	// Omit ID for notifications
 	if !req.ID.IsValid() {
 		delete(msg, "id")
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return err

@@ -38,58 +38,58 @@ type MiddlewareFactory interface {
 // MiddlewareConfig provides configuration for the entire middleware system
 type MiddlewareConfig struct {
 	// Global settings
-	Enabled         bool                              `json:"enabled" yaml:"enabled"`
-	DefaultTimeout  time.Duration                     `json:"default_timeout" yaml:"default_timeout"`
-	MaxConcurrency  int                              `json:"max_concurrency" yaml:"max_concurrency"`
-	
+	Enabled        bool          `json:"enabled" yaml:"enabled"`
+	DefaultTimeout time.Duration `json:"default_timeout" yaml:"default_timeout"`
+	MaxConcurrency int           `json:"max_concurrency" yaml:"max_concurrency"`
+
 	// Individual middleware configurations
-	Logging        *LoggingConfig                    `json:"logging,omitempty" yaml:"logging,omitempty"`
-	Authentication *AuthConfig                       `json:"authentication,omitempty" yaml:"authentication,omitempty"`
-	RateLimit      *RateLimitConfig                 `json:"rate_limit,omitempty" yaml:"rate_limit,omitempty"`
-	Timeout        *TimeoutConfig                   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Recovery       *RecoveryConfig                  `json:"recovery,omitempty" yaml:"recovery,omitempty"`
-	Metrics        *MetricsConfig                   `json:"metrics,omitempty" yaml:"metrics,omitempty"`
-	CORS           *CORSConfig                      `json:"cors,omitempty" yaml:"cors,omitempty"`
-	Compression    *CompressionConfig               `json:"compression,omitempty" yaml:"compression,omitempty"`
-	Validation     *MiddlewareValidationConfig     `json:"validation,omitempty" yaml:"validation,omitempty"`
-	Caching        *CachingConfig                   `json:"caching,omitempty" yaml:"caching,omitempty"`
-	
+	Logging        *LoggingConfig              `json:"logging,omitempty" yaml:"logging,omitempty"`
+	Authentication *AuthConfig                 `json:"authentication,omitempty" yaml:"authentication,omitempty"`
+	RateLimit      *RateLimitConfig            `json:"rate_limit,omitempty" yaml:"rate_limit,omitempty"`
+	Timeout        *TimeoutConfig              `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Recovery       *RecoveryConfig             `json:"recovery,omitempty" yaml:"recovery,omitempty"`
+	Metrics        *MetricsConfig              `json:"metrics,omitempty" yaml:"metrics,omitempty"`
+	CORS           *CORSConfig                 `json:"cors,omitempty" yaml:"cors,omitempty"`
+	Compression    *CompressionConfig          `json:"compression,omitempty" yaml:"compression,omitempty"`
+	Validation     *MiddlewareValidationConfig `json:"validation,omitempty" yaml:"validation,omitempty"`
+	Caching        *CachingConfig              `json:"caching,omitempty" yaml:"caching,omitempty"`
+
 	// Transport-specific configurations
 	TransportConfigs map[string]*TransportMiddlewareConfig `json:"transport_configs,omitempty" yaml:"transport_configs,omitempty"`
-	
+
 	// Method-specific configurations
 	MethodConfigs map[string]*MethodMiddlewareConfig `json:"method_configs,omitempty" yaml:"method_configs,omitempty"`
-	
+
 	// Conditional middleware
 	ConditionalMiddleware []*ConditionalMiddlewareConfig `json:"conditional_middleware,omitempty" yaml:"conditional_middleware,omitempty"`
-	
+
 	// Custom middleware configurations
 	Custom map[string]interface{} `json:"custom,omitempty" yaml:"custom,omitempty"`
 }
 
 // TransportMiddlewareConfig configures middleware for specific transports
 type TransportMiddlewareConfig struct {
-	Transport      string                    `json:"transport" yaml:"transport"`
-	EnabledOnly    []string                 `json:"enabled_only,omitempty" yaml:"enabled_only,omitempty"`
-	DisabledOnly   []string                 `json:"disabled_only,omitempty" yaml:"disabled_only,omitempty"`
-	CustomConfig   map[string]interface{}   `json:"custom_config,omitempty" yaml:"custom_config,omitempty"`
+	Transport    string                 `json:"transport" yaml:"transport"`
+	EnabledOnly  []string               `json:"enabled_only,omitempty" yaml:"enabled_only,omitempty"`
+	DisabledOnly []string               `json:"disabled_only,omitempty" yaml:"disabled_only,omitempty"`
+	CustomConfig map[string]interface{} `json:"custom_config,omitempty" yaml:"custom_config,omitempty"`
 }
 
 // MethodMiddlewareConfig configures middleware for specific methods
 type MethodMiddlewareConfig struct {
-	Method         string                    `json:"method" yaml:"method"`
-	EnabledOnly    []string                 `json:"enabled_only,omitempty" yaml:"enabled_only,omitempty"`
-	DisabledOnly   []string                 `json:"disabled_only,omitempty" yaml:"disabled_only,omitempty"`
-	CustomTimeout  *time.Duration           `json:"custom_timeout,omitempty" yaml:"custom_timeout,omitempty"`
-	CustomConfig   map[string]interface{}   `json:"custom_config,omitempty" yaml:"custom_config,omitempty"`
+	Method        string                 `json:"method" yaml:"method"`
+	EnabledOnly   []string               `json:"enabled_only,omitempty" yaml:"enabled_only,omitempty"`
+	DisabledOnly  []string               `json:"disabled_only,omitempty" yaml:"disabled_only,omitempty"`
+	CustomTimeout *time.Duration         `json:"custom_timeout,omitempty" yaml:"custom_timeout,omitempty"`
+	CustomConfig  map[string]interface{} `json:"custom_config,omitempty" yaml:"custom_config,omitempty"`
 }
 
 // ConditionalMiddlewareConfig configures conditional middleware application
 type ConditionalMiddlewareConfig struct {
-	Name           string                    `json:"name" yaml:"name"`
-	Condition      string                   `json:"condition" yaml:"condition"` // Expression or rule
-	Config         interface{}              `json:"config,omitempty" yaml:"config,omitempty"`
-	Priority       int                      `json:"priority,omitempty" yaml:"priority,omitempty"`
+	Name      string      `json:"name" yaml:"name"`
+	Condition string      `json:"condition" yaml:"condition"` // Expression or rule
+	Config    interface{} `json:"config,omitempty" yaml:"config,omitempty"`
+	Priority  int         `json:"priority,omitempty" yaml:"priority,omitempty"`
 }
 
 // NewMiddlewareRegistry creates a new middleware registry
@@ -97,7 +97,7 @@ func NewMiddlewareRegistry(logger *slog.Logger) *MiddlewareRegistry {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	
+
 	registry := &MiddlewareRegistry{
 		middlewares: make(map[string]MiddlewareFactory),
 		configs:     make(map[string]interface{}),
@@ -105,10 +105,10 @@ func NewMiddlewareRegistry(logger *slog.Logger) *MiddlewareRegistry {
 		groups:      make(map[string]*MiddlewareGroup),
 		logger:      logger,
 	}
-	
+
 	// Register built-in middleware factories
 	registry.registerBuiltinFactories()
-	
+
 	return registry
 }
 
@@ -116,15 +116,15 @@ func NewMiddlewareRegistry(logger *slog.Logger) *MiddlewareRegistry {
 func (r *MiddlewareRegistry) RegisterFactory(factory MiddlewareFactory) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	name := factory.Name()
 	if _, exists := r.middlewares[name]; exists {
 		return fmt.Errorf("middleware factory %q already registered", name)
 	}
-	
+
 	r.middlewares[name] = factory
 	r.logger.Debug("Middleware factory registered", "name", name)
-	
+
 	return nil
 }
 
@@ -132,7 +132,7 @@ func (r *MiddlewareRegistry) RegisterFactory(factory MiddlewareFactory) error {
 func (r *MiddlewareRegistry) GetFactory(name string) (MiddlewareFactory, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	factory, exists := r.middlewares[name]
 	return factory, exists
 }
@@ -141,20 +141,20 @@ func (r *MiddlewareRegistry) GetFactory(name string) (MiddlewareFactory, bool) {
 func (r *MiddlewareRegistry) CreateMiddleware(name string, config interface{}) (Middleware, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	factory, exists := r.middlewares[name]
 	if !exists {
 		return nil, fmt.Errorf("middleware factory %q not found", name)
 	}
-	
+
 	instance, err := factory.Create(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create middleware %q: %w", name, err)
 	}
-	
+
 	r.instances[name] = instance
 	r.logger.Debug("Middleware instance created", "name", name)
-	
+
 	return instance, nil
 }
 
@@ -162,7 +162,7 @@ func (r *MiddlewareRegistry) CreateMiddleware(name string, config interface{}) (
 func (r *MiddlewareRegistry) GetMiddleware(name string) (Middleware, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	instance, exists := r.instances[name]
 	return instance, exists
 }
@@ -171,12 +171,12 @@ func (r *MiddlewareRegistry) GetMiddleware(name string) (Middleware, bool) {
 func (r *MiddlewareRegistry) ListFactories() []MiddlewareFactory {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	factories := make([]MiddlewareFactory, 0, len(r.middlewares))
 	for _, factory := range r.middlewares {
 		factories = append(factories, factory)
 	}
-	
+
 	return factories
 }
 
@@ -211,7 +211,7 @@ func (g *MiddlewareGroup) AddByName(name string, config interface{}) error {
 	if err != nil {
 		return err
 	}
-	
+
 	g.middlewares = append(g.middlewares, middleware)
 	return nil
 }
@@ -221,20 +221,20 @@ func (g *MiddlewareGroup) Apply(handler MCPHandler) MCPHandler {
 	if !g.enabled {
 		return handler
 	}
-	
+
 	// Sort middleware by priority (highest first)
 	sorted := make([]Middleware, len(g.middlewares))
 	copy(sorted, g.middlewares)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Priority() > sorted[j].Priority()
 	})
-	
+
 	// Apply middleware in priority order
 	current := handler
 	for _, middleware := range sorted {
 		current = middleware.Apply(current)
 	}
-	
+
 	return current
 }
 
@@ -270,7 +270,7 @@ func (r *MiddlewareRegistry) registerBuiltinFactories() {
 		&ValidationMiddlewareFactory{},
 		&CachingMiddlewareFactory{},
 	}
-	
+
 	for _, factory := range factories {
 		if err := r.RegisterFactory(factory); err != nil {
 			r.logger.Error("Failed to register built-in factory", "name", factory.Name(), "error", err)
@@ -295,7 +295,7 @@ func (f *LoggingMiddlewareFactory) Create(config interface{}) (Middleware, error
 			}
 		}
 	}
-	
+
 	return NewLoggingMiddleware(loggingConfig), nil
 }
 
@@ -327,12 +327,12 @@ func (f *AuthenticationMiddlewareFactory) Create(config interface{}) (Middleware
 			}
 		}
 	}
-	
+
 	if authConfig.Provider == nil {
 		// Create default memory provider for testing
 		authConfig.Provider = NewMemoryOAuthProvider()
 	}
-	
+
 	return NewAuthenticationMiddleware(authConfig), nil
 }
 
@@ -364,7 +364,7 @@ func (f *RateLimitMiddlewareFactory) Create(config interface{}) (Middleware, err
 			}
 		}
 	}
-	
+
 	return NewRateLimitMiddleware(rlConfig), nil
 }
 
@@ -402,11 +402,11 @@ func (f *TimeoutMiddlewareFactory) Create(config interface{}) (Middleware, error
 			}
 		}
 	}
-	
+
 	if timeoutConfig.Timeout == 0 {
 		timeoutConfig.Timeout = 30 * time.Second
 	}
-	
+
 	return NewTimeoutMiddleware(timeoutConfig.Timeout), nil
 }
 
@@ -427,8 +427,8 @@ type RecoveryMiddlewareFactory struct{}
 
 // RecoveryConfig configures recovery middleware
 type RecoveryConfig struct {
-	IncludeStack bool          `json:"include_stack" yaml:"include_stack"`
-	Logger       *slog.Logger  `json:"-" yaml:"-"`
+	IncludeStack bool         `json:"include_stack" yaml:"include_stack"`
+	Logger       *slog.Logger `json:"-" yaml:"-"`
 }
 
 func (f *RecoveryMiddlewareFactory) Create(config interface{}) (Middleware, error) {
@@ -444,7 +444,7 @@ func (f *RecoveryMiddlewareFactory) Create(config interface{}) (Middleware, erro
 			}
 		}
 	}
-	
+
 	return NewRecoveryMiddleware(recoveryConfig.Logger, recoveryConfig.IncludeStack), nil
 }
 
@@ -483,12 +483,12 @@ func (f *MetricsMiddlewareFactory) Create(config interface{}) (Middleware, error
 			}
 		}
 	}
-	
+
 	if metricsConfig.Registry == nil {
 		// Create default in-memory registry
 		metricsConfig.Registry = &InMemoryMetricsRegistry{}
 	}
-	
+
 	return NewMetricsMiddleware(metricsConfig.Registry), nil
 }
 
@@ -641,11 +641,11 @@ func (r *InMemoryMetricsRegistry) RecordRequest(method string, duration time.Dur
 	// Simple implementation for demonstration
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if r.metrics == nil {
 		r.metrics = make(map[string]interface{})
 	}
-	
+
 	key := fmt.Sprintf("request_%s_%d", method, statusCode)
 	r.metrics[key] = map[string]interface{}{
 		"method":      method,
@@ -659,22 +659,22 @@ func (r *InMemoryMetricsRegistry) RecordRequest(method string, duration time.Dur
 func (r *InMemoryMetricsRegistry) RecordActiveRequests(count int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if r.metrics == nil {
 		r.metrics = make(map[string]interface{})
 	}
-	
+
 	r.metrics["active_requests"] = count
 }
 
 func (r *InMemoryMetricsRegistry) RecordError(method string, errorType string, labels map[string]string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	if r.metrics == nil {
 		r.metrics = make(map[string]interface{})
 	}
-	
+
 	key := fmt.Sprintf("error_%s_%s", method, errorType)
 	r.metrics[key] = map[string]interface{}{
 		"method":     method,
@@ -690,6 +690,6 @@ func mapToStruct(source interface{}, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return json.Unmarshal(data, target)
 }

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
 // Security error constants
@@ -386,14 +386,14 @@ func (v *InputValidator) sanitizeObject(obj map[string]interface{}) (map[string]
 
 // JSONSchemaValidator provides JSON schema validation for MCP messages
 type JSONSchemaValidator struct {
-	schemas map[string]*gojsonschema.Schema
+	schemas map[string]*jsonschema.Schema
 	mu      sync.RWMutex
 }
 
 // NewJSONSchemaValidator creates a new JSON schema validator
 func NewJSONSchemaValidator() *JSONSchemaValidator {
 	return &JSONSchemaValidator{
-		schemas: make(map[string]*gojsonschema.Schema),
+		schemas: make(map[string]*jsonschema.Schema),
 	}
 }
 
@@ -402,8 +402,17 @@ func (v *JSONSchemaValidator) RegisterSchema(messageType string, schemaJSON stri
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	schemaLoader := gojsonschema.NewStringLoader(schemaJSON)
-	schema, err := gojsonschema.NewSchema(schemaLoader)
+	// Create a compiler
+	compiler := jsonschema.NewCompiler()
+	
+	// Add schema as a resource
+	schemaURL := fmt.Sprintf("schema://%s", messageType)
+	if err := compiler.AddResource(schemaURL, strings.NewReader(schemaJSON)); err != nil {
+		return fmt.Errorf("failed to add schema resource: %w", err)
+	}
+
+	// Compile schema
+	schema, err := compiler.Compile(schemaURL)
 	if err != nil {
 		return fmt.Errorf("failed to compile schema: %w", err)
 	}
@@ -423,20 +432,42 @@ func (v *JSONSchemaValidator) ValidateMessage(messageType string, data interface
 		return nil
 	}
 
-	documentLoader := gojsonschema.NewGoLoader(data)
-	result, err := schema.Validate(documentLoader)
-	if err != nil {
+	// Validate data against schema
+	if err := schema.Validate(data); err != nil {
 		return fmt.Errorf("%w: %v", ErrSchemaValidationFailed, err)
 	}
 
-	if !result.Valid() {
-		var errors []string
-		for _, err := range result.Errors() {
-			errors = append(errors, err.String())
-		}
-		return fmt.Errorf("%w: %s", ErrSchemaValidationFailed, strings.Join(errors, "; "))
-	}
+	return nil
+}
 
+// ValidateRequest validates an MCP request against its schema (RequestValidator interface)
+func (v *JSONSchemaValidator) ValidateRequest(ctx context.Context, req MCPRequest) error {
+	if req.GetMethod() == "" {
+		return fmt.Errorf("request method is required")
+	}
+	
+	// Extract params for validation
+	if params := req.GetParams(); params != nil {
+		var paramsObj interface{}
+		if err := json.Unmarshal(params, &paramsObj); err == nil {
+			return v.ValidateMessage(req.GetMethod(), paramsObj)
+		}
+	}
+	
+	return nil
+}
+
+// ValidateResponse validates an MCP response against its schema (RequestValidator interface)
+func (v *JSONSchemaValidator) ValidateResponse(ctx context.Context, resp MCPResponse) error {
+	if resp == nil {
+		return fmt.Errorf("response cannot be nil")
+	}
+	
+	// Validate response result if available
+	if result := resp.GetResult(); result != nil {
+		return v.ValidateMessage("response", result)
+	}
+	
 	return nil
 }
 

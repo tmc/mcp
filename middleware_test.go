@@ -45,28 +45,28 @@ func NewMockHandler() *MockHandler {
 func (m *MockHandler) Handle(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	// Record the call
 	m.calls = append(m.calls, MockCall{
 		Method: req.GetMethod(),
 		Params: req.GetParams(),
 		Time:   time.Now(),
 	})
-	
+
 	// Add delay if configured
 	if m.delay > 0 {
 		time.Sleep(m.delay)
 	}
-	
+
 	// Return configured response or error
 	if err, exists := m.errors[req.GetMethod()]; exists {
 		return nil, err
 	}
-	
+
 	if resp, exists := m.responses[req.GetMethod()]; exists {
 		return resp, nil
 	}
-	
+
 	// Default response
 	return &SuccessResponseImpl{
 		Result: map[string]interface{}{
@@ -131,7 +131,7 @@ func NewMockRequest(method string, params interface{}) *MockRequest {
 		data, _ := json.Marshal(params)
 		paramsJSON = data
 	}
-	
+
 	return &MockRequest{
 		method: method,
 		id:     "test-id",
@@ -194,33 +194,33 @@ func TestLoggingMiddleware(t *testing.T) {
 			params: map[string]interface{}{"debug": true, "count": 42},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create middleware
 			middleware := NewLoggingMiddleware(tt.config)
-			
+
 			// Create mock handler
 			mockHandler := NewMockHandler()
-			
+
 			// Apply middleware
 			wrappedHandler := middleware.Apply(mockHandler)
-			
+
 			// Create request
 			req := NewMockRequest(tt.method, tt.params)
-			
+
 			// Execute request
 			resp, err := wrappedHandler.Handle(context.Background(), req)
-			
+
 			// Verify response
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
-			
+
 			if resp == nil {
 				t.Error("Expected response, got nil")
 			}
-			
+
 			// Verify handler was called
 			if mockHandler.CallCount() != 1 {
 				t.Errorf("Expected 1 call to handler, got %d", mockHandler.CallCount())
@@ -232,7 +232,7 @@ func TestLoggingMiddleware(t *testing.T) {
 func TestAuthenticationMiddleware(t *testing.T) {
 	// Create test OAuth provider
 	provider := NewMemoryOAuthProvider()
-	
+
 	// Register test client
 	client, err := provider.RegisterClient(context.Background(), &OAuthClientInfo{
 		ClientID:     "test-client",
@@ -242,7 +242,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to register client: %v", err)
 	}
-	
+
 	// Create access token
 	authCode := &AuthorizationCode{
 		Code:      "test-code",
@@ -250,18 +250,18 @@ func TestAuthenticationMiddleware(t *testing.T) {
 		Scopes:    []string{"read", "write"},
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
-	
+
 	token, err := provider.CreateAccessToken(context.Background(), authCode)
 	if err != nil {
 		t.Fatalf("Failed to create access token: %v", err)
 	}
-	
+
 	tests := []struct {
-		name           string
-		method         string
-		token          string
-		expectError    bool
-		skipAuth       bool
+		name        string
+		method      string
+		token       string
+		expectError bool
+		skipAuth    bool
 	}{
 		{
 			name:        "valid token",
@@ -289,7 +289,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 			skipAuth:    true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create middleware
@@ -297,13 +297,13 @@ func TestAuthenticationMiddleware(t *testing.T) {
 				Provider: provider,
 			}
 			middleware := NewAuthenticationMiddleware(config)
-			
+
 			// Create mock handler
 			mockHandler := NewMockHandler()
-			
+
 			// Apply middleware
 			wrappedHandler := middleware.Apply(mockHandler)
-			
+
 			// Create request with auth context
 			req := MCPRequest(NewMockRequest(tt.method, nil))
 			ctx := req.GetContext()
@@ -311,10 +311,10 @@ func TestAuthenticationMiddleware(t *testing.T) {
 				ctx = context.WithValue(ctx, "Authorization", "Bearer "+tt.token)
 			}
 			req = req.WithContext(ctx)
-			
+
 			// Execute request
 			resp, err := wrappedHandler.Handle(ctx, req)
-			
+
 			// Verify results
 			if tt.expectError {
 				if err == nil && (resp == nil || !resp.IsError()) {
@@ -328,13 +328,13 @@ func TestAuthenticationMiddleware(t *testing.T) {
 					t.Errorf("Expected successful response, got error: %v", resp.GetError())
 				}
 			}
-			
+
 			// Verify handler was called for successful auth or skip auth
 			expectedCalls := 0
 			if !tt.expectError || tt.skipAuth {
 				expectedCalls = 1
 			}
-			
+
 			if mockHandler.CallCount() != expectedCalls {
 				t.Errorf("Expected %d calls to handler, got %d", expectedCalls, mockHandler.CallCount())
 			}
@@ -369,29 +369,29 @@ func TestRateLimitMiddleware(t *testing.T) {
 			expectBlocked: 2, // Should allow 5 burst + 0 (no time passed) = 5, block 2
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create middleware
 			middleware := NewRateLimitMiddleware(tt.config)
-			
+
 			// Create mock handler
 			mockHandler := NewMockHandler()
-			
+
 			// Apply middleware
 			wrappedHandler := middleware.Apply(mockHandler)
-			
+
 			// Make requests rapidly
 			blocked := 0
 			for i := 0; i < tt.requestCount; i++ {
 				req := NewMockRequest("test/method", nil)
 				resp, err := wrappedHandler.Handle(context.Background(), req)
-				
+
 				if err != nil || (resp != nil && resp.IsError()) {
 					blocked++
 				}
 			}
-			
+
 			// Allow some tolerance in rate limiting due to timing
 			tolerance := 2
 			if blocked < tt.expectBlocked-tolerance || blocked > tt.expectBlocked+tolerance {
@@ -403,43 +403,43 @@ func TestRateLimitMiddleware(t *testing.T) {
 
 func TestTimeoutMiddleware(t *testing.T) {
 	tests := []struct {
-		name           string
-		timeout        time.Duration
-		handlerDelay   time.Duration
-		expectTimeout  bool
+		name          string
+		timeout       time.Duration
+		handlerDelay  time.Duration
+		expectTimeout bool
 	}{
 		{
-			name:           "request completes within timeout",
-			timeout:        100 * time.Millisecond,
-			handlerDelay:   50 * time.Millisecond,
-			expectTimeout:  false,
+			name:          "request completes within timeout",
+			timeout:       100 * time.Millisecond,
+			handlerDelay:  50 * time.Millisecond,
+			expectTimeout: false,
 		},
 		{
-			name:           "request times out",
-			timeout:        50 * time.Millisecond,
-			handlerDelay:   100 * time.Millisecond,
-			expectTimeout:  true,
+			name:          "request times out",
+			timeout:       50 * time.Millisecond,
+			handlerDelay:  100 * time.Millisecond,
+			expectTimeout: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create middleware
 			middleware := NewTimeoutMiddleware(tt.timeout)
-			
+
 			// Create mock handler with delay
 			mockHandler := NewMockHandler()
 			mockHandler.SetDelay(tt.handlerDelay)
-			
+
 			// Apply middleware
 			wrappedHandler := middleware.Apply(mockHandler)
-			
+
 			// Execute request
 			req := NewMockRequest("test/method", nil)
 			start := time.Now()
 			resp, err := wrappedHandler.Handle(context.Background(), req)
 			duration := time.Since(start)
-			
+
 			// Verify timeout behavior
 			if tt.expectTimeout {
 				if duration >= tt.handlerDelay {
@@ -468,8 +468,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 		includeStack bool
 	}{
 		{
-			name:         "no panic",
-			shouldPanic:  false,
+			name:        "no panic",
+			shouldPanic: false,
 		},
 		{
 			name:         "panic with string",
@@ -484,12 +484,12 @@ func TestRecoveryMiddleware(t *testing.T) {
 			includeStack: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create middleware
 			middleware := NewRecoveryMiddleware(nil, tt.includeStack)
-			
+
 			// Create panicking handler
 			panicHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 				if tt.shouldPanic {
@@ -497,16 +497,16 @@ func TestRecoveryMiddleware(t *testing.T) {
 				}
 				return &SuccessResponseImpl{Result: "success"}, nil
 			})
-			
+
 			// Apply middleware
 			wrappedHandler := middleware.Apply(panicHandler)
-			
+
 			// Execute request
 			req := NewMockRequest("test/method", nil)
-			
+
 			// This should not panic, even if the handler panics
 			resp, err := wrappedHandler.Handle(context.Background(), req)
-			
+
 			if tt.shouldPanic {
 				// Should have recovered and returned error response
 				if resp == nil || !resp.IsError() {
@@ -531,23 +531,23 @@ func TestRecoveryMiddleware(t *testing.T) {
 func TestMetricsMiddleware(t *testing.T) {
 	// Create mock metrics registry
 	registry := &InMemoryMetricsRegistry{}
-	
+
 	// Create middleware
 	middleware := NewMetricsMiddleware(registry)
-	
+
 	// Create mock handler
 	mockHandler := NewMockHandler()
-	
+
 	// Apply middleware
 	wrappedHandler := middleware.Apply(mockHandler)
-	
+
 	// Execute some requests
 	methods := []string{"test/method1", "test/method2", "test/method1"}
 	for _, method := range methods {
 		req := NewMockRequest(method, nil)
 		wrappedHandler.Handle(context.Background(), req)
 	}
-	
+
 	// Verify metrics were recorded
 	// Note: This is a basic test - in practice you'd check specific metrics
 	if registry.metrics == nil || len(registry.metrics) == 0 {
@@ -562,7 +562,7 @@ func TestMiddlewareChainOrdering(t *testing.T) {
 	// Create middleware that records execution order
 	var executionOrder []string
 	var mu sync.Mutex
-	
+
 	recordingMiddleware := func(name string) Middleware {
 		return &TestMiddleware{
 			name:     name,
@@ -579,7 +579,7 @@ func TestMiddlewareChainOrdering(t *testing.T) {
 			},
 		}
 	}
-	
+
 	// Create chain with middleware in mixed order
 	chain := &MiddlewareChain{
 		middlewares: []Middleware{
@@ -588,28 +588,28 @@ func TestMiddlewareChainOrdering(t *testing.T) {
 			recordingMiddleware("third"),
 		},
 	}
-	
+
 	// Create mock handler
 	mockHandler := NewMockHandler()
-	
+
 	// Apply chain
 	wrappedHandler := chain.Apply(mockHandler)
-	
+
 	// Execute request
 	req := NewMockRequest("test/method", nil)
 	wrappedHandler.Handle(context.Background(), req)
-	
+
 	// Verify execution order (should be by priority: first, second, third)
 	expectedOrder := []string{
 		"first:before", "second:before", "third:before",
 		"third:after", "second:after", "first:after",
 	}
-	
+
 	mu.Lock()
 	if len(executionOrder) != len(expectedOrder) {
 		t.Errorf("Expected %d execution steps, got %d: %v", len(expectedOrder), len(executionOrder), executionOrder)
 	}
-	
+
 	// Check that higher priority middleware execute first
 	if len(executionOrder) >= 3 {
 		if !strings.Contains(executionOrder[0], "first") {
@@ -632,13 +632,13 @@ func (m *TestMiddleware) Apply(next MCPHandler) MCPHandler {
 		if m.beforeFunc != nil {
 			m.beforeFunc()
 		}
-		
+
 		resp, err := next.Handle(ctx, req)
-		
+
 		if m.afterFunc != nil {
 			m.afterFunc()
 		}
-		
+
 		return resp, err
 	})
 }
@@ -677,7 +677,7 @@ func (f *TestLoggingFactory) Description() string {
 
 func TestMiddlewareRegistry(t *testing.T) {
 	registry := NewMiddlewareRegistry(nil)
-	
+
 	// Create a test factory with unique name to avoid conflicts
 	testFactoryName := "test-logging-" + t.Name()
 	testFactory := &TestLoggingFactory{name: testFactoryName}
@@ -685,13 +685,13 @@ func TestMiddlewareRegistry(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to register factory: %v", err)
 	}
-	
+
 	// Test duplicate registration
 	err = registry.RegisterFactory(testFactory)
 	if err == nil {
 		t.Error("Expected error for duplicate factory registration")
 	}
-	
+
 	// Test factory retrieval
 	retrieved, exists := registry.GetFactory(testFactoryName)
 	if !exists {
@@ -700,7 +700,7 @@ func TestMiddlewareRegistry(t *testing.T) {
 	if retrieved.Name() != testFactory.Name() {
 		t.Error("Retrieved factory should be the same instance")
 	}
-	
+
 	// Test middleware creation
 	config := LoggingConfig{Level: slog.LevelInfo}
 	middleware, err := registry.CreateMiddleware(testFactoryName, config)
@@ -710,7 +710,7 @@ func TestMiddlewareRegistry(t *testing.T) {
 	if middleware == nil {
 		t.Error("Created middleware should not be nil")
 	}
-	
+
 	// Test middleware retrieval
 	retrieved2, exists := registry.GetMiddleware(testFactoryName)
 	if !exists {
@@ -727,7 +727,7 @@ func TestMiddlewareRegistry(t *testing.T) {
 func TestEnhancedServerMiddleware(t *testing.T) {
 	// Create enhanced server
 	server := NewEnhancedServer()
-	
+
 	// Configure middleware
 	config := &ServerMiddlewareConfig{
 		GlobalConfig: &MiddlewareConfig{
@@ -740,12 +740,12 @@ func TestEnhancedServerMiddleware(t *testing.T) {
 			},
 		},
 	}
-	
+
 	err := server.SetMiddlewareConfig(config)
 	if err != nil {
 		t.Errorf("Failed to set middleware config: %v", err)
 	}
-	
+
 	// Test that middleware is applied
 	// Note: This is a basic integration test
 	// In practice, you'd test the full request flow
@@ -764,15 +764,15 @@ func BenchmarkMiddlewareOverhead(b *testing.B) {
 		NewRecoveryMiddleware(nil, false),
 		NewMetricsMiddleware(&InMemoryMetricsRegistry{}),
 	}
-	
+
 	// Apply all middleware
 	handler := MCPHandler(NewMockHandler())
 	for _, middleware := range middlewares {
 		handler = middleware.Apply(handler)
 	}
-	
+
 	req := NewMockRequest("test/method", map[string]string{"key": "value"})
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		handler.Handle(context.Background(), req)
@@ -788,12 +788,12 @@ func BenchmarkMiddlewareChain(b *testing.B) {
 			NewMetricsMiddleware(&InMemoryMetricsRegistry{}),
 		},
 	}
-	
+
 	mockHandler := NewMockHandler()
 	handler := chain.Apply(mockHandler)
-	
+
 	req := NewMockRequest("test/method", map[string]string{"key": "value"})
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		handler.Handle(context.Background(), req)
@@ -809,22 +809,22 @@ func TestMiddlewareConcurrency(t *testing.T) {
 		RequestsPerSecond: 1000,
 		BurstSize:         100,
 	})
-	
+
 	mockHandler := NewMockHandler()
 	wrappedHandler := middleware.Apply(mockHandler)
-	
+
 	// Run concurrent requests
 	const numGoroutines = 100
 	const requestsPerGoroutine = 10
-	
+
 	var wg sync.WaitGroup
 	errors := make(chan error, numGoroutines*requestsPerGoroutine)
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
+
 			for j := 0; j < requestsPerGoroutine; j++ {
 				req := NewMockRequest(fmt.Sprintf("test/method/%d/%d", id, j), nil)
 				_, err := wrappedHandler.Handle(context.Background(), req)
@@ -834,10 +834,10 @@ func TestMiddlewareConcurrency(t *testing.T) {
 			}
 		}(i)
 	}
-	
+
 	wg.Wait()
 	close(errors)
-	
+
 	// Check for errors
 	errorCount := 0
 	for err := range errors {
@@ -846,7 +846,7 @@ func TestMiddlewareConcurrency(t *testing.T) {
 			t.Errorf("Concurrent request failed: %v", err)
 		}
 	}
-	
+
 	if errorCount > 0 {
 		t.Errorf("Found %d errors in concurrent execution", errorCount)
 	}

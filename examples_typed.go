@@ -51,7 +51,7 @@ type SearchResponse struct {
 // ExampleTypedToolServer demonstrates creating a server with type-safe tools
 func ExampleTypedToolServer() {
 	// Create a new server
-	server := NewServer("math-server", "1.0.0", 
+	server := NewServer("math-server", "1.0.0",
 		WithServerName("Enhanced Math Server"),
 		WithServerInstructions("A demonstration of type-safe MCP tools"))
 
@@ -100,8 +100,8 @@ func ExampleTypedToolServer() {
 			var results []UserData
 			for _, user := range users {
 				// Simple search logic
-				if containsIgnoreCase(user.Name, req.Query) || 
-				   containsIgnoreCase(user.Email, req.Query) {
+				if containsIgnoreCase(user.Name, req.Query) ||
+					containsIgnoreCase(user.Email, req.Query) {
 					// Apply filters
 					matches := true
 					for key, value := range req.Filters {
@@ -213,19 +213,19 @@ func ExampleHandlerChainWithValidation() {
 		validOps := map[string]bool{
 			"add": true, "subtract": true, "multiply": true, "divide": true, "power": true,
 		}
-		
+
 		if !validOps[req.Operation] {
 			return fmt.Errorf("invalid operation: %s", req.Operation)
 		}
-		
+
 		if req.Operation == "divide" && req.B == 0 {
 			return fmt.Errorf("division by zero not allowed")
 		}
-		
+
 		if req.Operation == "power" && req.B < 0 {
 			return fmt.Errorf("negative exponents not supported")
 		}
-		
+
 		return nil
 	})
 
@@ -256,7 +256,7 @@ func ExampleHandlerChainWithValidation() {
 
 	// Test the chain
 	ctx := context.Background()
-	
+
 	// Valid request
 	validReq := MathOperation{Operation: "multiply", A: 6, B: 7}
 	result, err := chain.Handle(ctx, validReq)
@@ -371,15 +371,15 @@ func ExampleBackwardCompatibility() {
 // Helper functions for the examples
 
 func containsIgnoreCase(str, substr string) bool {
-	return len(str) >= len(substr) && 
-		   len(substr) > 0 && 
-		   containsIgnoreCaseImpl(str, substr)
+	return len(str) >= len(substr) &&
+		len(substr) > 0 &&
+		containsIgnoreCaseImpl(str, substr)
 }
 
 func containsIgnoreCaseImpl(str, substr string) bool {
 	str = toLower(str)
 	substr = toLower(substr)
-	
+
 	for i := 0; i <= len(str)-len(substr); i++ {
 		if str[i:i+len(substr)] == substr {
 			return true

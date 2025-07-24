@@ -217,21 +217,21 @@ type MCPScriptEngine struct {
 // NewMCPScriptEngine creates a new script engine with MCP commands.
 func NewMCPScriptEngine() *MCPScriptEngine {
 	engine := script.NewEngine()
-	
+
 	// Add MCP commands
 	engine.Cmds["mcp-replay"] = mcpReplayCmd
 	engine.Cmds["mcp-spy"] = mcpSpyCmd
 	engine.Cmds["mcp-start"] = mcpStartCmd
 	engine.Cmds["mcp-test"] = mcpTestCmd
 	engine.Cmds["mcp-verify"] = mcpVerifyCmd
-	
+
 	return &MCPScriptEngine{engine: engine}
 }
 
 // Test runs script tests with MCP commands configured.
 func (e *MCPScriptEngine) Test(t *testing.T, pattern string) {
 	t.Helper()
-	scripttest.Test(t, 
+	scripttest.Test(t,
 		context.Background(),
 		e.engine,
 		getTestEnvironment(),
@@ -242,13 +242,13 @@ func (e *MCPScriptEngine) Test(t *testing.T, pattern string) {
 func getTestEnvironment() []string {
 	defaultInheritEnv := []string{"USER", "HOME", "PATH"}
 	env := make(map[string]string)
-	
+
 	for _, key := range defaultInheritEnv {
 		if val, ok := os.LookupEnv(key); ok {
 			env[key] = val
 		}
 	}
-	
+
 	if inherit := os.Getenv("MCPSCRIPTTEST_ENV_INHERIT"); inherit != "" {
 		for _, key := range strings.Split(inherit, ",") {
 			key = strings.TrimSpace(key)
@@ -257,7 +257,7 @@ func getTestEnvironment() []string {
 			}
 		}
 	}
-	
+
 	var result []string
 	for k, v := range env {
 		result = append(result, k+"="+v)

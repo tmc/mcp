@@ -11,11 +11,11 @@ import (
 
 // PooledConnection represents a connection in the pool with metadata
 type PooledConnection struct {
-	conn       io.ReadWriteCloser
-	lastUsed   time.Time
-	inUse      bool
-	healthy    bool
-	createdAt  time.Time
+	conn      io.ReadWriteCloser
+	lastUsed  time.Time
+	inUse     bool
+	healthy   bool
+	createdAt time.Time
 }
 
 // ConnectionPool manages a pool of reusable connections
@@ -112,7 +112,7 @@ func (p *ConnectionPool) Get(ctx context.Context) (io.ReadWriteCloser, error) {
 		p.connections = append(p.connections, pooledConn)
 		p.activeCount++
 
-		p.logger.Debug("Created new pooled connection", 
+		p.logger.Debug("Created new pooled connection",
 			"total_connections", len(p.connections),
 			"active_count", p.activeCount)
 
@@ -258,8 +258,8 @@ func (p *ConnectionPool) cleanup() {
 	p.connections = newConnections
 
 	if closedCount > 0 {
-		p.logger.Debug("Cleaned up idle connections", 
-			"closed_count", closedCount, 
+		p.logger.Debug("Cleaned up idle connections",
+			"closed_count", closedCount,
 			"remaining_connections", len(p.connections))
 	}
 }
@@ -269,30 +269,30 @@ func (p *ConnectionPool) isConnectionHealthy(conn *PooledConnection) bool {
 	if conn.conn == nil {
 		return false
 	}
-	
+
 	// Check if connection has been idle too long
 	if time.Since(conn.lastUsed) > p.config.MaxIdleTime {
 		p.logger.Debug("Connection idle too long", "idle_duration", time.Since(conn.lastUsed))
 		return false
 	}
-	
+
 	// Check if connection is too old
 	if time.Since(conn.createdAt) > p.config.MaxConnectionAge {
 		p.logger.Debug("Connection too old", "age", time.Since(conn.createdAt))
 		return false
 	}
-	
+
 	// For connections that support ping, send a ping
 	if pinger, ok := conn.conn.(ConnectionPinger); ok {
 		ctx, cancel := context.WithTimeout(context.Background(), p.config.HealthCheckTimeout)
 		defer cancel()
-		
+
 		if err := pinger.Ping(ctx); err != nil {
 			p.logger.Debug("Connection ping failed", "error", err)
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -304,7 +304,7 @@ type ConnectionPinger interface {
 // GracefulShutdown performs a graceful shutdown of the connection pool
 func (p *ConnectionPool) GracefulShutdown(ctx context.Context) error {
 	p.logger.Info("Starting graceful shutdown of connection pool")
-	
+
 	// Set a deadline for shutdown
 	deadline, hasDeadline := ctx.Deadline()
 	if !hasDeadline {
@@ -314,11 +314,11 @@ func (p *ConnectionPool) GracefulShutdown(ctx context.Context) error {
 		defer cancel()
 		deadline, _ = ctx.Deadline()
 	}
-	
+
 	// Wait for active connections to become idle
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -329,18 +329,18 @@ func (p *ConnectionPool) GracefulShutdown(ctx context.Context) error {
 			activeCount := p.activeCount
 			closed := p.closed
 			p.mu.RUnlock()
-			
+
 			if closed {
 				return nil
 			}
-			
+
 			if activeCount == 0 {
 				p.logger.Info("All connections idle, proceeding with shutdown")
 				return p.Close()
 			}
-			
+
 			remaining := time.Until(deadline)
-			p.logger.Debug("Waiting for connections to become idle", 
+			p.logger.Debug("Waiting for connections to become idle",
 				"active_connections", activeCount,
 				"remaining_time", remaining)
 		}

@@ -1,0 +1,516 @@
+package {{.Package}}_test
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+	"time"
+	
+	"github.com/tmc/mcp"
+	"{{.Config.Go.ModulePath}}"
+)
+
+// Test client creation and initialization
+func TestClientCreation(t *testing.T) {
+	// Create a mock transport for testing
+	transport := &mockTransport{}
+	
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	if client == nil {
+		t.Fatal("Client is nil")
+	}
+}
+
+func TestClientInitialization(t *testing.T) {
+	transport := &mockTransport{}
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+}
+
+{{range .Tools}}
+// Test {{.Name}} tool
+func Test{{.Name | toPascalCase}}(t *testing.T) {
+	transport := &mockTransport{
+		responses: map[string]interface{}{
+			"{{.Name}}": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": `{"result": "success"}`,
+					},
+				},
+			},
+		},
+	}
+	
+	client, err := {{$.Package}}.New{{$.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	// Test with valid input
+	input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+		{{range .InputSchema.properties}}
+		// TODO: Set test values for {{.}}
+		{{end}}
+	}
+	
+	result, err := client.{{.Name | toPascalCase}}(ctx, input)
+	if err != nil {
+		t.Fatalf("{{.Name}} failed: %v", err)
+	}
+	
+	if result == nil {
+		t.Fatal("Result is nil")
+	}
+	
+	if result.IsError {
+		t.Fatalf("Tool returned error: %v", result.Content)
+	}
+	
+	// Verify result structure
+	if len(result.Content) == 0 {
+		t.Fatal("Result content is empty")
+	}
+}
+
+func Test{{.Name | toPascalCase}}WithInvalidInput(t *testing.T) {
+	transport := &mockTransport{
+		responses: map[string]interface{}{
+			"{{.Name}}": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": "Invalid input",
+					},
+				},
+				"isError": true,
+			},
+		},
+	}
+	
+	client, err := {{$.Package}}.New{{$.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	// Test with invalid input
+	input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+		// TODO: Set invalid test values
+	}
+	
+	result, err := client.{{.Name | toPascalCase}}(ctx, input)
+	if err != nil {
+		t.Fatalf("{{.Name}} failed: %v", err)
+	}
+	
+	if !result.IsError {
+		t.Fatal("Expected error result")
+	}
+}
+
+func Test{{.Name | toPascalCase}}Timeout(t *testing.T) {
+	transport := &mockTransport{
+		delay: 2 * time.Second,
+		responses: map[string]interface{}{
+			"{{.Name}}": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": `{"result": "success"}`,
+					},
+				},
+			},
+		},
+	}
+	
+	client, err := {{$.Package}}.New{{$.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+		{{range .InputSchema.properties}}
+		// TODO: Set test values for {{.}}
+		{{end}}
+	}
+	
+	_, err = client.{{.Name | toPascalCase}}(ctx, input)
+	if err == nil {
+		t.Fatal("Expected timeout error")
+	}
+	
+	if !{{$.Package}}.IsTimeoutError(err) {
+		t.Fatalf("Expected timeout error, got: %v", err)
+	}
+}
+
+{{end}}
+
+// Test server creation and tool registration
+func TestServerCreation(t *testing.T) {
+	server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+	if server == nil {
+		t.Fatal("Server is nil")
+	}
+	
+	stats := server.GetStats()
+	if stats == nil {
+		t.Fatal("Stats is nil")
+	}
+	
+	expectedTools := {{len .Tools}}
+	if toolsCount, ok := stats["tools_count"].(int); !ok || toolsCount != expectedTools {
+		t.Fatalf("Expected %d tools, got %v", expectedTools, stats["tools_count"])
+	}
+}
+
+func TestServerHealthCheck(t *testing.T) {
+	server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+	ctx := context.Background()
+	
+	err := server.HealthCheck(ctx)
+	if err != nil {
+		t.Fatalf("Health check failed: %v", err)
+	}
+}
+
+// Test client health check
+func TestClientHealthCheck(t *testing.T) {
+	transport := &mockTransport{
+		responses: map[string]interface{}{
+			"list_tools": map[string]interface{}{
+				"tools": []interface{}{
+					{{range .Tools}}
+					map[string]interface{}{
+						"name":        "{{.Name}}",
+						"description": "{{.Description}}",
+					},
+					{{end}}
+				},
+			},
+		},
+	}
+	
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	err = client.HealthCheck(ctx)
+	if err != nil {
+		t.Fatalf("Health check failed: %v", err)
+	}
+}
+
+// Test client retry functionality
+func TestClientRetry(t *testing.T) {
+	transport := &mockTransport{
+		failCount: 2, // Fail first 2 attempts
+		responses: map[string]interface{}{
+			"list_tools": map[string]interface{}{
+				"tools": []interface{}{},
+			},
+		},
+	}
+	
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	// Test retry functionality
+	err = client.ExecuteWithRetry(ctx, func() error {
+		return client.Ping(ctx)
+	}, 3)
+	
+	if err != nil {
+		t.Fatalf("Retry failed: %v", err)
+	}
+}
+
+// Test batch execution
+func TestBatchExecution(t *testing.T) {
+	transport := &mockTransport{
+		responses: map[string]interface{}{
+			"tool1": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": `{"result": "success1"}`,
+					},
+				},
+			},
+			"tool2": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": `{"result": "success2"}`,
+					},
+				},
+			},
+		},
+	}
+	
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	requests := []{{.Package}}.BatchRequest{
+		{ToolName: "tool1", Args: map[string]interface{}{"param": "value1"}},
+		{ToolName: "tool2", Args: map[string]interface{}{"param": "value2"}},
+	}
+	
+	results, err := client.BatchExecute(ctx, requests)
+	if err != nil {
+		t.Fatalf("Batch execution failed: %v", err)
+	}
+	
+	if len(results) != len(requests) {
+		t.Fatalf("Expected %d results, got %d", len(requests), len(results))
+	}
+}
+
+// Benchmark tests
+{{range .Tools}}
+func Benchmark{{.Name | toPascalCase}}(b *testing.B) {
+	transport := &mockTransport{
+		responses: map[string]interface{}{
+			"{{.Name}}": map[string]interface{}{
+				"content": []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": `{"result": "success"}`,
+					},
+				},
+			},
+		},
+	}
+	
+	client, err := {{$.Package}}.New{{$.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		b.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "benchmark-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		b.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+		{{range .InputSchema.properties}}
+		// TODO: Set benchmark values for {{.}}
+		{{end}}
+	}
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := client.{{.Name | toPascalCase}}(ctx, input)
+		if err != nil {
+			b.Fatalf("{{.Name}} failed: %v", err)
+		}
+	}
+}
+
+{{end}}
+
+// Mock transport for testing
+type mockTransport struct {
+	responses map[string]interface{}
+	delay     time.Duration
+	failCount int
+	callCount int
+}
+
+func (m *mockTransport) Call(method string, params interface{}) (interface{}, error) {
+	m.callCount++
+	
+	if m.failCount > 0 && m.callCount <= m.failCount {
+		return nil, fmt.Errorf("mock transport failure")
+	}
+	
+	if m.delay > 0 {
+		time.Sleep(m.delay)
+	}
+	
+	if response, exists := m.responses[method]; exists {
+		return response, nil
+	}
+	
+	return map[string]interface{}{
+		"result": "mock response",
+	}, nil
+}
+
+func (m *mockTransport) Close() error {
+	return nil
+}
+
+// Test helpers
+
+func createTestClient(t *testing.T, responses map[string]interface{}) *{{.Package}}.{{.Package | toPascalCase}}Client {
+	transport := &mockTransport{responses: responses}
+	
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		t.Fatalf("Failed to initialize client: %v", err)
+	}
+	
+	return client
+}
+
+func createTestServer(t *testing.T) *{{.Package}}.{{.Package | toPascalCase}}Server {
+	server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+	if server == nil {
+		t.Fatal("Server is nil")
+	}
+	
+	return server
+}
+
+// Integration tests
+
+func TestIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+	
+	// TODO: Implement integration tests with real server
+	t.Skip("Integration tests not implemented")
+}
+
+// Example tests
+
+func ExampleNewClient() {
+	transport := mcp.StdioTransport()
+	client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+	if err != nil {
+		panic(err)
+	}
+	
+	ctx := context.Background()
+	clientInfo := mcp.Implementation{
+		Name:    "example-client",
+		Version: "1.0.0",
+	}
+	
+	err = client.Initialize(ctx, clientInfo)
+	if err != nil {
+		panic(err)
+	}
+	
+	// Use the client...
+	defer client.Close()
+}
+
+func ExampleNewServer() {
+	server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+	
+	ctx := context.Background()
+	if err := server.ServeStdio(); err != nil {
+		panic(err)
+	}
+}

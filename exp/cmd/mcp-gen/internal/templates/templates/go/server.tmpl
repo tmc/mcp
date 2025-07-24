@@ -1,0 +1,274 @@
+package {{.Package}}
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	
+	"github.com/tmc/mcp"
+)
+
+const (
+	ServerName    = "{{.Server.Name | toLower}}"
+	ServerVersion = "1.0.0"
+)
+
+// {{.Server.Name}} provides the MCP server implementation
+type {{.Server.Name}} struct {
+	server *mcp.Server
+}
+
+// New{{.Server.Name}} creates a new {{.Server.Name}} instance
+func New{{.Server.Name}}() *{{.Server.Name}} {
+	server := mcp.NewServer(ServerName, ServerVersion,
+		mcp.WithServerInstructions("{{.Server.Description}}"),
+	)
+	
+	s := &{{.Server.Name}}{
+		server: server,
+	}
+	
+	s.registerTools()
+	return s
+}
+
+// Serve starts the MCP server
+func (s *{{.Server.Name}}) Serve(ctx context.Context, transport mcp.Transport) error {
+	return s.server.Serve(ctx, transport)
+}
+
+// ServeStdio starts the MCP server with stdio transport
+func (s *{{.Server.Name}}) ServeStdio() error {
+	// Redirect logs to stderr to keep stdout clean for the protocol
+	log.SetOutput(os.Stderr)
+	log.Println("Starting MCP Server...")
+	
+	// Create a context that can be canceled
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	
+	// Serve via stdio
+	if err := s.server.Serve(ctx, nil); err != nil {
+		if err != context.Canceled {
+			return fmt.Errorf("server error: %w", err)
+		}
+		log.Println("Server terminated.")
+	}
+	
+	return nil
+}
+
+// registerTools registers all MCP tools with the server
+func (s *{{.Server.Name}}) registerTools() {
+	{{range .Tools}}
+	s.register{{.Name | toPascalCase}}Tool()
+	{{end}}
+}
+
+{{range .Tools}}
+// {{.Name | toPascalCase}}Input represents the input for the {{.Name}} tool
+type {{.Name | toPascalCase}}Input struct {
+	{{range .InputSchema.properties}}
+	{{. | toGoName}} {{. | jsonToGoType}} `json:"{{.}}"{{if not (. | isRequired)}},omitempty{{end}}`
+	{{end}}
+}
+
+// {{.Name | toPascalCase}}Output represents the output for the {{.Name}} tool
+type {{.Name | toPascalCase}}Output struct {
+	{{if .OutputSchema}}
+	{{range .OutputSchema.properties}}
+	{{. | toGoName}} {{. | jsonToGoType}} `json:"{{.}}"{{if not (. | isRequired)}},omitempty{{end}}`
+	{{end}}
+	{{else}}
+	Result interface{} `json:"result"`
+	{{end}}
+}
+
+// register{{.Name | toPascalCase}}Tool registers the {{.Name}} tool
+func (s *{{.Server.Name}}) register{{.Name | toPascalCase}}Tool() {
+	tool := mcp.Tool{
+		Name:        "{{.Name}}",
+		Description: "{{.Description}}",
+		InputSchema: json.RawMessage(`{{.InputSchema | json}}`),
+	}
+	
+	s.server.RegisterTool(tool, s.handle{{.Name | toPascalCase}})
+}
+
+// handle{{.Name | toPascalCase}} handles the {{.Name}} tool execution
+func (s *{{.Server.Name}}) handle{{.Name | toPascalCase}}(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Parse input
+	var input {{.Name | toPascalCase}}Input
+	if len(req.Arguments) > 0 {
+		if err := json.Unmarshal(req.Arguments, &input); err != nil {
+			return &mcp.CallToolResult{
+				IsError: true,
+				Content: []interface{}{
+					map[string]interface{}{
+						"type": "text",
+						"text": fmt.Sprintf("Invalid input for tool {{.Name}}: %v", err),
+					},
+				},
+			}, nil
+		}
+	}
+	
+	// Execute tool logic
+	output, err := s.execute{{.Name | toPascalCase}}(ctx, &input)
+	if err != nil {
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("Tool {{.Name}} error: %v", err),
+				},
+			},
+		}, nil
+	}
+	
+	// Marshal output
+	outputJSON, err := json.Marshal(output)
+	if err != nil {
+		return &mcp.CallToolResult{
+			IsError: true,
+			Content: []interface{}{
+				map[string]interface{}{
+					"type": "text",
+					"text": fmt.Sprintf("Failed to marshal output for tool {{.Name}}: %v", err),
+				},
+			},
+		}, nil
+	}
+	
+	return &mcp.CallToolResult{
+		Content: []interface{}{
+			map[string]interface{}{
+				"type": "text",
+				"text": string(outputJSON),
+			},
+		},
+	}, nil
+}
+
+// execute{{.Name | toPascalCase}} implements the business logic for the {{.Name}} tool
+func (s *{{.Server.Name}}) execute{{.Name | toPascalCase}}(ctx context.Context, input *{{.Name | toPascalCase}}Input) (*{{.Name | toPascalCase}}Output, error) {
+	// TODO: Implement the actual business logic for {{.Name}}
+	// This is a placeholder implementation
+	{{if .OutputSchema}}
+	return &{{.Name | toPascalCase}}Output{
+		// TODO: Set appropriate output fields
+	}, nil
+	{{else}}
+	return &{{.Name | toPascalCase}}Output{
+		Result: map[string]interface{}{
+			"message": "Tool {{.Name}} executed successfully",
+			"input":   input,
+		},
+	}, nil
+	{{end}}
+}
+
+{{end}}
+
+// GetServer returns the underlying MCP server for advanced usage
+func (s *{{.Server.Name}}) GetServer() *mcp.Server {
+	return s.server
+}
+
+// Health check and monitoring
+
+// HealthCheck performs a server health check
+func (s *{{.Server.Name}}) HealthCheck(ctx context.Context) error {
+	// Check if server is properly configured
+	if s.server == nil {
+		return fmt.Errorf("server not initialized")
+	}
+	
+	// Additional health checks can be implemented here
+	return nil
+}
+
+// GetStats returns server statistics
+func (s *{{.Server.Name}}) GetStats() map[string]interface{} {
+	return map[string]interface{}{
+		"server_name":    ServerName,
+		"server_version": ServerVersion,
+		"tools_count":    {{len .Tools}},
+		"tools": []string{
+			{{range .Tools}}"{{.Name}}",
+			{{end}}
+		},
+	}
+}
+
+// Middleware support
+
+// WithMiddleware adds middleware to the server
+func (s *{{.Server.Name}}) WithMiddleware(middleware ...mcp.Middleware) *{{.Server.Name}} {
+	// TODO: Implement middleware support when available in MCP library
+	return s
+}
+
+// Configuration
+
+// ServerConfig represents server configuration
+type ServerConfig struct {
+	LogLevel    string            `json:"log_level"`
+	Metrics     bool              `json:"metrics"`
+	Tracing     bool              `json:"tracing"`
+	CustomVars  map[string]string `json:"custom_vars"`
+}
+
+// LoadConfig loads server configuration
+func (s *{{.Server.Name}}) LoadConfig(configPath string) (*ServerConfig, error) {
+	// TODO: Implement configuration loading
+	return &ServerConfig{
+		LogLevel:   "info",
+		Metrics:    false,
+		Tracing:    false,
+		CustomVars: make(map[string]string),
+	}, nil
+}
+
+// ApplyConfig applies configuration to the server
+func (s *{{.Server.Name}}) ApplyConfig(config *ServerConfig) error {
+	// TODO: Implement configuration application
+	return nil
+}
+
+// Utility functions
+
+// validateInput validates tool input
+func validateInput(input interface{}) error {
+	// TODO: Implement input validation
+	return nil
+}
+
+// sanitizeOutput sanitizes tool output
+func sanitizeOutput(output interface{}) interface{} {
+	// TODO: Implement output sanitization
+	return output
+}
+
+// logToolExecution logs tool execution
+func logToolExecution(toolName string, input interface{}, output interface{}, err error) {
+	if err != nil {
+		log.Printf("Tool %s failed: %v", toolName, err)
+	} else {
+		log.Printf("Tool %s executed successfully", toolName)
+	}
+}
+
+// Main function for standalone server
+func main() {
+	server := New{{.Server.Name}}()
+	
+	if err := server.ServeStdio(); err != nil {
+		log.Fatalf("Server error: %v", err)
+	}
+}

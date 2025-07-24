@@ -1,0 +1,171 @@
+# MCP Documentation Generator Configuration
+
+# Source configuration
+sources:
+  # MCP server documentation
+  - type: server
+    command: ["go", "run", "./examples/servers/mcp-time-server"]
+    description: "Time server providing current time operations"
+    include: ["get_time", "format_time"]
+    exclude: ["internal_*"]
+    
+  - type: server
+    command: ["go", "run", "./examples/servers/mcp-echo-server"]
+    description: "Echo server for testing MCP functionality"
+    
+  # Go package documentation
+  - type: package
+    path: "./mcp"
+    description: "MCP Go client library"
+    include: ["*.go"]
+    exclude: ["*_test.go", "internal/*"]
+    
+  - type: package
+    path: "./modelcontextprotocol"
+    description: "Core MCP protocol types and definitions"
+    
+  # REST API documentation
+  - type: api
+    url: "http://localhost:8080"
+    description: "MCP REST API"
+    headers:
+      Authorization: "Bearer demo-token"
+    include: ["/api/v1/*"]
+    exclude: ["/api/v1/internal/*"]
+
+# Output configuration
+output:
+  directory: "./docs"
+  formats: ["html", "markdown", "json"]
+  assets: "./static"
+  templates: "./templates"
+  options:
+    html:
+      minify: true
+      inline_css: false
+    markdown:
+      toc: true
+      github_flavored: true
+    json:
+      pretty: true
+      indent: 2
+
+# Documentation settings
+documentation:
+  title: "MCP Documentation"
+  description: "Comprehensive Model Context Protocol implementation documentation"
+  version: "1.0.0"
+  author: "MCP Team"
+  base_url: "https://docs.mcp.dev"
+  logo: "/static/images/mcp-logo.png"
+  favicon: "/static/images/favicon.ico"
+  language: "en"
+  theme: "default"
+  
+  sidebar:
+    enabled: true
+    collapsible: true
+    sections: ["overview", "servers", "packages", "apis", "guides"]
+    order: ["overview", "quick-start", "servers", "packages", "apis", "guides", "reference"]
+    
+  navigation:
+    enabled: true
+    items:
+      - title: "Home"
+        url: "/"
+        icon: "home"
+      - title: "Quick Start"
+        url: "/quick-start"
+        icon: "rocket"
+      - title: "Servers"
+        url: "/servers"
+        icon: "server"
+        children:
+          - title: "Time Server"
+            url: "/servers/time-server"
+          - title: "Echo Server"
+            url: "/servers/echo-server"
+      - title: "Packages"
+        url: "/packages"
+        icon: "package"
+      - title: "APIs"
+        url: "/apis"
+        icon: "api"
+      - title: "Guides"
+        url: "/guides"
+        icon: "book"
+        children:
+          - title: "Getting Started"
+            url: "/guides/getting-started"
+          - title: "Best Practices"
+            url: "/guides/best-practices"
+          - title: "Troubleshooting"
+            url: "/guides/troubleshooting"
+      - title: "Reference"
+        url: "/reference"
+        icon: "reference"
+        
+  search:
+    enabled: true
+    provider: "local"
+    config:
+      index_content: true
+      search_fields: ["title", "content", "tags", "description"]
+      max_results: 20
+      highlight: true
+      
+  analytics:
+    enabled: false
+    provider: "google"
+    config:
+      tracking_id: "GA-XXXXXXXXX"
+      anonymize_ip: true
+      cookie_domain: "auto"
+      
+  social:
+    github: "tmc/mcp"
+    twitter: "@mcp_dev"
+    linkedin: "company/mcp"
+    email: "contact@mcp.dev"
+    
+  custom:
+    edit_page: "https://github.com/tmc/mcp/edit/main/docs"
+    report_issue: "https://github.com/tmc/mcp/issues/new"
+    changelog: "https://github.com/tmc/mcp/blob/main/CHANGELOG.md"
+
+# Template configuration
+templates:
+  directory: "./templates"
+  custom:
+    layout: "layout.html"
+    server: "server.html"
+    package: "package.html"
+    api: "api.html"
+    guide: "guide.html"
+  partials: ["header", "footer", "sidebar", "navigation", "search"]
+  helpers: ["markdown", "syntax-highlight", "toc-generator"]
+  
+# Version management
+versions:
+  enabled: true
+  current: "1.0.0"
+  available: ["1.0.0", "0.9.0", "0.8.0"]
+  directory: "./versions"
+  
+# Integration settings
+integration:
+  examples:
+    enabled: true
+    directory: "./examples"
+    languages: ["go", "python", "javascript", "typescript", "rust"]
+    interactive: true
+    
+  playground:
+    enabled: true
+    url: "https://playground.mcp.dev"
+    embed: true
+    
+  sdk:
+    enabled: true
+    languages: ["go", "python", "javascript", "typescript", "rust"]
+    generate: true

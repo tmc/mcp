@@ -1,0 +1,329 @@
+# {{.Config.Documentation.Title}}
+
+{{.Config.Documentation.Description}}
+
+**Version:** {{.Config.Documentation.Version}}  
+**Generated:** {{.GeneratedAt.Format "2006-01-02 15:04:05"}}
+
+## Overview
+
+This documentation provides comprehensive information about the MCP (Model Context Protocol) implementation, including server APIs, client libraries, and integration guides.
+
+### Statistics
+
+- **Servers:** {{len .Servers}}
+- **Packages:** {{len .Packages}}
+- **APIs:** {{len .APIs}}
+
+{{if .Servers}}
+## MCP Servers
+
+The following MCP servers are documented:
+
+{{range .Servers}}
+### {{.Name}}
+
+{{.Description}}
+
+- **Version:** {{.Version}}
+- **Transport:** {{.Transport}}
+- **Command:** `{{join .Command " "}}`
+
+#### Capabilities
+
+{{if .Capabilities.Tools}}
+- ✅ **Tools** ({{len .Tools}} available)
+{{else}}
+- ❌ **Tools**
+{{end}}
+{{if .Capabilities.Resources}}
+- ✅ **Resources** ({{len .Resources}} available)
+{{else}}
+- ❌ **Resources**
+{{end}}
+{{if .Capabilities.Prompts}}
+- ✅ **Prompts** ({{len .Prompts}} available)
+{{else}}
+- ❌ **Prompts**
+{{end}}
+{{if .Capabilities.Logging}}
+- ✅ **Logging**
+{{else}}
+- ❌ **Logging**
+{{end}}
+
+{{if .Tools}}
+#### Tools
+
+{{range .Tools}}
+##### {{.Name}}
+
+{{.Description}}
+
+{{if .InputSchema}}
+**Input Schema:**
+```json
+{{.InputSchema | toJSON}}
+```
+{{end}}
+
+{{if .Examples}}
+**Example Usage:**
+{{range .Examples}}
+```{{.Language}}
+{{.Code}}
+```
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{if .Resources}}
+#### Resources
+
+{{range .Resources}}
+##### {{.Name}}
+
+{{.Description}}
+
+- **URI:** `{{.URI}}`
+{{if .MimeType}}
+- **MIME Type:** `{{.MimeType}}`
+{{end}}
+
+{{if .Examples}}
+**Example Usage:**
+{{range .Examples}}
+```{{.Language}}
+{{.Code}}
+```
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{if .Prompts}}
+#### Prompts
+
+{{range .Prompts}}
+##### {{.Name}}
+
+{{.Description}}
+
+{{if .Arguments}}
+**Arguments:**
+{{range $key, $value := .Arguments}}
+- `{{$key}}`: {{$value}}
+{{end}}
+{{end}}
+
+{{if .Examples}}
+**Example Usage:**
+{{range .Examples}}
+```{{.Language}}
+{{.Code}}
+```
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{if .Packages}}
+## Go Packages
+
+The following Go packages are documented:
+
+{{range .Packages}}
+### {{.Name}}
+
+{{.Description}}
+
+```go
+import "{{.ImportPath}}"
+```
+
+{{if .Types}}
+#### Types
+
+{{range .Types}}
+##### {{.Name}}
+
+{{.Description}}
+
+{{if .Methods}}
+**Methods:**
+{{range .Methods}}
+- `{{.Name}}`: {{.Description}}
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{if .Functions}}
+#### Functions
+
+{{range .Functions}}
+##### {{.Name}}
+
+{{.Description}}
+
+```go
+{{.Signature}}
+```
+
+{{end}}
+{{end}}
+
+{{if .Variables}}
+#### Variables
+
+{{range .Variables}}
+##### {{.Name}}
+
+{{.Description}}
+
+```go
+var {{.Name}} {{.Type}}
+```
+
+{{end}}
+{{end}}
+
+{{if .Constants}}
+#### Constants
+
+{{range .Constants}}
+##### {{.Name}}
+
+{{.Description}}
+
+```go
+const {{.Name}} {{.Type}} = {{.Value}}
+```
+
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{if .APIs}}
+## REST APIs
+
+The following REST APIs are documented:
+
+{{range .APIs}}
+### {{.Name}}
+
+{{.Description}}
+
+**Base URL:** `{{.BaseURL}}`
+
+{{if .Endpoints}}
+#### Endpoints
+
+{{range .Endpoints}}
+##### {{.Method}} {{.Path}}
+
+{{.Summary}}
+
+{{if .Description}}
+{{.Description}}
+{{end}}
+
+{{if .Parameters}}
+**Parameters:**
+{{range .Parameters}}
+- `{{.Name}}` ({{.Type}}){{if .Optional}} *optional*{{end}}: {{.Description}}
+{{end}}
+{{end}}
+
+{{if .Examples}}
+**Example:**
+{{range .Examples}}
+```{{.Language}}
+{{.Code}}
+```
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+{{end}}
+{{end}}
+
+## Integration
+
+### Quick Start
+
+1. **Install the MCP client library:**
+   ```bash
+   go get github.com/tmc/mcp
+   ```
+
+2. **Connect to a server:**
+   ```go
+   client, err := mcp.NewClient(mcp.NewStdioTransport("your-server", "args..."))
+   if err != nil {
+       log.Fatal(err)
+   }
+   defer client.Close()
+   ```
+
+3. **Initialize the connection:**
+   ```go
+   _, err = client.Initialize(ctx, mcp.InitializeRequest{
+       ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+       ClientInfo: mcp.Implementation{
+           Name:    "your-client",
+           Version: "1.0.0",
+       },
+   })
+   ```
+
+### Examples
+
+{{if .Servers}}
+#### Server Examples
+
+{{range .Servers}}
+**{{.Name}}:**
+```bash
+{{join .Command " "}}
+```
+{{end}}
+{{end}}
+
+### Best Practices
+
+1. **Error Handling:** Always handle errors appropriately
+2. **Context Usage:** Use context for cancellation and timeouts
+3. **Resource Management:** Close clients and connections properly
+4. **Type Safety:** Use type-safe APIs where available
+
+### Support
+
+For support and questions:
+
+{{if .Config.Documentation.Social.GitHub}}
+- GitHub: [{{.Config.Documentation.Social.GitHub}}](https://github.com/{{.Config.Documentation.Social.GitHub}})
+{{end}}
+{{if .Config.Documentation.Social.Email}}
+- Email: {{.Config.Documentation.Social.Email}}
+{{end}}
+
+---
+
+{{if .Config.Documentation.Author}}
+*Documentation created by {{.Config.Documentation.Author}}*
+{{end}}
+
+*Generated by [mcp-docs](https://github.com/tmc/mcp) on {{.GeneratedAt.Format "2006-01-02 15:04:05"}}*

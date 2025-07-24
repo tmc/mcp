@@ -31,9 +31,16 @@ func NewMockServer() *MockServer {
 		prompts:         make(map[string]*mcp.Prompt),
 		requestHandlers: make(map[string]func(interface{}) (interface{}, error)),
 		capabilities: mcp.ServerCapabilities{
-			Tools:     &struct{ListChanged bool `json:"listChanged,omitempty"`}{},
-			Resources: &struct{Subscribe bool `json:"subscribe,omitempty"`; ListChanged bool `json:"listChanged,omitempty"`}{},
-			Prompts:   &struct{ListChanged bool `json:"listChanged,omitempty"`}{},
+			Tools: &struct {
+				ListChanged bool `json:"listChanged,omitempty"`
+			}{},
+			Resources: &struct {
+				Subscribe   bool `json:"subscribe,omitempty"`
+				ListChanged bool `json:"listChanged,omitempty"`
+			}{},
+			Prompts: &struct {
+				ListChanged bool `json:"listChanged,omitempty"`
+			}{},
 		},
 		serverInfo: mcp.Implementation{
 			Name:    "mock-server",
@@ -81,9 +88,9 @@ func (m *MockServer) SetRequestHandler(method string, handler func(interface{}) 
 func (m *MockServer) Initialize(ctx context.Context, req *mcp.InitializeRequest) (*mcp.InitializeResult, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.initialized = true
-	
+
 	return &mcp.InitializeResult{
 		ProtocolVersion: "2024-11-05",
 		Capabilities:    m.capabilities,
@@ -95,11 +102,11 @@ func (m *MockServer) Initialize(ctx context.Context, req *mcp.InitializeRequest)
 func (m *MockServer) ListTools(ctx context.Context) ([]*mcp.Tool, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if !m.initialized {
 		return nil, errors.New("server not initialized")
 	}
-	
+
 	tools := make([]*mcp.Tool, 0, len(m.tools))
 	for _, tool := range m.tools {
 		tools = append(tools, tool)
@@ -111,16 +118,16 @@ func (m *MockServer) ListTools(ctx context.Context) ([]*mcp.Tool, error) {
 func (m *MockServer) CallTool(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if !m.initialized {
 		return nil, errors.New("server not initialized")
 	}
-	
+
 	tool, exists := m.tools[req.Name]
 	if !exists {
 		return nil, errors.New("tool not found")
 	}
-	
+
 	// Check if there's a custom handler
 	if handler, exists := m.requestHandlers["tools/call"]; exists {
 		result, err := handler(req)
@@ -129,7 +136,7 @@ func (m *MockServer) CallTool(ctx context.Context, req *mcp.CallToolRequest) (*m
 		}
 		return result.(*mcp.CallToolResult), nil
 	}
-	
+
 	// Default behavior: return success with tool name
 	return &mcp.CallToolResult{
 		Content: []any{
@@ -145,11 +152,11 @@ func (m *MockServer) CallTool(ctx context.Context, req *mcp.CallToolRequest) (*m
 func (m *MockServer) ListResources(ctx context.Context) ([]*mcp.Resource, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if !m.initialized {
 		return nil, errors.New("server not initialized")
 	}
-	
+
 	resources := make([]*mcp.Resource, 0, len(m.resources))
 	for _, resource := range m.resources {
 		resources = append(resources, resource)
@@ -223,55 +230,55 @@ func (m *MockClient) recordCall(method string) {
 func (m *MockClient) getResponse(method string) (interface{}, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	if err, exists := m.errors[method]; exists {
 		return nil, err
 	}
-	
+
 	if response, exists := m.responses[method]; exists {
 		return response, nil
 	}
-	
+
 	return nil, errors.New("no mock response configured for method: " + method)
 }
 
 // Initialize performs client initialization.
 func (m *MockClient) Initialize(ctx context.Context, req *mcp.InitializeRequest) (*mcp.InitializeResult, error) {
 	m.recordCall("initialize")
-	
+
 	response, err := m.getResponse("initialize")
 	if err != nil {
 		return nil, err
 	}
-	
+
 	m.mu.Lock()
 	m.initialized = true
 	m.mu.Unlock()
-	
+
 	return response.(*mcp.InitializeResult), nil
 }
 
 // ListTools lists available tools.
 func (m *MockClient) ListTools(ctx context.Context) ([]*mcp.Tool, error) {
 	m.recordCall("tools/list")
-	
+
 	response, err := m.getResponse("tools/list")
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return response.([]*mcp.Tool), nil
 }
 
 // CallTool executes a tool call.
 func (m *MockClient) CallTool(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	m.recordCall("tools/call")
-	
+
 	response, err := m.getResponse("tools/call")
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return response.(*mcp.CallToolResult), nil
 }
 
@@ -322,19 +329,19 @@ func (m *MockTransportConn) SetWriteDelay(delay time.Duration) {
 func (m *MockTransportConn) Read(p []byte) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.closed {
 		return 0, errors.New("connection closed")
 	}
-	
+
 	if m.readDelay > 0 {
 		time.Sleep(m.readDelay)
 	}
-	
+
 	if len(m.readBuffer) == 0 {
 		return 0, io.EOF
 	}
-	
+
 	n := copy(p, m.readBuffer)
 	m.readBuffer = m.readBuffer[n:]
 	return n, nil
@@ -344,15 +351,15 @@ func (m *MockTransportConn) Read(p []byte) (int, error) {
 func (m *MockTransportConn) Write(p []byte) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.closed {
 		return 0, errors.New("connection closed")
 	}
-	
+
 	if m.writeDelay > 0 {
 		time.Sleep(m.writeDelay)
 	}
-	
+
 	m.writeBuffer = append(m.writeBuffer, p...)
 	return len(p), nil
 }

@@ -36,10 +36,10 @@ type MiddlewareChain struct {
 type Middleware interface {
 	// Apply wraps a handler with middleware functionality
 	Apply(next MCPHandler) MCPHandler
-	
+
 	// Name returns the middleware name for debugging and metrics
 	Name() string
-	
+
 	// Priority returns the middleware priority for ordering (higher = earlier)
 	Priority() int
 }
@@ -77,23 +77,23 @@ func (f MCPHandlerFunc) Handle(ctx context.Context, req MCPRequest) (MCPResponse
 
 // LoggingMiddleware provides comprehensive request/response logging
 type LoggingMiddleware struct {
-	logger        *slog.Logger
-	level         slog.Level
-	requestFields []string
+	logger         *slog.Logger
+	level          slog.Level
+	requestFields  []string
 	responseFields []string
-	sanitizer     func(interface{}) interface{}
+	sanitizer      func(interface{}) interface{}
 }
 
 // LoggingConfig configures the logging middleware
 type LoggingConfig struct {
-	Logger         *slog.Logger
-	Level          slog.Level
-	IncludeRequest bool
+	Logger          *slog.Logger
+	Level           slog.Level
+	IncludeRequest  bool
 	IncludeResponse bool
-	IncludeParams  bool
-	SanitizeFunc   func(interface{}) interface{}
-	RequestFields  []string
-	ResponseFields []string
+	IncludeParams   bool
+	SanitizeFunc    func(interface{}) interface{}
+	RequestFields   []string
+	ResponseFields  []string
 }
 
 // NewLoggingMiddleware creates a new logging middleware with configuration
@@ -104,7 +104,7 @@ func NewLoggingMiddleware(config LoggingConfig) *LoggingMiddleware {
 	if config.Level == 0 {
 		config.Level = slog.LevelInfo
 	}
-	
+
 	return &LoggingMiddleware{
 		logger:         config.Logger,
 		level:          config.Level,
@@ -118,14 +118,14 @@ func (m *LoggingMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		start := time.Now()
 		requestID := getOrGenerateRequestID(ctx)
-		
+
 		// Log request start
 		logFields := []interface{}{
 			"request_id", requestID,
 			"method", req.GetMethod(),
 			"start_time", start,
 		}
-		
+
 		if len(m.requestFields) > 0 {
 			params := req.GetParams()
 			if params != nil && m.sanitizer != nil {
@@ -136,14 +136,14 @@ func (m *LoggingMiddleware) Apply(next MCPHandler) MCPHandler {
 				}
 			}
 		}
-		
+
 		m.logger.Log(ctx, m.level, "MCP request started", logFields...)
-		
+
 		// Process request
 		resp, err := next.Handle(ctx, req)
-		
+
 		duration := time.Since(start)
-		
+
 		// Log response
 		responseFields := []interface{}{
 			"request_id", requestID,
@@ -151,20 +151,20 @@ func (m *LoggingMiddleware) Apply(next MCPHandler) MCPHandler {
 			"duration", duration,
 			"has_error", err != nil || (resp != nil && resp.IsError()),
 		}
-		
+
 		if resp != nil && len(m.responseFields) > 0 {
 			if result := resp.GetResult(); result != nil && m.sanitizer != nil {
 				sanitized := m.sanitizer(result)
 				responseFields = append(responseFields, "result", sanitized)
 			}
 		}
-		
+
 		if err != nil {
 			responseFields = append(responseFields, "error", err.Error())
 		}
-		
+
 		m.logger.Log(ctx, m.level, "MCP request completed", responseFields...)
-		
+
 		return resp, err
 	})
 }
@@ -187,31 +187,31 @@ type AuthenticationMiddleware struct {
 
 // AuthConfig configures the authentication middleware
 type AuthConfig struct {
-	Provider      OAuthProvider
-	SkipMethods   []string
-	CacheTimeout  time.Duration
+	Provider       OAuthProvider
+	SkipMethods    []string
+	CacheTimeout   time.Duration
 	TokenExtractor func(ctx context.Context, req MCPRequest) (string, error)
 }
 
 // NewAuthenticationMiddleware creates a new authentication middleware
 func NewAuthenticationMiddleware(config AuthConfig) *AuthenticationMiddleware {
 	skipMethods := make(map[string]bool)
-	
+
 	// Default skip methods for MCP protocol
 	defaultSkip := []string{"initialize", "initialized", "ping"}
 	for _, method := range defaultSkip {
 		skipMethods[method] = true
 	}
-	
+
 	// Add user-defined skip methods
 	for _, method := range config.SkipMethods {
 		skipMethods[method] = true
 	}
-	
+
 	if config.CacheTimeout == 0 {
 		config.CacheTimeout = 5 * time.Minute
 	}
-	
+
 	return &AuthenticationMiddleware{
 		provider:     config.Provider,
 		skipMethods:  skipMethods,
@@ -225,26 +225,26 @@ func (m *AuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 		if m.skipMethods[req.GetMethod()] {
 			return next.Handle(ctx, req)
 		}
-		
+
 		// Extract token from context or request
 		token, err := m.extractToken(ctx, req)
 		if err != nil {
 			return nil, NewAuthError("Authentication required", ErrorInvalidRequest)
 		}
-		
+
 		// Validate token (with caching)
 		accessToken, err := m.validateTokenWithCache(ctx, token)
 		if err != nil {
 			return nil, NewAuthError("Invalid authentication", ErrorInvalidClient)
 		}
-		
+
 		// Add authentication context
 		authCtx := WithAuthContext(ctx, &AuthContext{
 			AccessToken: accessToken,
 			ClientID:    accessToken.ClientID,
 			Scopes:      accessToken.Scopes,
 		})
-		
+
 		return next.Handle(authCtx, req.WithContext(authCtx))
 	})
 }
@@ -254,7 +254,7 @@ func (m *AuthenticationMiddleware) extractToken(ctx context.Context, req MCPRequ
 	if authHeader, ok := ctx.Value("Authorization").(string); ok {
 		return ParseAuthorizationHeader(authHeader)
 	}
-	
+
 	// Try to extract from request parameters
 	params := req.GetParams()
 	if params != nil {
@@ -265,7 +265,7 @@ func (m *AuthenticationMiddleware) extractToken(ctx context.Context, req MCPRequ
 			}
 		}
 	}
-	
+
 	return "", fmt.Errorf("no authentication token found")
 }
 
@@ -280,19 +280,19 @@ func (m *AuthenticationMiddleware) validateTokenWithCache(ctx context.Context, t
 			m.tokenCache.Delete(token)
 		}
 	}
-	
+
 	// Validate with provider
 	accessToken, err := m.provider.ValidateAccessToken(ctx, token)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Cache valid token
 	m.tokenCache.Store(token, &cachedToken{
 		Token:     accessToken,
 		ExpiresAt: time.Now().Add(m.cacheTimeout),
 	})
-	
+
 	return accessToken, nil
 }
 
@@ -338,14 +338,14 @@ func NewRateLimitMiddleware(config RateLimitConfig) *RateLimitMiddleware {
 	if config.CleanupInterval == 0 {
 		config.CleanupInterval = 10 * time.Minute
 	}
-	
+
 	rl := &RateLimitMiddleware{
 		config: config,
 	}
-	
+
 	// Start cleanup timer
 	rl.cleanupTimer = time.AfterFunc(config.CleanupInterval, rl.cleanup)
-	
+
 	return rl
 }
 
@@ -357,24 +357,24 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 				return next.Handle(ctx, req)
 			}
 		}
-		
+
 		// Get rate limit key
 		key := m.config.KeyExtractor(ctx, req)
-		
+
 		// Get or create limiter
 		limiterInterface, _ := m.limiters.LoadOrStore(key, &rateLimiterEntry{
-			limiter:   rate.NewLimiter(rate.Limit(m.config.RequestsPerSecond), m.config.BurstSize),
-			lastUsed:  time.Now(),
+			limiter:  rate.NewLimiter(rate.Limit(m.config.RequestsPerSecond), m.config.BurstSize),
+			lastUsed: time.Now(),
 		})
-		
+
 		entry := limiterInterface.(*rateLimiterEntry)
 		entry.lastUsed = time.Now()
-		
+
 		// Check rate limit
 		if !entry.limiter.Allow() {
 			return NewRateLimitError("Rate limit exceeded"), nil
 		}
-		
+
 		return next.Handle(ctx, req)
 	})
 }
@@ -382,7 +382,7 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 func (m *RateLimitMiddleware) cleanup() {
 	// Remove unused limiters
 	cutoff := time.Now().Add(-m.config.CleanupInterval)
-	
+
 	m.limiters.Range(func(key, value interface{}) bool {
 		if entry, ok := value.(*rateLimiterEntry); ok {
 			if entry.lastUsed.Before(cutoff) {
@@ -391,7 +391,7 @@ func (m *RateLimitMiddleware) cleanup() {
 		}
 		return true
 	})
-	
+
 	// Schedule next cleanup
 	m.cleanupTimer.Reset(m.config.CleanupInterval)
 }
@@ -425,20 +425,20 @@ func (m *TimeoutMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Create timeout context
 		timeoutCtx, cancel := context.WithTimeout(ctx, m.timeout)
 		defer cancel()
-		
+
 		// Channel for result
 		type result struct {
 			resp MCPResponse
 			err  error
 		}
 		resultChan := make(chan result, 1)
-		
+
 		// Execute handler in goroutine
 		go func() {
 			resp, err := next.Handle(timeoutCtx, req.WithContext(timeoutCtx))
 			resultChan <- result{resp: resp, err: err}
 		}()
-		
+
 		// Wait for result or timeout
 		select {
 		case res := <-resultChan:
@@ -462,9 +462,9 @@ func (m *TimeoutMiddleware) Priority() int {
 
 // RecoveryMiddleware provides panic recovery with structured error responses
 type RecoveryMiddleware struct {
-	logger         *slog.Logger
-	includeStack   bool
-	recoverFunc    func(interface{}) MCPResponse
+	logger       *slog.Logger
+	includeStack bool
+	recoverFunc  func(interface{}) MCPResponse
 }
 
 // NewRecoveryMiddleware creates a new recovery middleware
@@ -472,7 +472,7 @@ func NewRecoveryMiddleware(logger *slog.Logger, includeStack bool) *RecoveryMidd
 	if logger == nil {
 		logger = slog.Default()
 	}
-	
+
 	return &RecoveryMiddleware{
 		logger:       logger,
 		includeStack: includeStack,
@@ -487,24 +487,24 @@ func (m *RecoveryMiddleware) Apply(next MCPHandler) MCPHandler {
 		defer func() {
 			if r := recover(); r != nil {
 				requestID := getOrGenerateRequestID(ctx)
-				
+
 				logFields := []interface{}{
 					"request_id", requestID,
 					"method", req.GetMethod(),
 					"panic", r,
 				}
-				
+
 				if m.includeStack {
 					logFields = append(logFields, "stack", string(debug.Stack()))
 				}
-				
+
 				m.logger.Error("Handler panic recovered", logFields...)
-				
+
 				resp = m.recoverFunc(r)
 				err = nil // Don't propagate panic as error
 			}
 		}()
-		
+
 		return next.Handle(ctx, req)
 	})
 }
@@ -519,10 +519,10 @@ func (m *RecoveryMiddleware) Priority() int {
 
 // MetricsMiddleware provides comprehensive metrics collection
 type MetricsMiddleware struct {
-	registry    MetricsRegistry
-	labels      []string
-	buckets     []float64
-	activeReqs  int64
+	registry   MetricsRegistry
+	labels     []string
+	buckets    []float64
+	activeReqs int64
 }
 
 // MetricsRegistry defines the interface for metrics collection
@@ -544,7 +544,7 @@ func NewMetricsMiddleware(registry MetricsRegistry) *MetricsMiddleware {
 func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		start := time.Now()
-		
+
 		// Increment active requests
 		activeCount := atomic.AddInt64(&m.activeReqs, 1)
 		m.registry.RecordActiveRequests(activeCount)
@@ -552,15 +552,15 @@ func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 			activeCount := atomic.AddInt64(&m.activeReqs, -1)
 			m.registry.RecordActiveRequests(activeCount)
 		}()
-		
+
 		// Extract labels
 		labels := m.extractLabels(ctx, req)
-		
+
 		// Process request
 		resp, err := next.Handle(ctx, req)
-		
+
 		duration := time.Since(start)
-		
+
 		// Determine status code
 		statusCode := 200
 		if err != nil || (resp != nil && resp.IsError()) {
@@ -571,10 +571,10 @@ func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 				m.registry.RecordError(req.GetMethod(), "response_error", labels)
 			}
 		}
-		
+
 		// Record metrics
 		m.registry.RecordRequest(req.GetMethod(), duration, statusCode, labels)
-		
+
 		return resp, err
 	})
 }
@@ -582,21 +582,21 @@ func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 func (m *MetricsMiddleware) extractLabels(ctx context.Context, req MCPRequest) map[string]string {
 	labels := make(map[string]string)
 	labels["method"] = req.GetMethod()
-	
+
 	// Extract client ID from auth context if available
 	if authCtx := GetAuthContext(ctx); authCtx != nil {
 		labels["client_id"] = authCtx.ClientID
 	} else {
 		labels["client_id"] = "anonymous"
 	}
-	
+
 	// Extract transport type from context
 	if transport, ok := ctx.Value("transport").(string); ok {
 		labels["transport"] = transport
 	} else {
 		labels["transport"] = "unknown"
 	}
-	
+
 	return labels
 }
 

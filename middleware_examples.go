@@ -22,21 +22,21 @@ import (
 func ExampleBasicMiddlewareSetup() {
 	// Create enhanced server
 	server := NewEnhancedServer()
-	
+
 	// Add middleware programmatically
 	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelInfo,
 		IncludeRequest:  true,
 		IncludeResponse: true,
 	}))
-	
+
 	server.UseMiddleware(NewRecoveryMiddleware(nil, true))
-	
+
 	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 100,
 		BurstSize:         10,
 	}))
-	
+
 	fmt.Println("Basic middleware setup complete")
 }
 
@@ -70,33 +70,33 @@ func ExampleConfigurationDrivenSetup() {
 			"labels": ["method", "client_id", "transport"]
 		}
 	}`
-	
+
 	// Parse configuration
 	config, err := LoadMiddlewareConfigFromJSON([]byte(configJSON))
 	if err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
 		return
 	}
-	
+
 	// Create server with configuration
 	server := NewEnhancedServer()
 	serverConfig := &ServerMiddlewareConfig{
 		GlobalConfig: config,
 	}
-	
+
 	err = server.SetMiddlewareConfig(serverConfig)
 	if err != nil {
 		fmt.Printf("Failed to set middleware config: %v\n", err)
 		return
 	}
-	
+
 	fmt.Println("Configuration-driven setup complete")
 }
 
 // ExampleTransportSpecificMiddleware demonstrates transport-specific configuration
 func ExampleTransportSpecificMiddleware() {
 	server := NewEnhancedServer()
-	
+
 	// HTTP-specific middleware (CORS, compression)
 	server.UseMiddlewareForTransport("http", NewCORSMiddleware(CORSConfig{
 		AllowOrigins: []string{"https://example.com", "https://app.example.com"},
@@ -104,82 +104,82 @@ func ExampleTransportSpecificMiddleware() {
 		AllowHeaders: []string{"Content-Type", "Authorization"},
 		MaxAge:       86400,
 	}))
-	
+
 	server.UseMiddlewareForTransport("http", NewCompressionMiddleware(CompressionConfig{
 		Algorithms: []string{"gzip"},
 		MinSize:    1024,
 		Level:      6,
 	}))
-	
+
 	// WebSocket-specific middleware
 	server.UseMiddlewareForTransport("websocket", NewCompressionMiddleware(CompressionConfig{
 		Algorithms: []string{"gzip"},
 		MinSize:    512,
 		Level:      1, // Faster compression for real-time
 	}))
-	
+
 	// Stdio-specific optimizations
 	server.UseMiddlewareForTransport("stdio", NewLoggingMiddleware(LoggingConfig{
 		Level: slog.LevelWarn, // Minimal logging for stdio
 	}))
-	
+
 	fmt.Println("Transport-specific middleware setup complete")
 }
 
 // ExampleMethodSpecificMiddleware demonstrates method-specific configuration
 func ExampleMethodSpecificMiddleware() {
 	server := NewEnhancedServer()
-	
+
 	// Expensive operations get longer timeouts
 	server.UseMiddlewareForMethod("tools/call", NewTimeoutMiddleware(60*time.Second))
-	
+
 	// Resource operations can be cached
 	server.UseMiddlewareForMethod("resources/read", NewCachingMiddleware(CachingConfig{
 		TTL:         10 * time.Minute,
 		MaxSize:     100 * 1024 * 1024, // 100MB
 		KeyStrategy: "default",
 	}))
-	
+
 	// Prompts can be cached longer
 	server.UseMiddlewareForMethod("prompts/get", NewCachingMiddleware(CachingConfig{
 		TTL:         1 * time.Hour,
 		MaxSize:     50 * 1024 * 1024, // 50MB
 		KeyStrategy: "default",
 	}))
-	
+
 	// Critical operations get stricter rate limiting
 	server.UseMiddlewareForMethod("tools/call", NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 10,
 		BurstSize:         3,
 	}))
-	
+
 	fmt.Println("Method-specific middleware setup complete")
 }
 
 // ExampleConditionalMiddleware demonstrates conditional middleware application
 func ExampleConditionalMiddleware() {
 	server := NewEnhancedServer()
-	
+
 	// Apply authentication only for specific clients
 	authMiddleware := NewAuthenticationMiddleware(AuthConfig{
 		Provider: NewMemoryOAuthProvider(),
 	})
-	
+
 	condition := NewClientCondition([]string{"premium-client", "enterprise-client"})
 	conditionalAuth := NewConditionalMiddleware(condition, authMiddleware, nil)
 	server.UseMiddleware(conditionalAuth)
-	
+
 	// Apply enhanced logging for debug clients
 	debugLogging := NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelDebug,
 		IncludeRequest:  true,
 		IncludeResponse: true,
 	})
-	
+
 	debugCondition := NewClientCondition([]string{"debug-client", "test-client"})
 	conditionalLogging := NewConditionalMiddleware(debugCondition, debugLogging, nil)
 	server.UseMiddleware(conditionalLogging)
-	
+
 	fmt.Println("Conditional middleware setup complete")
 }
 
@@ -187,12 +187,12 @@ func ExampleConditionalMiddleware() {
 func ExampleCustomMiddleware() {
 	// Create custom request ID middleware
 	requestIDMiddleware := &CustomRequestIDMiddleware{}
-	
+
 	// Create custom audit middleware
 	auditMiddleware := &CustomAuditMiddleware{
 		logger: slog.Default(),
 	}
-	
+
 	// Create custom circuit breaker middleware
 	circuitBreakerMiddleware := &CustomCircuitBreakerMiddleware{
 		threshold:      5,
@@ -200,12 +200,12 @@ func ExampleCustomMiddleware() {
 		resetAfter:     60 * time.Second,
 		failureCounter: make(map[string]int),
 	}
-	
+
 	server := NewEnhancedServer()
 	server.UseMiddleware(requestIDMiddleware)
 	server.UseMiddleware(auditMiddleware)
 	server.UseMiddleware(circuitBreakerMiddleware)
-	
+
 	fmt.Println("Custom middleware setup complete")
 }
 
@@ -219,10 +219,10 @@ func (m *CustomRequestIDMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Generate unique request ID
 		requestID := fmt.Sprintf("req_%d", time.Now().UnixNano())
-		
+
 		// Add to context
 		ctx = context.WithValue(ctx, requestIDKey, requestID)
-		
+
 		// Continue with enriched context
 		return next.Handle(ctx, req.WithContext(ctx))
 	})
@@ -244,39 +244,39 @@ type CustomAuditMiddleware struct {
 func (m *CustomAuditMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		start := time.Now()
-		
+
 		// Extract audit information
 		auditInfo := map[string]interface{}{
 			"request_id": getOrGenerateRequestID(ctx),
 			"method":     req.GetMethod(),
 			"timestamp":  start,
 		}
-		
+
 		// Add authentication info if available
 		if authCtx := GetAuthContext(ctx); authCtx != nil {
 			auditInfo["client_id"] = authCtx.ClientID
 			auditInfo["scopes"] = authCtx.Scopes
 		}
-		
+
 		// Add request parameters (sanitized)
 		if params := req.GetParams(); params != nil {
 			auditInfo["params"] = m.sanitizeParams(params)
 		}
-		
+
 		// Execute request
 		resp, err := next.Handle(ctx, req)
-		
+
 		// Add response information
 		auditInfo["duration"] = time.Since(start)
 		auditInfo["success"] = err == nil && (resp == nil || !resp.IsError())
-		
+
 		if err != nil {
 			auditInfo["error"] = err.Error()
 		}
-		
+
 		// Log audit entry
 		m.logger.Info("Audit log", "audit", auditInfo)
-		
+
 		return resp, err
 	})
 }
@@ -286,7 +286,7 @@ func (m *CustomAuditMiddleware) sanitizeParams(params json.RawMessage) interface
 	if err := json.Unmarshal(params, &paramsMap); err != nil {
 		return nil
 	}
-	
+
 	// Remove sensitive fields
 	sensitiveFields := []string{"password", "token", "secret", "key"}
 	for _, field := range sensitiveFields {
@@ -294,7 +294,7 @@ func (m *CustomAuditMiddleware) sanitizeParams(params json.RawMessage) interface
 			paramsMap[field] = "[REDACTED]"
 		}
 	}
-	
+
 	return paramsMap
 }
 
@@ -320,15 +320,15 @@ func (m *CustomCircuitBreakerMiddleware) Apply(next MCPHandler) MCPHandler {
 	if m.lastFailure == nil {
 		m.lastFailure = make(map[string]time.Time)
 	}
-	
+
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		method := req.GetMethod()
-		
+
 		m.mu.RLock()
 		failures := m.failureCounter[method]
 		lastFail := m.lastFailure[method]
 		m.mu.RUnlock()
-		
+
 		// Check if circuit is open
 		if failures >= m.threshold {
 			if time.Since(lastFail) < m.resetAfter {
@@ -340,10 +340,10 @@ func (m *CustomCircuitBreakerMiddleware) Apply(next MCPHandler) MCPHandler {
 				m.mu.Unlock()
 			}
 		}
-		
+
 		// Execute request
 		resp, err := next.Handle(ctx, req)
-		
+
 		// Track failures
 		if err != nil || (resp != nil && resp.IsError()) {
 			m.mu.Lock()
@@ -356,7 +356,7 @@ func (m *CustomCircuitBreakerMiddleware) Apply(next MCPHandler) MCPHandler {
 			m.failureCounter[method] = 0
 			m.mu.Unlock()
 		}
-		
+
 		return resp, err
 	})
 }
@@ -484,32 +484,32 @@ func ExampleComplexConfiguration() {
 			}
 		]
 	}`
-	
+
 	// Load and apply configuration
 	config, err := LoadMiddlewareConfigFromJSON([]byte(configJSON))
 	if err != nil {
 		fmt.Printf("Failed to load config: %v\n", err)
 		return
 	}
-	
+
 	server := NewEnhancedServer()
 	serverConfig := &ServerMiddlewareConfig{
 		GlobalConfig: config,
 	}
-	
+
 	err = server.SetMiddlewareConfig(serverConfig)
 	if err != nil {
 		fmt.Printf("Failed to set middleware config: %v\n", err)
 		return
 	}
-	
+
 	fmt.Println("Complex configuration applied successfully")
 }
 
 // ExampleMiddlewareGroups demonstrates middleware grouping
 func ExampleMiddlewareGroups() {
 	registry := NewMiddlewareRegistry(nil)
-	
+
 	// Create security middleware group
 	securityGroup := NewMiddlewareGroup("security", registry)
 	securityGroup.AddByName("authentication", AuthConfig{
@@ -519,7 +519,7 @@ func ExampleMiddlewareGroups() {
 		RequestsPerSecond: 50,
 		BurstSize:         10,
 	})
-	
+
 	// Create observability middleware group
 	observabilityGroup := NewMiddlewareGroup("observability", registry)
 	observabilityGroup.AddByName("logging", LoggingConfig{
@@ -530,7 +530,7 @@ func ExampleMiddlewareGroups() {
 	observabilityGroup.AddByName("metrics", MetricsConfig{
 		Registry: &InMemoryMetricsRegistry{},
 	})
-	
+
 	// Create reliability middleware group
 	reliabilityGroup := NewMiddlewareGroup("reliability", registry)
 	reliabilityGroup.AddByName("recovery", RecoveryConfig{
@@ -539,15 +539,15 @@ func ExampleMiddlewareGroups() {
 	reliabilityGroup.AddByName("timeout", TimeoutConfig{
 		Timeout: 30 * time.Second,
 	})
-	
+
 	// Apply groups to handler
 	// mockHandler := NewMockHandler()
-	
+
 	// Apply in order: security -> observability -> reliability
 	// handler := securityGroup.Apply(mockHandler)
 	// handler = observabilityGroup.Apply(handler)
 	// handler = reliabilityGroup.Apply(handler)
-	
+
 	fmt.Println("Middleware groups applied successfully")
 }
 
@@ -557,60 +557,60 @@ func ExampleMiddlewareGroups() {
 // ExampleHighPerformanceSetup demonstrates optimized middleware for high performance
 func ExampleHighPerformanceSetup() {
 	server := NewEnhancedServer()
-	
+
 	// Minimal logging for production
 	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelWarn,
 		IncludeRequest:  false,
 		IncludeResponse: false,
 	}))
-	
+
 	// Essential recovery only
 	server.UseMiddleware(NewRecoveryMiddleware(nil, false))
-	
+
 	// Optimized rate limiting
 	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 1000,
 		BurstSize:         100,
 		CleanupInterval:   30 * time.Minute,
 	}))
-	
+
 	// Efficient caching
 	server.UseMiddleware(NewCachingMiddleware(CachingConfig{
 		TTL:         5 * time.Minute,
 		MaxSize:     500 * 1024 * 1024, // 500MB
 		KeyStrategy: "default",
 	}))
-	
+
 	fmt.Println("High-performance middleware setup complete")
 }
 
 // ExampleDevelopmentSetup demonstrates middleware optimized for development
 func ExampleDevelopmentSetup() {
 	server := NewEnhancedServer()
-	
+
 	// Verbose logging for development
 	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelDebug,
 		IncludeRequest:  true,
 		IncludeResponse: true,
 	}))
-	
+
 	// Recovery with stack traces
 	server.UseMiddleware(NewRecoveryMiddleware(nil, true))
-	
+
 	// Lenient rate limiting
 	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 1000,
 		BurstSize:         100,
 	}))
-	
+
 	// Short cache TTL for development
 	server.UseMiddleware(NewCachingMiddleware(CachingConfig{
 		TTL:         30 * time.Second,
 		MaxSize:     10 * 1024 * 1024, // 10MB
 		KeyStrategy: "default",
 	}))
-	
+
 	fmt.Println("Development middleware setup complete")
 }

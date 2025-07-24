@@ -30,7 +30,7 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 	if s == nil {
 		return fmt.Errorf("server is nil")
 	}
-	
+
 	// Create a JSON schema from the TArg type
 	inputSchema, err := createJSONSchema[TArg]()
 	if err != nil {
@@ -88,7 +88,7 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 			Content: []any{
 				map[string]any{
 					"type":   "text",
-					"format": "json", 
+					"format": "json",
 					"text":   string(outputJSON),
 				},
 			},
@@ -101,7 +101,7 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 		Description: description,
 		InputSchema: inputSchema,
 	}
-	
+
 	return s.RegisterTool(tool, toolHandler)
 }
 
@@ -111,8 +111,8 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 // CallToolTyped performs a type-safe tool call with compile-time type checking
 func CallToolTyped[TArg any, TResult any](
 	c *Client,
-	ctx context.Context, 
-	toolName string, 
+	ctx context.Context,
+	toolName string,
 	args TArg,
 ) (*TResult, error) {
 	if err := c.checkInitialized(); err != nil {
@@ -196,7 +196,7 @@ func ReadResourceTyped[TResult any](
 	// Extract content based on type
 	var contentText string
 	content := result.Contents[0]
-	
+
 	switch c := content.(type) {
 	case TextResourceContents:
 		contentText = c.Text
@@ -319,11 +319,11 @@ func (hc *HandlerChain[TRequest, TResponse]) WithValidation(
 
 // Handle processes a request through the complete handler chain
 func (hc *HandlerChain[TRequest, TResponse]) Handle(
-	ctx context.Context, 
+	ctx context.Context,
 	req TRequest,
 ) (TResponse, error) {
 	var zero TResponse
-	
+
 	// Run validation first
 	for _, validator := range hc.validators {
 		if err := validator(ctx, req); err != nil {
@@ -341,8 +341,8 @@ func (hc *HandlerChain[TRequest, TResponse]) Handle(
 
 // ValidatedField represents a field with validation rules
 type ValidatedField struct {
-	Name     string                                  `json:"name"`
-	Required bool                                    `json:"required"`
+	Name     string                                     `json:"name"`
+	Required bool                                       `json:"required"`
 	Validate func(ctx context.Context, value any) error `json:"-"`
 }
 
@@ -502,7 +502,7 @@ func GenerateOpenAPISchemaWithGenerator[T any](esg *EnhancedSchemaGenerator) (ma
 
 	// Add OpenAPI-specific enhancements
 	schemaMap["$schema"] = "http://json-schema.org/draft-07/schema#"
-	
+
 	return schemaMap, nil
 }
 
@@ -511,18 +511,18 @@ func (esg *EnhancedSchemaGenerator) CompareSchemas(
 	schema1, schema2 json.RawMessage,
 ) (bool, []string, error) {
 	var s1, s2 map[string]any
-	
+
 	if err := json.Unmarshal(schema1, &s1); err != nil {
 		return false, nil, fmt.Errorf("failed to unmarshal schema1: %w", err)
 	}
-	
+
 	if err := json.Unmarshal(schema2, &s2); err != nil {
 		return false, nil, fmt.Errorf("failed to unmarshal schema2: %w", err)
 	}
 
 	differences := []string{}
 	compatible := esg.compareSchemaObjects("", s1, s2, &differences)
-	
+
 	return compatible, differences, nil
 }
 
@@ -537,7 +537,7 @@ func (esg *EnhancedSchemaGenerator) compareSchemaObjects(
 	// Check type compatibility
 	type1, ok1 := obj1["type"].(string)
 	type2, ok2 := obj2["type"].(string)
-	
+
 	if ok1 && ok2 && type1 != type2 {
 		*differences = append(*differences, fmt.Sprintf("%s: type mismatch (%s vs %s)", path, type1, type2))
 		compatible = false
@@ -546,7 +546,7 @@ func (esg *EnhancedSchemaGenerator) compareSchemaObjects(
 	// Check required fields
 	req1, ok1 := obj1["required"].([]interface{})
 	req2, ok2 := obj2["required"].([]interface{})
-	
+
 	if ok1 && ok2 {
 		req1Set := make(map[string]bool)
 		for _, r := range req1 {
@@ -554,7 +554,7 @@ func (esg *EnhancedSchemaGenerator) compareSchemaObjects(
 				req1Set[s] = true
 			}
 		}
-		
+
 		for _, r := range req2 {
 			if s, ok := r.(string); ok {
 				if !req1Set[s] {

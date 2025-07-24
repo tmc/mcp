@@ -33,7 +33,6 @@
 //		ClientInfo: mcp.Implementation{Name: "my-client", Version: "1.0.0"},
 //	})
 //	tools, _ := client.ListTools(ctx, mcp.ListToolsRequest{})
-//
 package mcp
 
 import (
@@ -50,7 +49,7 @@ import (
 
 // RegisterTypedTool registers a type-safe tool handler with automatic JSON marshaling/unmarshaling.
 // Input is the Go type for the tool's input, and Output is the Go type for the tool's output.
-// 
+//
 // Deprecated: Use server.RegisterTypedTool() method instead for better encapsulation.
 // This function is maintained for backward compatibility.
 func RegisterTypedTool[Input any, Output any](
@@ -62,7 +61,7 @@ func RegisterTypedTool[Input any, Output any](
 	if server == nil {
 		return fmt.Errorf("server is nil")
 	}
-	
+
 	// Use the new typed tool registration function
 	return RegisterTypedToolWithServer(server, name, description, handler)
 }
@@ -71,7 +70,7 @@ func RegisterTypedTool[Input any, Output any](
 // the same schema multiple times. This significantly improves performance when
 // registering multiple tools with the same input types.
 type SchemaCache struct {
-	mu     sync.RWMutex
+	mu      sync.RWMutex
 	schemas map[string]json.RawMessage
 }
 
@@ -84,27 +83,27 @@ func (c *SchemaCache) GetOrCreate(typeKey string, generator func() (json.RawMess
 		return schema, nil
 	}
 	c.mu.RUnlock()
-	
+
 	// Generate new schema (write lock)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	// Double-check pattern to avoid race conditions
 	if schema, exists := c.schemas[typeKey]; exists {
 		return schema, nil
 	}
-	
+
 	// Generate and cache the schema
 	schema, err := generator()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if c.schemas == nil {
 		c.schemas = make(map[string]json.RawMessage)
 	}
 	c.schemas[typeKey] = schema
-	
+
 	return schema, nil
 }
 
@@ -119,7 +118,7 @@ var schemaCache = &SchemaCache{}
 func createJSONSchema[T any]() (json.RawMessage, error) {
 	var example T
 	typeKey := fmt.Sprintf("%T", example)
-	
+
 	return schemaCache.GetOrCreate(typeKey, func() (json.RawMessage, error) {
 		return generateJSONSchemaReflection[T]()
 	})
@@ -130,7 +129,7 @@ func createJSONSchema[T any]() (json.RawMessage, error) {
 func generateJSONSchemaReflection[T any]() (json.RawMessage, error) {
 	var example T
 	t := reflect.TypeOf(example)
-	
+
 	schema := generateSchemaForType(t)
 	return json.Marshal(schema)
 }
@@ -141,24 +140,24 @@ func generateSchemaForType(t reflect.Type) map[string]any {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-	
+
 	switch t.Kind() {
 	case reflect.String:
 		return map[string]any{"type": "string"}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		 reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		 reflect.Float32, reflect.Float64:
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
 		return map[string]any{"type": "number"}
 	case reflect.Bool:
 		return map[string]any{"type": "boolean"}
 	case reflect.Array, reflect.Slice:
 		return map[string]any{
-			"type": "array",
+			"type":  "array",
 			"items": generateSchemaForType(t.Elem()),
 		}
 	case reflect.Map:
 		return map[string]any{
-			"type": "object",
+			"type":                 "object",
 			"additionalProperties": generateSchemaForType(t.Elem()),
 		}
 	case reflect.Struct:
@@ -178,22 +177,22 @@ func generateStructSchema(t reflect.Type) map[string]any {
 		"type":       "object",
 		"properties": map[string]any{},
 	}
-	
+
 	properties := schema["properties"].(map[string]any)
 	required := []string{}
-	
+
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		
+
 		// Skip unexported fields
 		if !field.IsExported() {
 			continue
 		}
-		
+
 		// Get JSON tag name or use field name
 		jsonTag := field.Tag.Get("json")
 		fieldName := field.Name
-		
+
 		if jsonTag != "" {
 			// Parse json tag (e.g., "name,omitempty")
 			parts := strings.Split(jsonTag, ",")
@@ -203,7 +202,7 @@ func generateStructSchema(t reflect.Type) map[string]any {
 				// Skip fields marked with json:"-"
 				continue
 			}
-			
+
 			// Check if field is required (no "omitempty")
 			isRequired := true
 			for _, part := range parts[1:] {
@@ -212,7 +211,7 @@ func generateStructSchema(t reflect.Type) map[string]any {
 					break
 				}
 			}
-			
+
 			if isRequired {
 				required = append(required, fieldName)
 			}
@@ -220,22 +219,22 @@ func generateStructSchema(t reflect.Type) map[string]any {
 			// No json tag, assume required
 			required = append(required, fieldName)
 		}
-		
+
 		// Generate schema for field type
 		fieldSchema := generateSchemaForType(field.Type)
-		
+
 		// Add description from field comments if available
 		// This could be enhanced with custom tags like `description:"..."`
 		if desc := field.Tag.Get("description"); desc != "" {
 			fieldSchema["description"] = desc
 		}
-		
+
 		properties[fieldName] = fieldSchema
 	}
-	
+
 	if len(required) > 0 {
 		schema["required"] = required
 	}
-	
+
 	return schema
 }

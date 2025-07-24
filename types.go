@@ -46,8 +46,8 @@ func (e *ParameterError) Unwrap() error {
 
 // NotFoundError represents a resource not found error with structured information
 type NotFoundError struct {
-	Type       string `json:"type"`        // "tool", "resource", "prompt", etc.
-	Identifier string `json:"identifier"`  // name, URI, etc.
+	Type       string `json:"type"`       // "tool", "resource", "prompt", etc.
+	Identifier string `json:"identifier"` // name, URI, etc.
 }
 
 func (e *NotFoundError) Error() string {
@@ -485,7 +485,7 @@ type ValidationConfig struct {
 // DefaultValidationConfig returns the default validation configuration
 func DefaultValidationConfig() *ValidationConfig {
 	return &ValidationConfig{
-		MaxRequestSize:   1024 * 1024,     // 1MB
+		MaxRequestSize:   1024 * 1024,      // 1MB
 		MaxResponseSize:  10 * 1024 * 1024, // 10MB
 		ValidateRequired: true,
 		ValidateFormat:   true,
@@ -612,7 +612,7 @@ func isValidURI(s string) bool {
 	}
 	// Basic URI validation - must contain alphanumeric chars and common URI characters
 	for _, r := range s {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || 
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') ||
 			r == '/' || r == ':' || r == '.' || r == '-' || r == '_' || r == '?' || r == '&' || r == '=' || r == '#') {
 			return false
 		}
@@ -763,7 +763,7 @@ func (u *UnmarshalHelper) UnmarshalSimpleRequest(data []byte, method string, tar
 // for frequently used request/response types. This improves performance
 // by avoiding garbage collection pressure from repeated allocations.
 type ObjectPool[T any] struct {
-	pool sync.Pool
+	pool  sync.Pool
 	reset func(*T) // Optional reset function to clear object state
 }
 
@@ -801,36 +801,36 @@ var (
 	initializeRequestPool = NewObjectPool(func(r *InitializeRequest) {
 		*r = InitializeRequest{}
 	})
-	
+
 	callToolRequestPool = NewObjectPool(func(r *CallToolRequest) {
 		*r = CallToolRequest{}
 	})
-	
+
 	getPromptRequestPool = NewObjectPool(func(r *GetPromptRequest) {
 		*r = GetPromptRequest{}
 	})
-	
+
 	readResourceRequestPool = NewObjectPool(func(r *ReadResourceRequest) {
 		*r = ReadResourceRequest{}
 	})
-	
+
 	listToolsRequestPool = NewObjectPool(func(r *ListToolsRequest) {
 		*r = ListToolsRequest{}
 	})
-	
+
 	listPromptsRequestPool = NewObjectPool(func(r *ListPromptsRequest) {
 		*r = ListPromptsRequest{}
 	})
-	
+
 	listResourcesRequestPool = NewObjectPool(func(r *ListResourcesRequest) {
 		*r = ListResourcesRequest{}
 	})
-	
-	// Response type pools  
+
+	// Response type pools
 	callToolResultPool = NewObjectPool(func(r *CallToolResult) {
 		*r = CallToolResult{}
 	})
-	
+
 	// Buffer pool for JSON unmarshaling operations
 	byteBufferPool = NewObjectPool(func(b *[]byte) {
 		if cap(*b) > 64*1024 { // Reset large buffers to avoid memory leaks

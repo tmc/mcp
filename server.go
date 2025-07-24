@@ -293,8 +293,8 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 	// Apply request size limits before processing
 	if req.Params != nil {
 		if err := s.validator.ValidateRequest(req.Method, req.Params); err != nil {
-			s.logger.Warn("Request validation failed", 
-				"method", req.Method, 
+			s.logger.Warn("Request validation failed",
+				"method", req.Method,
 				"error", err)
 			return nil, err
 		}
@@ -329,7 +329,7 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 	// Call the handler and get the result with timeout protection
 	resultChan := make(chan interface{}, 1)
 	errChan := make(chan error, 1)
-	
+
 	go func() {
 		result, err := handler(ctx, req)
 		if err != nil {
@@ -357,14 +357,14 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 		if s.logger.Enabled(ctx, slog.LevelDebug) {
 			resultJSON, _ := json.Marshal(result)
 			if len(resultJSON) > 10*1024 { // 10KB limit for debug logging
-				s.logger.Debug("Got large result", 
+				s.logger.Debug("Got large result",
 					"method", req.Method,
 					"result_size", len(resultJSON))
 			} else {
 				s.logger.Debug("Got result", "result", string(resultJSON))
 			}
 		}
-		
+
 		return result, nil
 	}
 }

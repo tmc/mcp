@@ -448,7 +448,7 @@ func (t *testRandomFailureTransport) Dial(ctx context.Context) (io.ReadWriteClos
 	t.callCount++
 	count := t.callCount
 	t.mu.Unlock()
-	
+
 	// Simple deterministic "random" failure based on call count
 	if float64(count%10)/10.0 < t.failureRate {
 		return nil, errors.New("random failure")

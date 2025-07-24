@@ -68,7 +68,7 @@ func TestCancellation(t *testing.T) {
 				t.Logf("Server goroutine panic: %v", r)
 			}
 		}()
-		
+
 		// The server transport needs to properly handle contexts
 		serverTransport := &ReadWriteCloserTransport{serverConn}
 		serverReady <- struct{}{}
@@ -181,7 +181,7 @@ func TestCancellationWithCause(t *testing.T) {
 				t.Logf("Server goroutine panic: %v", r)
 			}
 		}()
-		
+
 		serverTransport := &ReadWriteCloserTransport{serverConn}
 		if err := server.Serve(serverCtx, serverTransport); err != nil {
 			t.Logf("Server error: %v", err)

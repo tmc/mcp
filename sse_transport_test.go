@@ -13,7 +13,7 @@ import (
 // TestSSEClientTransport tests the SSE client transport
 func TestSSEClientTransport(t *testing.T) {
 	t.Parallel()
-	
+
 	// Use a discarding logger for test to avoid log output
 	testLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
@@ -64,7 +64,7 @@ func TestSSEClientTransport(t *testing.T) {
 
 func TestSSEServerTransport(t *testing.T) {
 	t.Parallel()
-	
+
 	// Use a discarding logger for test to avoid log output
 	testLogger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
 		Level: slog.LevelError,
@@ -107,7 +107,7 @@ func TestSSEServerTransport(t *testing.T) {
 
 	t.Run("nil_rwc", func(t *testing.T) {
 		transport := mcp.NewSSEServerTransport(nil, testLogger)
-		
+
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 

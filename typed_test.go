@@ -47,7 +47,7 @@ func TestServer_RegisterTypedTool(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 
 	// Test successful registration with new function
-	err := RegisterTypedToolWithServer(server, "calculate", "Perform arithmetic operations", 
+	err := RegisterTypedToolWithServer(server, "calculate", "Perform arithmetic operations",
 		func(ctx context.Context, args CalculateArgs) (CalculateResult, error) {
 			switch args.Operation {
 			case "add":
@@ -95,7 +95,7 @@ func TestServer_RegisterTypedTool(t *testing.T) {
 	// Check expected properties
 	expectedProps := map[string]string{
 		"operation": "string",
-		"a":         "number", 
+		"a":         "number",
 		"b":         "number",
 	}
 
@@ -173,7 +173,7 @@ func TestClient_CallToolTyped(t *testing.T) {
 
 	// Give server time to start
 	time.Sleep(50 * time.Millisecond)
-	
+
 	// Check if server started successfully
 	select {
 	case err := <-serverDone:
@@ -296,9 +296,9 @@ func TestStructValidator(t *testing.T) {
 	// Test with valid struct
 	ctx := context.Background()
 	validProfile := UserProfile{
-		ID:    1,
-		Name:  "John Doe",
-		Email: "john@example.com",
+		ID:     1,
+		Name:   "John Doe",
+		Email:  "john@example.com",
 		Active: true,
 	}
 
@@ -470,24 +470,24 @@ func createInMemoryTransportPair() (serverTransport, clientTransport Transport) 
 	// Create in-memory pipe pair
 	serverReader, clientWriter := io.Pipe()
 	clientReader, serverWriter := io.Pipe()
-	
+
 	// Create combined closer
 	serverCloser := &multiCloser{closers: []io.Closer{serverReader, serverWriter}}
 	clientCloser := &multiCloser{closers: []io.Closer{clientReader, clientWriter}}
-	
+
 	// Combine into ReadWriteCloser pairs
 	serverRWC := &rwcCombiner{
 		Reader: serverReader,
 		Writer: serverWriter,
 		Closer: serverCloser,
 	}
-	
+
 	clientRWC := &rwcCombiner{
 		Reader: clientReader,
 		Writer: clientWriter,
 		Closer: clientCloser,
 	}
-	
+
 	return &ReadWriteCloserTransport{serverRWC}, &ReadWriteCloserTransport{clientRWC}
 }
 
@@ -512,7 +512,7 @@ type rwcCombiner struct {
 	io.Closer
 }
 
-// Helper function for string contains check  
+// Helper function for string contains check
 func typedContains(str, substr string) bool {
 	return len(str) >= len(substr) && (str == substr || len(substr) == 0 ||
 		(len(str) > 0 && len(substr) > 0 &&

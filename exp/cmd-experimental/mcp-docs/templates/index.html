@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="{{.Config.Documentation.Language}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Config.Documentation.Title}}</title>
+    <meta name="description" content="{{.Config.Documentation.Description}}">
+    <link rel="stylesheet" href="/static/css/docs.css">
+    <link rel="stylesheet" href="/static/css/syntax.css">
+    {{if .Config.Documentation.Favicon}}
+    <link rel="icon" href="{{.Config.Documentation.Favicon}}">
+    {{end}}
+</head>
+<body class="theme-{{.Config.Documentation.Theme}}">
+    <div class="docs-layout">
+        {{if .Config.Documentation.Sidebar.Enabled}}
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                {{if .Config.Documentation.Logo}}
+                <img src="{{.Config.Documentation.Logo}}" alt="{{.Config.Documentation.Title}}" class="logo">
+                {{end}}
+                <h1>{{.Config.Documentation.Title}}</h1>
+                <span class="version">{{.Config.Documentation.Version}}</span>
+            </div>
+            
+            <div class="sidebar-nav">
+                {{if .Config.Documentation.Navigation.Enabled}}
+                <ul class="nav-list">
+                    <li><a href="#overview" class="nav-link">Overview</a></li>
+                    {{if .Servers}}
+                    <li>
+                        <a href="#servers" class="nav-link">Servers</a>
+                        <ul class="nav-sublist">
+                            {{range .Servers}}
+                            <li><a href="#server-{{.Name | lower}}" class="nav-link">{{.Name}}</a></li>
+                            {{end}}
+                        </ul>
+                    </li>
+                    {{end}}
+                    {{if .Packages}}
+                    <li>
+                        <a href="#packages" class="nav-link">Packages</a>
+                        <ul class="nav-sublist">
+                            {{range .Packages}}
+                            <li><a href="#package-{{.Name | lower}}" class="nav-link">{{.Name}}</a></li>
+                            {{end}}
+                        </ul>
+                    </li>
+                    {{end}}
+                    {{if .APIs}}
+                    <li>
+                        <a href="#apis" class="nav-link">APIs</a>
+                        <ul class="nav-sublist">
+                            {{range .APIs}}
+                            <li><a href="#api-{{.Name | lower}}" class="nav-link">{{.Name}}</a></li>
+                            {{end}}
+                        </ul>
+                    </li>
+                    {{end}}
+                </ul>
+                {{end}}
+            </div>
+            
+            {{if .Config.Documentation.Search.Enabled}}
+            <div class="sidebar-search">
+                <input type="search" id="search" placeholder="Search documentation...">
+                <div id="search-results"></div>
+            </div>
+            {{end}}
+        </nav>
+        {{end}}
+        
+        <main class="content">
+            <header class="content-header">
+                <h1>{{.Config.Documentation.Title}}</h1>
+                <p class="description">{{.Config.Documentation.Description}}</p>
+                <div class="meta">
+                    <span class="version">Version {{.Config.Documentation.Version}}</span>
+                    <span class="generated">Generated {{.GeneratedAt.Format "2006-01-02 15:04:05"}}</span>
+                </div>
+            </header>
+            
+            <section id="overview" class="content-section">
+                <h2>Overview</h2>
+                <p>This documentation provides comprehensive information about the MCP (Model Context Protocol) implementation, including server APIs, client libraries, and integration guides.</p>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <span class="stat-number">{{len .Servers}}</span>
+                        <span class="stat-label">Servers</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">{{len .Packages}}</span>
+                        <span class="stat-label">Packages</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-number">{{len .APIs}}</span>
+                        <span class="stat-label">APIs</span>
+                    </div>
+                </div>
+            </section>
+            
+            {{if .Servers}}
+            <section id="servers" class="content-section">
+                <h2>MCP Servers</h2>
+                <p>The following MCP servers are documented:</p>
+                
+                {{range .Servers}}
+                <div id="server-{{.Name | lower}}" class="server-card">
+                    <div class="server-header">
+                        <h3>{{.Name}}</h3>
+                        <div class="server-meta">
+                            <span class="server-version">{{.Version}}</span>
+                            <span class="server-transport">{{.Transport}}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="server-description">
+                        <p>{{.Description}}</p>
+                    </div>
+                    
+                    <div class="server-capabilities">
+                        <h4>Capabilities</h4>
+                        <ul class="capabilities-list">
+                            {{if .Capabilities.Tools}}
+                            <li class="capability enabled">
+                                <span class="capability-icon">🔧</span>
+                                <span class="capability-name">Tools</span>
+                                <span class="capability-count">{{len .Tools}} available</span>
+                            </li>
+                            {{end}}
+                            {{if .Capabilities.Resources}}
+                            <li class="capability enabled">
+                                <span class="capability-icon">📄</span>
+                                <span class="capability-name">Resources</span>
+                                <span class="capability-count">{{len .Resources}} available</span>
+                            </li>
+                            {{end}}
+                            {{if .Capabilities.Prompts}}
+                            <li class="capability enabled">
+                                <span class="capability-icon">💬</span>
+                                <span class="capability-name">Prompts</span>
+                                <span class="capability-count">{{len .Prompts}} available</span>
+                            </li>
+                            {{end}}
+                        </ul>
+                    </div>
+                    
+                    {{if .Tools}}
+                    <div class="server-tools">
+                        <h4>Tools</h4>
+                        <div class="tools-grid">
+                            {{range .Tools}}
+                            <div class="tool-card">
+                                <h5>{{.Name}}</h5>
+                                <p>{{.Description}}</p>
+                                {{if .Examples}}
+                                <div class="tool-example">
+                                    <h6>Example Usage</h6>
+                                    {{range .Examples}}
+                                    {{code .Language .Code}}
+                                    {{end}}
+                                </div>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                    
+                    {{if .Resources}}
+                    <div class="server-resources">
+                        <h4>Resources</h4>
+                        <div class="resources-list">
+                            {{range .Resources}}
+                            <div class="resource-item">
+                                <h5>{{.Name}}</h5>
+                                <p>{{.Description}}</p>
+                                <code class="resource-uri">{{.URI}}</code>
+                                {{if .MimeType}}
+                                <span class="resource-mime">{{.MimeType}}</span>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                    
+                    {{if .Prompts}}
+                    <div class="server-prompts">
+                        <h4>Prompts</h4>
+                        <div class="prompts-list">
+                            {{range .Prompts}}
+                            <div class="prompt-item">
+                                <h5>{{.Name}}</h5>
+                                <p>{{.Description}}</p>
+                                {{if .Arguments}}
+                                <div class="prompt-arguments">
+                                    <h6>Arguments</h6>
+                                    <ul>
+                                        {{range $key, $value := .Arguments}}
+                                        <li><code>{{$key}}</code> - {{$value}}</li>
+                                        {{end}}
+                                    </ul>
+                                </div>
+                                {{end}}
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+            
+            {{if .Packages}}
+            <section id="packages" class="content-section">
+                <h2>Go Packages</h2>
+                <p>The following Go packages are documented:</p>
+                
+                {{range .Packages}}
+                <div id="package-{{.Name | lower}}" class="package-card">
+                    <h3>{{.Name}}</h3>
+                    <p>{{.Description}}</p>
+                    <code class="import-path">import "{{.ImportPath}}"</code>
+                    
+                    {{if .Types}}
+                    <div class="package-types">
+                        <h4>Types</h4>
+                        {{range .Types}}
+                        <div class="type-item">
+                            <h5>{{.Name}}</h5>
+                            <p>{{.Description}}</p>
+                            {{if .Methods}}
+                            <div class="type-methods">
+                                <h6>Methods</h6>
+                                <ul>
+                                    {{range .Methods}}
+                                    <li><code>{{.Name}}</code> - {{.Description}}</li>
+                                    {{end}}
+                                </ul>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                    
+                    {{if .Functions}}
+                    <div class="package-functions">
+                        <h4>Functions</h4>
+                        {{range .Functions}}
+                        <div class="function-item">
+                            <h5>{{.Name}}</h5>
+                            <p>{{.Description}}</p>
+                            <code class="function-signature">{{.Signature}}</code>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+            
+            {{if .APIs}}
+            <section id="apis" class="content-section">
+                <h2>REST APIs</h2>
+                <p>The following REST APIs are documented:</p>
+                
+                {{range .APIs}}
+                <div id="api-{{.Name | lower}}" class="api-card">
+                    <h3>{{.Name}}</h3>
+                    <p>{{.Description}}</p>
+                    <code class="api-base-url">{{.BaseURL}}</code>
+                    
+                    {{if .Endpoints}}
+                    <div class="api-endpoints">
+                        <h4>Endpoints</h4>
+                        {{range .Endpoints}}
+                        <div class="endpoint-item">
+                            <div class="endpoint-header">
+                                <span class="endpoint-method method-{{.Method | lower}}">{{.Method}}</span>
+                                <code class="endpoint-path">{{.Path}}</code>
+                            </div>
+                            <p class="endpoint-summary">{{.Summary}}</p>
+                            {{if .Description}}
+                            <p class="endpoint-description">{{.Description}}</p>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </section>
+            {{end}}
+            
+            <footer class="content-footer">
+                <p>Documentation generated by <a href="https://github.com/tmc/mcp">mcp-docs</a> {{.GeneratedAt.Format "2006-01-02 15:04:05"}}</p>
+                {{if .Config.Documentation.Author}}
+                <p>Created by {{.Config.Documentation.Author}}</p>
+                {{end}}
+            </footer>
+        </main>
+    </div>
+    
+    <script src="/static/js/docs.js"></script>
+    {{if .Config.Documentation.Search.Enabled}}
+    <script src="/static/js/search.js"></script>
+    {{end}}
+</body>
+</html>

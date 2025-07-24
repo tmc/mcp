@@ -1,0 +1,268 @@
+package {{.Package}}
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+	
+	"github.com/tmc/mcp"
+)
+
+// {{.Client.Name}} provides a type-safe client for the MCP server
+type {{.Client.Name}} struct {
+	client *mcp.Client
+}
+
+// New{{.Client.Name}} creates a new {{.Client.Name}} instance
+func New{{.Client.Name}}(transport mcp.Transport) (*{{.Client.Name}}, error) {
+	client, err := mcp.NewClient(transport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MCP client: %w", err)
+	}
+	
+	return &{{.Client.Name}}{
+		client: client,
+	}, nil
+}
+
+// Initialize initializes the MCP client connection
+func (c *{{.Client.Name}}) Initialize(ctx context.Context, clientInfo mcp.Implementation) error {
+	initReq := mcp.InitializeRequest{
+		ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
+		Capabilities: mcp.ClientCapabilities{
+			Experimental: map[string]interface{}{},
+			Sampling:     map[string]interface{}{},
+		},
+		ClientInfo: clientInfo,
+	}
+	
+	_, err := c.client.Initialize(ctx, initReq)
+	if err != nil {
+		return fmt.Errorf("failed to initialize client: %w", err)
+	}
+	
+	return nil
+}
+
+// Close closes the client connection
+func (c *{{.Client.Name}}) Close() error {
+	return c.client.Close()
+}
+
+{{range .Tools}}
+// {{.Name | toPascalCase}}Input represents the input for the {{.Name}} tool
+type {{.Name | toPascalCase}}Input struct {
+	{{range .InputSchema.properties}}
+	{{. | toGoName}} {{. | jsonToGoType}} `json:"{{.}}"{{if not (. | isRequired)}},omitempty{{end}}`
+	{{end}}
+}
+
+// {{.Name | toPascalCase}}Output represents the output for the {{.Name}} tool
+type {{.Name | toPascalCase}}Output struct {
+	Content []interface{} `json:"content"`
+	IsError bool          `json:"isError,omitempty"`
+	Meta    interface{}   `json:"_meta,omitempty"`
+}
+
+// {{.Name | toPascalCase}} executes the {{.Name}} tool with type safety
+func (c *{{.Client.Name}}) {{.Name | toPascalCase}}(ctx context.Context, input *{{.Name | toPascalCase}}Input) (*{{.Name | toPascalCase}}Output, error) {
+	// Marshal input arguments
+	args, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+	
+	// Call the tool
+	request := mcp.CallToolRequest{
+		Name:      "{{.Name}}",
+		Arguments: args,
+	}
+	
+	result, err := c.client.CallTool(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call tool: %w", err)
+	}
+	
+	// Handle error response
+	if result.IsError {
+		return &{{.Name | toPascalCase}}Output{
+			Content: result.Content,
+			IsError: true,
+		}, nil
+	}
+	
+	// Return successful response
+	return &{{.Name | toPascalCase}}Output{
+		Content: result.Content,
+		IsError: false,
+	}, nil
+}
+
+{{end}}
+
+// GetAvailableTools returns information about available tools
+func (c *{{.Client.Name}}) GetAvailableTools(ctx context.Context) ([]mcp.Tool, error) {
+	resp, err := c.client.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tools: %w", err)
+	}
+	
+	return resp.Tools, nil
+}
+
+// GetServerInfo returns information about the server
+func (c *{{.Client.Name}}) GetServerInfo(ctx context.Context) (*mcp.ServerCapabilities, error) {
+	// The server info is available after initialization
+	// This is a placeholder - actual implementation would depend on the MCP client API
+	return &mcp.ServerCapabilities{}, nil
+}
+
+// Ping tests the connection to the server
+func (c *{{.Client.Name}}) Ping(ctx context.Context) error {
+	// Use a lightweight operation to test connectivity
+	_, err := c.client.ListTools(ctx, mcp.ListToolsRequest{})
+	return err
+}
+
+// WithTimeout creates a context with the specified timeout
+func (c *{{.Client.Name}}) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
+}
+
+// WithDeadline creates a context with the specified deadline
+func (c *{{.Client.Name}}) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
+	return context.WithDeadline(context.Background(), deadline)
+}
+
+// Health check methods
+
+// HealthCheck performs a comprehensive health check
+func (c *{{.Client.Name}}) HealthCheck(ctx context.Context) error {
+	// Test basic connectivity
+	if err := c.Ping(ctx); err != nil {
+		return fmt.Errorf("ping failed: %w", err)
+	}
+	
+	// Test tool availability
+	tools, err := c.GetAvailableTools(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get available tools: %w", err)
+	}
+	
+	expectedTools := []string{
+		{{range .Tools}}"{{.Name}}",
+		{{end}}
+	}
+	
+	availableTools := make(map[string]bool)
+	for _, tool := range tools {
+		availableTools[tool.Name] = true
+	}
+	
+	for _, expected := range expectedTools {
+		if !availableTools[expected] {
+			return fmt.Errorf("expected tool %s not available", expected)
+		}
+	}
+	
+	return nil
+}
+
+// IsConnected checks if the client is connected to the server
+func (c *{{.Client.Name}}) IsConnected(ctx context.Context) bool {
+	return c.Ping(ctx) == nil
+}
+
+// GetClient returns the underlying MCP client for advanced usage
+func (c *{{.Client.Name}}) GetClient() *mcp.Client {
+	return c.client
+}
+
+// Error handling utilities
+
+// IsToolError checks if an error is a tool-specific error
+func IsToolError(err error) bool {
+	// Check if error is from tool execution
+	return strings.Contains(err.Error(), "tool error")
+}
+
+// IsConnectionError checks if an error is a connection-related error
+func IsConnectionError(err error) bool {
+	// Check if error is from connection issues
+	return strings.Contains(err.Error(), "connection") || 
+	       strings.Contains(err.Error(), "transport")
+}
+
+// IsTimeoutError checks if an error is a timeout error
+func IsTimeoutError(err error) bool {
+	return strings.Contains(err.Error(), "timeout") ||
+	       strings.Contains(err.Error(), "deadline exceeded")
+}
+
+// Utility functions for common operations
+
+// ExecuteWithRetry executes a function with retry logic
+func (c *{{.Client.Name}}) ExecuteWithRetry(ctx context.Context, fn func() error, maxRetries int) error {
+	var lastErr error
+	
+	for i := 0; i <= maxRetries; i++ {
+		if i > 0 {
+			// Exponential backoff
+			backoff := time.Duration(i*i) * time.Second
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+		
+		if err := fn(); err != nil {
+			lastErr = err
+			if !IsConnectionError(err) && !IsTimeoutError(err) {
+				// Don't retry non-transient errors
+				return err
+			}
+			continue
+		}
+		
+		return nil
+	}
+	
+	return fmt.Errorf("max retries exceeded, last error: %w", lastErr)
+}
+
+// BatchExecute executes multiple tool calls in sequence
+func (c *{{.Client.Name}}) BatchExecute(ctx context.Context, requests []BatchRequest) ([]BatchResult, error) {
+	results := make([]BatchResult, len(requests))
+	
+	for i, req := range requests {
+		result, err := c.executeBatchRequest(ctx, req)
+		results[i] = BatchResult{
+			Index:  i,
+			Result: result,
+			Error:  err,
+		}
+	}
+	
+	return results, nil
+}
+
+// BatchRequest represents a batch tool request
+type BatchRequest struct {
+	ToolName string
+	Args     interface{}
+}
+
+// BatchResult represents a batch tool result
+type BatchResult struct {
+	Index  int
+	Result interface{}
+	Error  error
+}
+
+func (c *{{.Client.Name}}) executeBatchRequest(ctx context.Context, req BatchRequest) (interface{}, error) {
+	// This would need to be implemented based on the specific tools
+	// For now, return a placeholder
+	return nil, fmt.Errorf("batch request not implemented for tool: %s", req.ToolName)
+}

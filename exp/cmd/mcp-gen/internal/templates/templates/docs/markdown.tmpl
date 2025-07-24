@@ -1,0 +1,749 @@
+# {{.Docs.Title}}
+
+{{.Docs.Description}}
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [API Reference](#api-reference)
+{{range .Tools}}
+  - [{{.Name}}](#{{.Name | toLower}})
+{{end}}
+- [Examples](#examples)
+- [Error Handling](#error-handling)
+- [Testing](#testing)
+- [Contributing](#contributing)
+
+## Installation
+
+### Go
+
+```bash
+go get {{.Config.Go.ModulePath}}
+```
+
+### TypeScript/JavaScript
+
+```bash
+npm install {{.Config.TypeScript.ModuleName}}
+```
+
+### Python
+
+```bash
+pip install {{.Config.Python.PackageName}}
+```
+
+### Rust
+
+```toml
+[dependencies]
+{{.Config.Rust.CrateName}} = "1.0"
+```
+
+### Java
+
+```xml
+<dependency>
+    <groupId>{{.Config.Java.PackageName}}</groupId>
+    <artifactId>{{.Config.Java.PackageName}}</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+## Quick Start
+
+### Client Usage
+
+{{if eq .Language "go"}}
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    
+    "github.com/tmc/mcp"
+    "{{.Config.Go.ModulePath}}"
+)
+
+func main() {
+    // Create client
+    transport := mcp.StdioTransport()
+    client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err)
+    }
+    defer client.Close()
+    
+    // Initialize
+    ctx := context.Background()
+    clientInfo := mcp.Implementation{
+        Name:    "my-client",
+        Version: "1.0.0",
+    }
+    
+    err = client.Initialize(ctx, clientInfo)
+    if err != nil {
+        log.Fatalf("Failed to initialize: %v", err)
+    }
+    
+    // Use tools
+    {{range .Tools}}
+    {{if eq @index 0}}
+    input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+        // Set input fields
+    }
+    
+    result, err := client.{{.Name | toPascalCase}}(ctx, input)
+    if err != nil {
+        log.Fatalf("Tool failed: %v", err)
+    }
+    
+    fmt.Printf("Result: %v\n", result)
+    {{end}}
+    {{end}}
+}
+```
+{{end}}
+
+{{if eq .Language "typescript"}}
+```typescript
+import { {{.Package | toPascalCase}}Client } from '{{.Config.TypeScript.ModuleName}}';
+
+async function main() {
+    const client = new {{.Package | toPascalCase}}Client();
+    
+    await client.initialize({
+        name: 'my-client',
+        version: '1.0.0'
+    });
+    
+    {{range .Tools}}
+    {{if eq @index 0}}
+    const result = await client.{{.Name | toCamelCase}}({
+        // Set input fields
+    });
+    
+    console.log('Result:', result);
+    {{end}}
+    {{end}}
+}
+
+main().catch(console.error);
+```
+{{end}}
+
+{{if eq .Language "python"}}
+```python
+import asyncio
+from {{.Config.Python.PackageName}} import {{.Package | toPascalCase}}Client
+
+async def main():
+    client = {{.Package | toPascalCase}}Client()
+    
+    await client.initialize({
+        "name": "my-client",
+        "version": "1.0.0"
+    })
+    
+    {{range .Tools}}
+    {{if eq @index 0}}
+    result = await client.{{.Name | toPyName}}({
+        # Set input fields
+    })
+    
+    print(f"Result: {result}")
+    {{end}}
+    {{end}}
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+{{end}}
+
+### Server Usage
+
+{{if eq .Language "go"}}
+```go
+package main
+
+import (
+    "{{.Config.Go.ModulePath}}"
+)
+
+func main() {
+    server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+    
+    if err := server.ServeStdio(); err != nil {
+        panic(err)
+    }
+}
+```
+{{end}}
+
+## API Reference
+
+### Client
+
+{{if eq .Language "go"}}
+#### type {{.Package | toPascalCase}}Client
+
+```go
+type {{.Package | toPascalCase}}Client struct {
+    // contains filtered or unexported fields
+}
+```
+
+#### func New{{.Package | toPascalCase}}Client
+
+```go
+func New{{.Package | toPascalCase}}Client(transport mcp.Transport) (*{{.Package | toPascalCase}}Client, error)
+```
+
+Creates a new {{.Package | toPascalCase}}Client instance.
+
+#### func (*{{.Package | toPascalCase}}Client) Initialize
+
+```go
+func (c *{{.Package | toPascalCase}}Client) Initialize(ctx context.Context, clientInfo mcp.Implementation) error
+```
+
+Initializes the MCP client connection.
+
+#### func (*{{.Package | toPascalCase}}Client) Close
+
+```go
+func (c *{{.Package | toPascalCase}}Client) Close() error
+```
+
+Closes the client connection.
+
+#### func (*{{.Package | toPascalCase}}Client) HealthCheck
+
+```go
+func (c *{{.Package | toPascalCase}}Client) HealthCheck(ctx context.Context) error
+```
+
+Performs a comprehensive health check.
+
+#### func (*{{.Package | toPascalCase}}Client) Ping
+
+```go
+func (c *{{.Package | toPascalCase}}Client) Ping(ctx context.Context) error
+```
+
+Tests the connection to the server.
+
+#### func (*{{.Package | toPascalCase}}Client) ExecuteWithRetry
+
+```go
+func (c *{{.Package | toPascalCase}}Client) ExecuteWithRetry(ctx context.Context, fn func() error, maxRetries int) error
+```
+
+Executes a function with retry logic.
+
+#### func (*{{.Package | toPascalCase}}Client) BatchExecute
+
+```go
+func (c *{{.Package | toPascalCase}}Client) BatchExecute(ctx context.Context, requests []BatchRequest) ([]BatchResult, error)
+```
+
+Executes multiple tool calls in sequence.
+{{end}}
+
+### Server
+
+{{if eq .Language "go"}}
+#### type {{.Package | toPascalCase}}Server
+
+```go
+type {{.Package | toPascalCase}}Server struct {
+    // contains filtered or unexported fields
+}
+```
+
+#### func New{{.Package | toPascalCase}}Server
+
+```go
+func New{{.Package | toPascalCase}}Server() *{{.Package | toPascalCase}}Server
+```
+
+Creates a new {{.Package | toPascalCase}}Server instance.
+
+#### func (*{{.Package | toPascalCase}}Server) Serve
+
+```go
+func (s *{{.Package | toPascalCase}}Server) Serve(ctx context.Context, transport mcp.Transport) error
+```
+
+Starts the MCP server.
+
+#### func (*{{.Package | toPascalCase}}Server) ServeStdio
+
+```go
+func (s *{{.Package | toPascalCase}}Server) ServeStdio() error
+```
+
+Starts the MCP server with stdio transport.
+
+#### func (*{{.Package | toPascalCase}}Server) HealthCheck
+
+```go
+func (s *{{.Package | toPascalCase}}Server) HealthCheck(ctx context.Context) error
+```
+
+Performs a server health check.
+
+#### func (*{{.Package | toPascalCase}}Server) GetStats
+
+```go
+func (s *{{.Package | toPascalCase}}Server) GetStats() map[string]interface{}
+```
+
+Returns server statistics.
+{{end}}
+
+## Tools
+
+{{range .Tools}}
+### {{.Name}}
+
+{{.Description}}
+
+{{if eq $.Language "go"}}
+#### Input Type
+
+```go
+type {{.Name | toPascalCase}}Input struct {
+    {{range .InputSchema.properties}}
+    {{. | toGoName}} {{. | jsonToGoType}} `json:"{{.}}"{{if not (. | isRequired)}},omitempty{{end}}` {{if .description}}// {{.description}}{{end}}
+    {{end}}
+}
+```
+
+#### Output Type
+
+```go
+type {{.Name | toPascalCase}}Output struct {
+    {{if .OutputSchema}}
+    {{range .OutputSchema.properties}}
+    {{. | toGoName}} {{. | jsonToGoType}} `json:"{{.}}"{{if not (. | isRequired)}},omitempty{{end}}` {{if .description}}// {{.description}}{{end}}
+    {{end}}
+    {{else}}
+    Content []interface{} `json:"content"`
+    IsError bool          `json:"isError,omitempty"`
+    Meta    interface{}   `json:"_meta,omitempty"`
+    {{end}}
+}
+```
+
+#### Usage
+
+```go
+input := &{{$.Package}}.{{.Name | toPascalCase}}Input{
+    {{range .InputSchema.properties}}
+    {{. | toGoName}}: {{. | defaultValue}}, {{if .description}}// {{.description}}{{end}}
+    {{end}}
+}
+
+result, err := client.{{.Name | toPascalCase}}(ctx, input)
+if err != nil {
+    return fmt.Errorf("tool failed: %w", err)
+}
+
+if result.IsError {
+    return fmt.Errorf("tool returned error: %v", result.Content)
+}
+
+// Use result.Content
+```
+{{end}}
+
+{{if eq $.Language "typescript"}}
+#### Input Type
+
+```typescript
+interface {{.Name | toPascalCase}}Input {
+    {{range .InputSchema.properties}}
+    {{. | toTSName}}{{if not (. | isRequired)}}?{{end}}: {{. | jsonToTSType}};{{if .description}} // {{.description}}{{end}}
+    {{end}}
+}
+```
+
+#### Output Type
+
+```typescript
+interface {{.Name | toPascalCase}}Output {
+    {{if .OutputSchema}}
+    {{range .OutputSchema.properties}}
+    {{. | toTSName}}{{if not (. | isRequired)}}?{{end}}: {{. | jsonToTSType}};{{if .description}} // {{.description}}{{end}}
+    {{end}}
+    {{else}}
+    content: any[];
+    isError?: boolean;
+    _meta?: any;
+    {{end}}
+}
+```
+
+#### Usage
+
+```typescript
+const input: {{.Name | toPascalCase}}Input = {
+    {{range .InputSchema.properties}}
+    {{. | toTSName}}: {{. | defaultValue}},{{if .description}} // {{.description}}{{end}}
+    {{end}}
+};
+
+const result = await client.{{.Name | toCamelCase}}(input);
+
+if (result.isError) {
+    throw new Error(`Tool returned error: ${result.content}`);
+}
+
+// Use result.content
+```
+{{end}}
+
+{{if eq $.Language "python"}}
+#### Input Type
+
+```python
+class {{.Name | toPascalCase}}Input:
+    {{range .InputSchema.properties}}
+    {{. | toPyName}}: {{. | jsonToPyType}}{{if .description}}  # {{.description}}{{end}}
+    {{end}}
+```
+
+#### Output Type
+
+```python
+class {{.Name | toPascalCase}}Output:
+    {{if .OutputSchema}}
+    {{range .OutputSchema.properties}}
+    {{. | toPyName}}: {{. | jsonToPyType}}{{if .description}}  # {{.description}}{{end}}
+    {{end}}
+    {{else}}
+    content: List[Any]
+    is_error: Optional[bool] = None
+    meta: Optional[Any] = None
+    {{end}}
+```
+
+#### Usage
+
+```python
+input = {{.Name | toPascalCase}}Input(
+    {{range .InputSchema.properties}}
+    {{. | toPyName}}={{. | defaultValue}},{{if .description}}  # {{.description}}{{end}}
+    {{end}}
+)
+
+result = await client.{{.Name | toPyName}}(input)
+
+if result.is_error:
+    raise Exception(f"Tool returned error: {result.content}")
+
+# Use result.content
+```
+{{end}}
+
+{{if .Examples}}
+#### Examples
+
+{{range .Examples}}
+##### {{.Name}}
+
+{{.Description}}
+
+{{if eq $.Language "go"}}
+```go
+{{.Code}}
+```
+{{end}}
+
+{{if eq $.Language "typescript"}}
+```typescript
+{{.Code}}
+```
+{{end}}
+
+{{if eq $.Language "python"}}
+```python
+{{.Code}}
+```
+{{end}}
+
+**Input:**
+```json
+{{.Input}}
+```
+
+**Output:**
+```json
+{{.Output}}
+```
+
+{{end}}
+{{end}}
+
+{{end}}
+
+## Error Handling
+
+### Error Types
+
+{{if eq .Language "go"}}
+The client provides utility functions to identify different types of errors:
+
+```go
+if err != nil {
+    switch {
+    case {{.Package}}.IsToolError(err):
+        // Handle tool-specific errors
+    case {{.Package}}.IsConnectionError(err):
+        // Handle connection errors
+    case {{.Package}}.IsTimeoutError(err):
+        // Handle timeout errors
+    default:
+        // Handle other errors
+    }
+}
+```
+
+### Retry Logic
+
+```go
+err = client.ExecuteWithRetry(ctx, func() error {
+    return client.Ping(ctx)
+}, 3)
+```
+
+### Timeout Handling
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+result, err := client.SomeTool(ctx, input)
+if err != nil {
+    if {{.Package}}.IsTimeoutError(err) {
+        // Handle timeout
+    }
+}
+```
+{{end}}
+
+## Testing
+
+### Unit Tests
+
+{{if eq .Language "go"}}
+```go
+func TestMyTool(t *testing.T) {
+    transport := &mockTransport{
+        responses: map[string]interface{}{
+            "my_tool": map[string]interface{}{
+                "content": []interface{}{
+                    map[string]interface{}{
+                        "type": "text",
+                        "text": `{"result": "success"}`,
+                    },
+                },
+            },
+        },
+    }
+    
+    client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+    if err != nil {
+        t.Fatalf("Failed to create client: %v", err)
+    }
+    
+    // Test your tool
+    result, err := client.MyTool(ctx, input)
+    // Assert results
+}
+```
+{{end}}
+
+### Integration Tests
+
+Run integration tests against a real server:
+
+```bash
+{{if eq .Language "go"}}
+go test -v -tags=integration
+{{end}}
+{{if eq .Language "typescript"}}
+npm test -- --testNamePattern="integration"
+{{end}}
+{{if eq .Language "python"}}
+pytest -v -k integration
+{{end}}
+```
+
+### Benchmarks
+
+{{if eq .Language "go"}}
+```bash
+go test -bench=. -benchmem
+```
+{{end}}
+
+## Configuration
+
+### Client Configuration
+
+{{if eq .Language "go"}}
+```go
+client, err := {{.Package}}.New{{.Package | toPascalCase}}Client(transport)
+if err != nil {
+    return err
+}
+
+// Configure timeouts
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+// Configure retry
+err = client.ExecuteWithRetry(ctx, func() error {
+    return client.Ping(ctx)
+}, 3)
+```
+{{end}}
+
+### Server Configuration
+
+{{if eq .Language "go"}}
+```go
+server := {{.Package}}.New{{.Package | toPascalCase}}Server()
+
+// Load configuration
+config, err := server.LoadConfig("config.json")
+if err != nil {
+    return err
+}
+
+// Apply configuration
+err = server.ApplyConfig(config)
+if err != nil {
+    return err
+}
+```
+{{end}}
+
+## Monitoring and Observability
+
+### Health Checks
+
+{{if eq .Language "go"}}
+```go
+// Client health check
+if err := client.HealthCheck(ctx); err != nil {
+    log.Printf("Client health check failed: %v", err)
+}
+
+// Server health check
+if err := server.HealthCheck(ctx); err != nil {
+    log.Printf("Server health check failed: %v", err)
+}
+```
+{{end}}
+
+### Metrics
+
+{{if eq .Language "go"}}
+```go
+// Get server stats
+stats := server.GetStats()
+fmt.Printf("Server stats: %+v\n", stats)
+
+// Check connection status
+if client.IsConnected(ctx) {
+    fmt.Println("Client is connected")
+}
+```
+{{end}}
+
+## Best Practices
+
+1. **Always handle errors**: Check and handle errors appropriately
+2. **Use timeouts**: Set appropriate timeouts for operations
+3. **Implement retry logic**: Use retry for transient failures
+4. **Test thoroughly**: Write unit, integration, and benchmark tests
+5. **Monitor health**: Implement health checks and monitoring
+6. **Handle graceful shutdown**: Properly close connections and resources
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Connection failures**: Check network connectivity and server availability
+2. **Timeout errors**: Increase timeout values or optimize operations
+3. **Invalid input**: Validate input data before sending to tools
+4. **Resource exhaustion**: Monitor memory and CPU usage
+
+### Debug Logging
+
+{{if eq .Language "go"}}
+```go
+// Enable debug logging
+log.SetLevel(log.DebugLevel)
+
+// Or use structured logging
+logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+    Level: slog.LevelDebug,
+}))
+```
+{{end}}
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Run the test suite
+6. Submit a pull request
+
+### Development Setup
+
+{{if eq .Language "go"}}
+```bash
+git clone https://github.com/your-org/{{.Package}}
+cd {{.Package}}
+go mod tidy
+go test ./...
+```
+{{end}}
+
+### Code Style
+
+Follow the established code style and conventions for {{.Language}}.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Changelog
+
+### v1.0.0
+- Initial release
+- All tools implemented
+- Full test coverage
+- Documentation complete
+
+## Support
+
+For support, please:
+1. Check the documentation
+2. Search existing issues
+3. Open a new issue with details
+4. Contact the maintainers
+
+---
+
+Generated with [mcp-gen](https://github.com/tmc/mcp/tree/main/exp/cmd/mcp-gen) v0.1.0

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-brand">
+                <h1>MCP Studio</h1>
+                <span class="version">v1.0.0</span>
+            </div>
+            <nav class="header-nav">
+                <a href="/" class="nav-item active">Dashboard</a>
+                <a href="/servers" class="nav-item">Servers</a>
+                <a href="/settings" class="nav-item">Settings</a>
+            </nav>
+        </header>
+
+        <main class="main">
+            <div class="dashboard">
+                <div class="dashboard-header">
+                    <h2>Projects</h2>
+                    <button class="btn btn-primary" onclick="createProject()">
+                        <i class="icon-plus"></i> New Project
+                    </button>
+                </div>
+
+                <div class="projects-grid">
+                    {{range .Projects}}
+                    <div class="project-card" data-project-id="{{.ID}}">
+                        <div class="project-header">
+                            <h3>{{.Name}}</h3>
+                            <div class="project-actions">
+                                <button class="btn btn-sm" onclick="editProject('{{.ID}}')">
+                                    <i class="icon-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteProject('{{.ID}}')">
+                                    <i class="icon-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="project-description">
+                            {{.Description}}
+                        </div>
+                        <div class="project-stats">
+                            <span class="stat">
+                                <i class="icon-workflow"></i> {{len .Flows}} flows
+                            </span>
+                            <span class="stat">
+                                <i class="icon-server"></i> {{len .Servers}} servers
+                            </span>
+                        </div>
+                        <div class="project-footer">
+                            <span class="project-date">{{.UpdatedAt.Format "2006-01-02 15:04"}}</span>
+                            <a href="/project/{{.ID}}" class="btn btn-primary">Open</a>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="icon-folder"></i>
+                        </div>
+                        <h3>No projects yet</h3>
+                        <p>Create your first project to get started with MCP Studio</p>
+                        <button class="btn btn-primary" onclick="createProject()">
+                            Create Project
+                        </button>
+                    </div>
+                    {{end}}
+                </div>
+
+                <div class="quick-actions">
+                    <h3>Quick Actions</h3>
+                    <div class="actions-grid">
+                        <div class="action-card">
+                            <i class="icon-plus"></i>
+                            <h4>New Project</h4>
+                            <p>Create a new MCP project</p>
+                            <button class="btn btn-outline" onclick="createProject()">Create</button>
+                        </div>
+                        <div class="action-card">
+                            <i class="icon-import"></i>
+                            <h4>Import Project</h4>
+                            <p>Import an existing project</p>
+                            <button class="btn btn-outline" onclick="importProject()">Import</button>
+                        </div>
+                        <div class="action-card">
+                            <i class="icon-server"></i>
+                            <h4>Connect Server</h4>
+                            <p>Connect to an MCP server</p>
+                            <button class="btn btn-outline" onclick="connectServer()">Connect</button>
+                        </div>
+                        <div class="action-card">
+                            <i class="icon-book"></i>
+                            <h4>Documentation</h4>
+                            <p>Learn about MCP Studio</p>
+                            <button class="btn btn-outline" onclick="openDocs()">Read</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create Project Modal -->
+    <div class="modal" id="createProjectModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Project</h3>
+                <button class="btn-close" onclick="closeModal('createProjectModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createProjectForm">
+                    <div class="form-group">
+                        <label>Project Name</label>
+                        <input type="text" name="name" required placeholder="My MCP Project">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" placeholder="Project description..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Author</label>
+                        <input type="text" name="author" placeholder="Your name">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitCreateProject()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

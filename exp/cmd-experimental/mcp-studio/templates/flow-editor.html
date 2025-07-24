@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/flow-editor.css">
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-brand">
+                <a href="/" class="brand-link">MCP Studio</a>
+                <span class="breadcrumb">
+                    <i class="icon-chevron-right"></i>
+                    <a href="/project/{{.Project.ID}}">{{.Project.Name}}</a>
+                    <i class="icon-chevron-right"></i>
+                    <span>{{.Flow.Name}}</span>
+                </span>
+            </div>
+            <nav class="header-nav">
+                <button class="btn btn-outline" onclick="saveFlow()">
+                    <i class="icon-save"></i> Save
+                </button>
+                <button class="btn btn-primary" onclick="runFlow()">
+                    <i class="icon-play"></i> Run
+                </button>
+            </nav>
+        </header>
+
+        <div class="editor-layout">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>Node Library</h3>
+                    <div class="node-library">
+                        <div class="node-category">
+                            <h4>MCP Operations</h4>
+                            <div class="node-item" draggable="true" data-node-type="tool">
+                                <i class="icon-tool"></i>
+                                <span>Tool Call</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="resource">
+                                <i class="icon-resource"></i>
+                                <span>Resource Read</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="prompt">
+                                <i class="icon-prompt"></i>
+                                <span>Prompt Get</span>
+                            </div>
+                        </div>
+                        <div class="node-category">
+                            <h4>Control Flow</h4>
+                            <div class="node-item" draggable="true" data-node-type="condition">
+                                <i class="icon-condition"></i>
+                                <span>Condition</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="loop">
+                                <i class="icon-loop"></i>
+                                <span>Loop</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="delay">
+                                <i class="icon-delay"></i>
+                                <span>Delay</span>
+                            </div>
+                        </div>
+                        <div class="node-category">
+                            <h4>Data</h4>
+                            <div class="node-item" draggable="true" data-node-type="variable">
+                                <i class="icon-variable"></i>
+                                <span>Variable</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="transform">
+                                <i class="icon-transform"></i>
+                                <span>Transform</span>
+                            </div>
+                            <div class="node-item" draggable="true" data-node-type="output">
+                                <i class="icon-output"></i>
+                                <span>Output</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Servers</h3>
+                    <div class="server-list">
+                        {{range .Servers}}
+                        <div class="server-item {{if .Connected}}connected{{else}}disconnected{{end}}" data-server-id="{{.ID}}">
+                            <div class="server-status"></div>
+                            <div class="server-info">
+                                <span class="server-name">{{.Name}}</span>
+                                <span class="server-type">{{.Client.Tools | len}} tools</span>
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </aside>
+
+            <main class="editor-main">
+                <div class="editor-toolbar">
+                    <div class="toolbar-group">
+                        <button class="btn btn-sm" onclick="zoomIn()">
+                            <i class="icon-zoom-in"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="zoomOut()">
+                            <i class="icon-zoom-out"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="fitToScreen()">
+                            <i class="icon-fit"></i>
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-sm" onclick="toggleGrid()">
+                            <i class="icon-grid"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="toggleMinimap()">
+                            <i class="icon-minimap"></i>
+                        </button>
+                    </div>
+                    <div class="toolbar-group">
+                        <button class="btn btn-sm" onclick="undo()">
+                            <i class="icon-undo"></i>
+                        </button>
+                        <button class="btn btn-sm" onclick="redo()">
+                            <i class="icon-redo"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="flowCanvas" class="flow-canvas"></canvas>
+                    <div class="canvas-overlay">
+                        <div class="minimap" id="minimap"></div>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="properties-panel">
+                <div class="panel-header">
+                    <h3>Properties</h3>
+                </div>
+                <div class="panel-content" id="propertiesContent">
+                    <div class="empty-selection">
+                        <i class="icon-select"></i>
+                        <p>Select a node to edit its properties</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <footer class="editor-footer">
+            <div class="status-bar">
+                <span class="status-item">
+                    <i class="icon-nodes"></i>
+                    <span id="nodeCount">{{len .Flow.Nodes}} nodes</span>
+                </span>
+                <span class="status-item">
+                    <i class="icon-connections"></i>
+                    <span id="edgeCount">{{len .Flow.Edges}} connections</span>
+                </span>
+                <span class="status-item">
+                    <i class="icon-status"></i>
+                    <span id="flowStatus">Ready</span>
+                </span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Node Configuration Modal -->
+    <div class="modal" id="nodeConfigModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Node Configuration</h3>
+                <button class="btn-close" onclick="closeModal('nodeConfigModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="nodeConfigForm">
+                    <div class="form-group">
+                        <label>Node Name</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Server</label>
+                        <select name="server">
+                            {{range .Servers}}
+                            <option value="{{.ID}}">{{.Name}}</option>
+                            {{end}}
+                        </select>
+                    </div>
+                    <div id="nodeSpecificConfig"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('nodeConfigModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveNodeConfig()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/flow-editor.js"></script>
+    <script>
+        // Initialize flow editor with current flow data
+        const flowData = {
+            id: '{{.Flow.ID}}',
+            name: '{{.Flow.Name}}',
+            nodes: {{.Flow.Nodes | toJSON}},
+            edges: {{.Flow.Edges | toJSON}},
+            variables: {{.Flow.Variables | toJSON}}
+        };
+        
+        const projectData = {
+            id: '{{.Project.ID}}',
+            name: '{{.Project.Name}}'
+        };
+        
+        const serversData = {{.Servers | toJSON}};
+        
+        // Initialize the flow editor
+        initFlowEditor(flowData, projectData, serversData);
+    </script>
+</body>
+</html>

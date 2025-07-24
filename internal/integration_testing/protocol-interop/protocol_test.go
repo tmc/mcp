@@ -35,7 +35,7 @@ func TestProtocolMessageSerialization(t *testing.T) {
 		}
 
 		if unmarshaled["protocolVersion"] != "2024-11-05" {
-			t.Errorf("ProtocolVersion mismatch: got %v, want %s", 
+			t.Errorf("ProtocolVersion mismatch: got %v, want %s",
 				unmarshaled["protocolVersion"], "2024-11-05")
 		}
 	})

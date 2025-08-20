@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/tmc/mcp/modelcontextprotocol"
 )
 
 // Security error constants
@@ -38,29 +39,29 @@ var (
 // SecurityConfig provides comprehensive security configuration
 type SecurityConfig struct {
 	// Input validation settings
-	MaxRequestSize        int                       `json:"maxRequestSize"`
-	MaxResponseSize       int                       `json:"maxResponseSize"`
-	MaxStringLength       int                       `json:"maxStringLength"`
-	MaxArrayLength        int                       `json:"maxArrayLength"`
-	MaxObjectDepth        int                       `json:"maxObjectDepth"`
-	AllowedContentTypes   []string                  `json:"allowedContentTypes"`
-	ForbiddenPatterns     []string                  `json:"forbiddenPatterns"`
-	CustomValidators      map[string]ValidatorFunc  `json:"-"`
-	SchemaValidation      bool                      `json:"schemaValidation"`
-	StrictMode            bool                      `json:"strictMode"`
+	MaxRequestSize      int                      `json:"maxRequestSize"`
+	MaxResponseSize     int                      `json:"maxResponseSize"`
+	MaxStringLength     int                      `json:"maxStringLength"`
+	MaxArrayLength      int                      `json:"maxArrayLength"`
+	MaxObjectDepth      int                      `json:"maxObjectDepth"`
+	AllowedContentTypes []string                 `json:"allowedContentTypes"`
+	ForbiddenPatterns   []string                 `json:"forbiddenPatterns"`
+	CustomValidators    map[string]ValidatorFunc `json:"-"`
+	SchemaValidation    bool                     `json:"schemaValidation"`
+	StrictMode          bool                     `json:"strictMode"`
 
 	// Rate limiting settings
-	RateLimitEnabled      bool                      `json:"rateLimitEnabled"`
-	RequestsPerSecond     int                       `json:"requestsPerSecond"`
-	BurstSize             int                       `json:"burstSize"`
-	WindowSize            time.Duration             `json:"windowSize"`
-	PerClientLimits       map[string]RateLimitRule  `json:"perClientLimits"`
+	RateLimitEnabled  bool                     `json:"rateLimitEnabled"`
+	RequestsPerSecond int                      `json:"requestsPerSecond"`
+	BurstSize         int                      `json:"burstSize"`
+	WindowSize        time.Duration            `json:"windowSize"`
+	PerClientLimits   map[string]RateLimitRule `json:"perClientLimits"`
 
 	// Authentication security settings
-	TokenEncryption       bool                      `json:"tokenEncryption"`
-	TokenRotationInterval time.Duration             `json:"tokenRotationInterval"`
-	MaxTokenAge           time.Duration             `json:"maxTokenAge"`
-	EncryptionKey         []byte                    `json:"-"` // Never serialize
+	TokenEncryption       bool          `json:"tokenEncryption"`
+	TokenRotationInterval time.Duration `json:"tokenRotationInterval"`
+	MaxTokenAge           time.Duration `json:"maxTokenAge"`
+	EncryptionKey         []byte        `json:"-"` // Never serialize
 }
 
 // DefaultSecurityConfig returns a secure default configuration
@@ -127,7 +128,7 @@ func NewInputValidator(config *SecurityConfig) (*InputValidator, error) {
 func (v *InputValidator) ValidateRequest(ctx context.Context, method string, data []byte) error {
 	// Check request size
 	if len(data) > v.config.MaxRequestSize {
-		return fmt.Errorf("%w: request size %d exceeds maximum %d", 
+		return fmt.Errorf("%w: request size %d exceeds maximum %d",
 			ErrValidationFailed, len(data), v.config.MaxRequestSize)
 	}
 
@@ -158,7 +159,7 @@ func (v *InputValidator) ValidateRequest(ctx context.Context, method string, dat
 // validateValue recursively validates values with depth tracking
 func (v *InputValidator) validateValue(value interface{}, depth int) error {
 	if depth > v.config.MaxObjectDepth {
-		return fmt.Errorf("%w: object depth %d exceeds maximum %d", 
+		return fmt.Errorf("%w: object depth %d exceeds maximum %d",
 			ErrValidationFailed, depth, v.config.MaxObjectDepth)
 	}
 
@@ -184,7 +185,7 @@ func (v *InputValidator) validateValue(value interface{}, depth int) error {
 func (v *InputValidator) validateString(s string) error {
 	// Check length
 	if len(s) > v.config.MaxStringLength {
-		return fmt.Errorf("%w: string length %d exceeds maximum %d", 
+		return fmt.Errorf("%w: string length %d exceeds maximum %d",
 			ErrValidationFailed, len(s), v.config.MaxStringLength)
 	}
 
@@ -206,7 +207,7 @@ func (v *InputValidator) validateString(s string) error {
 // validateArray checks array values
 func (v *InputValidator) validateArray(arr []interface{}, depth int) error {
 	if len(arr) > v.config.MaxArrayLength {
-		return fmt.Errorf("%w: array length %d exceeds maximum %d", 
+		return fmt.Errorf("%w: array length %d exceeds maximum %d",
 			ErrValidationFailed, len(arr), v.config.MaxArrayLength)
 	}
 
@@ -239,11 +240,11 @@ func (v *InputValidator) validateObject(obj map[string]interface{}, depth int) e
 // validateMethodParams performs method-specific parameter validation
 func (v *InputValidator) validateMethodParams(method string, params map[string]interface{}) error {
 	switch MCPMethod(method) {
-	case MethodToolsCall:
+	case modelcontextprotocol.MethodToolsCall:
 		return v.validateToolsCallParams(params)
-	case MethodResourcesRead:
+	case modelcontextprotocol.MethodResourcesRead:
 		return v.validateResourcesReadParams(params)
-	case MethodPromptsGet:
+	case modelcontextprotocol.MethodPromptsGet:
 		return v.validatePromptsGetParams(params)
 	default:
 		// Unknown methods are allowed but logged
@@ -329,9 +330,10 @@ func (v *InputValidator) sanitizeString(s string) string {
 
 	// HTML escape if needed
 	if v.config.StrictMode {
+		// Replace ampersand FIRST to avoid double-encoding
+		s = strings.ReplaceAll(s, "&", "&amp;")
 		s = strings.ReplaceAll(s, "<", "&lt;")
 		s = strings.ReplaceAll(s, ">", "&gt;")
-		s = strings.ReplaceAll(s, "&", "&amp;")
 		s = strings.ReplaceAll(s, "\"", "&quot;")
 		s = strings.ReplaceAll(s, "'", "&#x27;")
 	}
@@ -347,14 +349,14 @@ func (v *InputValidator) sanitizeString(s string) string {
 // sanitizeArray cleans array values
 func (v *InputValidator) sanitizeArray(arr []interface{}) ([]interface{}, error) {
 	result := make([]interface{}, 0, len(arr))
-	
+
 	for _, item := range arr {
 		sanitized, err := v.SanitizeInput(item)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, sanitized)
-		
+
 		// Limit array size
 		if len(result) >= v.config.MaxArrayLength {
 			break
@@ -404,7 +406,7 @@ func (v *JSONSchemaValidator) RegisterSchema(messageType string, schemaJSON stri
 
 	// Create a compiler
 	compiler := jsonschema.NewCompiler()
-	
+
 	// Add schema as a resource
 	schemaURL := fmt.Sprintf("schema://%s", messageType)
 	if err := compiler.AddResource(schemaURL, strings.NewReader(schemaJSON)); err != nil {
@@ -445,7 +447,7 @@ func (v *JSONSchemaValidator) ValidateRequest(ctx context.Context, req MCPReques
 	if req.GetMethod() == "" {
 		return fmt.Errorf("request method is required")
 	}
-	
+
 	// Extract params for validation
 	if params := req.GetParams(); params != nil {
 		var paramsObj interface{}
@@ -453,7 +455,7 @@ func (v *JSONSchemaValidator) ValidateRequest(ctx context.Context, req MCPReques
 			return v.ValidateMessage(req.GetMethod(), paramsObj)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -462,12 +464,12 @@ func (v *JSONSchemaValidator) ValidateResponse(ctx context.Context, resp MCPResp
 	if resp == nil {
 		return fmt.Errorf("response cannot be nil")
 	}
-	
+
 	// Validate response result if available
 	if result := resp.GetResult(); result != nil {
 		return v.ValidateMessage("response", result)
 	}
-	
+
 	return nil
 }
 
@@ -655,8 +657,8 @@ func (s *SecureTokenStorage) RotateKey(newKey []byte) error {
 
 // InputValidationMiddleware provides input validation as middleware
 type InputValidationMiddleware struct {
-	validator     *InputValidator
-	schemaValidator *JSONSchemaValidator
+	validator        *InputValidator
+	schemaValidator  *JSONSchemaValidator
 	contentValidator *ContentTypeValidator
 }
 

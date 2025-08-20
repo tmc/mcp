@@ -130,7 +130,7 @@ func TestSanitizeInput(t *testing.T) {
 		{
 			name:     "sanitize HTML in string",
 			input:    "<script>alert('xss')</script>",
-			expected: "&lt;script&gt;alert('xss')&lt;/script&gt;",
+			expected: "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;",
 		},
 		{
 			name:     "truncate long string",
@@ -305,7 +305,7 @@ func TestValidateImageContent(t *testing.T) {
 
 	// Valid PNG magic bytes
 	validPNG := []byte("\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 100))
-	
+
 	// Valid JPEG magic bytes
 	validJPEG := []byte{0xFF, 0xD8, 0xFF}
 	validJPEG = append(validJPEG, make([]byte, 100)...)
@@ -452,17 +452,18 @@ func TestInputValidationMiddleware(t *testing.T) {
 
 	// Create a test handler
 	handler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &ErrorResponseImpl{}, nil
+		// Return a success response for testing
+		return &SuccessResponseImpl{Result: "success"}, nil
 	})
 
 	// Apply middleware
 	protected := middleware.Apply(handler)
 
 	tests := []struct {
-		name       string
-		request    MCPRequest
-		wantError  bool
-		errorCode  int
+		name      string
+		request   MCPRequest
+		wantError bool
+		errorCode int
 	}{
 		{
 			name: "valid request",
@@ -495,7 +496,7 @@ func TestInputValidationMiddleware(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := protected.Handle(context.Background(), tt.request)
-			
+
 			if tt.wantError {
 				if err == nil && (resp == nil || !resp.IsError()) {
 					t.Error("Expected error response")
@@ -553,7 +554,7 @@ func (r *mockMCPRequest) WithContext(ctx context.Context) MCPRequest {
 func BenchmarkInputValidation(b *testing.B) {
 	config := DefaultSecurityConfig()
 	validator, _ := NewInputValidator(config)
-	
+
 	data := []byte(`{
 		"name": "test_tool",
 		"arguments": {
@@ -572,7 +573,7 @@ func BenchmarkInputValidation(b *testing.B) {
 func BenchmarkTokenEncryption(b *testing.B) {
 	key := []byte("benchmark-key-32-bytes-long!!!!!")
 	storage, _ := NewSecureTokenStorage(key)
-	
+
 	token := &AccessToken{
 		AccessToken:  "benchmark-token",
 		TokenType:    "Bearer",

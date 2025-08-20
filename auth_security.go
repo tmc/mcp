@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -26,17 +28,28 @@ var (
 	ErrInvalidTokenVersion   = errors.New("auth: unsupported token version")
 )
 
+// Debug mode flag - set DEBUG_AUTH=1 to enable detailed logging
+var debugAuth = os.Getenv("DEBUG_AUTH") == "1"
+
+// debugLog logs debug information if debug mode is enabled
+func debugLog(format string, args ...interface{}) {
+	if debugAuth {
+		log.Printf("[AUTH-DEBUG] "+format, args...)
+	}
+}
+
 // SecureToken represents an enhanced access token with security features
 type SecureToken struct {
 	*AccessToken
-	Version       int       `json:"version"`
-	Fingerprint   string    `json:"fingerprint"`
-	IssuedAt      time.Time `json:"issuedAt"`
-	LastUsed      time.Time `json:"lastUsed"`
-	UseCount      int64     `json:"useCount"`
-	RotationCount int       `json:"rotationCount"`
-	Signature     string    `json:"signature"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	Version          int                    `json:"version"`
+	Fingerprint      string                 `json:"fingerprint"`
+	IssuedAt         time.Time              `json:"issuedAt"`
+	LastUsed         time.Time              `json:"lastUsed"`
+	UseCount         int64                  `json:"useCount"`
+	RotationCount    int                    `json:"rotationCount"`
+	Signature        string                 `json:"signature"`
+	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	OriginalTokenStr string                 `json:"originalToken"` // Store original unencrypted token for signature verification
 }
 
 // TokenRotationPolicy defines when and how tokens should be rotated
@@ -59,13 +72,13 @@ func DefaultTokenRotationPolicy() *TokenRotationPolicy {
 
 // SecureOAuthProvider wraps an OAuth provider with enhanced security
 type SecureOAuthProvider struct {
-	provider        OAuthProvider
-	storage         *SecureTokenStorage
-	rotationPolicy  *TokenRotationPolicy
-	revokedTokens   sync.Map // token -> revocation time
-	tokenMetadata   sync.Map // token -> metadata
-	signingKey      []byte
-	mu              sync.RWMutex
+	provider       OAuthProvider
+	storage        *SecureTokenStorage
+	rotationPolicy *TokenRotationPolicy
+	revokedTokens  sync.Map // token -> revocation time
+	tokenMetadata  sync.Map // token -> metadata
+	signingKey     []byte
+	mu             sync.RWMutex
 }
 
 // NewSecureOAuthProvider creates a new secure OAuth provider
@@ -96,21 +109,26 @@ func NewSecureOAuthProvider(provider OAuthProvider, encryptionKey []byte, rotati
 
 // CreateAccessToken creates a new secure access token
 func (p *SecureOAuthProvider) CreateAccessToken(ctx context.Context, authCode *AuthorizationCode) (*AccessToken, error) {
+	debugLog("CreateAccessToken: Starting token creation")
+
 	// Create base token
 	baseToken, err := p.provider.CreateAccessToken(ctx, authCode)
 	if err != nil {
+		debugLog("CreateAccessToken: Base provider failed: %v", err)
 		return nil, err
 	}
 
 	// Enhance with security features
+	now := time.Now()
 	secureToken := &SecureToken{
-		AccessToken:   baseToken,
-		Version:       1,
-		Fingerprint:   p.generateFingerprint(ctx),
-		IssuedAt:      time.Now(),
-		LastUsed:      time.Now(),
-		UseCount:      0,
-		RotationCount: 0,
+		AccessToken:      baseToken,
+		Version:          1,
+		Fingerprint:      p.generateFingerprint(ctx),
+		IssuedAt:         now,
+		LastUsed:         now,
+		UseCount:         0,
+		RotationCount:    0,
+		OriginalTokenStr: baseToken.AccessToken, // Store the original unencrypted token
 		Metadata: map[string]interface{}{
 			"clientInfo": p.extractClientInfo(ctx),
 			"grantType":  "authorization_code",
@@ -123,6 +141,7 @@ func (p *SecureOAuthProvider) CreateAccessToken(ctx context.Context, authCode *A
 	// Encrypt and store
 	encrypted, err := p.storage.EncryptToken(baseToken)
 	if err != nil {
+		debugLog("CreateAccessToken: Encryption failed: %v", err)
 		return nil, fmt.Errorf("failed to encrypt token: %w", err)
 	}
 
@@ -131,38 +150,57 @@ func (p *SecureOAuthProvider) CreateAccessToken(ctx context.Context, authCode *A
 
 	// Return encrypted token as the access token
 	baseToken.AccessToken = encrypted
+	debugLog("CreateAccessToken: Token created successfully")
 	return baseToken, nil
 }
 
 // ValidateAccessToken validates a secure access token
 func (p *SecureOAuthProvider) ValidateAccessToken(ctx context.Context, encryptedToken string) (*AccessToken, error) {
+	debugLog("ValidateAccessToken: Starting validation")
+
 	// Check if token is revoked
 	if _, revoked := p.revokedTokens.Load(encryptedToken); revoked {
+		debugLog("ValidateAccessToken: Token is revoked")
 		return nil, ErrTokenRevoked
 	}
 
 	// Decrypt token
 	token, err := p.storage.DecryptToken(encryptedToken)
 	if err != nil {
+		debugLog("ValidateAccessToken: Decryption failed: %v", err)
 		return nil, err
 	}
 
 	// Load secure token metadata
 	metadataValue, exists := p.tokenMetadata.Load(token.AccessToken)
 	if !exists {
+		debugLog("ValidateAccessToken: No metadata found - token tampered")
 		return nil, ErrTokenTampered
 	}
 
 	secureToken := metadataValue.(*SecureToken)
 
+	// Ensure we have the original token for signature verification
+	if secureToken.OriginalTokenStr == "" {
+		secureToken.OriginalTokenStr = token.AccessToken
+	}
+
+	// Validate token integrity
+	if err := ValidateTokenIntegrity(secureToken); err != nil {
+		debugLog("ValidateAccessToken: Token integrity check failed: %v", err)
+		return nil, ErrTokenTampered
+	}
+
 	// Verify signature
 	expectedSig := p.signToken(secureToken)
 	if !p.verifySignature(secureToken.Signature, expectedSig) {
+		debugLog("ValidateAccessToken: Signature verification failed")
 		return nil, ErrTokenTampered
 	}
 
 	// Check rotation requirements
 	if p.needsRotation(secureToken) {
+		debugLog("ValidateAccessToken: Token needs rotation")
 		return nil, ErrTokenRotationRequired
 	}
 
@@ -172,7 +210,14 @@ func (p *SecureOAuthProvider) ValidateAccessToken(ctx context.Context, encrypted
 	p.tokenMetadata.Store(token.AccessToken, secureToken)
 
 	// Validate with underlying provider
-	return p.provider.ValidateAccessToken(ctx, token.AccessToken)
+	result, err := p.provider.ValidateAccessToken(ctx, token.AccessToken)
+	if err != nil {
+		debugLog("ValidateAccessToken: Underlying provider validation failed: %v", err)
+		return nil, err
+	}
+	
+	debugLog("ValidateAccessToken: Validation successful")
+	return result, nil
 }
 
 // RefreshAccessToken refreshes a token with rotation
@@ -204,13 +249,14 @@ func (p *SecureOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 
 	// Create new secure token
 	secureToken := &SecureToken{
-		AccessToken:   newToken,
-		Version:       1,
-		Fingerprint:   p.generateFingerprint(ctx),
-		IssuedAt:      time.Now(),
-		LastUsed:      time.Now(),
-		UseCount:      0,
-		RotationCount: rotationCount,
+		AccessToken:      newToken,
+		Version:          1,
+		Fingerprint:      p.generateFingerprint(ctx),
+		IssuedAt:         time.Now(),
+		LastUsed:         time.Now(),
+		UseCount:         0,
+		RotationCount:    rotationCount,
+		OriginalTokenStr: newToken.AccessToken, // Store the original unencrypted token
 		Metadata: map[string]interface{}{
 			"clientInfo": p.extractClientInfo(ctx),
 			"grantType":  "refresh_token",
@@ -328,9 +374,14 @@ func (p *SecureOAuthProvider) extractClientInfo(ctx context.Context) map[string]
 
 // signToken creates a signature for the token
 func (p *SecureOAuthProvider) signToken(token *SecureToken) string {
-	// Create signing data
+	// Create signing data using the original unencrypted token
+	tokenStr := token.OriginalTokenStr
+	if tokenStr == "" {
+		// Fallback for backwards compatibility
+		tokenStr = token.AccessToken.AccessToken
+	}
 	data := fmt.Sprintf("%s|%d|%s|%d|%d",
-		token.AccessToken,
+		tokenStr,
 		token.Version,
 		token.Fingerprint,
 		token.IssuedAt.Unix(),
@@ -340,22 +391,37 @@ func (p *SecureOAuthProvider) signToken(token *SecureToken) string {
 	// Create HMAC signature
 	h := hmac.New(sha256.New, p.signingKey)
 	h.Write([]byte(data))
-	return hex.EncodeToString(h.Sum(nil))
+	signature := hex.EncodeToString(h.Sum(nil))
+	debugLog("signToken: Generated signature for token")
+	return signature
 }
 
 // verifySignature verifies token signatures match
 func (p *SecureOAuthProvider) verifySignature(sig1, sig2 string) bool {
-	return subtle.ConstantTimeCompare([]byte(sig1), []byte(sig2)) == 1
+	result := subtle.ConstantTimeCompare([]byte(sig1), []byte(sig2)) == 1
+	debugLog("verifySignature: Signature verification result=%t", result)
+	return result
 }
 
 // isEncryptedToken checks if a token appears to be encrypted
 func (p *SecureOAuthProvider) isEncryptedToken(token string) bool {
 	// Check if it's base64 encoded and has expected length
-	if decoded, err := base64.URLEncoding.DecodeString(token); err == nil {
-		// Encrypted tokens have nonce + ciphertext
-		return len(decoded) > p.storage.cipher.NonceSize()
+	decoded, err := base64.URLEncoding.DecodeString(token)
+	if err != nil {
+		return false
 	}
-	return false
+	
+	// Encrypted tokens have nonce + ciphertext
+	// Also check minimum size - encrypted JSON of AccessToken is much larger
+	if len(decoded) <= p.storage.cipher.NonceSize() || len(decoded) < 100 {
+		return false
+	}
+	
+	// Try to decrypt to be sure - if it fails, it's not encrypted
+	// Extract nonce and try decryption
+	nonce, ciphertext := decoded[:p.storage.cipher.NonceSize()], decoded[p.storage.cipher.NonceSize():]
+	_, err = p.storage.cipher.Open(nil, nonce, ciphertext, nil)
+	return err == nil
 }
 
 // Implement remaining OAuthProvider interface methods by delegating
@@ -427,8 +493,7 @@ func (g *TokenTransmissionGuard) PrepareTokenForTransmission(token string) (stri
 		"version":   1,
 	}
 
-	// Store nonce to prevent replay
-	g.nonceCache.Store(hex.EncodeToString(nonce), time.Now())
+	// Don't store nonce here - only the receiver should store it for replay protection
 
 	// Encode as JSON
 	data, err := json.Marshal(transmission)
@@ -501,7 +566,7 @@ func (g *TokenTransmissionGuard) cleanupNonces() {
 
 	for range ticker.C {
 		cutoff := time.Now().Add(-g.maxTransmissionAge * 2)
-		
+
 		g.nonceCache.Range(func(key, value interface{}) bool {
 			if timestamp, ok := value.(time.Time); ok {
 				if timestamp.Before(cutoff) {
@@ -524,13 +589,13 @@ type SecureAuthenticationMiddleware struct {
 // NewSecureAuthenticationMiddleware creates secure authentication middleware
 func NewSecureAuthenticationMiddleware(provider *SecureOAuthProvider, config AuthConfig) *SecureAuthenticationMiddleware {
 	skipMethods := make(map[string]bool)
-	
+
 	// Default skip methods
 	defaultSkip := []string{"initialize", "initialized", "ping"}
 	for _, method := range defaultSkip {
 		skipMethods[method] = true
 	}
-	
+
 	// Add user-defined skip methods
 	for _, method := range config.SkipMethods {
 		skipMethods[method] = true
@@ -612,4 +677,55 @@ func (m *SecureAuthenticationMiddleware) Name() string {
 
 func (m *SecureAuthenticationMiddleware) Priority() int {
 	return 900 // High priority, after logging
+}
+
+// Debug helper functions
+
+// DumpTokenState shows key token fields for debugging
+func DumpTokenState(token *SecureToken) {
+	if debugAuth {
+		if token == nil {
+			debugLog("Token state: nil")
+			return
+		}
+		debugLog("Token state: version=%d, useCount=%d, rotationCount=%d, clientID=%s", 
+			token.Version, token.UseCount, token.RotationCount, 
+			func() string {
+				if token.AccessToken != nil {
+					return token.AccessToken.ClientID
+				}
+				return "unknown"
+			}())
+	}
+}
+
+// ValidateTokenIntegrity checks token consistency
+func ValidateTokenIntegrity(token *SecureToken) error {
+	if token == nil {
+		return errors.New("token is nil")
+	}
+	if token.AccessToken == nil {
+		return errors.New("access token is nil")
+	}
+	if token.Version != 1 {
+		return fmt.Errorf("unsupported version: %d", token.Version)
+	}
+	if token.Fingerprint == "" {
+		return errors.New("fingerprint is empty")
+	}
+	if token.Signature == "" {
+		return errors.New("signature is empty")
+	}
+	if token.IssuedAt.IsZero() {
+		return errors.New("issued at is zero")
+	}
+	return nil
+}
+
+// CompareSignatures compares signatures for debugging (only when detailed debugging is needed)
+func CompareSignatures(sig1, sig2, context string) {
+	if debugAuth && len(sig1) != len(sig2) {
+		// Only log if there's a length mismatch, which indicates a real issue
+		debugLog("Signature comparison (%s): length mismatch - expected %d, got %d", context, len(sig1), len(sig2))
+	}
 }

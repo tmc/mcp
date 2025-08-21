@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -26,7 +27,7 @@ var (
 	quiet        = flag.Bool("q", false, "quiet mode")
 	genTrace     = flag.Bool("trace", false, "generate OpenTelemetry trace context")
 	baggage      = flag.String("baggage", "", "trace-level baggage (key=value,key=value)")
-	timeout      = flag.Duration("timeout", 5*time.Second, "timeout for shadow server responses")
+	timeout      = flag.Duration("timeout", 30*time.Second, "timeout for operations")
 	splitMode    = flag.String("split-mode", "shadow", "split mode: shadow, random, round-robin")
 	splitPercent = flag.Float64("split-percent", 100.0, "percentage of traffic to shadow (0-100)")
 	compareMode  = flag.Bool("compare", false, "output both primary and shadow responses in enhanced mcptrace format")
@@ -52,7 +53,10 @@ type shadowServer struct {
 	stderr   io.Reader
 	messages chan message
 	shutdown chan struct{}
+	shutdownOnce sync.Once
 	wg       sync.WaitGroup
+	ctx      context.Context
+	cancel   context.CancelFunc
 
 	// For primary server
 	primaryStdin  io.WriteCloser
@@ -82,12 +86,17 @@ func main() {
 		log.Fatal("Both -primary and -shadow flags are required")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
 	server := &shadowServer{
 		messages:      make(chan message, 100),
 		shutdown:      make(chan struct{}),
 		requestSpans:  make(map[string]string),
 		responseSpans: make(map[string]string),
 		traceBaggage:  *baggage,
+		ctx:           ctx,
+		cancel:        cancel,
 	}
 
 	// Generate trace context if requested
@@ -118,17 +127,26 @@ func main() {
 	go server.monitorOutput(server.shadowStdout, "shadow", false)
 	go server.monitorOutput(server.shadowStderr, "shadow", true)
 
-	// Start input forwarder
-	server.forwardInput()
+	// Start input forwarder as goroutine
+	server.wg.Add(1)
+	go server.forwardInput()
 
-	// Wait for shutdown
-	close(server.shutdown)
+	// Wait for shutdown or context cancellation
+	select {
+	case <-server.ctx.Done():
+		if !*quiet {
+			log.Println("Timeout reached, shutting down...")
+		}
+	case <-server.shutdown:
+		// Normal shutdown
+	}
+
 	server.wg.Wait()
 }
 
 func (s *shadowServer) startServers() error {
 	// Start primary server
-	s.primary = exec.Command("sh", "-c", *primary)
+	s.primary = exec.CommandContext(s.ctx, "sh", "-c", *primary)
 	var err error
 
 	s.primaryStdin, err = s.primary.StdinPipe()
@@ -151,7 +169,7 @@ func (s *shadowServer) startServers() error {
 	}
 
 	// Start shadow server
-	s.shadow = exec.Command("sh", "-c", *shadow)
+	s.shadow = exec.CommandContext(s.ctx, "sh", "-c", *shadow)
 
 	s.shadowStdin, err = s.shadow.StdinPipe()
 	if err != nil {
@@ -180,143 +198,272 @@ func (s *shadowServer) startServers() error {
 }
 
 func (s *shadowServer) stop() {
+	// Cancel context to signal all goroutines to stop
+	s.cancel()
+
+	// Close stdin pipes to signal servers to exit gracefully
+	if s.primaryStdin != nil {
+		s.primaryStdin.Close()
+	}
+	if s.shadowStdin != nil {
+		s.shadowStdin.Close()
+	}
+
+	// Wait a short time for graceful shutdown
+	time.Sleep(100 * time.Millisecond)
+
+	// Force kill if still running
 	if s.primary != nil && s.primary.Process != nil {
 		s.primary.Process.Kill()
+		s.primary.Wait() // Wait for process to exit
 	}
 	if s.shadow != nil && s.shadow.Process != nil {
 		s.shadow.Process.Kill()
+		s.shadow.Wait() // Wait for process to exit
+	}
+
+	// Close remaining pipes
+	if s.primaryStdout != nil {
+		s.primaryStdout.Close()
+	}
+	if s.primaryStderr != nil {
+		s.primaryStderr.Close()
+	}
+	if s.shadowStdout != nil {
+		s.shadowStdout.Close()
+	}
+	if s.shadowStderr != nil {
+		s.shadowStderr.Close()
 	}
 }
 
 func (s *shadowServer) forwardInput() {
+	defer s.wg.Done()
+	defer func() {
+		// Signal shutdown when input is done
+		s.shutdownOnce.Do(func() {
+			close(s.shutdown)
+		})
+	}()
+
 	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		line := scanner.Bytes()
 
-		// Check if it's a JSON message
-		if strings.HasPrefix(strings.TrimSpace(string(line)), "{") {
-			// Record incoming message
-			spanID := generateSpanID()
-			s.recordRequestSpan(line, spanID)
+	// Use a channel to read lines asynchronously
+	lineCh := make(chan []byte)
+	errCh := make(chan error, 1)
 
-			msg := message{
-				raw:       line,
-				timestamp: time.Now(),
-				direction: "recv",
-				spanID:    spanID,
-				baggage:   s.traceBaggage,
+	go func() {
+		defer close(lineCh)
+		for scanner.Scan() {
+			// Copy the bytes since scanner reuses the buffer
+			line := make([]byte, len(scanner.Bytes()))
+			copy(line, scanner.Bytes())
+
+			select {
+			case lineCh <- line:
+			case <-s.ctx.Done():
+				return
 			}
-
-			if *outFile != "" {
-				s.messages <- msg
+		}
+		if err := scanner.Err(); err != nil {
+			select {
+			case errCh <- err:
+			default:
 			}
+		}
+	}()
 
-			// Removed redundant shadow recv message - input is identical for both servers
-
-			// Forward to both servers
-			if _, err := s.primaryStdin.Write(append(line, '\n')); err != nil {
+	for {
+		select {
+		case <-s.ctx.Done():
+			if !*quiet {
+				log.Println("Input forwarder cancelled")
+			}
+			return
+		case err := <-errCh:
+			if !*quiet {
+				log.Printf("Scanner error: %v", err)
+			}
+			return
+		case line, ok := <-lineCh:
+			if !ok {
+				// EOF reached - stdin closed
 				if !*quiet {
-					log.Printf("Error writing to primary: %v", err)
+					log.Println("Stdin closed, shutting down")
 				}
+				return
 			}
 
-			// Decide whether to shadow based on split mode
-			if shouldShadow() || *compareMode {
-				// In compare mode, always send to shadow server
-				if _, err := s.shadowStdin.Write(append(line, '\n')); err != nil {
+			// Check if it's a JSON message
+			if strings.HasPrefix(strings.TrimSpace(string(line)), "{") {
+				// Record incoming message
+				spanID := generateSpanID()
+				s.recordRequestSpan(line, spanID)
+
+				msg := message{
+					raw:       line,
+					timestamp: time.Now(),
+					direction: "recv",
+					spanID:    spanID,
+					baggage:   s.traceBaggage,
+				}
+
+				if *outFile != "" {
+					select {
+					case s.messages <- msg:
+					case <-s.ctx.Done():
+						return
+					}
+				}
+
+				// Forward to both servers
+				if _, err := s.primaryStdin.Write(append(line, '\n')); err != nil {
 					if !*quiet {
-						log.Printf("Error writing to shadow: %v", err)
+						log.Printf("Error writing to primary: %v", err)
+					}
+					return
+				}
+
+				// Decide whether to shadow based on split mode
+				if shouldShadow() || *compareMode {
+					// In compare mode, always send to shadow server
+					if _, err := s.shadowStdin.Write(append(line, '\n')); err != nil {
+						if !*quiet {
+							log.Printf("Error writing to shadow: %v", err)
+						}
 					}
 				}
 			}
 		}
 	}
-
-	// Close stdin pipes
-	s.primaryStdin.Close()
-	s.shadowStdin.Close()
 }
 
 func (s *shadowServer) monitorOutput(reader io.Reader, source string, isStderr bool) {
 	defer s.wg.Done()
 
 	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-
-		// If stderr, just pass through
-		if isStderr {
-			if source == "primary" {
-				fmt.Fprintln(os.Stderr, string(line))
+	
+	// Use a channel-based approach for better cancellation handling
+	lineCh := make(chan []byte)
+	errCh := make(chan error, 1)
+	
+	go func() {
+		defer close(lineCh)
+		for scanner.Scan() {
+			// Copy the bytes since scanner reuses the buffer
+			line := make([]byte, len(scanner.Bytes()))
+			copy(line, scanner.Bytes())
+			
+			select {
+			case lineCh <- line:
+			case <-s.ctx.Done():
+				return
 			}
-			continue
+		}
+		if err := scanner.Err(); err != nil {
+			select {
+			case errCh <- err:
+			default:
+			}
+		}
+	}()
+	
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case err := <-errCh:
+			if err != nil && !*quiet {
+				log.Printf("Scanner error for %s: %v", source, err)
+			}
+			return
+		case line, ok := <-lineCh:
+			if !ok {
+				// Scanner finished (EOF or error)
+				return
+			}
+			s.processOutputLine(line, source, isStderr)
+		}
+	}
+}
+
+func (s *shadowServer) processOutputLine(line []byte, source string, isStderr bool) {
+	// If stderr, just pass through
+	if isStderr {
+		if source == "primary" {
+			fmt.Fprintln(os.Stderr, string(line))
+		}
+		return
+	}
+
+	// Process stdout
+	if strings.HasPrefix(strings.TrimSpace(string(line)), "{") {
+		// This is a JSON response
+		isPrimary := source == "primary"
+		isShadow := source == "shadow"
+		spanID := generateSpanID()
+		linksTo := s.findRequestSpan(line)
+
+		direction := "send"
+		if isShadow && *compareMode {
+			direction = "send-shadow"
 		}
 
-		// Process stdout
-		if strings.HasPrefix(strings.TrimSpace(string(line)), "{") {
-			// This is a JSON response
-			isPrimary := source == "primary"
-			isShadow := source == "shadow"
-			spanID := generateSpanID()
-			linksTo := s.findRequestSpan(line)
+		msg := message{
+			raw:       line,
+			timestamp: time.Now(),
+			direction: direction,
+			spanID:    spanID,
+			linksTo:   linksTo,
+			baggage:   s.traceBaggage,
+			isPrimary: isPrimary,
+			isShadow:  isShadow,
+		}
 
-			direction := "send"
-			if isShadow && *compareMode {
-				direction = "send-shadow"
-			}
-
-			msg := message{
-				raw:       line,
-				timestamp: time.Now(),
-				direction: direction,
-				spanID:    spanID,
-				linksTo:   linksTo,
-				baggage:   s.traceBaggage,
-				isPrimary: isPrimary,
-				isShadow:  isShadow,
-			}
-
-			// In compare mode, track response spans for correlation
-			if *compareMode {
-				var msgData map[string]interface{}
-				if err := json.Unmarshal(line, &msgData); err == nil {
-					if id, ok := msgData["id"]; ok {
-						s.spanLock.Lock()
-						if isShadow {
-							msg.originalSpan = s.responseSpans[fmt.Sprint(id)]
-							if msg.originalSpan != "" {
-								msg.linksTo = msg.originalSpan
-							}
-						} else if isPrimary {
-							s.responseSpans[fmt.Sprint(id)] = spanID
+		// In compare mode, track response spans for correlation
+		if *compareMode {
+			var msgData map[string]interface{}
+			if err := json.Unmarshal(line, &msgData); err == nil {
+				if id, ok := msgData["id"]; ok {
+					s.spanLock.Lock()
+					if isShadow {
+						msg.originalSpan = s.responseSpans[fmt.Sprint(id)]
+						if msg.originalSpan != "" {
+							msg.linksTo = msg.originalSpan
 						}
-						s.spanLock.Unlock()
+					} else if isPrimary {
+						s.responseSpans[fmt.Sprint(id)] = spanID
 					}
+					s.spanLock.Unlock()
 				}
 			}
+		}
 
-			if isShadow {
-				if *compareMode {
-					// In compare mode, add additional metadata
-					msg.baggage = fmt.Sprintf("%s,shadow=true,compare=true", s.traceBaggage)
-				} else {
-					msg.baggage = fmt.Sprintf("%s,shadow=true", s.traceBaggage)
-				}
+		if isShadow {
+			if *compareMode {
+				// In compare mode, add additional metadata
+				msg.baggage = fmt.Sprintf("%s,shadow=true,compare=true", s.traceBaggage)
+			} else {
+				msg.baggage = fmt.Sprintf("%s,shadow=true", s.traceBaggage)
 			}
+		}
 
-			if *outFile != "" {
-				s.messages <- msg
+		if *outFile != "" {
+			select {
+			case s.messages <- msg:
+			case <-s.ctx.Done():
+				return
 			}
+		}
 
-			// Forward primary output to stdout
-			if isPrimary {
-				fmt.Println(string(line))
-			}
-		} else {
-			// Non-JSON output - only forward primary
-			if source == "primary" {
-				fmt.Println(string(line))
-			}
+		// Forward primary output to stdout
+		if isPrimary {
+			fmt.Println(string(line))
+		}
+	} else {
+		// Non-JSON output - only forward primary
+		if source == "primary" {
+			fmt.Println(string(line))
 		}
 	}
 }
@@ -346,6 +493,24 @@ func (s *shadowServer) recordMessages() {
 
 	for {
 		select {
+		case <-s.ctx.Done():
+			// Drain remaining messages before returning
+			for {
+				select {
+				case msg := <-s.messages:
+					line := formatMCPLine(msg)
+					if *compareMode {
+						fmt.Fprintln(file, line)
+					} else {
+						if !msg.isPrimary && msg.direction == "send" {
+							line = "# " + line
+						}
+						fmt.Fprintln(file, line)
+					}
+				default:
+					return
+				}
+			}
 		case msg := <-s.messages:
 			line := formatMCPLine(msg)
 			if *compareMode {
@@ -362,7 +527,23 @@ func (s *shadowServer) recordMessages() {
 			file.Sync()
 
 		case <-s.shutdown:
-			return
+			// Drain remaining messages before returning
+			for {
+				select {
+				case msg := <-s.messages:
+					line := formatMCPLine(msg)
+					if *compareMode {
+						fmt.Fprintln(file, line)
+					} else {
+						if !msg.isPrimary && msg.direction == "send" {
+							line = "# " + line
+						}
+						fmt.Fprintln(file, line)
+					}
+				default:
+					return
+				}
+			}
 		}
 	}
 }

@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
+        
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-1.23-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-1.23-
+          
+    - name: Run tests
+      run: go test -race ./...
+      
+    - name: Build binaries
+      run: |
+        mkdir -p dist
+        
+        # Build core tools for multiple platforms
+        platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64" "windows/amd64")
+        
+        for platform in "${platforms[@]}"; do
+          IFS='/' read -r -a array <<< "$platform"
+          GOOS="${array[0]}"
+          GOARCH="${array[1]}"
+          
+          echo "Building for $GOOS/$GOARCH..."
+          
+          # Build each core tool
+          for tool in cmd/*; do
+            if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
+              tool_name=$(basename "$tool")
+              output_name="$tool_name-$GOOS-$GOARCH"
+              
+              if [ "$GOOS" = "windows" ]; then
+                output_name="$output_name.exe"
+              fi
+              
+              echo "  Building $tool_name -> $output_name"
+              GOOS="$GOOS" GOARCH="$GOARCH" go build -ldflags="-s -w" -o "dist/$output_name" "$tool"
+            fi
+          done
+        done
+        
+    - name: Create checksums
+      run: |
+        cd dist
+        sha256sum * > checksums.txt
+        
+    - name: Generate changelog
+      run: |
+        if [ -f CHANGELOG.md ]; then
+          # Extract changelog for this version if it exists
+          awk '/^## / { if (p) exit; if (/^## '"${GITHUB_REF#refs/tags/}"'/) p=1; next } p' CHANGELOG.md > /tmp/changelog.txt
+        else
+          # Generate basic changelog from git
+          git log --pretty=format:"* %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD > /tmp/changelog.txt
+        fi
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        body_path: /tmp/changelog.txt
+        files: |
+          dist/*
+        draft: false
+        prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+        
+  docker:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

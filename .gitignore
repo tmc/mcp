@@ -1,3 +1,71 @@
+# Coverage files
 .cover
 *cov*.out
+coverage/
+*.out
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+dist/
+build/
+
+# Test artifacts
+*.test
+*_test_*
+test_output/
+test_results/
 *.log
+
+# MCP trace files
+*.mcp
+traces/*
+
+# Temporary development files
+temp/
+tmp/
+.tmp/
+*_temp*
+*_tmp*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go workspace files
+go.work.sum
+
+# Local development artifacts
+bin/
+debug
+*.pprof
+
+# OS generated files
+Thumbs.db
+.Thumbs.db
+*.orig
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration
+.env
+.env.local
+*.local
+
+# Generated documentation
+*.html
+docs/build/
+
+# Experimental/broken code (per CLAUDE.md guidelines)
+temp/example_server_design_exploration/
+temp/mock_client_fix.go
+exp/schema2go/generator.go
+exp/cmd/mcp-tool-graph/main.go

@@ -22,33 +22,33 @@ import (
 // PerformanceMetrics tracks various performance indicators
 type PerformanceMetrics struct {
 	// Request metrics
-	TotalRequests        int64         `json:"totalRequests"`
-	ActiveRequests       int64         `json:"activeRequests"`
-	AverageResponseTime  time.Duration `json:"averageResponseTime"`
-	MedianResponseTime   time.Duration `json:"medianResponseTime"`
-	P95ResponseTime      time.Duration `json:"p95ResponseTime"`
-	P99ResponseTime      time.Duration `json:"p99ResponseTime"`
-	MaxResponseTime      time.Duration `json:"maxResponseTime"`
-	
+	TotalRequests       int64         `json:"totalRequests"`
+	ActiveRequests      int64         `json:"activeRequests"`
+	AverageResponseTime time.Duration `json:"averageResponseTime"`
+	MedianResponseTime  time.Duration `json:"medianResponseTime"`
+	P95ResponseTime     time.Duration `json:"p95ResponseTime"`
+	P99ResponseTime     time.Duration `json:"p99ResponseTime"`
+	MaxResponseTime     time.Duration `json:"maxResponseTime"`
+
 	// Error metrics
-	TotalErrors         int64 `json:"totalErrors"`
-	ErrorRate          float64 `json:"errorRate"`
-	TimeoutErrors      int64 `json:"timeoutErrors"`
-	ConnectionErrors   int64 `json:"connectionErrors"`
-	
+	TotalErrors      int64   `json:"totalErrors"`
+	ErrorRate        float64 `json:"errorRate"`
+	TimeoutErrors    int64   `json:"timeoutErrors"`
+	ConnectionErrors int64   `json:"connectionErrors"`
+
 	// Throughput metrics
-	RequestsPerSecond  float64 `json:"requestsPerSecond"`
-	BytesPerSecond     float64 `json:"bytesPerSecond"`
-	
+	RequestsPerSecond float64 `json:"requestsPerSecond"`
+	BytesPerSecond    float64 `json:"bytesPerSecond"`
+
 	// Memory metrics
-	AllocatedMemory    uint64 `json:"allocatedMemory"`
-	TotalAllocations   uint64 `json:"totalAllocations"`
-	GCPauses          uint64 `json:"gcPauses"`
-	
+	AllocatedMemory  uint64 `json:"allocatedMemory"`
+	TotalAllocations uint64 `json:"totalAllocations"`
+	GCPauses         uint64 `json:"gcPauses"`
+
 	// Concurrency metrics
-	MaxConcurrency     int64 `json:"maxConcurrency"`
-	AvgConcurrency     float64 `json:"avgConcurrency"`
-	
+	MaxConcurrency int64   `json:"maxConcurrency"`
+	AvgConcurrency float64 `json:"avgConcurrency"`
+
 	// Transport metrics
 	BytesSent         int64 `json:"bytesSent"`
 	BytesReceived     int64 `json:"bytesReceived"`
@@ -58,39 +58,39 @@ type PerformanceMetrics struct {
 
 // PerformanceMonitor provides real-time performance monitoring
 type PerformanceMonitor struct {
-	mu                sync.RWMutex
-	startTime         time.Time
-	responseTimes     []time.Duration
-	metrics           PerformanceMetrics
-	requestChan       chan requestMetric
-	stopChan          chan struct{}
-	samplingRate      float64
-	maxSamples        int
+	mu            sync.RWMutex
+	startTime     time.Time
+	responseTimes []time.Duration
+	metrics       PerformanceMetrics
+	requestChan   chan requestMetric
+	stopChan      chan struct{}
+	samplingRate  float64
+	maxSamples    int
 }
 
 type requestMetric struct {
-	startTime    time.Time
-	endTime      time.Time
-	success      bool
-	error        error
-	bytesSent    int64
+	startTime     time.Time
+	endTime       time.Time
+	success       bool
+	error         error
+	bytesSent     int64
 	bytesReceived int64
 }
 
 // NewPerformanceMonitor creates a new performance monitor
 func NewPerformanceMonitor(samplingRate float64, maxSamples int) *PerformanceMonitor {
 	pm := &PerformanceMonitor{
-		startTime:    time.Now(),
+		startTime:     time.Now(),
 		responseTimes: make([]time.Duration, 0, maxSamples),
-		requestChan:  make(chan requestMetric, 1000),
-		stopChan:     make(chan struct{}),
-		samplingRate: samplingRate,
-		maxSamples:   maxSamples,
+		requestChan:   make(chan requestMetric, 1000),
+		stopChan:      make(chan struct{}),
+		samplingRate:  samplingRate,
+		maxSamples:    maxSamples,
 	}
-	
+
 	go pm.collectMetrics()
 	go pm.updateMemoryMetrics()
-	
+
 	return pm
 }
 
@@ -131,7 +131,7 @@ func (pm *PerformanceMonitor) Stop() {
 func (pm *PerformanceMonitor) collectMetrics() {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case metric := <-pm.requestChan:
@@ -147,28 +147,28 @@ func (pm *PerformanceMonitor) collectMetrics() {
 func (pm *PerformanceMonitor) processRequestMetric(metric requestMetric) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	
+
 	duration := metric.endTime.Sub(metric.startTime)
-	
+
 	// Update request counters
 	atomic.AddInt64(&pm.metrics.TotalRequests, 1)
-	
+
 	// Track response times
 	if len(pm.responseTimes) >= pm.maxSamples {
 		// Remove oldest sample
 		pm.responseTimes = pm.responseTimes[1:]
 	}
 	pm.responseTimes = append(pm.responseTimes, duration)
-	
+
 	// Update max response time
 	if duration > pm.metrics.MaxResponseTime {
 		pm.metrics.MaxResponseTime = duration
 	}
-	
+
 	// Update error counters
 	if !metric.success {
 		atomic.AddInt64(&pm.metrics.TotalErrors, 1)
-		
+
 		if metric.error != nil {
 			// Classify error types
 			switch {
@@ -179,7 +179,7 @@ func (pm *PerformanceMonitor) processRequestMetric(metric requestMetric) {
 			}
 		}
 	}
-	
+
 	// Update byte counters
 	atomic.AddInt64(&pm.metrics.BytesSent, metric.bytesSent)
 	atomic.AddInt64(&pm.metrics.BytesReceived, metric.bytesReceived)
@@ -188,15 +188,15 @@ func (pm *PerformanceMonitor) processRequestMetric(metric requestMetric) {
 func (pm *PerformanceMonitor) calculateDerivedMetrics() {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	
+
 	if len(pm.responseTimes) == 0 {
 		return
 	}
-	
+
 	// Calculate response time percentiles
 	sortedTimes := make([]time.Duration, len(pm.responseTimes))
 	copy(sortedTimes, pm.responseTimes)
-	
+
 	// Simple sort for percentile calculation
 	for i := 0; i < len(sortedTimes)-1; i++ {
 		for j := i + 1; j < len(sortedTimes); j++ {
@@ -205,20 +205,20 @@ func (pm *PerformanceMonitor) calculateDerivedMetrics() {
 			}
 		}
 	}
-	
+
 	// Calculate percentiles
 	count := len(sortedTimes)
 	pm.metrics.MedianResponseTime = sortedTimes[count/2]
 	pm.metrics.P95ResponseTime = sortedTimes[int(float64(count)*0.95)]
 	pm.metrics.P99ResponseTime = sortedTimes[int(float64(count)*0.99)]
-	
+
 	// Calculate average
 	var total time.Duration
 	for _, t := range pm.responseTimes {
 		total += t
 	}
 	pm.metrics.AverageResponseTime = total / time.Duration(len(pm.responseTimes))
-	
+
 	// Calculate rates
 	elapsed := time.Since(pm.startTime).Seconds()
 	if elapsed > 0 {
@@ -226,7 +226,7 @@ func (pm *PerformanceMonitor) calculateDerivedMetrics() {
 		totalBytes := float64(pm.metrics.BytesSent + pm.metrics.BytesReceived)
 		pm.metrics.BytesPerSecond = totalBytes / elapsed
 	}
-	
+
 	// Calculate error rate
 	if pm.metrics.TotalRequests > 0 {
 		pm.metrics.ErrorRate = float64(pm.metrics.TotalErrors) / float64(pm.metrics.TotalRequests)
@@ -236,19 +236,19 @@ func (pm *PerformanceMonitor) calculateDerivedMetrics() {
 func (pm *PerformanceMonitor) updateMemoryMetrics() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ticker.C:
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-			
+
 			pm.mu.Lock()
 			pm.metrics.AllocatedMemory = m.Alloc
 			pm.metrics.TotalAllocations = m.TotalAlloc
 			pm.metrics.GCPauses = uint64(m.NumGC)
 			pm.mu.Unlock()
-			
+
 		case <-pm.stopChan:
 			return
 		}
@@ -271,7 +271,7 @@ func NewPerformanceAwareClient(transport Transport, options ...ClientOption) (*P
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &PerformanceAwareClient{
 		Client:  client,
 		monitor: NewPerformanceMonitor(1.0, 10000),
@@ -281,25 +281,25 @@ func NewPerformanceAwareClient(transport Transport, options ...ClientOption) (*P
 // CallTool wraps the regular CallTool with performance monitoring
 func (pac *PerformanceAwareClient) CallTool(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 	startTime := time.Now()
-	
+
 	// Estimate request size
 	reqData, _ := json.Marshal(req)
 	bytesSent := int64(len(reqData))
-	
+
 	result, err := pac.Client.CallTool(ctx, req)
-	
+
 	endTime := time.Now()
 	success := err == nil
-	
+
 	// Estimate response size
 	var bytesReceived int64
 	if result != nil {
 		respData, _ := json.Marshal(result)
 		bytesReceived = int64(len(respData))
 	}
-	
+
 	pac.monitor.RecordRequest(startTime, endTime, success, err, bytesSent, bytesReceived)
-	
+
 	return result, err
 }
 
@@ -327,7 +327,7 @@ type PerformanceAwareServer struct {
 // NewPerformanceAwareServer creates a new performance-aware server
 func NewPerformanceAwareServer(name, version string, options ...ServerOption) *PerformanceAwareServer {
 	server := NewServer(name, version, options...)
-	
+
 	return &PerformanceAwareServer{
 		Server:  server,
 		monitor: NewPerformanceMonitor(1.0, 10000),
@@ -418,12 +418,12 @@ func NewOptimizedJSONEncoder() *OptimizedJSONEncoder {
 func (oje *OptimizedJSONEncoder) Marshal(v interface{}) ([]byte, error) {
 	buf := oje.pool.GetBuffer()
 	defer oje.pool.PutBuffer(buf)
-	
+
 	encoder := json.NewEncoder(&bufferWriter{buf: &buf})
 	if err := encoder.Encode(v); err != nil {
 		return nil, err
 	}
-	
+
 	// Return a copy since we're returning the buffer to the pool
 	result := make([]byte, len(buf))
 	copy(result, buf)
@@ -449,8 +449,8 @@ func isTimeoutError(err error) bool {
 	if err == nil {
 		return false
 	}
-	return err == context.DeadlineExceeded || 
-		   fmt.Sprintf("%v", err) == "context deadline exceeded"
+	return err == context.DeadlineExceeded ||
+		fmt.Sprintf("%v", err) == "context deadline exceeded"
 }
 
 func isConnectionError(err error) bool {
@@ -459,8 +459,8 @@ func isConnectionError(err error) bool {
 	}
 	errStr := fmt.Sprintf("%v", err)
 	return fmt.Sprintf("%s", errStr) == "connection refused" ||
-		   fmt.Sprintf("%s", errStr) == "connection reset" ||
-		   fmt.Sprintf("%s", errStr) == "broken pipe"
+		fmt.Sprintf("%s", errStr) == "connection reset" ||
+		fmt.Sprintf("%s", errStr) == "broken pipe"
 }
 
 // Global performance monitor instance

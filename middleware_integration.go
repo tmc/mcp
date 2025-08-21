@@ -440,7 +440,6 @@ func (r *SuccessResponseImpl) IsError() bool {
 	return false
 }
 
-
 // Helper methods
 func (s *EnhancedServer) getTransportFromContext(ctx context.Context) string {
 	if transport, ok := ctx.Value("transport").(string); ok {

@@ -15,25 +15,28 @@
 // - Deployment monitoring and alerting
 //
 // Usage:
-//   mcp-deploy [command] [flags]
+//
+//	mcp-deploy [command] [flags]
 //
 // Commands:
-//   init        Initialize deployment configuration
-//   deploy      Deploy application
-//   rollback    Rollback to previous version
-//   status      Show deployment status
-//   promote     Promote between environments
-//   validate    Validate deployment configuration
-//   scale       Scale deployment
-//   canary      Manage canary deployments
-//   serve       Start deployment service
+//
+//	init        Initialize deployment configuration
+//	deploy      Deploy application
+//	rollback    Rollback to previous version
+//	status      Show deployment status
+//	promote     Promote between environments
+//	validate    Validate deployment configuration
+//	scale       Scale deployment
+//	canary      Manage canary deployments
+//	serve       Start deployment service
 //
 // Examples:
-//   mcp-deploy init --platform kubernetes
-//   mcp-deploy deploy --environment production --version v1.2.3
-//   mcp-deploy rollback --environment production
-//   mcp-deploy promote --from staging --to production
-//   mcp-deploy canary --environment production --traffic 10
+//
+//	mcp-deploy init --platform kubernetes
+//	mcp-deploy deploy --environment production --version v1.2.3
+//	mcp-deploy rollback --environment production
+//	mcp-deploy promote --from staging --to production
+//	mcp-deploy canary --environment production --traffic 10
 package main
 
 import (
@@ -75,51 +78,51 @@ type DeploymentConfig struct {
 	ServiceName string `json:"service_name" yaml:"service_name"`
 	Port        int    `json:"port" yaml:"port"`
 	LogLevel    string `json:"log_level" yaml:"log_level"`
-	
+
 	// Platform configuration
 	Platform PlatformConfig `json:"platform" yaml:"platform"`
-	
+
 	// Environment configuration
 	Environments map[string]*EnvironmentConfig `json:"environments" yaml:"environments"`
-	
+
 	// Deployment strategies
 	Strategies map[string]*DeploymentStrategy `json:"strategies" yaml:"strategies"`
-	
+
 	// Health checking
 	HealthCheck HealthCheckConfig `json:"health_check" yaml:"health_check"`
-	
+
 	// Rollback configuration
 	Rollback RollbackConfig `json:"rollback" yaml:"rollback"`
-	
+
 	// Monitoring configuration
 	Monitoring MonitoringConfig `json:"monitoring" yaml:"monitoring"`
-	
+
 	// CI/CD integration
 	CICD CICDConfig `json:"cicd" yaml:"cicd"`
 }
 
 // PlatformConfig defines platform-specific configuration
 type PlatformConfig struct {
-	Type       string            `json:"type" yaml:"type"` // docker, kubernetes, serverless
-	Docker     DockerConfig      `json:"docker" yaml:"docker"`
-	Kubernetes KubernetesConfig  `json:"kubernetes" yaml:"kubernetes"`
-	Serverless ServerlessConfig  `json:"serverless" yaml:"serverless"`
+	Type       string           `json:"type" yaml:"type"` // docker, kubernetes, serverless
+	Docker     DockerConfig     `json:"docker" yaml:"docker"`
+	Kubernetes KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
+	Serverless ServerlessConfig `json:"serverless" yaml:"serverless"`
 }
 
 // DockerConfig defines Docker platform configuration
 type DockerConfig struct {
-	Registry     string            `json:"registry" yaml:"registry"`
-	Repository   string            `json:"repository" yaml:"repository"`
-	Tag          string            `json:"tag" yaml:"tag"`
-	Dockerfile   string            `json:"dockerfile" yaml:"dockerfile"`
-	Context      string            `json:"context" yaml:"context"`
-	BuildArgs    map[string]string `json:"build_args" yaml:"build_args"`
-	Labels       map[string]string `json:"labels" yaml:"labels"`
-	Networks     []string          `json:"networks" yaml:"networks"`
-	Volumes      []string          `json:"volumes" yaml:"volumes"`
-	Environment  []string          `json:"environment" yaml:"environment"`
-	Ports        []string          `json:"ports" yaml:"ports"`
-	HealthCheck  DockerHealthCheck `json:"health_check" yaml:"health_check"`
+	Registry    string            `json:"registry" yaml:"registry"`
+	Repository  string            `json:"repository" yaml:"repository"`
+	Tag         string            `json:"tag" yaml:"tag"`
+	Dockerfile  string            `json:"dockerfile" yaml:"dockerfile"`
+	Context     string            `json:"context" yaml:"context"`
+	BuildArgs   map[string]string `json:"build_args" yaml:"build_args"`
+	Labels      map[string]string `json:"labels" yaml:"labels"`
+	Networks    []string          `json:"networks" yaml:"networks"`
+	Volumes     []string          `json:"volumes" yaml:"volumes"`
+	Environment []string          `json:"environment" yaml:"environment"`
+	Ports       []string          `json:"ports" yaml:"ports"`
+	HealthCheck DockerHealthCheck `json:"health_check" yaml:"health_check"`
 }
 
 // DockerHealthCheck defines Docker health check configuration
@@ -152,25 +155,25 @@ type KubernetesConfig struct {
 
 // HelmConfig defines Helm chart configuration
 type HelmConfig struct {
-	Chart      string            `json:"chart" yaml:"chart"`
-	Repository string            `json:"repository" yaml:"repository"`
-	Version    string            `json:"version" yaml:"version"`
+	Chart      string                 `json:"chart" yaml:"chart"`
+	Repository string                 `json:"repository" yaml:"repository"`
+	Version    string                 `json:"version" yaml:"version"`
 	Values     map[string]interface{} `json:"values" yaml:"values"`
-	ValuesFile string            `json:"values_file" yaml:"values_file"`
+	ValuesFile string                 `json:"values_file" yaml:"values_file"`
 }
 
 // KustomizeConfig defines Kustomize configuration
 type KustomizeConfig struct {
-	Dir        string            `json:"dir" yaml:"dir"`
-	Overlays   []string          `json:"overlays" yaml:"overlays"`
-	Images     []string          `json:"images" yaml:"images"`
-	Patches    []string          `json:"patches" yaml:"patches"`
+	Dir      string   `json:"dir" yaml:"dir"`
+	Overlays []string `json:"overlays" yaml:"overlays"`
+	Images   []string `json:"images" yaml:"images"`
+	Patches  []string `json:"patches" yaml:"patches"`
 }
 
 // ResourceLimits defines resource limits
 type ResourceLimits struct {
-	CPU    string `json:"cpu" yaml:"cpu"`
-	Memory string `json:"memory" yaml:"memory"`
+	CPU     string `json:"cpu" yaml:"cpu"`
+	Memory  string `json:"memory" yaml:"memory"`
 	Storage string `json:"storage" yaml:"storage"`
 }
 
@@ -183,18 +186,18 @@ type SecurityContext struct {
 
 // ServerlessConfig defines serverless platform configuration
 type ServerlessConfig struct {
-	Provider     string            `json:"provider" yaml:"provider"` // aws, gcp, azure
-	Function     FunctionConfig    `json:"function" yaml:"function"`
-	Triggers     []TriggerConfig   `json:"triggers" yaml:"triggers"`
-	Environment  map[string]string `json:"environment" yaml:"environment"`
-	Timeout      time.Duration     `json:"timeout" yaml:"timeout"`
-	Memory       int               `json:"memory" yaml:"memory"`
-	Runtime      string            `json:"runtime" yaml:"runtime"`
-	Handler      string            `json:"handler" yaml:"handler"`
-	Package      string            `json:"package" yaml:"package"`
-	Layers       []string          `json:"layers" yaml:"layers"`
-	VPC          VPCConfig         `json:"vpc" yaml:"vpc"`
-	IAM          IAMConfig         `json:"iam" yaml:"iam"`
+	Provider    string            `json:"provider" yaml:"provider"` // aws, gcp, azure
+	Function    FunctionConfig    `json:"function" yaml:"function"`
+	Triggers    []TriggerConfig   `json:"triggers" yaml:"triggers"`
+	Environment map[string]string `json:"environment" yaml:"environment"`
+	Timeout     time.Duration     `json:"timeout" yaml:"timeout"`
+	Memory      int               `json:"memory" yaml:"memory"`
+	Runtime     string            `json:"runtime" yaml:"runtime"`
+	Handler     string            `json:"handler" yaml:"handler"`
+	Package     string            `json:"package" yaml:"package"`
+	Layers      []string          `json:"layers" yaml:"layers"`
+	VPC         VPCConfig         `json:"vpc" yaml:"vpc"`
+	IAM         IAMConfig         `json:"iam" yaml:"iam"`
 }
 
 // FunctionConfig defines function configuration
@@ -253,24 +256,24 @@ type IngressConfig struct {
 
 // AutoScaleConfig defines auto-scaling configuration
 type AutoScaleConfig struct {
-	Enabled                bool `json:"enabled" yaml:"enabled"`
-	MinReplicas            int  `json:"min_replicas" yaml:"min_replicas"`
-	MaxReplicas            int  `json:"max_replicas" yaml:"max_replicas"`
-	CPUThreshold           int  `json:"cpu_threshold" yaml:"cpu_threshold"`
-	MemoryThreshold        int  `json:"memory_threshold" yaml:"memory_threshold"`
+	Enabled                bool          `json:"enabled" yaml:"enabled"`
+	MinReplicas            int           `json:"min_replicas" yaml:"min_replicas"`
+	MaxReplicas            int           `json:"max_replicas" yaml:"max_replicas"`
+	CPUThreshold           int           `json:"cpu_threshold" yaml:"cpu_threshold"`
+	MemoryThreshold        int           `json:"memory_threshold" yaml:"memory_threshold"`
 	ScaleUpStabilization   time.Duration `json:"scale_up_stabilization" yaml:"scale_up_stabilization"`
 	ScaleDownStabilization time.Duration `json:"scale_down_stabilization" yaml:"scale_down_stabilization"`
 }
 
 // DeploymentStrategy defines deployment strategy
 type DeploymentStrategy struct {
-	Type         string            `json:"type" yaml:"type"` // rolling, blue_green, canary
-	Rolling      RollingConfig     `json:"rolling" yaml:"rolling"`
-	BlueGreen    BlueGreenConfig   `json:"blue_green" yaml:"blue_green"`
-	Canary       CanaryConfig      `json:"canary" yaml:"canary"`
-	HealthCheck  HealthCheckConfig `json:"health_check" yaml:"health_check"`
-	Timeout      time.Duration     `json:"timeout" yaml:"timeout"`
-	Rollback     RollbackConfig    `json:"rollback" yaml:"rollback"`
+	Type        string            `json:"type" yaml:"type"` // rolling, blue_green, canary
+	Rolling     RollingConfig     `json:"rolling" yaml:"rolling"`
+	BlueGreen   BlueGreenConfig   `json:"blue_green" yaml:"blue_green"`
+	Canary      CanaryConfig      `json:"canary" yaml:"canary"`
+	HealthCheck HealthCheckConfig `json:"health_check" yaml:"health_check"`
+	Timeout     time.Duration     `json:"timeout" yaml:"timeout"`
+	Rollback    RollbackConfig    `json:"rollback" yaml:"rollback"`
 }
 
 // RollingConfig defines rolling deployment configuration
@@ -292,52 +295,52 @@ type BlueGreenConfig struct {
 
 // CanaryConfig defines canary deployment configuration
 type CanaryConfig struct {
-	TrafficPercent  int           `json:"traffic_percent" yaml:"traffic_percent"`
-	StepPercent     int           `json:"step_percent" yaml:"step_percent"`
-	StepDuration    time.Duration `json:"step_duration" yaml:"step_duration"`
-	SuccessThreshold int          `json:"success_threshold" yaml:"success_threshold"`
-	FailureThreshold int          `json:"failure_threshold" yaml:"failure_threshold"`
-	AutoPromotion   bool          `json:"auto_promotion" yaml:"auto_promotion"`
+	TrafficPercent   int           `json:"traffic_percent" yaml:"traffic_percent"`
+	StepPercent      int           `json:"step_percent" yaml:"step_percent"`
+	StepDuration     time.Duration `json:"step_duration" yaml:"step_duration"`
+	SuccessThreshold int           `json:"success_threshold" yaml:"success_threshold"`
+	FailureThreshold int           `json:"failure_threshold" yaml:"failure_threshold"`
+	AutoPromotion    bool          `json:"auto_promotion" yaml:"auto_promotion"`
 }
 
 // HealthCheckConfig defines health check configuration
 type HealthCheckConfig struct {
-	Enabled         bool          `json:"enabled" yaml:"enabled"`
-	Path            string        `json:"path" yaml:"path"`
-	Port            int           `json:"port" yaml:"port"`
-	Interval        time.Duration `json:"interval" yaml:"interval"`
-	Timeout         time.Duration `json:"timeout" yaml:"timeout"`
-	HealthyThreshold int          `json:"healthy_threshold" yaml:"healthy_threshold"`
-	UnhealthyThreshold int        `json:"unhealthy_threshold" yaml:"unhealthy_threshold"`
-	InitialDelay    time.Duration `json:"initial_delay" yaml:"initial_delay"`
+	Enabled            bool          `json:"enabled" yaml:"enabled"`
+	Path               string        `json:"path" yaml:"path"`
+	Port               int           `json:"port" yaml:"port"`
+	Interval           time.Duration `json:"interval" yaml:"interval"`
+	Timeout            time.Duration `json:"timeout" yaml:"timeout"`
+	HealthyThreshold   int           `json:"healthy_threshold" yaml:"healthy_threshold"`
+	UnhealthyThreshold int           `json:"unhealthy_threshold" yaml:"unhealthy_threshold"`
+	InitialDelay       time.Duration `json:"initial_delay" yaml:"initial_delay"`
 }
 
 // RollbackConfig defines rollback configuration
 type RollbackConfig struct {
-	Enabled         bool          `json:"enabled" yaml:"enabled"`
-	AutoRollback    bool          `json:"auto_rollback" yaml:"auto_rollback"`
-	FailureThreshold int          `json:"failure_threshold" yaml:"failure_threshold"`
-	Timeout         time.Duration `json:"timeout" yaml:"timeout"`
-	MaxHistory      int           `json:"max_history" yaml:"max_history"`
+	Enabled          bool          `json:"enabled" yaml:"enabled"`
+	AutoRollback     bool          `json:"auto_rollback" yaml:"auto_rollback"`
+	FailureThreshold int           `json:"failure_threshold" yaml:"failure_threshold"`
+	Timeout          time.Duration `json:"timeout" yaml:"timeout"`
+	MaxHistory       int           `json:"max_history" yaml:"max_history"`
 }
 
 // MonitoringConfig defines monitoring configuration
 type MonitoringConfig struct {
-	Enabled     bool              `json:"enabled" yaml:"enabled"`
-	Prometheus  PrometheusConfig  `json:"prometheus" yaml:"prometheus"`
-	Grafana     GrafanaConfig     `json:"grafana" yaml:"grafana"`
-	Alerting    AlertingConfig    `json:"alerting" yaml:"alerting"`
-	Tracing     TracingConfig     `json:"tracing" yaml:"tracing"`
-	Logging     LoggingConfig     `json:"logging" yaml:"logging"`
-	Dashboards  []string          `json:"dashboards" yaml:"dashboards"`
-	Alerts      []string          `json:"alerts" yaml:"alerts"`
+	Enabled    bool             `json:"enabled" yaml:"enabled"`
+	Prometheus PrometheusConfig `json:"prometheus" yaml:"prometheus"`
+	Grafana    GrafanaConfig    `json:"grafana" yaml:"grafana"`
+	Alerting   AlertingConfig   `json:"alerting" yaml:"alerting"`
+	Tracing    TracingConfig    `json:"tracing" yaml:"tracing"`
+	Logging    LoggingConfig    `json:"logging" yaml:"logging"`
+	Dashboards []string         `json:"dashboards" yaml:"dashboards"`
+	Alerts     []string         `json:"alerts" yaml:"alerts"`
 }
 
 // PrometheusConfig defines Prometheus configuration
 type PrometheusConfig struct {
-	Enabled   bool   `json:"enabled" yaml:"enabled"`
-	Endpoint  string `json:"endpoint" yaml:"endpoint"`
-	Namespace string `json:"namespace" yaml:"namespace"`
+	Enabled   bool              `json:"enabled" yaml:"enabled"`
+	Endpoint  string            `json:"endpoint" yaml:"endpoint"`
+	Namespace string            `json:"namespace" yaml:"namespace"`
 	Labels    map[string]string `json:"labels" yaml:"labels"`
 }
 
@@ -350,20 +353,20 @@ type GrafanaConfig struct {
 
 // AlertingConfig defines alerting configuration
 type AlertingConfig struct {
-	Enabled   bool              `json:"enabled" yaml:"enabled"`
-	Webhook   string            `json:"webhook" yaml:"webhook"`
-	Slack     SlackConfig       `json:"slack" yaml:"slack"`
-	Email     EmailConfig       `json:"email" yaml:"email"`
-	Rules     []AlertRule       `json:"rules" yaml:"rules"`
+	Enabled bool        `json:"enabled" yaml:"enabled"`
+	Webhook string      `json:"webhook" yaml:"webhook"`
+	Slack   SlackConfig `json:"slack" yaml:"slack"`
+	Email   EmailConfig `json:"email" yaml:"email"`
+	Rules   []AlertRule `json:"rules" yaml:"rules"`
 }
 
 // AlertRule defines alert rule
 type AlertRule struct {
-	Name        string `json:"name" yaml:"name"`
-	Expression  string `json:"expression" yaml:"expression"`
+	Name        string        `json:"name" yaml:"name"`
+	Expression  string        `json:"expression" yaml:"expression"`
 	Duration    time.Duration `json:"duration" yaml:"duration"`
-	Severity    string `json:"severity" yaml:"severity"`
-	Description string `json:"description" yaml:"description"`
+	Severity    string        `json:"severity" yaml:"severity"`
+	Description string        `json:"description" yaml:"description"`
 }
 
 // SlackConfig defines Slack configuration
@@ -398,14 +401,14 @@ type LoggingConfig struct {
 
 // CICDConfig defines CI/CD integration configuration
 type CICDConfig struct {
-	Enabled     bool              `json:"enabled" yaml:"enabled"`
-	Provider    string            `json:"provider" yaml:"provider"` // github, gitlab, jenkins
-	Repository  string            `json:"repository" yaml:"repository"`
-	Branch      string            `json:"branch" yaml:"branch"`
-	Webhook     string            `json:"webhook" yaml:"webhook"`
-	Triggers    []TriggerConfig   `json:"triggers" yaml:"triggers"`
-	Variables   map[string]string `json:"variables" yaml:"variables"`
-	Secrets     map[string]string `json:"secrets" yaml:"secrets"`
+	Enabled    bool              `json:"enabled" yaml:"enabled"`
+	Provider   string            `json:"provider" yaml:"provider"` // github, gitlab, jenkins
+	Repository string            `json:"repository" yaml:"repository"`
+	Branch     string            `json:"branch" yaml:"branch"`
+	Webhook    string            `json:"webhook" yaml:"webhook"`
+	Triggers   []TriggerConfig   `json:"triggers" yaml:"triggers"`
+	Variables  map[string]string `json:"variables" yaml:"variables"`
+	Secrets    map[string]string `json:"secrets" yaml:"secrets"`
 }
 
 // Deployment represents a deployment
@@ -579,7 +582,7 @@ func (d *Deployer) deployDocker(ctx context.Context, deployment *Deployment, env
 	d.addLog(deployment, "Deploying to Docker platform")
 
 	dockerConfig := d.config.Platform.Docker
-	
+
 	// Build image
 	d.addLog(deployment, "Building Docker image")
 	if err := d.buildDockerImage(ctx, deployment, dockerConfig); err != nil {
@@ -603,49 +606,49 @@ func (d *Deployer) deployDocker(ctx context.Context, deployment *Deployment, env
 
 func (d *Deployer) buildDockerImage(ctx context.Context, deployment *Deployment, dockerConfig DockerConfig) error {
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerConfig.Registry, dockerConfig.Repository, deployment.Version)
-	
+
 	args := []string{"build", "-t", imageTag}
-	
+
 	// Add build args
 	for key, value := range dockerConfig.BuildArgs {
 		args = append(args, "--build-arg", fmt.Sprintf("%s=%s", key, value))
 	}
-	
+
 	// Add labels
 	for key, value := range dockerConfig.Labels {
 		args = append(args, "--label", fmt.Sprintf("%s=%s", key, value))
 	}
-	
+
 	// Add dockerfile and context
 	if dockerConfig.Dockerfile != "" {
 		args = append(args, "-f", dockerConfig.Dockerfile)
 	}
-	
+
 	context := dockerConfig.Context
 	if context == "" {
 		context = "."
 	}
 	args = append(args, context)
-	
+
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("docker build failed: %w, output: %s", err, string(output))
 	}
-	
+
 	d.addLog(deployment, fmt.Sprintf("Built image: %s", imageTag))
 	return nil
 }
 
 func (d *Deployer) pushDockerImage(ctx context.Context, deployment *Deployment, dockerConfig DockerConfig) error {
 	imageTag := fmt.Sprintf("%s/%s:%s", dockerConfig.Registry, dockerConfig.Repository, deployment.Version)
-	
+
 	cmd := exec.CommandContext(ctx, "docker", "push", imageTag)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("docker push failed: %w, output: %s", err, string(output))
 	}
-	
+
 	d.addLog(deployment, fmt.Sprintf("Pushed image: %s", imageTag))
 	return nil
 }
@@ -661,7 +664,7 @@ func (d *Deployer) deployKubernetes(ctx context.Context, deployment *Deployment,
 	d.addLog(deployment, "Deploying to Kubernetes platform")
 
 	k8sConfig := d.config.Platform.Kubernetes
-	
+
 	// Apply manifests
 	if len(k8sConfig.Manifests) > 0 {
 		d.addLog(deployment, "Applying Kubernetes manifests")
@@ -692,66 +695,66 @@ func (d *Deployer) deployKubernetes(ctx context.Context, deployment *Deployment,
 func (d *Deployer) applyKubernetesManifests(ctx context.Context, deployment *Deployment, k8sConfig KubernetesConfig) error {
 	for _, manifest := range k8sConfig.Manifests {
 		args := []string{"apply", "-f", manifest}
-		
+
 		if k8sConfig.Namespace != "" {
 			args = append(args, "-n", k8sConfig.Namespace)
 		}
-		
+
 		if k8sConfig.Kubeconfig != "" {
 			args = append(args, "--kubeconfig", k8sConfig.Kubeconfig)
 		}
-		
+
 		cmd := exec.CommandContext(ctx, "kubectl", args...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return fmt.Errorf("kubectl apply failed for %s: %w, output: %s", manifest, err, string(output))
 		}
-		
+
 		d.addLog(deployment, fmt.Sprintf("Applied manifest: %s", manifest))
 	}
-	
+
 	return nil
 }
 
 func (d *Deployer) deployWithHelm(ctx context.Context, deployment *Deployment, k8sConfig KubernetesConfig) error {
 	helmConfig := k8sConfig.HelmChart
-	
+
 	args := []string{"upgrade", "--install", d.config.ServiceName, helmConfig.Chart}
-	
+
 	if helmConfig.Repository != "" {
 		args = append(args, "--repo", helmConfig.Repository)
 	}
-	
+
 	if helmConfig.Version != "" {
 		args = append(args, "--version", helmConfig.Version)
 	}
-	
+
 	if helmConfig.ValuesFile != "" {
 		args = append(args, "-f", helmConfig.ValuesFile)
 	}
-	
+
 	if k8sConfig.Namespace != "" {
 		args = append(args, "-n", k8sConfig.Namespace)
 	}
-	
+
 	// Add inline values
 	for key, value := range helmConfig.Values {
 		args = append(args, "--set", fmt.Sprintf("%s=%v", key, value))
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "helm", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("helm upgrade failed: %w, output: %s", err, string(output))
 	}
-	
+
 	d.addLog(deployment, fmt.Sprintf("Deployed with Helm: %s", helmConfig.Chart))
 	return nil
 }
 
 func (d *Deployer) deployWithKustomize(ctx context.Context, deployment *Deployment, k8sConfig KubernetesConfig) error {
 	kustomizeConfig := k8sConfig.Kustomize
-	
+
 	// Build kustomization
 	buildArgs := []string{"build", kustomizeConfig.Dir}
 	buildCmd := exec.CommandContext(ctx, "kustomize", buildArgs...)
@@ -759,20 +762,20 @@ func (d *Deployer) deployWithKustomize(ctx context.Context, deployment *Deployme
 	if err != nil {
 		return fmt.Errorf("kustomize build failed: %w", err)
 	}
-	
+
 	// Apply manifest
 	applyArgs := []string{"apply", "-f", "-"}
 	if k8sConfig.Namespace != "" {
 		applyArgs = append(applyArgs, "-n", k8sConfig.Namespace)
 	}
-	
+
 	applyCmd := exec.CommandContext(ctx, "kubectl", applyArgs...)
 	applyCmd.Stdin = strings.NewReader(string(manifest))
 	output, err := applyCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("kubectl apply failed: %w, output: %s", err, string(output))
 	}
-	
+
 	d.addLog(deployment, fmt.Sprintf("Deployed with Kustomize: %s", kustomizeConfig.Dir))
 	return nil
 }
@@ -781,7 +784,7 @@ func (d *Deployer) deployServerless(ctx context.Context, deployment *Deployment,
 	d.addLog(deployment, "Deploying to serverless platform")
 
 	serverlessConfig := d.config.Platform.Serverless
-	
+
 	switch serverlessConfig.Provider {
 	case "aws":
 		return d.deployAWSLambda(ctx, deployment, envConfig, serverlessConfig)
@@ -796,19 +799,19 @@ func (d *Deployer) deployServerless(ctx context.Context, deployment *Deployment,
 
 func (d *Deployer) deployAWSLambda(ctx context.Context, deployment *Deployment, envConfig *EnvironmentConfig, serverlessConfig ServerlessConfig) error {
 	d.addLog(deployment, "Deploying AWS Lambda function")
-	
+
 	// Package function
 	d.addLog(deployment, "Packaging Lambda function")
 	if err := d.packageLambdaFunction(ctx, deployment, serverlessConfig); err != nil {
 		return fmt.Errorf("failed to package Lambda function: %w", err)
 	}
-	
+
 	// Deploy function
 	d.addLog(deployment, "Deploying Lambda function")
 	if err := d.deployLambdaFunction(ctx, deployment, serverlessConfig); err != nil {
 		return fmt.Errorf("failed to deploy Lambda function: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -856,23 +859,23 @@ func (d *Deployer) rollbackDocker(ctx context.Context, environment, revision str
 
 func (d *Deployer) rollbackKubernetes(ctx context.Context, environment, revision string) error {
 	k8sConfig := d.config.Platform.Kubernetes
-	
+
 	args := []string{"rollout", "undo", "deployment", d.config.ServiceName}
-	
+
 	if revision != "" {
 		args = append(args, "--to-revision", revision)
 	}
-	
+
 	if k8sConfig.Namespace != "" {
 		args = append(args, "-n", k8sConfig.Namespace)
 	}
-	
+
 	cmd := exec.CommandContext(ctx, "kubectl", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("kubectl rollout undo failed: %w, output: %s", err, string(output))
 	}
-	
+
 	d.logger.Info("Rollback completed", "environment", environment, "revision", revision)
 	return nil
 }
@@ -885,7 +888,7 @@ func (d *Deployer) rollbackServerless(ctx context.Context, environment, revision
 func (d *Deployer) GetDeployment(id string) (*Deployment, bool) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	
+
 	deployment, exists := d.deployments[id]
 	return deployment, exists
 }
@@ -893,12 +896,12 @@ func (d *Deployer) GetDeployment(id string) (*Deployment, bool) {
 func (d *Deployer) ListDeployments() []*Deployment {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	
+
 	deployments := make([]*Deployment, 0, len(d.deployments))
 	for _, deployment := range d.deployments {
 		deployments = append(deployments, deployment)
 	}
-	
+
 	return deployments
 }
 
@@ -955,7 +958,7 @@ func (ds *DeploymentServer) handleDeployments(w http.ResponseWriter, r *http.Req
 	}
 
 	deployments := ds.deployer.ListDeployments()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(deployments); err != nil {
 		ds.logger.Error("Failed to encode deployments", "error", err)
@@ -1123,7 +1126,7 @@ func (app *DeployApp) Run(ctx context.Context, command string, args []string) er
 
 func (app *DeployApp) initDeployment(args []string) error {
 	app.logger.Info("Initializing deployment configuration")
-	
+
 	// Create deployment directories
 	dirs := []string{
 		"deploy",
@@ -1346,7 +1349,7 @@ func (app *DeployApp) showStatus(args []string) error {
 		}
 		fmt.Printf("Replicas: %d\n", deployment.Replicas)
 		fmt.Printf("Health: %s\n", deployment.Health)
-		
+
 		if deployment.Error != "" {
 			fmt.Printf("Error: %s\n", deployment.Error)
 		}

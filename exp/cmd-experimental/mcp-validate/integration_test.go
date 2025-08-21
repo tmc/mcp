@@ -26,63 +26,63 @@ func TestIntegrationWorkflow(t *testing.T) {
 
 	// Setup test server
 	serverCmd := createTestServer(t, tempDir)
-	
+
 	// Test 1: Generate trace file by running mcp-validate
 	t.Run("GenerateTraceFile", func(t *testing.T) {
 		traceFile := filepath.Join(tempDir, "test.mcp")
 		if err := generateTraceFile(serverCmd, traceFile); err != nil {
 			t.Fatalf("Failed to generate trace file: %v", err)
 		}
-		
+
 		// Verify trace file exists and is valid
 		if _, err := os.Stat(traceFile); os.IsNotExist(err) {
 			t.Fatal("Trace file was not created")
 		}
 	})
-	
+
 	// Test 2: Validate server using mcp-validate
 	t.Run("ValidateServer", func(t *testing.T) {
 		cmd := &ValidateCommand{
 			serverCmd: serverCmd,
 			verbose:   true,
 		}
-		
+
 		validator := NewValidator(cmd)
 		if err := validator.validateServer(context.Background(), serverCmd); err != nil {
 			t.Fatalf("Server validation failed: %v", err)
 		}
-		
+
 		// Check that we have some validation results
 		if len(validator.report.Violations) == 0 {
 			t.Log("No violations found (this is good)")
 		}
-		
+
 		// Verify compliance rate calculation
 		if validator.report.Summary.TotalChecks == 0 {
 			t.Error("No checks were performed")
 		}
 	})
-	
+
 	// Test 3: Validate trace file
 	t.Run("ValidateTraceFile", func(t *testing.T) {
 		traceFile := filepath.Join(tempDir, "test.mcp")
-		
+
 		// Create a simple trace file for testing
 		if err := createTestTraceFile(traceFile); err != nil {
 			t.Fatal(err)
 		}
-		
+
 		cmd := &ValidateCommand{
 			traceFile: traceFile,
 			verbose:   true,
 		}
-		
+
 		validator := NewValidator(cmd)
 		if err := validator.validateTrace(context.Background(), traceFile); err != nil {
 			t.Fatalf("Trace validation failed: %v", err)
 		}
 	})
-	
+
 	// Test 4: Generate JSON report
 	t.Run("GenerateJSONReport", func(t *testing.T) {
 		cmd := &ValidateCommand{
@@ -90,34 +90,34 @@ func TestIntegrationWorkflow(t *testing.T) {
 			outputFmt:  "json",
 			reportFile: filepath.Join(tempDir, "report.json"),
 		}
-		
+
 		validator := NewValidator(cmd)
 		if err := validator.validateServer(context.Background(), serverCmd); err != nil {
 			t.Fatalf("Server validation failed: %v", err)
 		}
-		
+
 		// Verify report file was created
 		reportFile := filepath.Join(tempDir, "report.json")
 		if _, err := os.Stat(reportFile); os.IsNotExist(err) {
 			t.Error("JSON report file was not created")
 		}
-		
+
 		// Verify report content
 		content, err := os.ReadFile(reportFile)
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		var report ValidationReport
 		if err := json.Unmarshal(content, &report); err != nil {
 			t.Fatalf("Invalid JSON report: %v", err)
 		}
-		
+
 		if report.Version != version {
 			t.Errorf("Expected version %s, got %s", version, report.Version)
 		}
 	})
-	
+
 	// Test 5: Generate HTML report
 	t.Run("GenerateHTMLReport", func(t *testing.T) {
 		cmd := &ValidateCommand{
@@ -125,24 +125,24 @@ func TestIntegrationWorkflow(t *testing.T) {
 			outputFmt:  "html",
 			reportFile: filepath.Join(tempDir, "report.html"),
 		}
-		
+
 		validator := NewValidator(cmd)
 		if err := validator.validateServer(context.Background(), serverCmd); err != nil {
 			t.Fatalf("Server validation failed: %v", err)
 		}
-		
+
 		// Verify HTML report file was created
 		reportFile := filepath.Join(tempDir, "report.html")
 		if _, err := os.Stat(reportFile); os.IsNotExist(err) {
 			t.Error("HTML report file was not created")
 		}
-		
+
 		// Verify HTML content
 		content, err := os.ReadFile(reportFile)
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		htmlContent := string(content)
 		if !strings.Contains(htmlContent, "<!DOCTYPE html>") {
 			t.Error("HTML report does not contain DOCTYPE declaration")
@@ -151,7 +151,7 @@ func TestIntegrationWorkflow(t *testing.T) {
 			t.Error("HTML report does not contain expected title")
 		}
 	})
-	
+
 	// Test 6: Strict mode validation
 	t.Run("StrictModeValidation", func(t *testing.T) {
 		cmd := &ValidateCommand{
@@ -159,12 +159,12 @@ func TestIntegrationWorkflow(t *testing.T) {
 			strict:    true,
 			verbose:   true,
 		}
-		
+
 		validator := NewValidator(cmd)
 		if err := validator.validateServer(context.Background(), serverCmd); err != nil {
 			t.Fatalf("Strict validation failed: %v", err)
 		}
-		
+
 		// In strict mode, we should have more checks
 		if validator.report.Summary.TotalChecks == 0 {
 			t.Error("No checks were performed in strict mode")
@@ -175,8 +175,8 @@ func TestIntegrationWorkflow(t *testing.T) {
 // TestValidationAccuracy tests the accuracy of validation logic
 func TestValidationAccuracy(t *testing.T) {
 	tests := []struct {
-		name           string
-		traceContent   []map[string]interface{}
+		name               string
+		traceContent       []map[string]interface{}
 		expectedViolations int
 		expectedSeverity   string
 	}{
@@ -247,7 +247,7 @@ func TestValidationAccuracy(t *testing.T) {
 			expectedSeverity:   "error",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create temporary trace file
@@ -256,27 +256,27 @@ func TestValidationAccuracy(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(tempDir)
-			
+
 			traceFile := filepath.Join(tempDir, "test.mcp")
 			if err := writeTraceFile(traceFile, tt.traceContent); err != nil {
 				t.Fatal(err)
 			}
-			
+
 			// Validate trace
 			cmd := &ValidateCommand{
 				traceFile: traceFile,
 			}
-			
+
 			validator := NewValidator(cmd)
 			if err := validator.validateTrace(context.Background(), traceFile); err != nil {
 				t.Fatalf("Trace validation failed: %v", err)
 			}
-			
+
 			// Check violations
 			if len(validator.report.Violations) != tt.expectedViolations {
 				t.Errorf("Expected %d violations, got %d", tt.expectedViolations, len(validator.report.Violations))
 			}
-			
+
 			if tt.expectedViolations > 0 && len(validator.report.Violations) > 0 {
 				if validator.report.Violations[0].Severity != tt.expectedSeverity {
 					t.Errorf("Expected severity %s, got %s", tt.expectedSeverity, validator.report.Violations[0].Severity)
@@ -292,23 +292,23 @@ func TestPerformanceValidation(t *testing.T) {
 	slowServer := &MockSlowServer{
 		delay: 150 * time.Millisecond,
 	}
-	
+
 	// Test strict mode catches slow responses
 	cmd := &ValidateCommand{
 		serverCmd: slowServer.Command(),
 		strict:    true,
 	}
-	
+
 	validator := NewValidator(cmd)
 	// This would normally connect to the server, but we'll simulate it
-	validator.addViolation("warning", "performance", "slow_ping", 
+	validator.addViolation("warning", "performance", "slow_ping",
 		"Ping took 150ms, should be under 100ms", "")
-	
+
 	// Verify the violation was recorded
 	if len(validator.report.Violations) != 1 {
 		t.Errorf("Expected 1 violation, got %d", len(validator.report.Violations))
 	}
-	
+
 	if validator.report.Violations[0].Category != "performance" {
 		t.Errorf("Expected performance violation, got %s", validator.report.Violations[0].Category)
 	}
@@ -321,7 +321,7 @@ func TestBatchValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tempDir)
-	
+
 	// Create batch file
 	batchFile := filepath.Join(tempDir, "servers.json")
 	servers := []string{
@@ -329,34 +329,34 @@ func TestBatchValidation(t *testing.T) {
 		"python testserver2.py",
 		"node testserver3.js",
 	}
-	
+
 	if err := writeBatchFile(batchFile, servers); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Test batch validation
 	cmd := &ValidateCommand{
 		batch:   batchFile,
 		verbose: true,
 	}
-	
+
 	validator := NewValidator(cmd)
-	
+
 	// Since we can't actually run the servers, we'll simulate batch validation
 	for _, server := range servers {
 		subValidator := NewValidator(cmd)
 		subValidator.config.serverCmd = server
-		
+
 		// Simulate some validation results
-		subValidator.addViolation("info", "test", "simulated", 
+		subValidator.addViolation("info", "test", "simulated",
 			fmt.Sprintf("Simulated validation for %s", server), "")
-		
+
 		validator.mergeReport(subValidator.report)
 	}
-	
+
 	// Verify batch results
 	if len(validator.report.Violations) != len(servers) {
-		t.Errorf("Expected %d violations (one per server), got %d", 
+		t.Errorf("Expected %d violations (one per server), got %d",
 			len(servers), len(validator.report.Violations))
 	}
 }
@@ -370,18 +370,18 @@ func TestCapabilityValidation(t *testing.T) {
 		},
 		toolsListError: nil,
 	}
-	
+
 	cmd := &ValidateCommand{verbose: true}
 	validator := NewValidator(cmd)
-	
+
 	// Test capability validation
 	validator.validateCapabilities(context.Background(), mockClient, mockClient.capabilities)
-	
+
 	// Check that capabilities were properly recorded
 	if validator.report.Capabilities.DeclaredCapabilities == nil {
 		t.Error("Declared capabilities were not recorded")
 	}
-	
+
 	if validator.report.Capabilities.ActualCapabilities == nil {
 		t.Error("Actual capabilities were not recorded")
 	}
@@ -394,53 +394,53 @@ func TestReportGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tempDir)
-	
+
 	// Create validator with test data
 	validator := NewValidator(&ValidateCommand{})
 	validator.addViolation("error", "protocol", "test_error", "Test error message", "line 1")
 	validator.addViolation("warning", "performance", "test_warning", "Test warning message", "line 2")
 	validator.addViolation("info", "info", "test_info", "Test info message", "line 3")
-	
+
 	// Test JSON format
 	t.Run("JSONFormat", func(t *testing.T) {
 		validator.config.outputFmt = "json"
 		validator.config.reportFile = filepath.Join(tempDir, "test.json")
-		
+
 		if err := validator.generateReport(); err != nil {
 			t.Fatalf("Failed to generate JSON report: %v", err)
 		}
-		
+
 		// Verify file exists and is valid JSON
 		content, err := os.ReadFile(validator.config.reportFile)
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		var report ValidationReport
 		if err := json.Unmarshal(content, &report); err != nil {
 			t.Fatalf("Invalid JSON: %v", err)
 		}
-		
+
 		if len(report.Violations) != 3 {
 			t.Errorf("Expected 3 violations, got %d", len(report.Violations))
 		}
 	})
-	
+
 	// Test HTML format
 	t.Run("HTMLFormat", func(t *testing.T) {
 		validator.config.outputFmt = "html"
 		validator.config.reportFile = filepath.Join(tempDir, "test.html")
-		
+
 		if err := validator.generateReport(); err != nil {
 			t.Fatalf("Failed to generate HTML report: %v", err)
 		}
-		
+
 		// Verify file exists and contains HTML
 		content, err := os.ReadFile(validator.config.reportFile)
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		htmlContent := string(content)
 		if !strings.Contains(htmlContent, "<!DOCTYPE html>") {
 			t.Error("HTML report missing DOCTYPE")
@@ -449,22 +449,22 @@ func TestReportGeneration(t *testing.T) {
 			t.Error("HTML report missing failure count")
 		}
 	})
-	
+
 	// Test JUnit XML format
 	t.Run("JUnitXMLFormat", func(t *testing.T) {
 		validator.config.outputFmt = "junit-xml"
 		validator.config.reportFile = filepath.Join(tempDir, "test.xml")
-		
+
 		if err := validator.generateReport(); err != nil {
 			t.Fatalf("Failed to generate JUnit XML report: %v", err)
 		}
-		
+
 		// Verify file exists and contains XML
 		content, err := os.ReadFile(validator.config.reportFile)
 		if err != nil {
 			t.Fatal(err)
 		}
-		
+
 		xmlContent := string(content)
 		if !strings.Contains(xmlContent, `<?xml version="1.0" encoding="UTF-8"?>`) {
 			t.Error("JUnit XML report missing XML declaration")
@@ -518,11 +518,11 @@ def main():
 if __name__ == "__main__":
     main()
 `
-	
+
 	if err := os.WriteFile(serverScript, []byte(serverContent), 0755); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	return fmt.Sprintf("python3 %s", serverScript)
 }
 
@@ -571,7 +571,7 @@ func createTestTraceFile(filename string) error {
 			"result":  map[string]interface{}{},
 		},
 	}
-	
+
 	return writeTraceFile(filename, trace)
 }
 
@@ -581,14 +581,14 @@ func writeTraceFile(filename string, content []map[string]interface{}) error {
 		return err
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	for _, msg := range content {
 		if err := encoder.Encode(msg); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -598,7 +598,7 @@ func writeBatchFile(filename string, servers []string) error {
 		return err
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	return encoder.Encode(servers)
 }

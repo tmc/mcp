@@ -28,12 +28,12 @@ const (
 	Name    = "mcp-studio"
 
 	// Default configuration
-	DefaultPort          = 8080
-	DefaultWorkspaceDir  = "~/.mcp-studio"
-	DefaultConfigFile    = "~/.mcp-studio-config.json"
-	WebSocketTimeout     = 30 * time.Second
-	ServerPingInterval   = 30 * time.Second
-	MaxConnections       = 100
+	DefaultPort         = 8080
+	DefaultWorkspaceDir = "~/.mcp-studio"
+	DefaultConfigFile   = "~/.mcp-studio-config.json"
+	WebSocketTimeout    = 30 * time.Second
+	ServerPingInterval  = 30 * time.Second
+	MaxConnections      = 100
 )
 
 //go:embed static/*
@@ -44,23 +44,23 @@ var templateFiles embed.FS
 
 // Config represents the studio configuration
 type Config struct {
-	Port         int                    `json:"port"`
-	WorkspaceDir string                 `json:"workspace_dir"`
-	Projects     map[string]*Project    `json:"projects"`
-	Servers      map[string]*ServerDef  `json:"servers"`
-	Settings     *StudioSettings        `json:"settings"`
+	Port         int                   `json:"port"`
+	WorkspaceDir string                `json:"workspace_dir"`
+	Projects     map[string]*Project   `json:"projects"`
+	Servers      map[string]*ServerDef `json:"servers"`
+	Settings     *StudioSettings       `json:"settings"`
 }
 
 // StudioSettings represents global studio settings
 type StudioSettings struct {
-	Theme                string `json:"theme"`
-	AutoSave             bool   `json:"auto_save"`
-	AutoSaveInterval     int    `json:"auto_save_interval"`
-	ShowGridLines        bool   `json:"show_grid_lines"`
-	EnableCollaboration  bool   `json:"enable_collaboration"`
-	EnableDebugger       bool   `json:"enable_debugger"`
-	MaxRecentProjects    int    `json:"max_recent_projects"`
-	EnableHotReload      bool   `json:"enable_hot_reload"`
+	Theme               string `json:"theme"`
+	AutoSave            bool   `json:"auto_save"`
+	AutoSaveInterval    int    `json:"auto_save_interval"`
+	ShowGridLines       bool   `json:"show_grid_lines"`
+	EnableCollaboration bool   `json:"enable_collaboration"`
+	EnableDebugger      bool   `json:"enable_debugger"`
+	MaxRecentProjects   int    `json:"max_recent_projects"`
+	EnableHotReload     bool   `json:"enable_hot_reload"`
 }
 
 // Project represents a studio project
@@ -119,11 +119,11 @@ type NodePosition struct {
 
 // FlowEdge represents a connection between nodes
 type FlowEdge struct {
-	ID     string `json:"id"`
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Label  string `json:"label"`
-	Type   string `json:"type"` // "data", "control", "error"
+	ID     string                 `json:"id"`
+	From   string                 `json:"from"`
+	To     string                 `json:"to"`
+	Label  string                 `json:"label"`
+	Type   string                 `json:"type"` // "data", "control", "error"
 	Config map[string]interface{} `json:"config"`
 }
 
@@ -150,17 +150,17 @@ type HealthCheck struct {
 
 // Studio represents the main studio application
 type Studio struct {
-	config       *Config
-	server       *http.Server
-	router       *mux.Router
-	wsUpgrader   websocket.Upgrader
-	clients      map[string]*Client
-	servers      map[string]*ServerConnection
-	projects     map[string]*Project
-	templates    *template.Template
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
+	config     *Config
+	server     *http.Server
+	router     *mux.Router
+	wsUpgrader websocket.Upgrader
+	clients    map[string]*Client
+	servers    map[string]*ServerConnection
+	projects   map[string]*Project
+	templates  *template.Template
+	mu         sync.RWMutex
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 // Client represents a WebSocket client connection
@@ -200,11 +200,11 @@ type Message struct {
 
 // Global flags
 var (
-	port        = flag.Int("port", DefaultPort, "Port to listen on")
+	port         = flag.Int("port", DefaultPort, "Port to listen on")
 	workspaceDir = flag.String("workspace", DefaultWorkspaceDir, "Workspace directory")
-	configFile  = flag.String("config", DefaultConfigFile, "Configuration file")
-	debug       = flag.Bool("debug", false, "Enable debug mode")
-	version     = flag.Bool("version", false, "Show version information")
+	configFile   = flag.String("config", DefaultConfigFile, "Configuration file")
+	debug        = flag.Bool("debug", false, "Enable debug mode")
+	version      = flag.Bool("version", false, "Show version information")
 )
 
 func main() {
@@ -354,7 +354,7 @@ func (s *Studio) Start() error {
 // Stop stops the studio server
 func (s *Studio) Stop() error {
 	s.cancel()
-	
+
 	// Close all WebSocket connections
 	s.mu.Lock()
 	for _, client := range s.clients {
@@ -699,7 +699,7 @@ func (s *Studio) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	delete(s.projects, projectID)
-	
+
 	// Remove project file
 	projectFile := filepath.Join(s.config.WorkspaceDir, "projects", projectID+".json")
 	os.Remove(projectFile)
@@ -759,7 +759,7 @@ func (s *Studio) pingServer(server *ServerConnection) {
 	defer cancel()
 
 	_, err := server.Client.Ping(ctx, mcp.PingRequest{})
-	
+
 	server.mu.Lock()
 	if err != nil {
 		server.Connected = false
@@ -796,7 +796,7 @@ func (s *Studio) saveProject(project *Project) error {
 // loadProjects loads all projects from disk
 func (s *Studio) loadProjects() error {
 	projectsDir := filepath.Join(s.config.WorkspaceDir, "projects")
-	
+
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(projectsDir, 0755); err != nil {
 		return err
@@ -847,7 +847,7 @@ func expandPath(path string) string {
 // LoadConfig loads configuration from file
 func LoadConfig(filename string) (*Config, error) {
 	filename = expandPath(filename)
-	
+
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -864,7 +864,7 @@ func LoadConfig(filename string) (*Config, error) {
 // SaveConfig saves configuration to file
 func SaveConfig(filename string, config *Config) error {
 	filename = expandPath(filename)
-	
+
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err

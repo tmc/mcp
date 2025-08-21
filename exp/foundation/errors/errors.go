@@ -18,59 +18,59 @@ type ErrorCode string
 // Standard error codes following MCP specification and common patterns.
 const (
 	// General error codes
-	CodeUnknown           ErrorCode = "unknown"
-	CodeInvalidArgument   ErrorCode = "invalid_argument"
-	CodeNotFound          ErrorCode = "not_found"
-	CodeAlreadyExists     ErrorCode = "already_exists"
-	CodePermissionDenied  ErrorCode = "permission_denied"
-	CodeResourceExhausted ErrorCode = "resource_exhausted"
+	CodeUnknown            ErrorCode = "unknown"
+	CodeInvalidArgument    ErrorCode = "invalid_argument"
+	CodeNotFound           ErrorCode = "not_found"
+	CodeAlreadyExists      ErrorCode = "already_exists"
+	CodePermissionDenied   ErrorCode = "permission_denied"
+	CodeResourceExhausted  ErrorCode = "resource_exhausted"
 	CodeFailedPrecondition ErrorCode = "failed_precondition"
-	CodeAborted           ErrorCode = "aborted"
-	CodeOutOfRange        ErrorCode = "out_of_range"
-	CodeUnimplemented     ErrorCode = "unimplemented"
-	CodeInternal          ErrorCode = "internal"
-	CodeUnavailable       ErrorCode = "unavailable"
-	CodeDeadlineExceeded  ErrorCode = "deadline_exceeded"
-	CodeCancelled         ErrorCode = "cancelled"
-	
+	CodeAborted            ErrorCode = "aborted"
+	CodeOutOfRange         ErrorCode = "out_of_range"
+	CodeUnimplemented      ErrorCode = "unimplemented"
+	CodeInternal           ErrorCode = "internal"
+	CodeUnavailable        ErrorCode = "unavailable"
+	CodeDeadlineExceeded   ErrorCode = "deadline_exceeded"
+	CodeCancelled          ErrorCode = "cancelled"
+
 	// MCP-specific error codes
-	CodeProtocol          ErrorCode = "protocol"
-	CodeTransport         ErrorCode = "transport"
-	CodeSerialization     ErrorCode = "serialization"
-	CodeAuthentication    ErrorCode = "authentication"
-	CodeAuthorization     ErrorCode = "authorization"
-	CodeRateLimit         ErrorCode = "rate_limit"
-	CodeQuotaExceeded     ErrorCode = "quota_exceeded"
-	CodeConfiguration     ErrorCode = "configuration"
-	CodePlugin            ErrorCode = "plugin"
-	CodeTool              ErrorCode = "tool"
-	CodeResource          ErrorCode = "resource"
-	CodePrompt            ErrorCode = "prompt"
-	
+	CodeProtocol       ErrorCode = "protocol"
+	CodeTransport      ErrorCode = "transport"
+	CodeSerialization  ErrorCode = "serialization"
+	CodeAuthentication ErrorCode = "authentication"
+	CodeAuthorization  ErrorCode = "authorization"
+	CodeRateLimit      ErrorCode = "rate_limit"
+	CodeQuotaExceeded  ErrorCode = "quota_exceeded"
+	CodeConfiguration  ErrorCode = "configuration"
+	CodePlugin         ErrorCode = "plugin"
+	CodeTool           ErrorCode = "tool"
+	CodeResource       ErrorCode = "resource"
+	CodePrompt         ErrorCode = "prompt"
+
 	// Tool-specific error codes
-	CodeValidation        ErrorCode = "validation"
-	CodeConversion        ErrorCode = "conversion"
-	CodeFormatting        ErrorCode = "formatting"
-	CodeParsing           ErrorCode = "parsing"
-	CodeExecution         ErrorCode = "execution"
-	CodeTimeout           ErrorCode = "timeout"
-	CodeConnection        ErrorCode = "connection"
-	CodeNetwork           ErrorCode = "network"
-	CodeFileSystem        ErrorCode = "filesystem"
-	CodeDatabase          ErrorCode = "database"
+	CodeValidation ErrorCode = "validation"
+	CodeConversion ErrorCode = "conversion"
+	CodeFormatting ErrorCode = "formatting"
+	CodeParsing    ErrorCode = "parsing"
+	CodeExecution  ErrorCode = "execution"
+	CodeTimeout    ErrorCode = "timeout"
+	CodeConnection ErrorCode = "connection"
+	CodeNetwork    ErrorCode = "network"
+	CodeFileSystem ErrorCode = "filesystem"
+	CodeDatabase   ErrorCode = "database"
 )
 
 // ErrorCategory represents the category of an error.
 type ErrorCategory string
 
 const (
-	CategoryClient     ErrorCategory = "client"
-	CategoryServer     ErrorCategory = "server"
-	CategoryTransport  ErrorCategory = "transport"
-	CategoryProtocol   ErrorCategory = "protocol"
-	CategoryTool       ErrorCategory = "tool"
-	CategorySystem     ErrorCategory = "system"
-	CategoryExternal   ErrorCategory = "external"
+	CategoryClient    ErrorCategory = "client"
+	CategoryServer    ErrorCategory = "server"
+	CategoryTransport ErrorCategory = "transport"
+	CategoryProtocol  ErrorCategory = "protocol"
+	CategoryTool      ErrorCategory = "tool"
+	CategorySystem    ErrorCategory = "system"
+	CategoryExternal  ErrorCategory = "external"
 )
 
 // ErrorSeverity represents the severity level of an error.
@@ -87,34 +87,34 @@ const (
 type Error struct {
 	// Error code
 	Code ErrorCode `json:"code"`
-	
+
 	// Error message
 	Message string `json:"message"`
-	
+
 	// Error details
 	Details map[string]interface{} `json:"details,omitempty"`
-	
+
 	// Error category
 	Category ErrorCategory `json:"category"`
-	
+
 	// Error severity
 	Severity ErrorSeverity `json:"severity"`
-	
+
 	// Timestamp when error occurred
 	Timestamp time.Time `json:"timestamp"`
-	
+
 	// Context information
 	Context map[string]interface{} `json:"context,omitempty"`
-	
+
 	// Stack trace
 	Stack []StackFrame `json:"stack,omitempty"`
-	
+
 	// Wrapped error
 	Wrapped error `json:"-"`
-	
+
 	// Retry information
 	Retry RetryInfo `json:"retry,omitempty"`
-	
+
 	// User-friendly message
 	UserMessage string `json:"user_message,omitempty"`
 }
@@ -130,10 +130,10 @@ type StackFrame struct {
 type RetryInfo struct {
 	// Whether the error is retryable
 	Retryable bool `json:"retryable"`
-	
+
 	// Suggested retry delay
 	RetryAfter time.Duration `json:"retry_after,omitempty"`
-	
+
 	// Maximum retry attempts
 	MaxAttempts int `json:"max_attempts,omitempty"`
 }
@@ -261,7 +261,7 @@ func Wrap(err error, code ErrorCode, message string) *Error {
 	if err == nil {
 		return nil
 	}
-	
+
 	// If already a structured error, wrap it
 	if e, ok := err.(*Error); ok {
 		return &Error{
@@ -274,7 +274,7 @@ func Wrap(err error, code ErrorCode, message string) *Error {
 			Wrapped:   e,
 		}
 	}
-	
+
 	// Wrap standard error
 	return &Error{
 		Code:      code,
@@ -297,12 +297,12 @@ func FromError(err error) *Error {
 	if err == nil {
 		return nil
 	}
-	
+
 	// If already a structured error, return as-is
 	if e, ok := err.(*Error); ok {
 		return e
 	}
-	
+
 	// Convert standard error
 	return &Error{
 		Code:      CodeUnknown,
@@ -320,15 +320,15 @@ func FromContext(ctx context.Context) *Error {
 	if ctx.Err() == nil {
 		return nil
 	}
-	
+
 	if ctx.Err() == context.Canceled {
 		return New(CodeCancelled, "operation was cancelled")
 	}
-	
+
 	if ctx.Err() == context.DeadlineExceeded {
 		return New(CodeDeadlineExceeded, "operation deadline exceeded")
 	}
-	
+
 	return Wrap(ctx.Err(), CodeUnknown, "context error")
 }
 
@@ -347,13 +347,13 @@ func (c *Chain) Add(err error) *Chain {
 	if err == nil {
 		return c
 	}
-	
+
 	if e, ok := err.(*Error); ok {
 		c.errors = append(c.errors, e)
 	} else {
 		c.errors = append(c.errors, FromError(err))
 	}
-	
+
 	return c
 }
 
@@ -372,16 +372,16 @@ func (c *Chain) Error() string {
 	if len(c.errors) == 0 {
 		return ""
 	}
-	
+
 	if len(c.errors) == 1 {
 		return c.errors[0].Error()
 	}
-	
+
 	var messages []string
 	for _, err := range c.errors {
 		messages = append(messages, err.Error())
 	}
-	
+
 	return strings.Join(messages, "; ")
 }
 
@@ -436,22 +436,22 @@ func (r *Registry) Handle(err *Error) error {
 	if err == nil {
 		return nil
 	}
-	
+
 	// Get handlers for this error code
 	handlers := r.handlers[err.Code]
-	
+
 	// Try generic handlers
 	if len(handlers) == 0 {
 		handlers = r.handlers[CodeUnknown]
 	}
-	
+
 	// Execute handlers
 	for _, handler := range handlers {
 		if handlerErr := handler.HandleError(err); handlerErr != nil {
 			return handlerErr
 		}
 	}
-	
+
 	return nil
 }
 
@@ -496,26 +496,26 @@ func inferSeverity(code ErrorCode) ErrorSeverity {
 // captureStack captures the current call stack.
 func captureStack() []StackFrame {
 	var stack []StackFrame
-	
+
 	// Skip the first few frames (this function and error creation)
 	for i := 2; i < 10; i++ {
 		pc, file, line, ok := runtime.Caller(i)
 		if !ok {
 			break
 		}
-		
+
 		fn := runtime.FuncForPC(pc)
 		if fn == nil {
 			continue
 		}
-		
+
 		stack = append(stack, StackFrame{
 			Function: fn.Name(),
 			File:     file,
 			Line:     line,
 		})
 	}
-	
+
 	return stack
 }
 

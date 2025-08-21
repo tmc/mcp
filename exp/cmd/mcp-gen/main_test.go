@@ -60,7 +60,7 @@ func TestMcpGenIntegration(t *testing.T) {
 	}
 
 	clientCode := string(content)
-	
+
 	// Check for expected client components
 	expectedComponents := []string{
 		"package generated",
@@ -463,7 +463,7 @@ func TestErrorHandling(t *testing.T) {
 
 			ctx := context.Background()
 			err = generator.GenerateClientFromSchema(ctx, "nonexistent.json")
-			
+
 			if tc.expectError && err == nil {
 				t.Error("Expected error but got none")
 			}

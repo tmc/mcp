@@ -13,32 +13,32 @@ import (
 type Config struct {
 	// Language settings
 	Language string `json:"language"`
-	
+
 	// Output settings
 	Output  string `json:"output"`
 	Package string `json:"package"`
-	
+
 	// Generation settings
-	TypeSafe       bool     `json:"type_safe"`
-	Middleware     bool     `json:"middleware"`
-	Documentation  bool     `json:"documentation"`
-	Tests          bool     `json:"tests"`
-	Examples       bool     `json:"examples"`
-	Dependencies   []string `json:"dependencies"`
-	
+	TypeSafe      bool     `json:"type_safe"`
+	Middleware    bool     `json:"middleware"`
+	Documentation bool     `json:"documentation"`
+	Tests         bool     `json:"tests"`
+	Examples      bool     `json:"examples"`
+	Dependencies  []string `json:"dependencies"`
+
 	// Language-specific settings
 	Go         GoConfig         `json:"go"`
 	TypeScript TypeScriptConfig `json:"typescript"`
 	Python     PythonConfig     `json:"python"`
 	Rust       RustConfig       `json:"rust"`
 	Java       JavaConfig       `json:"java"`
-	
+
 	// Template settings
 	Templates TemplateConfig `json:"templates"`
-	
+
 	// Plugin settings
 	Plugins []PluginConfig `json:"plugins"`
-	
+
 	// Runtime settings (not serialized)
 	Verbose bool `json:"-"`
 	DryRun  bool `json:"-"`
@@ -46,27 +46,27 @@ type Config struct {
 
 // GoConfig contains Go-specific configuration
 type GoConfig struct {
-	ModulePath      string            `json:"module_path"`
-	GoVersion       string            `json:"go_version"`
-	ImportPaths     map[string]string `json:"import_paths"`
-	GenerateGoMod   bool              `json:"generate_go_mod"`
-	UseGenerics     bool              `json:"use_generics"`
-	UseContexts     bool              `json:"use_contexts"`
-	UseMiddleware   bool              `json:"use_middleware"`
-	BuildTags       []string          `json:"build_tags"`
-	LintingConfig   LintingConfig     `json:"linting"`
+	ModulePath    string            `json:"module_path"`
+	GoVersion     string            `json:"go_version"`
+	ImportPaths   map[string]string `json:"import_paths"`
+	GenerateGoMod bool              `json:"generate_go_mod"`
+	UseGenerics   bool              `json:"use_generics"`
+	UseContexts   bool              `json:"use_contexts"`
+	UseMiddleware bool              `json:"use_middleware"`
+	BuildTags     []string          `json:"build_tags"`
+	LintingConfig LintingConfig     `json:"linting"`
 }
 
 // TypeScriptConfig contains TypeScript-specific configuration
 type TypeScriptConfig struct {
-	ModuleName      string            `json:"module_name"`
-	TypeScriptVersion string          `json:"typescript_version"`
-	OutputFormat    string            `json:"output_format"` // "esm", "cjs", "umd"
-	Declaration     bool              `json:"declaration"`
-	SourceMap       bool              `json:"source_map"`
-	StrictMode      bool              `json:"strict_mode"`
-	Dependencies    map[string]string `json:"dependencies"`
-	DevDependencies map[string]string `json:"dev_dependencies"`
+	ModuleName        string            `json:"module_name"`
+	TypeScriptVersion string            `json:"typescript_version"`
+	OutputFormat      string            `json:"output_format"` // "esm", "cjs", "umd"
+	Declaration       bool              `json:"declaration"`
+	SourceMap         bool              `json:"source_map"`
+	StrictMode        bool              `json:"strict_mode"`
+	Dependencies      map[string]string `json:"dependencies"`
+	DevDependencies   map[string]string `json:"dev_dependencies"`
 }
 
 // PythonConfig contains Python-specific configuration
@@ -82,24 +82,24 @@ type PythonConfig struct {
 
 // RustConfig contains Rust-specific configuration
 type RustConfig struct {
-	CrateName     string            `json:"crate_name"`
-	RustVersion   string            `json:"rust_version"`
-	Edition       string            `json:"edition"`
-	UseSerde      bool              `json:"use_serde"`
-	UseTokio      bool              `json:"use_tokio"`
-	UseClap       bool              `json:"use_clap"`
-	Dependencies  map[string]string `json:"dependencies"`
+	CrateName       string            `json:"crate_name"`
+	RustVersion     string            `json:"rust_version"`
+	Edition         string            `json:"edition"`
+	UseSerde        bool              `json:"use_serde"`
+	UseTokio        bool              `json:"use_tokio"`
+	UseClap         bool              `json:"use_clap"`
+	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"dev_dependencies"`
 }
 
 // JavaConfig contains Java-specific configuration
 type JavaConfig struct {
-	PackageName   string            `json:"package_name"`
-	JavaVersion   string            `json:"java_version"`
-	UseLombok     bool              `json:"use_lombok"`
-	UseJackson    bool              `json:"use_jackson"`
-	UseSpring     bool              `json:"use_spring"`
-	Dependencies  map[string]string `json:"dependencies"`
+	PackageName     string            `json:"package_name"`
+	JavaVersion     string            `json:"java_version"`
+	UseLombok       bool              `json:"use_lombok"`
+	UseJackson      bool              `json:"use_jackson"`
+	UseSpring       bool              `json:"use_spring"`
+	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"dev_dependencies"`
 }
 
@@ -132,7 +132,7 @@ func Default() *Config {
 		Documentation: true,
 		Tests:         true,
 		Examples:      false,
-		
+
 		Go: GoConfig{
 			GoVersion:     "1.21",
 			GenerateGoMod: true,
@@ -144,7 +144,7 @@ func Default() *Config {
 				Rules:   []string{"go vet", "golint", "ineffassign"},
 			},
 		},
-		
+
 		TypeScript: TypeScriptConfig{
 			TypeScriptVersion: "5.0",
 			OutputFormat:      "esm",
@@ -152,14 +152,14 @@ func Default() *Config {
 			SourceMap:         true,
 			StrictMode:        true,
 		},
-		
+
 		Python: PythonConfig{
 			PythonVersion:  "3.9",
 			UseDataclasses: true,
 			UsePydantic:    true,
 			UseAsyncio:     true,
 		},
-		
+
 		Rust: RustConfig{
 			RustVersion: "1.70",
 			Edition:     "2021",
@@ -167,19 +167,19 @@ func Default() *Config {
 			UseTokio:    true,
 			UseClap:     true,
 		},
-		
+
 		Java: JavaConfig{
 			JavaVersion: "17",
 			UseLombok:   true,
 			UseJackson:  true,
 			UseSpring:   false,
 		},
-		
+
 		Templates: TemplateConfig{
 			Directory:  "",
 			CustomVars: make(map[string]string),
 		},
-		
+
 		Plugins: []PluginConfig{},
 	}
 }
@@ -187,7 +187,7 @@ func Default() *Config {
 // Load loads configuration from file or returns default if file doesn't exist
 func Load(configPath string) (*Config, error) {
 	cfg := Default()
-	
+
 	if configPath == "" {
 		// Try to find config file in current directory
 		candidates := []string{
@@ -195,7 +195,7 @@ func Load(configPath string) (*Config, error) {
 			".mcp-gen.json",
 			"mcp-gen.config.json",
 		}
-		
+
 		for _, candidate := range candidates {
 			if _, err := os.Stat(candidate); err == nil {
 				configPath = candidate
@@ -203,11 +203,11 @@ func Load(configPath string) (*Config, error) {
 			}
 		}
 	}
-	
+
 	if configPath == "" {
 		return cfg, nil
 	}
-	
+
 	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -215,11 +215,11 @@ func Load(configPath string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	if err := json.Unmarshal(data, cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
-	
+
 	return cfg, nil
 }
 
@@ -229,23 +229,23 @@ func (c *Config) Save(configPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	
+
 	if err := ioutil.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
-	
+
 	return nil
 }
 
 // Validate validates the configuration
 func (c *Config) Validate() error {
 	supportedLanguages := []string{"go", "typescript", "python", "rust", "java"}
-	
+
 	found := false
 	for _, lang := range supportedLanguages {
 		if c.Language == lang {
@@ -253,15 +253,15 @@ func (c *Config) Validate() error {
 			break
 		}
 	}
-	
+
 	if !found {
 		return fmt.Errorf("unsupported language: %s (supported: %v)", c.Language, supportedLanguages)
 	}
-	
+
 	if c.Output == "" {
 		return fmt.Errorf("output directory is required")
 	}
-	
+
 	// Language-specific validation
 	switch c.Language {
 	case "go":
@@ -285,7 +285,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("Java package name is required")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -294,7 +294,7 @@ func (c *Config) GetPackageName() string {
 	if c.Package != "" {
 		return c.Package
 	}
-	
+
 	switch c.Language {
 	case "go":
 		return c.Go.ModulePath
@@ -307,6 +307,6 @@ func (c *Config) GetPackageName() string {
 	case "java":
 		return c.Java.PackageName
 	}
-	
+
 	return ""
 }

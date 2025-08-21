@@ -52,21 +52,21 @@ func (c *GenerateCommand) Usage() string {
 
 func (c *GenerateCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.packagePath, "package", "", "Go package path to analyze")
 	fs.StringVar(&c.outputDir, "output", "./schemas", "Output directory for schemas")
 	fs.StringVar(&c.format, "format", "json", "Output format (json, yaml)")
 	fs.StringVar(&c.protocol, "protocol", "stable", "Protocol version (stable, draft)")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	if c.packagePath == "" {
 		return fmt.Errorf("package path is required")
 	}
-	
+
 	generator := NewSchemaGenerator(c)
 	return generator.Generate(ctx)
 }
@@ -90,32 +90,32 @@ func (c *DiffCommand) Usage() string {
 
 func (c *DiffCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.oldSchema, "old", "", "Old schema file")
 	fs.StringVar(&c.newSchema, "new", "", "New schema file")
 	fs.StringVar(&c.outputFile, "output", "", "Output file (default: stdout)")
 	fs.StringVar(&c.format, "format", "json", "Output format (json, yaml, markdown)")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	if c.oldSchema == "" || c.newSchema == "" {
 		return fmt.Errorf("both old and new schema files are required")
 	}
-	
+
 	differ := NewSchemaDiffer(c)
 	return differ.Compare(ctx)
 }
 
 // DocsCommand handles documentation generation
 type DocsCommand struct {
-	inputDir   string
-	outputDir  string
-	format     string
-	template   string
-	verbose    bool
+	inputDir  string
+	outputDir string
+	format    string
+	template  string
+	verbose   bool
 }
 
 func (c *DocsCommand) Name() string {
@@ -128,17 +128,17 @@ func (c *DocsCommand) Usage() string {
 
 func (c *DocsCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.inputDir, "input", "./schemas", "Input directory containing schemas")
 	fs.StringVar(&c.outputDir, "output", "./docs", "Output directory for documentation")
 	fs.StringVar(&c.format, "format", "markdown", "Output format (markdown, html)")
 	fs.StringVar(&c.template, "template", "", "Custom template file")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	docGen := NewDocumentationGenerator(c)
 	return docGen.Generate(ctx)
 }
@@ -193,43 +193,43 @@ func (g *SchemaGenerator) Generate(ctx context.Context) error {
 	if g.config.verbose {
 		log.Printf("Generating schemas from package: %s", g.config.packagePath)
 	}
-	
+
 	// Parse the package
 	pkgs, err := parser.ParseDir(g.fileSet, g.config.packagePath, nil, parser.ParseComments)
 	if err != nil {
 		return fmt.Errorf("failed to parse package: %w", err)
 	}
-	
+
 	g.packages = pkgs
-	
+
 	// Generate schemas for each package
 	for pkgName, pkg := range pkgs {
 		if g.config.verbose {
 			log.Printf("Processing package: %s", pkgName)
 		}
-		
+
 		if err := g.processPackage(pkg); err != nil {
 			return fmt.Errorf("failed to process package %s: %w", pkgName, err)
 		}
 	}
-	
+
 	// Create output directory
 	if err := os.MkdirAll(g.config.outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
-	
+
 	// Write schemas to files
 	for name, schema := range g.schemas {
 		filename := filepath.Join(g.config.outputDir, name+".json")
 		if err := g.writeSchema(filename, schema); err != nil {
 			return fmt.Errorf("failed to write schema %s: %w", name, err)
 		}
-		
+
 		if g.config.verbose {
 			log.Printf("Generated schema: %s", filename)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -256,7 +256,7 @@ func (g *SchemaGenerator) processType(name string, t ast.Expr) {
 		Title:  name,
 		ID:     fmt.Sprintf("#/%s", name),
 	}
-	
+
 	switch typ := t.(type) {
 	case *ast.StructType:
 		g.processStruct(schema, typ)
@@ -269,7 +269,7 @@ func (g *SchemaGenerator) processType(name string, t ast.Expr) {
 	case *ast.Ident:
 		g.processIdent(schema, typ)
 	}
-	
+
 	g.schemas[name] = schema
 }
 
@@ -277,17 +277,17 @@ func (g *SchemaGenerator) processType(name string, t ast.Expr) {
 func (g *SchemaGenerator) processStruct(schema *JSONSchema, structType *ast.StructType) {
 	schema.Type = "object"
 	schema.Properties = make(map[string]*JSONSchema)
-	
+
 	for _, field := range structType.Fields.List {
 		for _, name := range field.Names {
 			if name.IsExported() {
 				fieldSchema := &JSONSchema{}
 				g.processFieldType(fieldSchema, field.Type)
-				
+
 				// Extract JSON tag information
 				jsonName := name.Name
 				required := true
-				
+
 				if field.Tag != nil {
 					tag := strings.Trim(field.Tag.Value, "`")
 					if jsonTag := parseJSONTag(tag); jsonTag != "" {
@@ -307,21 +307,21 @@ func (g *SchemaGenerator) processStruct(schema *JSONSchema, structType *ast.Stru
 						}
 					}
 				}
-				
+
 				// Extract field documentation
 				if field.Doc != nil {
 					fieldSchema.Description = extractDocumentation(field.Doc.Text())
 				}
-				
+
 				schema.Properties[jsonName] = fieldSchema
-				
+
 				if required {
 					schema.Required = append(schema.Required, jsonName)
 				}
 			}
 		}
 	}
-	
+
 	// Sort required fields for consistency
 	sort.Strings(schema.Required)
 }
@@ -331,7 +331,7 @@ func (g *SchemaGenerator) processInterface(schema *JSONSchema, interfaceType *as
 	// For interfaces, we'll create a more flexible schema
 	schema.Type = "object"
 	schema.Description = "Interface type - flexible object structure"
-	
+
 	// Add basic properties that most interfaces might have
 	schema.Properties = map[string]*JSONSchema{
 		"type": {
@@ -351,11 +351,11 @@ func (g *SchemaGenerator) processArray(schema *JSONSchema, arrayType *ast.ArrayT
 // processMap processes a map type
 func (g *SchemaGenerator) processMap(schema *JSONSchema, mapType *ast.MapType) {
 	schema.Type = "object"
-	
+
 	// For maps, we'll use additionalProperties
 	additionalProps := &JSONSchema{}
 	g.processFieldType(additionalProps, mapType.Value)
-	
+
 	// Note: JSON Schema doesn't have a direct equivalent to Go's additionalProperties
 	// This is a simplified representation
 	schema.Properties = map[string]*JSONSchema{
@@ -440,7 +440,7 @@ func (g *SchemaGenerator) writeSchema(filename string, schema *JSONSchema) error
 		return err
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(schema)
@@ -458,16 +458,16 @@ func NewSchemaDiffer(config *DiffCommand) *SchemaDiffer {
 
 // SchemaDiff represents the differences between two schemas
 type SchemaDiff struct {
-	Summary      DiffSummary    `json:"summary"`
-	Changes      []SchemaChange `json:"changes"`
-	Breaking     []SchemaChange `json:"breaking"`
-	Deprecated   []SchemaChange `json:"deprecated"`
-	Added        []SchemaChange `json:"added"`
-	Removed      []SchemaChange `json:"removed"`
-	Modified     []SchemaChange `json:"modified"`
-	Timestamp    time.Time      `json:"timestamp"`
-	OldVersion   string         `json:"oldVersion"`
-	NewVersion   string         `json:"newVersion"`
+	Summary    DiffSummary    `json:"summary"`
+	Changes    []SchemaChange `json:"changes"`
+	Breaking   []SchemaChange `json:"breaking"`
+	Deprecated []SchemaChange `json:"deprecated"`
+	Added      []SchemaChange `json:"added"`
+	Removed    []SchemaChange `json:"removed"`
+	Modified   []SchemaChange `json:"modified"`
+	Timestamp  time.Time      `json:"timestamp"`
+	OldVersion string         `json:"oldVersion"`
+	NewVersion string         `json:"newVersion"`
 }
 
 // DiffSummary provides a summary of changes
@@ -496,21 +496,21 @@ func (d *SchemaDiffer) Compare(ctx context.Context) error {
 	if d.config.verbose {
 		log.Printf("Comparing schemas: %s -> %s", d.config.oldSchema, d.config.newSchema)
 	}
-	
+
 	// Load schemas
 	oldSchema, err := d.loadSchema(d.config.oldSchema)
 	if err != nil {
 		return fmt.Errorf("failed to load old schema: %w", err)
 	}
-	
+
 	newSchema, err := d.loadSchema(d.config.newSchema)
 	if err != nil {
 		return fmt.Errorf("failed to load new schema: %w", err)
 	}
-	
+
 	// Compare schemas
 	diff := d.compareSchemas(oldSchema, newSchema)
-	
+
 	// Output results
 	var output io.Writer = os.Stdout
 	if d.config.outputFile != "" {
@@ -521,7 +521,7 @@ func (d *SchemaDiffer) Compare(ctx context.Context) error {
 		defer file.Close()
 		output = file
 	}
-	
+
 	switch d.config.format {
 	case "json":
 		return d.outputJSON(output, diff)
@@ -539,12 +539,12 @@ func (d *SchemaDiffer) loadSchema(filename string) (*JSONSchema, error) {
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var schema JSONSchema
 	if err := json.NewDecoder(file).Decode(&schema); err != nil {
 		return nil, err
 	}
-	
+
 	return &schema, nil
 }
 
@@ -555,13 +555,13 @@ func (d *SchemaDiffer) compareSchemas(oldSchema, newSchema *JSONSchema) *SchemaD
 		OldVersion: oldSchema.ID,
 		NewVersion: newSchema.ID,
 	}
-	
+
 	// Compare properties
 	d.compareProperties(diff, "", oldSchema.Properties, newSchema.Properties)
-	
+
 	// Compare required fields
 	d.compareRequired(diff, "", oldSchema.Required, newSchema.Required)
-	
+
 	// Compare types
 	if oldSchema.Type != newSchema.Type {
 		change := SchemaChange{
@@ -576,10 +576,10 @@ func (d *SchemaDiffer) compareSchemas(oldSchema, newSchema *JSONSchema) *SchemaD
 		diff.Changes = append(diff.Changes, change)
 		diff.Breaking = append(diff.Breaking, change)
 	}
-	
+
 	// Calculate summary
 	diff.Summary = d.calculateSummary(diff)
-	
+
 	return diff
 }
 
@@ -601,7 +601,7 @@ func (d *SchemaDiffer) compareProperties(diff *SchemaDiff, basePath string, oldP
 			diff.Added = append(diff.Added, change)
 		}
 	}
-	
+
 	// Find removed properties
 	for name, oldProp := range oldProps {
 		if _, exists := newProps[name]; !exists {
@@ -619,7 +619,7 @@ func (d *SchemaDiffer) compareProperties(diff *SchemaDiff, basePath string, oldP
 			diff.Breaking = append(diff.Breaking, change)
 		}
 	}
-	
+
 	// Find modified properties
 	for name, oldProp := range oldProps {
 		if newProp, exists := newProps[name]; exists {
@@ -635,12 +635,12 @@ func (d *SchemaDiffer) compareRequired(diff *SchemaDiff, basePath string, oldReq
 	for _, field := range oldRequired {
 		oldSet[field] = true
 	}
-	
+
 	newSet := make(map[string]bool)
 	for _, field := range newRequired {
 		newSet[field] = true
 	}
-	
+
 	// Find newly required fields
 	for field := range newSet {
 		if !oldSet[field] {
@@ -656,7 +656,7 @@ func (d *SchemaDiffer) compareRequired(diff *SchemaDiff, basePath string, oldReq
 			diff.Breaking = append(diff.Breaking, change)
 		}
 	}
-	
+
 	// Find fields no longer required
 	for field := range oldSet {
 		if !newSet[field] {
@@ -689,7 +689,7 @@ func (d *SchemaDiffer) compareSchemaProperties(diff *SchemaDiff, path string, ol
 		diff.Changes = append(diff.Changes, change)
 		diff.Breaking = append(diff.Breaking, change)
 	}
-	
+
 	// Compare formats
 	if oldProp.Format != newProp.Format {
 		change := SchemaChange{
@@ -706,7 +706,7 @@ func (d *SchemaDiffer) compareSchemaProperties(diff *SchemaDiff, path string, ol
 			diff.Breaking = append(diff.Breaking, change)
 		}
 	}
-	
+
 	// Recursively compare nested properties
 	if oldProp.Properties != nil || newProp.Properties != nil {
 		d.compareProperties(diff, path, oldProp.Properties, newProp.Properties)
@@ -723,7 +723,7 @@ func (d *SchemaDiffer) calculateSummary(diff *SchemaDiff) DiffSummary {
 		ModifiedItems:   len(diff.Modified),
 		IsCompatible:    len(diff.Breaking) == 0,
 	}
-	
+
 	return summary
 }
 
@@ -748,20 +748,20 @@ func (d *SchemaDiffer) outputMarkdown(w io.Writer, diff *SchemaDiff) error {
 	fmt.Fprintf(w, "**Generated:** %s\n", diff.Timestamp.Format(time.RFC3339))
 	fmt.Fprintf(w, "**Old Version:** %s\n", diff.OldVersion)
 	fmt.Fprintf(w, "**New Version:** %s\n\n", diff.NewVersion)
-	
+
 	fmt.Fprintf(w, "## Summary\n\n")
 	fmt.Fprintf(w, "- **Total Changes:** %d\n", diff.Summary.TotalChanges)
 	fmt.Fprintf(w, "- **Breaking Changes:** %d\n", diff.Summary.BreakingChanges)
 	fmt.Fprintf(w, "- **Added Items:** %d\n", diff.Summary.AddedItems)
 	fmt.Fprintf(w, "- **Removed Items:** %d\n", diff.Summary.RemovedItems)
 	fmt.Fprintf(w, "- **Modified Items:** %d\n", diff.Summary.ModifiedItems)
-	
+
 	if diff.Summary.IsCompatible {
 		fmt.Fprintf(w, "- **Compatibility:** ✅ Compatible\n\n")
 	} else {
 		fmt.Fprintf(w, "- **Compatibility:** ❌ Breaking changes detected\n\n")
 	}
-	
+
 	if len(diff.Breaking) > 0 {
 		fmt.Fprintf(w, "## Breaking Changes\n\n")
 		for _, change := range diff.Breaking {
@@ -769,7 +769,7 @@ func (d *SchemaDiffer) outputMarkdown(w io.Writer, diff *SchemaDiff) error {
 		}
 		fmt.Fprintf(w, "\n")
 	}
-	
+
 	if len(diff.Added) > 0 {
 		fmt.Fprintf(w, "## Added Items\n\n")
 		for _, change := range diff.Added {
@@ -777,7 +777,7 @@ func (d *SchemaDiffer) outputMarkdown(w io.Writer, diff *SchemaDiff) error {
 		}
 		fmt.Fprintf(w, "\n")
 	}
-	
+
 	if len(diff.Removed) > 0 {
 		fmt.Fprintf(w, "## Removed Items\n\n")
 		for _, change := range diff.Removed {
@@ -785,7 +785,7 @@ func (d *SchemaDiffer) outputMarkdown(w io.Writer, diff *SchemaDiff) error {
 		}
 		fmt.Fprintf(w, "\n")
 	}
-	
+
 	return nil
 }
 
@@ -804,25 +804,25 @@ func (g *DocumentationGenerator) Generate(ctx context.Context) error {
 	if g.config.verbose {
 		log.Printf("Generating documentation from: %s", g.config.inputDir)
 	}
-	
+
 	// Find all schema files
 	schemaFiles, err := filepath.Glob(filepath.Join(g.config.inputDir, "*.json"))
 	if err != nil {
 		return fmt.Errorf("failed to find schema files: %w", err)
 	}
-	
+
 	// Create output directory
 	if err := os.MkdirAll(g.config.outputDir, 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
-	
+
 	// Process each schema file
 	for _, schemaFile := range schemaFiles {
 		if err := g.processSchemaFile(schemaFile); err != nil {
 			return fmt.Errorf("failed to process schema file %s: %w", schemaFile, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -833,17 +833,17 @@ func (g *DocumentationGenerator) processSchemaFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Generate documentation
 	baseName := strings.TrimSuffix(filepath.Base(filename), ".json")
 	outputFile := filepath.Join(g.config.outputDir, baseName+".md")
-	
+
 	file, err := os.Create(outputFile)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	
+
 	return g.generateSchemaDoc(file, schema)
 }
 
@@ -854,29 +854,29 @@ func (g *DocumentationGenerator) loadSchema(filename string) (*JSONSchema, error
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var schema JSONSchema
 	if err := json.NewDecoder(file).Decode(&schema); err != nil {
 		return nil, err
 	}
-	
+
 	return &schema, nil
 }
 
 // generateSchemaDoc generates documentation for a schema
 func (g *DocumentationGenerator) generateSchemaDoc(w io.Writer, schema *JSONSchema) error {
 	fmt.Fprintf(w, "# %s\n\n", schema.Title)
-	
+
 	if schema.Description != "" {
 		fmt.Fprintf(w, "%s\n\n", schema.Description)
 	}
-	
+
 	fmt.Fprintf(w, "## Properties\n\n")
-	
+
 	if schema.Properties != nil {
 		g.generatePropertiesDoc(w, schema.Properties, schema.Required, 0)
 	}
-	
+
 	return nil
 }
 
@@ -886,41 +886,41 @@ func (g *DocumentationGenerator) generatePropertiesDoc(w io.Writer, properties m
 	for _, field := range required {
 		requiredSet[field] = true
 	}
-	
+
 	// Sort properties for consistent output
 	var names []string
 	for name := range properties {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	
+
 	for _, name := range names {
 		prop := properties[name]
-		
+
 		// Generate property header
 		indent := strings.Repeat("  ", depth)
 		requiredText := ""
 		if requiredSet[name] {
 			requiredText = " (required)"
 		}
-		
+
 		fmt.Fprintf(w, "%s- **%s**%s: %s", indent, name, requiredText, prop.Type)
-		
+
 		if prop.Format != "" {
 			fmt.Fprintf(w, " (%s)", prop.Format)
 		}
-		
+
 		fmt.Fprintf(w, "\n")
-		
+
 		if prop.Description != "" {
 			fmt.Fprintf(w, "%s  %s\n", indent, prop.Description)
 		}
-		
+
 		// Handle nested properties
 		if prop.Properties != nil {
 			g.generatePropertiesDoc(w, prop.Properties, prop.Required, depth+1)
 		}
-		
+
 		fmt.Fprintf(w, "\n")
 	}
 }
@@ -939,14 +939,14 @@ func parseJSONTag(tag string) string {
 func extractDocumentation(docText string) string {
 	lines := strings.Split(docText, "\n")
 	var result []string
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line != "" && !strings.HasPrefix(line, "//") {
 			result = append(result, line)
 		}
 	}
-	
+
 	return strings.Join(result, " ")
 }
 
@@ -962,7 +962,7 @@ func isBreakingFormatChange(oldFormat, newFormat string) bool {
 		"uri":       {""},
 		"uuid":      {""},
 	}
-	
+
 	if allowed, exists := breakingChanges[oldFormat]; exists {
 		for _, allowedFormat := range allowed {
 			if newFormat == allowedFormat {
@@ -971,7 +971,7 @@ func isBreakingFormatChange(oldFormat, newFormat string) bool {
 		}
 		return true
 	}
-	
+
 	return false
 }
 
@@ -985,9 +985,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  version     Show version information\n")
 		os.Exit(1)
 	}
-	
+
 	ctx := context.Background()
-	
+
 	switch os.Args[1] {
 	case "generate":
 		cmd := &GenerateCommand{}

@@ -47,39 +47,39 @@ func (t *StdioTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	if command, exists := t.config.Parameters["command"]; exists {
 		cmdStr := command.(string)
 		var args []string
-		
+
 		if argsParam, exists := t.config.Parameters["args"]; exists {
 			if argsStr, ok := argsParam.(string); ok {
 				args = strings.Fields(argsStr)
 			}
 		}
-		
+
 		// Create command
 		t.cmd = exec.CommandContext(ctx, cmdStr, args...)
-		
+
 		// Get pipes
 		stdin, err := t.cmd.StdinPipe()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 		}
-		
+
 		stdout, err := t.cmd.StdoutPipe()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 		}
-		
+
 		// Start command
 		if err := t.cmd.Start(); err != nil {
 			return nil, fmt.Errorf("failed to start command: %w", err)
 		}
-		
+
 		return &stdioConn{
 			stdin:  stdin,
 			stdout: stdout,
 			cmd:    t.cmd,
 		}, nil
 	}
-	
+
 	// Use current process stdin/stdout
 	return &stdioConn{
 		stdin:  os.Stdin,
@@ -109,13 +109,13 @@ func (t *StdioTransport) Health(ctx context.Context) error {
 		if t.cmd.Process == nil {
 			return fmt.Errorf("command not started")
 		}
-		
+
 		// Check process state
 		if t.cmd.ProcessState != nil && t.cmd.ProcessState.Exited() {
 			return fmt.Errorf("command exited")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -182,14 +182,14 @@ type HTTPTransport struct {
 // Dial establishes an HTTP connection.
 func (t *HTTPTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	urlStr := t.config.Parameters["url"].(string)
-	
+
 	// Create HTTP client if not exists
 	if t.client == nil {
 		t.client = &http.Client{
 			Timeout: t.config.Timeout,
 		}
 	}
-	
+
 	return &httpConn{
 		url:    urlStr,
 		client: t.client,
@@ -215,22 +215,22 @@ func (t *HTTPTransport) Config() Config {
 // Health checks the transport health.
 func (t *HTTPTransport) Health(ctx context.Context) error {
 	urlStr := t.config.Parameters["url"].(string)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "HEAD", urlStr, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create health check request: %w", err)
 	}
-	
+
 	resp, err := t.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("health check failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("health check failed with status: %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
 
@@ -261,19 +261,19 @@ func (c *httpConn) Write(p []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("HTTP request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode >= 400 {
 		return 0, fmt.Errorf("HTTP request failed with status: %d", resp.StatusCode)
 	}
-	
+
 	return len(p), nil
 }
 
@@ -312,19 +312,19 @@ type WebSocketTransport struct {
 // Dial establishes a WebSocket connection.
 func (t *WebSocketTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	urlStr := t.config.Parameters["url"].(string)
-	
+
 	// Create dialer if not exists
 	if t.dialer == nil {
 		t.dialer = &websocket.Dialer{
 			HandshakeTimeout: t.config.Timeout,
 		}
 	}
-	
+
 	conn, _, err := t.dialer.DialContext(ctx, urlStr, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial WebSocket: %w", err)
 	}
-	
+
 	return &websocketConn{conn: conn}, nil
 }
 
@@ -351,7 +351,7 @@ func (t *WebSocketTransport) Health(ctx context.Context) error {
 		return fmt.Errorf("WebSocket health check failed: %w", err)
 	}
 	defer conn.Close()
-	
+
 	return nil
 }
 
@@ -371,7 +371,7 @@ func (c *websocketConn) Read(p []byte) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to read WebSocket message: %w", err)
 	}
-	
+
 	n := copy(p, message)
 	return n, nil
 }
@@ -419,21 +419,21 @@ type TCPTransport struct {
 func (t *TCPTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	address := t.config.Parameters["address"].(string)
 	network := "tcp"
-	
+
 	if networkParam, exists := t.config.Parameters["network"]; exists {
 		network = networkParam.(string)
 	}
-	
+
 	var dialer net.Dialer
 	if t.config.Timeout > 0 {
 		dialer.Timeout = t.config.Timeout
 	}
-	
+
 	conn, err := dialer.DialContext(ctx, network, address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial TCP: %w", err)
 	}
-	
+
 	return conn, nil
 }
 
@@ -460,7 +460,7 @@ func (t *TCPTransport) Health(ctx context.Context) error {
 		return fmt.Errorf("TCP health check failed: %w", err)
 	}
 	defer conn.Close()
-	
+
 	return nil
 }
 
@@ -498,17 +498,17 @@ type UnixTransport struct {
 // Dial establishes a Unix domain socket connection.
 func (t *UnixTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	path := t.config.Parameters["path"].(string)
-	
+
 	var dialer net.Dialer
 	if t.config.Timeout > 0 {
 		dialer.Timeout = t.config.Timeout
 	}
-	
+
 	conn, err := dialer.DialContext(ctx, "unix", path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial Unix socket: %w", err)
 	}
-	
+
 	return conn, nil
 }
 
@@ -535,7 +535,7 @@ func (t *UnixTransport) Health(ctx context.Context) error {
 		return fmt.Errorf("Unix socket health check failed: %w", err)
 	}
 	defer conn.Close()
-	
+
 	return nil
 }
 
@@ -552,13 +552,13 @@ func parseAddress(address string) (host string, port int, err error) {
 	if len(parts) != 2 {
 		return "", 0, fmt.Errorf("invalid address format: %s", address)
 	}
-	
+
 	host = parts[0]
 	port, err = strconv.Atoi(parts[1])
 	if err != nil {
 		return "", 0, fmt.Errorf("invalid port: %w", err)
 	}
-	
+
 	return host, port, nil
 }
 

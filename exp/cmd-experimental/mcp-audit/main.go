@@ -10,28 +10,30 @@
 // - Forensic analysis and incident response support
 //
 // Usage:
-//   mcp-audit [command] [options]
+//
+//	mcp-audit [command] [options]
 //
 // Commands:
-//   log           Generate and manage audit logs
-//   analyze       Analyze existing audit logs
-//   search        Search through audit logs
-//   report        Generate compliance reports
-//   monitor       Real-time monitoring and alerting
-//   anomaly       Anomaly detection and analysis
-//   privacy       Data privacy compliance checking
-//   export        Export audit data in various formats
+//
+//	log           Generate and manage audit logs
+//	analyze       Analyze existing audit logs
+//	search        Search through audit logs
+//	report        Generate compliance reports
+//	monitor       Real-time monitoring and alerting
+//	anomaly       Anomaly detection and analysis
+//	privacy       Data privacy compliance checking
+//	export        Export audit data in various formats
 //
 // Examples:
-//   mcp-audit log --target "stdio://./server" --output audit.log
-//   mcp-audit analyze --input audit.log --compliance soc2
-//   mcp-audit search --query "authentication failed" --timerange "1h"
-//   mcp-audit report --compliance gdpr --format pdf
-//   mcp-audit monitor --alerts email:security@example.com
-//   mcp-audit anomaly --model behavioral --threshold 0.8
-//   mcp-audit privacy --scan-pii --redact-output
-//   mcp-audit export --format json --filter "severity:high"
 //
+//	mcp-audit log --target "stdio://./server" --output audit.log
+//	mcp-audit analyze --input audit.log --compliance soc2
+//	mcp-audit search --query "authentication failed" --timerange "1h"
+//	mcp-audit report --compliance gdpr --format pdf
+//	mcp-audit monitor --alerts email:security@example.com
+//	mcp-audit anomaly --model behavioral --threshold 0.8
+//	mcp-audit privacy --scan-pii --redact-output
+//	mcp-audit export --format json --filter "severity:high"
 package main
 
 import (
@@ -56,101 +58,101 @@ import (
 
 // AuditConfig represents the audit configuration
 type AuditConfig struct {
-	Target           string            `json:"target"`
-	OutputFile       string            `json:"output_file"`
-	Format           string            `json:"format"`
-	LogLevel         string            `json:"log_level"`
-	Retention        time.Duration     `json:"retention"`
-	Compression      bool              `json:"compression"`
-	Encryption       bool              `json:"encryption"`
-	RealTime         bool              `json:"real_time"`
-	BufferSize       int               `json:"buffer_size"`
-	FlushInterval    time.Duration     `json:"flush_interval"`
-	ComplianceFrameworks []string      `json:"compliance_frameworks"`
-	PIIDetection     bool              `json:"pii_detection"`
-	Redaction        bool              `json:"redaction"`
-	Anomaly          bool              `json:"anomaly"`
-	AlertEndpoints   []string          `json:"alert_endpoints"`
-	Metadata         map[string]string `json:"metadata"`
+	Target               string            `json:"target"`
+	OutputFile           string            `json:"output_file"`
+	Format               string            `json:"format"`
+	LogLevel             string            `json:"log_level"`
+	Retention            time.Duration     `json:"retention"`
+	Compression          bool              `json:"compression"`
+	Encryption           bool              `json:"encryption"`
+	RealTime             bool              `json:"real_time"`
+	BufferSize           int               `json:"buffer_size"`
+	FlushInterval        time.Duration     `json:"flush_interval"`
+	ComplianceFrameworks []string          `json:"compliance_frameworks"`
+	PIIDetection         bool              `json:"pii_detection"`
+	Redaction            bool              `json:"redaction"`
+	Anomaly              bool              `json:"anomaly"`
+	AlertEndpoints       []string          `json:"alert_endpoints"`
+	Metadata             map[string]string `json:"metadata"`
 }
 
 // AuditEvent represents a single audit event
 type AuditEvent struct {
-	ID            string                 `json:"id"`
-	Timestamp     time.Time              `json:"timestamp"`
-	EventType     string                 `json:"event_type"`
-	Source        string                 `json:"source"`
-	Target        string                 `json:"target"`
-	User          string                 `json:"user,omitempty"`
-	SessionID     string                 `json:"session_id,omitempty"`
-	Action        string                 `json:"action"`
-	Resource      string                 `json:"resource,omitempty"`
-	Method        string                 `json:"method,omitempty"`
-	Parameters    map[string]interface{} `json:"parameters,omitempty"`
-	Result        string                 `json:"result"`
-	StatusCode    int                    `json:"status_code"`
-	Duration      time.Duration          `json:"duration"`
-	IPAddress     string                 `json:"ip_address,omitempty"`
-	UserAgent     string                 `json:"user_agent,omitempty"`
-	Severity      string                 `json:"severity"`
-	Category      string                 `json:"category"`
-	Message       string                 `json:"message"`
-	ErrorMessage  string                 `json:"error_message,omitempty"`
-	PIIDetected   bool                   `json:"pii_detected"`
-	PIITypes      []string               `json:"pii_types,omitempty"`
-	Compliance    map[string]bool        `json:"compliance"`
-	RiskScore     float64                `json:"risk_score"`
-	Anomaly       bool                   `json:"anomaly"`
-	AnomalyScore  float64                `json:"anomaly_score"`
-	Correlation   []string               `json:"correlation,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	Hash          string                 `json:"hash"`
-	Signature     string                 `json:"signature,omitempty"`
+	ID           string                 `json:"id"`
+	Timestamp    time.Time              `json:"timestamp"`
+	EventType    string                 `json:"event_type"`
+	Source       string                 `json:"source"`
+	Target       string                 `json:"target"`
+	User         string                 `json:"user,omitempty"`
+	SessionID    string                 `json:"session_id,omitempty"`
+	Action       string                 `json:"action"`
+	Resource     string                 `json:"resource,omitempty"`
+	Method       string                 `json:"method,omitempty"`
+	Parameters   map[string]interface{} `json:"parameters,omitempty"`
+	Result       string                 `json:"result"`
+	StatusCode   int                    `json:"status_code"`
+	Duration     time.Duration          `json:"duration"`
+	IPAddress    string                 `json:"ip_address,omitempty"`
+	UserAgent    string                 `json:"user_agent,omitempty"`
+	Severity     string                 `json:"severity"`
+	Category     string                 `json:"category"`
+	Message      string                 `json:"message"`
+	ErrorMessage string                 `json:"error_message,omitempty"`
+	PIIDetected  bool                   `json:"pii_detected"`
+	PIITypes     []string               `json:"pii_types,omitempty"`
+	Compliance   map[string]bool        `json:"compliance"`
+	RiskScore    float64                `json:"risk_score"`
+	Anomaly      bool                   `json:"anomaly"`
+	AnomalyScore float64                `json:"anomaly_score"`
+	Correlation  []string               `json:"correlation,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Hash         string                 `json:"hash"`
+	Signature    string                 `json:"signature,omitempty"`
 }
 
 // AuditLog represents the audit log manager
 type AuditLog struct {
-	config      *AuditConfig
-	file        *os.File
-	buffer      []AuditEvent
-	bufferMutex sync.RWMutex
-	flushTicker *time.Ticker
-	stopChan    chan struct{}
-	client      *mcp.Client
-	piiDetector *PIIDetector
-	anomalyDetector *AnomalyDetector
+	config            *AuditConfig
+	file              *os.File
+	buffer            []AuditEvent
+	bufferMutex       sync.RWMutex
+	flushTicker       *time.Ticker
+	stopChan          chan struct{}
+	client            *mcp.Client
+	piiDetector       *PIIDetector
+	anomalyDetector   *AnomalyDetector
 	correlationEngine *CorrelationEngine
 }
 
 // AuditAnalyzer represents the audit analysis engine
 type AuditAnalyzer struct {
-	config         *AuditConfig
-	events         []AuditEvent
-	patterns       map[string]*regexp.Regexp
+	config          *AuditConfig
+	events          []AuditEvent
+	patterns        map[string]*regexp.Regexp
 	complianceRules map[string][]ComplianceRule
-	statistics     AuditStatistics
-	anomalies      []AnomalyResult
-	correlations   []CorrelationResult
+	statistics      AuditStatistics
+	anomalies       []AnomalyResult
+	correlations    []CorrelationResult
 }
 
 // AuditStatistics represents audit statistics
 type AuditStatistics struct {
-	TotalEvents       int                    `json:"total_events"`
-	EventsByType      map[string]int         `json:"events_by_type"`
-	EventsBySeverity  map[string]int         `json:"events_by_severity"`
-	EventsByCategory  map[string]int         `json:"events_by_category"`
-	EventsByUser      map[string]int         `json:"events_by_user"`
-	EventsByAction    map[string]int         `json:"events_by_action"`
-	EventsByStatus    map[string]int         `json:"events_by_status"`
-	AverageRiskScore  float64                `json:"average_risk_score"`
-	PIIEvents         int                    `json:"pii_events"`
-	AnomalyEvents     int                    `json:"anomaly_events"`
-	ComplianceIssues  int                    `json:"compliance_issues"`
-	TimeRange         TimeRange              `json:"time_range"`
-	TopResources      []ResourceUsage        `json:"top_resources"`
-	TopUsers          []UserActivity         `json:"top_users"`
-	ErrorRate         float64                `json:"error_rate"`
-	AverageResponseTime time.Duration        `json:"average_response_time"`
+	TotalEvents         int             `json:"total_events"`
+	EventsByType        map[string]int  `json:"events_by_type"`
+	EventsBySeverity    map[string]int  `json:"events_by_severity"`
+	EventsByCategory    map[string]int  `json:"events_by_category"`
+	EventsByUser        map[string]int  `json:"events_by_user"`
+	EventsByAction      map[string]int  `json:"events_by_action"`
+	EventsByStatus      map[string]int  `json:"events_by_status"`
+	AverageRiskScore    float64         `json:"average_risk_score"`
+	PIIEvents           int             `json:"pii_events"`
+	AnomalyEvents       int             `json:"anomaly_events"`
+	ComplianceIssues    int             `json:"compliance_issues"`
+	TimeRange           TimeRange       `json:"time_range"`
+	TopResources        []ResourceUsage `json:"top_resources"`
+	TopUsers            []UserActivity  `json:"top_users"`
+	ErrorRate           float64         `json:"error_rate"`
+	AverageResponseTime time.Duration   `json:"average_response_time"`
 }
 
 // TimeRange represents a time range
@@ -168,36 +170,36 @@ type ResourceUsage struct {
 
 // UserActivity represents user activity statistics
 type UserActivity struct {
-	User     string `json:"user"`
-	Events   int    `json:"events"`
-	Actions  int    `json:"actions"`
+	User     string    `json:"user"`
+	Events   int       `json:"events"`
+	Actions  int       `json:"actions"`
 	LastSeen time.Time `json:"last_seen"`
 }
 
 // ComplianceRule represents a compliance rule
 type ComplianceRule struct {
-	ID          string `json:"id"`
-	Framework   string `json:"framework"`
-	Control     string `json:"control"`
-	Description string `json:"description"`
+	ID          string         `json:"id"`
+	Framework   string         `json:"framework"`
+	Control     string         `json:"control"`
+	Description string         `json:"description"`
 	Pattern     *regexp.Regexp `json:"-"`
-	Severity    string `json:"severity"`
-	Required    bool   `json:"required"`
+	Severity    string         `json:"severity"`
+	Required    bool           `json:"required"`
 }
 
 // ComplianceReport represents a compliance report
 type ComplianceReport struct {
-	Framework     string                    `json:"framework"`
-	GeneratedAt   time.Time                 `json:"generated_at"`
-	Period        TimeRange                 `json:"period"`
-	TotalEvents   int                       `json:"total_events"`
-	Violations    []ComplianceViolation     `json:"violations"`
-	Controls      map[string]ControlStatus  `json:"controls"`
-	Score         float64                   `json:"score"`
-	Status        string                    `json:"status"`
-	Summary       string                    `json:"summary"`
-	Recommendations []string                `json:"recommendations"`
-	Evidence      []EvidenceItem            `json:"evidence"`
+	Framework       string                   `json:"framework"`
+	GeneratedAt     time.Time                `json:"generated_at"`
+	Period          TimeRange                `json:"period"`
+	TotalEvents     int                      `json:"total_events"`
+	Violations      []ComplianceViolation    `json:"violations"`
+	Controls        map[string]ControlStatus `json:"controls"`
+	Score           float64                  `json:"score"`
+	Status          string                   `json:"status"`
+	Summary         string                   `json:"summary"`
+	Recommendations []string                 `json:"recommendations"`
+	Evidence        []EvidenceItem           `json:"evidence"`
 }
 
 // ComplianceViolation represents a compliance violation
@@ -217,15 +219,15 @@ type ComplianceViolation struct {
 
 // ControlStatus represents the status of a compliance control
 type ControlStatus struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	Description  string    `json:"description"`
-	Status       string    `json:"status"`
-	Score        float64   `json:"score"`
-	Violations   int       `json:"violations"`
-	LastChecked  time.Time `json:"last_checked"`
-	Evidence     []string  `json:"evidence"`
-	Remediation  string    `json:"remediation"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Score       float64   `json:"score"`
+	Violations  int       `json:"violations"`
+	LastChecked time.Time `json:"last_checked"`
+	Evidence    []string  `json:"evidence"`
+	Remediation string    `json:"remediation"`
 }
 
 // EvidenceItem represents an evidence item
@@ -256,13 +258,13 @@ type PIIType struct {
 
 // AnomalyDetector represents the anomaly detection engine
 type AnomalyDetector struct {
-	baseline     map[string]float64
-	threshold    float64
-	window       time.Duration
-	enabled      bool
-	model        string
-	features     []string
-	mutex        sync.RWMutex
+	baseline  map[string]float64
+	threshold float64
+	window    time.Duration
+	enabled   bool
+	model     string
+	features  []string
+	mutex     sync.RWMutex
 }
 
 // AnomalyResult represents an anomaly detection result
@@ -280,10 +282,10 @@ type AnomalyResult struct {
 
 // CorrelationEngine represents the event correlation engine
 type CorrelationEngine struct {
-	rules    []CorrelationRule
-	window   time.Duration
-	enabled  bool
-	mutex    sync.RWMutex
+	rules   []CorrelationRule
+	window  time.Duration
+	enabled bool
+	mutex   sync.RWMutex
 }
 
 // CorrelationRule represents a correlation rule
@@ -300,10 +302,10 @@ type CorrelationRule struct {
 
 // Condition represents a correlation condition
 type Condition struct {
-	Field     string      `json:"field"`
-	Operator  string      `json:"operator"`
-	Value     interface{} `json:"value"`
-	Pattern   *regexp.Regexp `json:"-"`
+	Field    string         `json:"field"`
+	Operator string         `json:"operator"`
+	Value    interface{}    `json:"value"`
+	Pattern  *regexp.Regexp `json:"-"`
 }
 
 // CorrelationResult represents a correlation result
@@ -363,37 +365,37 @@ func NewAuditLog(config *AuditConfig) (*AuditLog, error) {
 // NewPIIDetector creates a new PII detector
 func NewPIIDetector() *PIIDetector {
 	patterns := make(map[string]*regexp.Regexp)
-	
+
 	// Social Security Number (US)
 	patterns["ssn"] = regexp.MustCompile(`\b\d{3}-\d{2}-\d{4}\b`)
-	
+
 	// Credit Card Numbers
 	patterns["credit_card"] = regexp.MustCompile(`\b(?:\d{4}[\s-]?){3}\d{4}\b`)
-	
+
 	// Email Addresses
 	patterns["email"] = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`)
-	
+
 	// Phone Numbers
 	patterns["phone"] = regexp.MustCompile(`\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b`)
-	
+
 	// IP Addresses
 	patterns["ip_address"] = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
-	
+
 	// Date of Birth
 	patterns["date_of_birth"] = regexp.MustCompile(`\b(?:0[1-9]|1[0-2])[\/\-](?:0[1-9]|[12]\d|3[01])[\/\-](?:19|20)\d{2}\b`)
-	
+
 	// Driver's License (US format)
 	patterns["drivers_license"] = regexp.MustCompile(`\b[A-Z]{1,2}\d{6,8}\b`)
-	
+
 	// Bank Account Numbers
 	patterns["bank_account"] = regexp.MustCompile(`\b\d{8,17}\b`)
-	
+
 	// Passport Numbers
 	patterns["passport"] = regexp.MustCompile(`\b[A-Z]{1,2}\d{6,9}\b`)
-	
+
 	// Medical Record Numbers
 	patterns["medical_record"] = regexp.MustCompile(`\bMRN[:\s]?\d{6,12}\b`)
-	
+
 	return &PIIDetector{
 		patterns: patterns,
 		enabled:  true,
@@ -699,15 +701,15 @@ func (al *AuditLog) evaluateSOC2Compliance(event AuditEvent) bool {
 	if event.EventType == "authentication" && event.StatusCode >= 400 {
 		return false // Failed authentication should be logged
 	}
-	
+
 	if event.EventType == "authorization" && event.StatusCode >= 400 {
 		return false // Authorization failures should be logged
 	}
-	
+
 	if event.PIIDetected && !al.config.PIIDetection {
 		return false // PII handling should be monitored
 	}
-	
+
 	return true
 }
 
@@ -717,11 +719,11 @@ func (al *AuditLog) evaluateISO27001Compliance(event AuditEvent) bool {
 	if event.EventType == "admin_action" && event.User == "" {
 		return false // Admin actions should be attributed
 	}
-	
+
 	if event.EventType == "configuration_change" && event.User == "" {
 		return false // Configuration changes should be attributed
 	}
-	
+
 	return true
 }
 
@@ -731,11 +733,11 @@ func (al *AuditLog) evaluateGDPRCompliance(event AuditEvent) bool {
 	if event.PIIDetected && !al.config.Redaction {
 		return false // PII should be protected
 	}
-	
+
 	if event.EventType == "data_access" && event.PIIDetected {
 		return true // Data access should be logged
 	}
-	
+
 	return true
 }
 
@@ -745,11 +747,11 @@ func (al *AuditLog) evaluateHIPAACompliance(event AuditEvent) bool {
 	if event.EventType == "data_access" && event.Resource == "phi" {
 		return event.User != "" // PHI access must be attributed
 	}
-	
+
 	if event.PIIDetected && strings.Contains(event.Message, "medical") {
 		return al.config.Encryption // Medical data should be encrypted
 	}
-	
+
 	return true
 }
 
@@ -759,11 +761,11 @@ func (al *AuditLog) evaluatePCICompliance(event AuditEvent) bool {
 	if event.EventType == "data_access" && event.Resource == "cardholder_data" {
 		return event.User != "" // Cardholder data access must be attributed
 	}
-	
+
 	if event.PIIDetected && strings.Contains(event.Message, "card") {
 		return al.config.Encryption // Card data should be encrypted
 	}
-	
+
 	return true
 }
 
@@ -783,7 +785,7 @@ func (al *AuditLog) generateEventHash(event AuditEvent) string {
 		event.Resource,
 		event.StatusCode,
 		event.Message)
-	
+
 	hash := sha256.Sum256([]byte(hashData))
 	return fmt.Sprintf("%x", hash)
 }
@@ -1221,7 +1223,7 @@ func (aa *AuditAnalyzer) detectAnomalies() {
 func (aa *AuditAnalyzer) correlateEvents() {
 	// Simple correlation based on user and time proximity
 	userEvents := make(map[string][]AuditEvent)
-	
+
 	for _, event := range aa.events {
 		if event.User != "" {
 			userEvents[event.User] = append(userEvents[event.User], event)
@@ -1244,7 +1246,7 @@ func (aa *AuditAnalyzer) correlateSuspiciousActivity(user string, events []Audit
 	// Look for patterns
 	failedLogins := 0
 	var failedLoginEvents []string
-	
+
 	for _, event := range events {
 		if event.EventType == "authentication" && event.StatusCode >= 400 {
 			failedLogins++
@@ -1283,7 +1285,7 @@ func (aa *AuditAnalyzer) validateCompliance() {
 func (aa *AuditAnalyzer) GenerateComplianceReport(framework string) ComplianceReport {
 	violations := make([]ComplianceViolation, 0)
 	controls := make(map[string]ControlStatus)
-	
+
 	// Get rules for the framework
 	rules, exists := aa.complianceRules[framework]
 	if !exists {
@@ -1298,7 +1300,7 @@ func (aa *AuditAnalyzer) GenerateComplianceReport(framework string) ComplianceRe
 	// Check each rule
 	for _, rule := range rules {
 		violationEvents := make([]string, 0)
-		
+
 		for _, event := range aa.events {
 			if compliant, exists := event.Compliance[framework]; exists && !compliant {
 				if rule.Pattern.MatchString(event.Message) {
@@ -1362,17 +1364,17 @@ func (aa *AuditAnalyzer) GenerateComplianceReport(framework string) ComplianceRe
 	}
 
 	return ComplianceReport{
-		Framework:   framework,
-		GeneratedAt: time.Now(),
-		Period:      aa.statistics.TimeRange,
-		TotalEvents: aa.statistics.TotalEvents,
-		Violations:  violations,
-		Controls:    controls,
-		Score:       overallScore,
-		Status:      status,
-		Summary:     aa.generateComplianceSummary(framework, overallScore, len(violations)),
+		Framework:       framework,
+		GeneratedAt:     time.Now(),
+		Period:          aa.statistics.TimeRange,
+		TotalEvents:     aa.statistics.TotalEvents,
+		Violations:      violations,
+		Controls:        controls,
+		Score:           overallScore,
+		Status:          status,
+		Summary:         aa.generateComplianceSummary(framework, overallScore, len(violations)),
 		Recommendations: aa.generateComplianceRecommendations(framework, violations),
-		Evidence:    aa.generateEvidence(framework),
+		Evidence:        aa.generateEvidence(framework),
 	}
 }
 
@@ -1464,8 +1466,8 @@ func (aa *AuditAnalyzer) SearchEvents(query string, timeRange *TimeRange, filter
 		// Text search
 		if query != "" {
 			if !queryRegex.MatchString(event.Message) &&
-			   !queryRegex.MatchString(event.Action) &&
-			   !queryRegex.MatchString(event.EventType) {
+				!queryRegex.MatchString(event.Action) &&
+				!queryRegex.MatchString(event.EventType) {
 				continue
 			}
 		}
@@ -1579,9 +1581,9 @@ real-time analysis, compliance reporting, and security monitoring.`,
 
 	// Global flags
 	var (
-		target       = rootCmd.PersistentFlags().String("target", "", "Target MCP server")
-		verbose      = rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
-		configFile   = rootCmd.PersistentFlags().String("config", "", "Configuration file path")
+		target     = rootCmd.PersistentFlags().String("target", "", "Target MCP server")
+		verbose    = rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
+		configFile = rootCmd.PersistentFlags().String("config", "", "Configuration file path")
 	)
 
 	// Log command
@@ -1982,11 +1984,11 @@ func runPrivacy(cmd *cobra.Command, args []string, verbose *bool) error {
 
 	// Generate privacy report
 	privacyReport := map[string]interface{}{
-		"total_events": len(analyzer.events),
-		"pii_events":   piiCount,
-		"scan_pii":     scanPII,
+		"total_events":  len(analyzer.events),
+		"pii_events":    piiCount,
+		"scan_pii":      scanPII,
 		"redact_output": redactOutput,
-		"generated_at": time.Now(),
+		"generated_at":  time.Now(),
 	}
 
 	// Save privacy report

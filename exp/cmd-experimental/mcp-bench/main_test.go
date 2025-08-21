@@ -113,13 +113,13 @@ func TestBenchmarkRunner_WriteResultsToFile(t *testing.T) {
 
 	runner := &BenchmarkRunner{
 		results: &BenchmarkResult{
-			StartTime:         time.Now(),
-			EndTime:           time.Now().Add(30 * time.Second),
-			Duration:          30 * time.Second,
-			TotalRequests:     1000,
+			StartTime:          time.Now(),
+			EndTime:            time.Now().Add(30 * time.Second),
+			Duration:           30 * time.Second,
+			TotalRequests:      1000,
 			SuccessfulRequests: 950,
-			FailedRequests:    50,
-			RequestsPerSecond: 33.33,
+			FailedRequests:     50,
+			RequestsPerSecond:  33.33,
 			LatencyStats: LatencyStats{
 				Min:    5 * time.Millisecond,
 				Max:    100 * time.Millisecond,
@@ -295,10 +295,10 @@ func TestBenchmarkRunner_ExportK6(t *testing.T) {
 func TestBenchmarkRunner_MergeResults(t *testing.T) {
 	runner1 := &BenchmarkRunner{
 		results: &BenchmarkResult{
-			TotalRequests:     100,
+			TotalRequests:      100,
 			SuccessfulRequests: 90,
-			FailedRequests:    10,
-			Timeline:          []TimelinePoint{{Timestamp: time.Now()}},
+			FailedRequests:     10,
+			Timeline:           []TimelinePoint{{Timestamp: time.Now()}},
 		},
 		latencies: []time.Duration{10 * time.Millisecond, 20 * time.Millisecond},
 		errorMap: map[string]*ErrorInfo{
@@ -308,10 +308,10 @@ func TestBenchmarkRunner_MergeResults(t *testing.T) {
 
 	runner2 := &BenchmarkRunner{
 		results: &BenchmarkResult{
-			TotalRequests:     200,
+			TotalRequests:      200,
 			SuccessfulRequests: 180,
-			FailedRequests:    20,
-			Timeline:          []TimelinePoint{{Timestamp: time.Now()}},
+			FailedRequests:     20,
+			Timeline:           []TimelinePoint{{Timestamp: time.Now()}},
 			Errors: []ErrorInfo{
 				{Error: "error1", Count: 3, FirstSeen: time.Now()},
 				{Error: "error2", Count: 2, FirstSeen: time.Now()},
@@ -461,7 +461,7 @@ func calculateLatencyStats(latencies []time.Duration) LatencyStats {
 	// Sort latencies
 	sorted := make([]time.Duration, len(latencies))
 	copy(sorted, latencies)
-	
+
 	// Simple bubble sort for small arrays
 	for i := 0; i < len(sorted)-1; i++ {
 		for j := i + 1; j < len(sorted); j++ {

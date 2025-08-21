@@ -27,17 +27,17 @@ type TemplateEngine struct {
 
 // TemplateData contains data passed to templates
 type TemplateData struct {
-	Config    *config.Config
-	Package   string
-	Language  string
-	Tools     []Tool
-	Types     []Type
-	Client    *Client
-	Server    *Server
-	Docs      *Documentation
-	Tests     *TestSuite
-	Plugin    *Plugin
-	Vars      map[string]interface{}
+	Config   *config.Config
+	Package  string
+	Language string
+	Tools    []Tool
+	Types    []Type
+	Client   *Client
+	Server   *Server
+	Docs     *Documentation
+	Tests    *TestSuite
+	Plugin   *Plugin
+	Vars     map[string]interface{}
 }
 
 // Tool represents an MCP tool for template generation
@@ -133,9 +133,9 @@ type Documentation struct {
 
 // TestSuite represents test generation data
 type TestSuite struct {
-	Name        string
-	Tools       []Tool
-	TestCases   []TestCase
+	Name      string
+	Tools     []Tool
+	TestCases []TestCase
 }
 
 // TestCase represents a single test case
@@ -172,118 +172,118 @@ func NewTemplateEngine(cfg *config.Config) *TemplateEngine {
 func createTemplateFuncs(cfg *config.Config) template.FuncMap {
 	return template.FuncMap{
 		// String manipulation
-		"toLower":         strings.ToLower,
-		"toUpper":         strings.ToUpper,
-		"toTitle":         strings.Title,
-		"toCamelCase":     toCamelCase,
-		"toPascalCase":    toPascalCase,
-		"toSnakeCase":     toSnakeCase,
-		"toKebabCase":     toKebabCase,
-		"toConstantCase":  toConstantCase,
-		"trim":            strings.TrimSpace,
-		"trimPrefix":      strings.TrimPrefix,
-		"trimSuffix":      strings.TrimSuffix,
-		"replace":         strings.ReplaceAll,
-		"split":           strings.Split,
-		"join":            strings.Join,
-		"contains":        strings.Contains,
-		"hasPrefix":       strings.HasPrefix,
-		"hasSuffix":       strings.HasSuffix,
-		
+		"toLower":        strings.ToLower,
+		"toUpper":        strings.ToUpper,
+		"toTitle":        strings.Title,
+		"toCamelCase":    toCamelCase,
+		"toPascalCase":   toPascalCase,
+		"toSnakeCase":    toSnakeCase,
+		"toKebabCase":    toKebabCase,
+		"toConstantCase": toConstantCase,
+		"trim":           strings.TrimSpace,
+		"trimPrefix":     strings.TrimPrefix,
+		"trimSuffix":     strings.TrimSuffix,
+		"replace":        strings.ReplaceAll,
+		"split":          strings.Split,
+		"join":           strings.Join,
+		"contains":       strings.Contains,
+		"hasPrefix":      strings.HasPrefix,
+		"hasSuffix":      strings.HasSuffix,
+
 		// Language-specific naming
-		"goName":          toGoName,
-		"goType":          toGoType,
-		"goTag":           toGoTag,
-		"tsName":          toTSName,
-		"tsType":          toTSType,
-		"pyName":          toPyName,
-		"pyType":          toPyType,
-		"rustName":        toRustName,
-		"rustType":        toRustType,
-		"javaName":        toJavaName,
-		"javaType":        toJavaType,
-		
+		"goName":   toGoName,
+		"goType":   toGoType,
+		"goTag":    toGoTag,
+		"tsName":   toTSName,
+		"tsType":   toTSType,
+		"pyName":   toPyName,
+		"pyType":   toPyType,
+		"rustName": toRustName,
+		"rustType": toRustType,
+		"javaName": toJavaName,
+		"javaType": toJavaType,
+
 		// Type conversion
-		"jsonToGoType":    jsonToGoType,
-		"jsonToTSType":    jsonToTSType,
-		"jsonToPyType":    jsonToPyType,
-		"jsonToRustType":  jsonToRustType,
-		"jsonToJavaType":  jsonToJavaType,
-		
+		"jsonToGoType":   jsonToGoType,
+		"jsonToTSType":   jsonToTSType,
+		"jsonToPyType":   jsonToPyType,
+		"jsonToRustType": jsonToRustType,
+		"jsonToJavaType": jsonToJavaType,
+
 		// Formatting
-		"indent":          indent,
-		"comment":         comment,
-		"docComment":      docComment,
-		"formatCode":      formatCode,
-		
+		"indent":     indent,
+		"comment":    comment,
+		"docComment": docComment,
+		"formatCode": formatCode,
+
 		// Utility functions
-		"default":         defaultValue,
-		"coalesce":        coalesce,
-		"dict":            dict,
-		"list":            list,
-		"range":           rangeFunc,
-		"if":              ifFunc,
-		"eq":              eq,
-		"ne":              ne,
-		"lt":              lt,
-		"le":              le,
-		"gt":              gt,
-		"ge":              ge,
-		"and":             and,
-		"or":              or,
-		"not":             not,
-		
+		"default":  defaultValue,
+		"coalesce": coalesce,
+		"dict":     dict,
+		"list":     list,
+		"range":    rangeFunc,
+		"if":       ifFunc,
+		"eq":       eq,
+		"ne":       ne,
+		"lt":       lt,
+		"le":       le,
+		"gt":       gt,
+		"ge":       ge,
+		"and":      and,
+		"or":       or,
+		"not":      not,
+
 		// Template inclusion
-		"include":         include,
-		"template":        templateFunc,
-		
+		"include":  include,
+		"template": templateFunc,
+
 		// Language-specific helpers
-		"goImports":       goImports,
-		"tsImports":       tsImports,
-		"pyImports":       pyImports,
-		"rustUses":        rustUses,
-		"javaImports":     javaImports,
-		
+		"goImports":   goImports,
+		"tsImports":   tsImports,
+		"pyImports":   pyImports,
+		"rustUses":    rustUses,
+		"javaImports": javaImports,
+
 		// Code generation helpers
-		"generateStruct":  generateStruct,
-		"generateClass":   generateClass,
-		"generateEnum":    generateEnum,
-		"generateMethod":  generateMethod,
-		"generateTest":    generateTest,
+		"generateStruct": generateStruct,
+		"generateClass":  generateClass,
+		"generateEnum":   generateEnum,
+		"generateMethod": generateMethod,
+		"generateTest":   generateTest,
 	}
 }
 
 // LoadTemplates loads templates from embedded files or custom directory
 func (e *TemplateEngine) LoadTemplates() error {
 	var templatesFS fs.FS = embeddedTemplates
-	
+
 	// Use custom template directory if specified
 	if e.config.Templates.Directory != "" {
 		templatesFS = os.DirFS(e.config.Templates.Directory)
 	}
-	
+
 	return fs.WalkDir(templatesFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if d.IsDir() || !strings.HasSuffix(path, ".tmpl") {
 			return nil
 		}
-		
+
 		content, err := fs.ReadFile(templatesFS, path)
 		if err != nil {
 			return fmt.Errorf("failed to read template %s: %w", path, err)
 		}
-		
+
 		name := strings.TrimSuffix(path, ".tmpl")
 		name = strings.TrimPrefix(name, "templates/")
-		
+
 		tmpl, err := template.New(name).Funcs(e.funcs).Parse(string(content))
 		if err != nil {
 			return fmt.Errorf("failed to parse template %s: %w", path, err)
 		}
-		
+
 		e.templates[name] = tmpl
 		return nil
 	})
@@ -295,7 +295,7 @@ func (e *TemplateEngine) ExecuteTemplate(name string, data *TemplateData) (strin
 	if !exists {
 		return "", fmt.Errorf("template %s not found", name)
 	}
-	
+
 	// Add config and custom vars to data
 	if data.Config == nil {
 		data.Config = e.config
@@ -303,24 +303,24 @@ func (e *TemplateEngine) ExecuteTemplate(name string, data *TemplateData) (strin
 	if data.Vars == nil {
 		data.Vars = make(map[string]interface{})
 	}
-	
+
 	// Merge custom vars from config
 	for k, v := range e.config.Templates.CustomVars {
 		data.Vars[k] = v
 	}
-	
+
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("failed to execute template %s: %w", name, err)
 	}
-	
+
 	result := buf.String()
-	
+
 	// Format code if it's a known language
 	if formatted, err := e.formatCode(result, data.Language); err == nil {
 		result = formatted
 	}
-	
+
 	return result, nil
 }
 
@@ -351,7 +351,7 @@ func toCamelCase(s string) string {
 	if len(words) == 0 {
 		return s
 	}
-	
+
 	result := strings.ToLower(words[0])
 	for i := 1; i < len(words); i++ {
 		result += strings.Title(strings.ToLower(words[i]))
@@ -363,7 +363,7 @@ func toPascalCase(s string) string {
 	words := strings.FieldsFunc(s, func(c rune) bool {
 		return !unicode.IsLetter(c) && !unicode.IsNumber(c)
 	})
-	
+
 	var result strings.Builder
 	for _, word := range words {
 		result.WriteString(strings.Title(strings.ToLower(word)))
@@ -417,7 +417,7 @@ func toGoTag(name string, tags map[string]string) string {
 	if tags == nil {
 		return fmt.Sprintf("`json:\"%s\"`", name)
 	}
-	
+
 	var parts []string
 	for key, value := range tags {
 		parts = append(parts, fmt.Sprintf("%s:\"%s\"", key, value))
@@ -724,7 +724,7 @@ func goImports(types []Type) []string {
 			}
 		}
 	}
-	
+
 	var result []string
 	for imp := range imports {
 		result = append(result, imp)

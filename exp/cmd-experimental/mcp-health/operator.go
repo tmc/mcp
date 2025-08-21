@@ -14,13 +14,13 @@ import (
 	"log/slog"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // MCPHealthCheck represents a custom resource for MCP health checks
@@ -33,17 +33,17 @@ type MCPHealthCheck struct {
 
 // MCPHealthCheckSpec defines the desired state of MCPHealthCheck
 type MCPHealthCheckSpec struct {
-	Target         string                   `json:"target"`
-	Protocol       string                   `json:"protocol"`
-	Interval       v1.Duration              `json:"interval"`
-	Timeout        v1.Duration              `json:"timeout"`
+	Target           string                 `json:"target"`
+	Protocol         string                 `json:"protocol"`
+	Interval         v1.Duration            `json:"interval"`
+	Timeout          v1.Duration            `json:"timeout"`
 	FailureThreshold int                    `json:"failureThreshold"`
 	SuccessThreshold int                    `json:"successThreshold"`
-	HTTPPath       string                   `json:"httpPath,omitempty"`
-	MCPMethod      string                   `json:"mcpMethod,omitempty"`
-	ExpectedStatus int                      `json:"expectedStatus,omitempty"`
-	Headers        map[string]string        `json:"headers,omitempty"`
-	Alerting       MCPHealthCheckAlerting   `json:"alerting,omitempty"`
+	HTTPPath         string                 `json:"httpPath,omitempty"`
+	MCPMethod        string                 `json:"mcpMethod,omitempty"`
+	ExpectedStatus   int                    `json:"expectedStatus,omitempty"`
+	Headers          map[string]string      `json:"headers,omitempty"`
+	Alerting         MCPHealthCheckAlerting `json:"alerting,omitempty"`
 }
 
 // MCPHealthCheckAlerting defines alerting configuration
@@ -71,23 +71,23 @@ type EmailAlerting struct {
 
 // MCPHealthCheckStatus defines the observed state of MCPHealthCheck
 type MCPHealthCheckStatus struct {
-	Status       string                     `json:"status"`
-	LastCheck    v1.Time                    `json:"lastCheck"`
-	LastSuccess  v1.Time                    `json:"lastSuccess"`
-	LastFailure  v1.Time                    `json:"lastFailure"`
-	FailureCount int                        `json:"failureCount"`
-	SuccessCount int                        `json:"successCount"`
-	Message      string                     `json:"message"`
-	Conditions   []MCPHealthCheckCondition  `json:"conditions"`
+	Status       string                    `json:"status"`
+	LastCheck    v1.Time                   `json:"lastCheck"`
+	LastSuccess  v1.Time                   `json:"lastSuccess"`
+	LastFailure  v1.Time                   `json:"lastFailure"`
+	FailureCount int                       `json:"failureCount"`
+	SuccessCount int                       `json:"successCount"`
+	Message      string                    `json:"message"`
+	Conditions   []MCPHealthCheckCondition `json:"conditions"`
 }
 
 // MCPHealthCheckCondition defines a condition for the health check
 type MCPHealthCheckCondition struct {
-	Type               string    `json:"type"`
-	Status             string    `json:"status"`
-	LastTransitionTime v1.Time   `json:"lastTransitionTime"`
-	Reason             string    `json:"reason"`
-	Message            string    `json:"message"`
+	Type               string  `json:"type"`
+	Status             string  `json:"status"`
+	LastTransitionTime v1.Time `json:"lastTransitionTime"`
+	Reason             string  `json:"reason"`
+	Message            string  `json:"message"`
 }
 
 // MCPHealthCheckList contains a list of MCPHealthCheck
@@ -99,13 +99,13 @@ type MCPHealthCheckList struct {
 
 // MCPHealthOperator manages MCP health checks in Kubernetes
 type MCPHealthOperator struct {
-	config        *HealthConfig
-	logger        *slog.Logger
-	clientset     kubernetes.Interface
-	healthApp     *HealthApp
-	controller    cache.Controller
-	informer      cache.SharedIndexInformer
-	stopCh        chan struct{}
+	config     *HealthConfig
+	logger     *slog.Logger
+	clientset  kubernetes.Interface
+	healthApp  *HealthApp
+	controller cache.Controller
+	informer   cache.SharedIndexInformer
+	stopCh     chan struct{}
 }
 
 // NewMCPHealthOperator creates a new MCP health operator
@@ -290,7 +290,7 @@ func (o *MCPHealthOperator) reconcile() {
 
 	for _, obj := range objects {
 		healthCheck := obj.(*MCPHealthCheck)
-		
+
 		// Check if health check is running
 		status, exists := o.healthApp.monitor.GetStatus(healthCheck.Name)
 		if !exists {
@@ -330,7 +330,7 @@ func (o *MCPHealthOperator) reconcile() {
 // updateStatus updates the status of an MCPHealthCheck resource
 func (o *MCPHealthOperator) updateStatus(healthCheck *MCPHealthCheck, status, message string) {
 	now := v1.Now()
-	
+
 	healthCheck.Status.Status = status
 	healthCheck.Status.LastCheck = now
 	healthCheck.Status.Message = message
@@ -398,13 +398,13 @@ func (o *MCPHealthOperator) handleAlerting(healthCheck *MCPHealthCheck, status *
 // sendWebhookAlert sends a webhook alert
 func (o *MCPHealthOperator) sendWebhookAlert(healthCheck *MCPHealthCheck, status *HealthStatus, webhook string) {
 	alert := map[string]interface{}{
-		"service":     healthCheck.Name,
-		"namespace":   healthCheck.Namespace,
-		"status":      status.Status,
-		"message":     status.Checks[len(status.Checks)-1].Message,
-		"timestamp":   time.Now().Format(time.RFC3339),
-		"severity":    "critical",
-		"alert_type":  "health_check_failure",
+		"service":    healthCheck.Name,
+		"namespace":  healthCheck.Namespace,
+		"status":     status.Status,
+		"message":    status.Checks[len(status.Checks)-1].Message,
+		"timestamp":  time.Now().Format(time.RFC3339),
+		"severity":   "critical",
+		"alert_type": "health_check_failure",
 	}
 
 	// Send HTTP POST to webhook
@@ -414,7 +414,7 @@ func (o *MCPHealthOperator) sendWebhookAlert(healthCheck *MCPHealthCheck, status
 
 // sendSlackAlert sends a Slack alert
 func (o *MCPHealthOperator) sendSlackAlert(healthCheck *MCPHealthCheck, status *HealthStatus, slack SlackAlerting) {
-	message := fmt.Sprintf("🚨 Health Check Alert: %s/%s is %s", 
+	message := fmt.Sprintf("🚨 Health Check Alert: %s/%s is %s",
 		healthCheck.Namespace, healthCheck.Name, status.Status)
 
 	// Send to Slack API
@@ -438,7 +438,7 @@ Last Check: %s
 Message: %s
 
 Please investigate the issue.
-`, healthCheck.Namespace, healthCheck.Name, status.Status, 
+`, healthCheck.Namespace, healthCheck.Name, status.Status,
 		status.Timestamp.Format(time.RFC3339),
 		status.Checks[len(status.Checks)-1].Message)
 

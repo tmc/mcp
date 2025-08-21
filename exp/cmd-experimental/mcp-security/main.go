@@ -10,26 +10,28 @@
 // - Threat modeling and risk assessment
 //
 // Usage:
-//   mcp-security [command] [options]
+//
+//	mcp-security [command] [options]
 //
 // Commands:
-//   scan          Perform comprehensive security scanning
-//   audit         Security audit and compliance checking
-//   fuzz          Fuzzing and input validation testing
-//   auth          Authentication and authorization testing
-//   policy        Security policy validation
-//   report        Generate compliance reports
-//   monitor       Continuous security monitoring
+//
+//	scan          Perform comprehensive security scanning
+//	audit         Security audit and compliance checking
+//	fuzz          Fuzzing and input validation testing
+//	auth          Authentication and authorization testing
+//	policy        Security policy validation
+//	report        Generate compliance reports
+//	monitor       Continuous security monitoring
 //
 // Examples:
-//   mcp-security scan --target "stdio://./server" --verbose
-//   mcp-security audit --compliance soc2 --output report.json
-//   mcp-security fuzz --method tools/call --duration 5m
-//   mcp-security auth --oauth2-endpoint https://auth.example.com
-//   mcp-security policy --config security-policy.yaml
-//   mcp-security report --format pdf --compliance all
-//   mcp-security monitor --alerts email:security@example.com
 //
+//	mcp-security scan --target "stdio://./server" --verbose
+//	mcp-security audit --compliance soc2 --output report.json
+//	mcp-security fuzz --method tools/call --duration 5m
+//	mcp-security auth --oauth2-endpoint https://auth.example.com
+//	mcp-security policy --config security-policy.yaml
+//	mcp-security report --format pdf --compliance all
+//	mcp-security monitor --alerts email:security@example.com
 package main
 
 import (
@@ -58,63 +60,63 @@ import (
 
 // SecurityConfig represents the security configuration for the tool
 type SecurityConfig struct {
-	Target           string            `json:"target"`
-	VulnScanEnabled  bool              `json:"vuln_scan_enabled"`
-	AuthTestEnabled  bool              `json:"auth_test_enabled"`
-	FuzzTestEnabled  bool              `json:"fuzz_test_enabled"`
-	ComplianceFrameworks []string      `json:"compliance_frameworks"`
-	OutputFormat     string            `json:"output_format"`
-	Verbose          bool              `json:"verbose"`
-	Timeout          time.Duration     `json:"timeout"`
-	MaxConcurrency   int               `json:"max_concurrency"`
-	CustomChecks     []string          `json:"custom_checks"`
-	PolicyFile       string            `json:"policy_file"`
-	ReportFile       string            `json:"report_file"`
-	AlertEndpoints   []string          `json:"alert_endpoints"`
-	TLSConfig        *TLSSecurityConfig `json:"tls_config"`
+	Target               string             `json:"target"`
+	VulnScanEnabled      bool               `json:"vuln_scan_enabled"`
+	AuthTestEnabled      bool               `json:"auth_test_enabled"`
+	FuzzTestEnabled      bool               `json:"fuzz_test_enabled"`
+	ComplianceFrameworks []string           `json:"compliance_frameworks"`
+	OutputFormat         string             `json:"output_format"`
+	Verbose              bool               `json:"verbose"`
+	Timeout              time.Duration      `json:"timeout"`
+	MaxConcurrency       int                `json:"max_concurrency"`
+	CustomChecks         []string           `json:"custom_checks"`
+	PolicyFile           string             `json:"policy_file"`
+	ReportFile           string             `json:"report_file"`
+	AlertEndpoints       []string           `json:"alert_endpoints"`
+	TLSConfig            *TLSSecurityConfig `json:"tls_config"`
 }
 
 // TLSSecurityConfig represents TLS-specific security configuration
 type TLSSecurityConfig struct {
-	MinVersion       uint16   `json:"min_version"`
-	MaxVersion       uint16   `json:"max_version"`
-	CipherSuites     []uint16 `json:"cipher_suites"`
-	RequireClientCert bool    `json:"require_client_cert"`
-	CertFile         string   `json:"cert_file"`
-	KeyFile          string   `json:"key_file"`
-	CAFile           string   `json:"ca_file"`
+	MinVersion        uint16   `json:"min_version"`
+	MaxVersion        uint16   `json:"max_version"`
+	CipherSuites      []uint16 `json:"cipher_suites"`
+	RequireClientCert bool     `json:"require_client_cert"`
+	CertFile          string   `json:"cert_file"`
+	KeyFile           string   `json:"key_file"`
+	CAFile            string   `json:"ca_file"`
 }
 
 // SecurityIssue represents a security issue found during analysis
 type SecurityIssue struct {
-	ID           string                 `json:"id"`
-	Title        string                 `json:"title"`
-	Description  string                 `json:"description"`
-	Severity     string                 `json:"severity"`
-	Category     string                 `json:"category"`
-	CWE          string                 `json:"cwe,omitempty"`
-	CVSS         float64                `json:"cvss,omitempty"`
-	Location     string                 `json:"location"`
-	Evidence     string                 `json:"evidence"`
-	Remediation  string                 `json:"remediation"`
-	References   []string               `json:"references"`
-	Compliance   map[string]bool        `json:"compliance"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	Timestamp    time.Time              `json:"timestamp"`
+	ID          string                 `json:"id"`
+	Title       string                 `json:"title"`
+	Description string                 `json:"description"`
+	Severity    string                 `json:"severity"`
+	Category    string                 `json:"category"`
+	CWE         string                 `json:"cwe,omitempty"`
+	CVSS        float64                `json:"cvss,omitempty"`
+	Location    string                 `json:"location"`
+	Evidence    string                 `json:"evidence"`
+	Remediation string                 `json:"remediation"`
+	References  []string               `json:"references"`
+	Compliance  map[string]bool        `json:"compliance"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	Timestamp   time.Time              `json:"timestamp"`
 }
 
 // SecurityReport represents the comprehensive security report
 type SecurityReport struct {
-	Target          string           `json:"target"`
-	Timestamp       time.Time        `json:"timestamp"`
-	Duration        time.Duration    `json:"duration"`
-	TotalIssues     int              `json:"total_issues"`
-	IssuesBySeverity map[string]int  `json:"issues_by_severity"`
-	Issues          []SecurityIssue  `json:"issues"`
-	Compliance      ComplianceReport `json:"compliance"`
-	Summary         string           `json:"summary"`
-	Recommendations []string         `json:"recommendations"`
-	Metadata        map[string]interface{} `json:"metadata"`
+	Target           string                 `json:"target"`
+	Timestamp        time.Time              `json:"timestamp"`
+	Duration         time.Duration          `json:"duration"`
+	TotalIssues      int                    `json:"total_issues"`
+	IssuesBySeverity map[string]int         `json:"issues_by_severity"`
+	Issues           []SecurityIssue        `json:"issues"`
+	Compliance       ComplianceReport       `json:"compliance"`
+	Summary          string                 `json:"summary"`
+	Recommendations  []string               `json:"recommendations"`
+	Metadata         map[string]interface{} `json:"metadata"`
 }
 
 // ComplianceReport represents compliance assessment results
@@ -128,50 +130,50 @@ type ComplianceReport struct {
 
 // ComplianceFramework represents a specific compliance framework assessment
 type ComplianceFramework struct {
-	Name         string                    `json:"name"`
-	Version      string                    `json:"version"`
-	Score        float64                   `json:"score"`
-	Status       string                    `json:"status"`
-	Controls     map[string]ComplianceControl `json:"controls"`
-	Gaps         []string                  `json:"gaps"`
-	Recommendations []string               `json:"recommendations"`
+	Name            string                       `json:"name"`
+	Version         string                       `json:"version"`
+	Score           float64                      `json:"score"`
+	Status          string                       `json:"status"`
+	Controls        map[string]ComplianceControl `json:"controls"`
+	Gaps            []string                     `json:"gaps"`
+	Recommendations []string                     `json:"recommendations"`
 }
 
 // ComplianceControl represents a specific control within a framework
 type ComplianceControl struct {
-	ID           string  `json:"id"`
-	Title        string  `json:"title"`
-	Description  string  `json:"description"`
-	Status       string  `json:"status"`
-	Score        float64 `json:"score"`
-	Evidence     string  `json:"evidence"`
-	Remediation  string  `json:"remediation"`
-	LastTested   time.Time `json:"last_tested"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      string    `json:"status"`
+	Score       float64   `json:"score"`
+	Evidence    string    `json:"evidence"`
+	Remediation string    `json:"remediation"`
+	LastTested  time.Time `json:"last_tested"`
 }
 
 // SecurityScanner implements the core security scanning functionality
 type SecurityScanner struct {
-	config       *SecurityConfig
-	client       *mcp.Client
-	rateLimiter  *rate.Limiter
-	mu           sync.RWMutex
-	issues       []SecurityIssue
-	httpClient   *http.Client
+	config          *SecurityConfig
+	client          *mcp.Client
+	rateLimiter     *rate.Limiter
+	mu              sync.RWMutex
+	issues          []SecurityIssue
+	httpClient      *http.Client
 	vulnerabilities map[string]VulnerabilityPattern
 }
 
 // VulnerabilityPattern represents a known vulnerability pattern
 type VulnerabilityPattern struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
 	Pattern     *regexp.Regexp `json:"-"`
-	Severity    string    `json:"severity"`
-	CWE         string    `json:"cwe"`
-	CVSS        float64   `json:"cvss"`
-	Category    string    `json:"category"`
-	Remediation string    `json:"remediation"`
-	References  []string  `json:"references"`
+	Severity    string         `json:"severity"`
+	CWE         string         `json:"cwe"`
+	CVSS        float64        `json:"cvss"`
+	Category    string         `json:"category"`
+	Remediation string         `json:"remediation"`
+	References  []string       `json:"references"`
 }
 
 // NewSecurityScanner creates a new security scanner instance
@@ -201,7 +203,7 @@ func NewSecurityScanner(config *SecurityConfig) (*SecurityScanner, error) {
 	if config.TLSConfig != nil {
 		transport := httpClient.Transport.(*http.Transport)
 		tlsConfig := transport.TLSClientConfig
-		
+
 		if config.TLSConfig.MinVersion != 0 {
 			tlsConfig.MinVersion = config.TLSConfig.MinVersion
 		}
@@ -211,7 +213,7 @@ func NewSecurityScanner(config *SecurityConfig) (*SecurityScanner, error) {
 		if len(config.TLSConfig.CipherSuites) > 0 {
 			tlsConfig.CipherSuites = config.TLSConfig.CipherSuites
 		}
-		
+
 		// Load client certificate if specified
 		if config.TLSConfig.CertFile != "" && config.TLSConfig.KeyFile != "" {
 			cert, err := tls.LoadX509KeyPair(config.TLSConfig.CertFile, config.TLSConfig.KeyFile)
@@ -220,7 +222,7 @@ func NewSecurityScanner(config *SecurityConfig) (*SecurityScanner, error) {
 			}
 			tlsConfig.Certificates = []tls.Certificate{cert}
 		}
-		
+
 		// Load CA certificate if specified
 		if config.TLSConfig.CAFile != "" {
 			caCert, err := os.ReadFile(config.TLSConfig.CAFile)
@@ -234,9 +236,9 @@ func NewSecurityScanner(config *SecurityConfig) (*SecurityScanner, error) {
 	}
 
 	scanner := &SecurityScanner{
-		config:      config,
-		rateLimiter: rate.NewLimiter(rate.Limit(config.MaxConcurrency), config.MaxConcurrency),
-		httpClient:  httpClient,
+		config:          config,
+		rateLimiter:     rate.NewLimiter(rate.Limit(config.MaxConcurrency), config.MaxConcurrency),
+		httpClient:      httpClient,
 		vulnerabilities: make(map[string]VulnerabilityPattern),
 	}
 
@@ -289,7 +291,7 @@ func (s *SecurityScanner) initializeVulnerabilityPatterns() {
 			ID:          "MCP-004",
 			Name:        "Command Injection",
 			Description: "Potential command injection vulnerability",
-			Pattern:     regexp.MustCompile(`(?i)(;|&&|\|\||`+"`"+`|\$\(|<|>|&)`),
+			Pattern:     regexp.MustCompile(`(?i)(;|&&|\|\||` + "`" + `|\$\(|<|>|&)`),
 			Severity:    "CRITICAL",
 			CWE:         "CWE-78",
 			CVSS:        9.8,
@@ -379,7 +381,7 @@ func (s *SecurityScanner) initializeVulnerabilityPatterns() {
 // Scan performs comprehensive security scanning
 func (s *SecurityScanner) Scan(ctx context.Context) (*SecurityReport, error) {
 	startTime := time.Now()
-	
+
 	if s.config.Verbose {
 		fmt.Printf("Starting security scan of target: %s\n", s.config.Target)
 	}
@@ -398,15 +400,15 @@ func (s *SecurityScanner) Scan(ctx context.Context) (*SecurityReport, error) {
 
 	// Generate report
 	report := &SecurityReport{
-		Target:          s.config.Target,
-		Timestamp:       startTime,
-		Duration:        time.Since(startTime),
-		Issues:          s.issues,
-		TotalIssues:     len(s.issues),
+		Target:           s.config.Target,
+		Timestamp:        startTime,
+		Duration:         time.Since(startTime),
+		Issues:           s.issues,
+		TotalIssues:      len(s.issues),
 		IssuesBySeverity: s.categorizeIssuesBySeverity(),
-		Compliance:      s.generateComplianceReport(),
-		Summary:         s.generateSummary(),
-		Recommendations: s.generateRecommendations(),
+		Compliance:       s.generateComplianceReport(),
+		Summary:          s.generateSummary(),
+		Recommendations:  s.generateRecommendations(),
 		Metadata: map[string]interface{}{
 			"scanner_version": "1.0.0",
 			"config":          s.config,
@@ -444,7 +446,7 @@ func (s *SecurityScanner) initializeMCPClient(ctx context.Context) (*mcp.Client,
 
 	// Create client with security configuration
 	client := mcp.NewClient(transport)
-	
+
 	// Set timeout
 	if s.config.Timeout > 0 {
 		ctx, _ = context.WithTimeout(ctx, s.config.Timeout)
@@ -482,11 +484,11 @@ func (s *SecurityScanner) runSecurityTests(ctx context.Context) error {
 		wg.Add(1)
 		go func(testFunc func(context.Context) error) {
 			defer wg.Done()
-			
+
 			// Acquire semaphore
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			// Run test
 			if err := testFunc(ctx); err != nil && s.config.Verbose {
 				fmt.Printf("Test failed: %v\n", err)
@@ -617,7 +619,7 @@ func (s *SecurityScanner) testToolWithPayload(ctx context.Context, tool mcp.Tool
 // analyzeErrorResponse analyzes error responses for security issues
 func (s *SecurityScanner) analyzeErrorResponse(err error, toolName, payload string) {
 	errorMsg := err.Error()
-	
+
 	// Check for information disclosure in error messages
 	if strings.Contains(errorMsg, payload) {
 		issue := SecurityIssue{
@@ -696,10 +698,10 @@ func (s *SecurityScanner) testAuthenticationSecurity(ctx context.Context) error 
 
 	// Test authentication bypass
 	s.testAuthenticationBypass(ctx)
-	
+
 	// Test weak authentication
 	s.testWeakAuthentication(ctx)
-	
+
 	// Test session management
 	s.testSessionManagement(ctx)
 
@@ -829,10 +831,10 @@ func (s *SecurityScanner) testWeakCredentials(ctx context.Context, username, pas
 func (s *SecurityScanner) testSessionManagement(ctx context.Context) {
 	// Test session fixation
 	s.testSessionFixation(ctx)
-	
+
 	// Test session timeout
 	s.testSessionTimeout(ctx)
-	
+
 	// Test session token entropy
 	s.testSessionTokenEntropy(ctx)
 }
@@ -936,10 +938,10 @@ func (s *SecurityScanner) generateTestToken() string {
 func (s *SecurityScanner) testAuthorizationControls(ctx context.Context) error {
 	// Test privilege escalation
 	s.testPrivilegeEscalation(ctx)
-	
+
 	// Test access control bypass
 	s.testAccessControlBypass(ctx)
-	
+
 	// Test role-based access control
 	s.testRoleBasedAccessControl(ctx)
 
@@ -975,8 +977,8 @@ func (s *SecurityScanner) testPrivilegeEscalationPayload(ctx context.Context, pa
 	}
 
 	// Check for privilege escalation patterns
-	if strings.Contains(payload, "admin") || strings.Contains(payload, "root") || 
-	   strings.Contains(payload, "all") || strings.Contains(payload, "write") {
+	if strings.Contains(payload, "admin") || strings.Contains(payload, "root") ||
+		strings.Contains(payload, "all") || strings.Contains(payload, "write") {
 		issue := SecurityIssue{
 			ID:          fmt.Sprintf("PRIV-%d", time.Now().UnixNano()),
 			Title:       "Potential Privilege Escalation",
@@ -1035,7 +1037,7 @@ func (s *SecurityScanner) testAccessControlBypassPayload(ctx context.Context, pa
 
 	// Check for access control bypass patterns
 	if strings.Contains(payload, "..") || strings.Contains(payload, "admin") ||
-	   strings.Contains(payload, "%2e%2e") {
+		strings.Contains(payload, "%2e%2e") {
 		issue := SecurityIssue{
 			ID:          fmt.Sprintf("ACCESS-%d", time.Now().UnixNano()),
 			Title:       "Potential Access Control Bypass",
@@ -1065,7 +1067,7 @@ func (s *SecurityScanner) testAccessControlBypassPayload(ctx context.Context, pa
 func (s *SecurityScanner) testRoleBasedAccessControl(ctx context.Context) {
 	// Test role manipulation
 	roles := []string{"admin", "user", "guest", "root", "superuser", "operator"}
-	
+
 	for _, role := range roles {
 		s.testRoleManipulation(ctx, role)
 	}
@@ -1111,10 +1113,10 @@ func (s *SecurityScanner) testRoleManipulation(ctx context.Context, role string)
 func (s *SecurityScanner) testTransportSecurity(ctx context.Context) error {
 	// Test TLS configuration
 	s.testTLSConfiguration(ctx)
-	
+
 	// Test certificate validation
 	s.testCertificateValidation(ctx)
-	
+
 	// Test cipher suite security
 	s.testCipherSuiteSecurity(ctx)
 
@@ -1207,7 +1209,7 @@ func (s *SecurityScanner) testCipherSuiteSecurity(ctx context.Context) {
 func (s *SecurityScanner) testErrorHandling(ctx context.Context) error {
 	// Test for information disclosure in error messages
 	s.testErrorInformationDisclosure(ctx)
-	
+
 	// Test error handling consistency
 	s.testErrorHandlingConsistency(ctx)
 
@@ -1266,7 +1268,7 @@ func (s *SecurityScanner) testErrorHandlingConsistency(ctx context.Context) {
 func (s *SecurityScanner) testRateLimiting(ctx context.Context) error {
 	// Test rate limiting effectiveness
 	s.testRateLimitingEffectiveness(ctx)
-	
+
 	// Test rate limiting bypass
 	s.testRateLimitingBypass(ctx)
 
@@ -1285,7 +1287,7 @@ func (s *SecurityScanner) testRateLimitingEffectiveness(ctx context.Context) {
 	}
 
 	tool := capabilities.Tools[0]
-	
+
 	// Rapid fire requests to test rate limiting
 	for i := 0; i < 100; i++ {
 		args := map[string]interface{}{
@@ -1299,8 +1301,8 @@ func (s *SecurityScanner) testRateLimitingEffectiveness(ctx context.Context) {
 		if err != nil {
 			// Check if error is rate limiting related
 			if strings.Contains(err.Error(), "rate limit") ||
-			   strings.Contains(err.Error(), "too many requests") ||
-			   strings.Contains(err.Error(), "429") {
+				strings.Contains(err.Error(), "too many requests") ||
+				strings.Contains(err.Error(), "429") {
 				// Rate limiting is working
 				if s.config.Verbose {
 					fmt.Printf("Rate limiting detected after %d requests\n", i+1)
@@ -1325,9 +1327,9 @@ func (s *SecurityScanner) testRateLimitingEffectiveness(ctx context.Context) {
 				References:  []string{"https://owasp.org/www-project-top-ten/2017/A6_2017-Security_Misconfiguration"},
 				Compliance:  s.evaluateCompliance(s.vulnerabilities["MCP-001"]),
 				Metadata: map[string]interface{}{
-					"tool_name":    tool.Name,
-					"request_num":  i + 1,
-					"duration":     duration,
+					"tool_name":   tool.Name,
+					"request_num": i + 1,
+					"duration":    duration,
 				},
 				Timestamp: time.Now(),
 			}
@@ -1389,10 +1391,10 @@ func (s *SecurityScanner) testRateLimitingBypass(ctx context.Context) {
 func (s *SecurityScanner) testDataValidation(ctx context.Context) error {
 	// Test data type validation
 	s.testDataTypeValidation(ctx)
-	
+
 	// Test data length validation
 	s.testDataLengthValidation(ctx)
-	
+
 	// Test data format validation
 	s.testDataFormatValidation(ctx)
 
@@ -1525,14 +1527,14 @@ func (s *SecurityScanner) testToolWithLargeData(ctx context.Context, tool mcp.To
 func (s *SecurityScanner) testDataFormatValidation(ctx context.Context) {
 	// Test invalid data formats
 	invalidFormats := map[string]string{
-		"invalid_email":     "not_an_email",
-		"invalid_url":       "not_a_url",
-		"invalid_json":      "{invalid json}",
-		"invalid_xml":       "<invalid xml>",
-		"invalid_base64":    "not_base64_data",
-		"invalid_uuid":      "not-a-uuid",
-		"invalid_date":      "not_a_date",
-		"invalid_phone":     "not_a_phone",
+		"invalid_email":       "not_an_email",
+		"invalid_url":         "not_a_url",
+		"invalid_json":        "{invalid json}",
+		"invalid_xml":         "<invalid xml>",
+		"invalid_base64":      "not_base64_data",
+		"invalid_uuid":        "not-a-uuid",
+		"invalid_date":        "not_a_date",
+		"invalid_phone":       "not_a_phone",
 		"invalid_credit_card": "not_a_credit_card",
 	}
 
@@ -1591,10 +1593,10 @@ func (s *SecurityScanner) testToolWithInvalidFormat(ctx context.Context, tool mc
 func (s *SecurityScanner) testProtocolCompliance(ctx context.Context) error {
 	// Test protocol version compliance
 	s.testProtocolVersionCompliance(ctx)
-	
+
 	// Test message format compliance
 	s.testMessageFormatCompliance(ctx)
-	
+
 	// Test capability compliance
 	s.testCapabilityCompliance(ctx)
 
@@ -1629,7 +1631,7 @@ func (s *SecurityScanner) testCapabilityCompliance(ctx context.Context) {
 func (s *SecurityScanner) testConfigurationSecurity(ctx context.Context) error {
 	// Test default configuration security
 	s.testDefaultConfigurationSecurity(ctx)
-	
+
 	// Test configuration exposure
 	s.testConfigurationExposure(ctx)
 
@@ -1718,7 +1720,7 @@ func (s *SecurityScanner) testConfigurationExposure(ctx context.Context) {
 // evaluateCompliance evaluates compliance for a given vulnerability
 func (s *SecurityScanner) evaluateCompliance(vuln VulnerabilityPattern) map[string]bool {
 	compliance := make(map[string]bool)
-	
+
 	// Evaluate against different compliance frameworks
 	for _, framework := range s.config.ComplianceFrameworks {
 		switch framework {
@@ -1734,7 +1736,7 @@ func (s *SecurityScanner) evaluateCompliance(vuln VulnerabilityPattern) map[stri
 			compliance["PCI-DSS"] = s.evaluatePCICompliance(vuln)
 		}
 	}
-	
+
 	return compliance
 }
 
@@ -1848,22 +1850,22 @@ func (s *SecurityScanner) categorizeIssuesBySeverity() map[string]int {
 // generateComplianceReport generates a comprehensive compliance report
 func (s *SecurityScanner) generateComplianceReport() ComplianceReport {
 	frameworks := make(map[string]ComplianceFramework)
-	
+
 	for _, framework := range s.config.ComplianceFrameworks {
 		frameworks[framework] = s.generateFrameworkReport(framework)
 	}
-	
+
 	// Calculate overall compliance score
 	totalScore := 0.0
 	for _, framework := range frameworks {
 		totalScore += framework.Score
 	}
-	
+
 	overallScore := 0.0
 	if len(frameworks) > 0 {
 		overallScore = totalScore / float64(len(frameworks))
 	}
-	
+
 	return ComplianceReport{
 		Frameworks:   frameworks,
 		OverallScore: overallScore,
@@ -1876,7 +1878,7 @@ func (s *SecurityScanner) generateComplianceReport() ComplianceReport {
 // generateFrameworkReport generates a report for a specific compliance framework
 func (s *SecurityScanner) generateFrameworkReport(framework string) ComplianceFramework {
 	controls := make(map[string]ComplianceControl)
-	
+
 	switch framework {
 	case "soc2":
 		controls = s.generateSOC2Controls()
@@ -1889,18 +1891,18 @@ func (s *SecurityScanner) generateFrameworkReport(framework string) ComplianceFr
 	case "pci":
 		controls = s.generatePCIControls()
 	}
-	
+
 	// Calculate framework score
 	totalScore := 0.0
 	for _, control := range controls {
 		totalScore += control.Score
 	}
-	
+
 	score := 0.0
 	if len(controls) > 0 {
 		score = totalScore / float64(len(controls))
 	}
-	
+
 	// Determine status
 	status := "PASS"
 	if score < 0.8 {
@@ -1908,14 +1910,14 @@ func (s *SecurityScanner) generateFrameworkReport(framework string) ComplianceFr
 	} else if score < 0.9 {
 		status = "PARTIAL"
 	}
-	
+
 	return ComplianceFramework{
-		Name:         framework,
-		Version:      "1.0",
-		Score:        score,
-		Status:       status,
-		Controls:     controls,
-		Gaps:         s.identifyGaps(framework),
+		Name:            framework,
+		Version:         "1.0",
+		Score:           score,
+		Status:          status,
+		Controls:        controls,
+		Gaps:            s.identifyGaps(framework),
 		Recommendations: s.generateFrameworkRecommendations(framework),
 	}
 }
@@ -1923,7 +1925,7 @@ func (s *SecurityScanner) generateFrameworkReport(framework string) ComplianceFr
 // generateSOC2Controls generates SOC2 compliance controls
 func (s *SecurityScanner) generateSOC2Controls() map[string]ComplianceControl {
 	controls := make(map[string]ComplianceControl)
-	
+
 	// Security Trust Service Criteria
 	controls["CC6.1"] = ComplianceControl{
 		ID:          "CC6.1",
@@ -1935,7 +1937,7 @@ func (s *SecurityScanner) generateSOC2Controls() map[string]ComplianceControl {
 		Remediation: "Implement comprehensive access control mechanisms",
 		LastTested:  time.Now(),
 	}
-	
+
 	controls["CC6.2"] = ComplianceControl{
 		ID:          "CC6.2",
 		Title:       "Authentication and Authorization",
@@ -1946,7 +1948,7 @@ func (s *SecurityScanner) generateSOC2Controls() map[string]ComplianceControl {
 		Remediation: "Strengthen authentication and authorization mechanisms",
 		LastTested:  time.Now(),
 	}
-	
+
 	controls["CC6.7"] = ComplianceControl{
 		ID:          "CC6.7",
 		Title:       "Data Transmission",
@@ -1957,14 +1959,14 @@ func (s *SecurityScanner) generateSOC2Controls() map[string]ComplianceControl {
 		Remediation: "Implement secure data transmission protocols",
 		LastTested:  time.Now(),
 	}
-	
+
 	return controls
 }
 
 // generateISO27001Controls generates ISO 27001 compliance controls
 func (s *SecurityScanner) generateISO27001Controls() map[string]ComplianceControl {
 	controls := make(map[string]ComplianceControl)
-	
+
 	// A.9 Access Control
 	controls["A.9.1.1"] = ComplianceControl{
 		ID:          "A.9.1.1",
@@ -1976,7 +1978,7 @@ func (s *SecurityScanner) generateISO27001Controls() map[string]ComplianceContro
 		Remediation: "Establish comprehensive access control policy",
 		LastTested:  time.Now(),
 	}
-	
+
 	// A.10 Cryptography
 	controls["A.10.1.1"] = ComplianceControl{
 		ID:          "A.10.1.1",
@@ -1988,7 +1990,7 @@ func (s *SecurityScanner) generateISO27001Controls() map[string]ComplianceContro
 		Remediation: "Develop and implement cryptographic controls policy",
 		LastTested:  time.Now(),
 	}
-	
+
 	// A.14 System Acquisition
 	controls["A.14.2.1"] = ComplianceControl{
 		ID:          "A.14.2.1",
@@ -2000,14 +2002,14 @@ func (s *SecurityScanner) generateISO27001Controls() map[string]ComplianceContro
 		Remediation: "Establish secure development practices",
 		LastTested:  time.Now(),
 	}
-	
+
 	return controls
 }
 
 // generateGDPRControls generates GDPR compliance controls
 func (s *SecurityScanner) generateGDPRControls() map[string]ComplianceControl {
 	controls := make(map[string]ComplianceControl)
-	
+
 	// Article 32 - Security of processing
 	controls["Art32.1a"] = ComplianceControl{
 		ID:          "Art32.1a",
@@ -2019,7 +2021,7 @@ func (s *SecurityScanner) generateGDPRControls() map[string]ComplianceControl {
 		Remediation: "Implement encryption and pseudonymisation techniques",
 		LastTested:  time.Now(),
 	}
-	
+
 	controls["Art32.1b"] = ComplianceControl{
 		ID:          "Art32.1b",
 		Title:       "Confidentiality, Integrity, Availability",
@@ -2030,14 +2032,14 @@ func (s *SecurityScanner) generateGDPRControls() map[string]ComplianceControl {
 		Remediation: "Implement comprehensive data protection measures",
 		LastTested:  time.Now(),
 	}
-	
+
 	return controls
 }
 
 // generateHIPAAControls generates HIPAA compliance controls
 func (s *SecurityScanner) generateHIPAAControls() map[string]ComplianceControl {
 	controls := make(map[string]ComplianceControl)
-	
+
 	// 164.312(a)(1) Access Control
 	controls["164.312.a.1"] = ComplianceControl{
 		ID:          "164.312.a.1",
@@ -2049,7 +2051,7 @@ func (s *SecurityScanner) generateHIPAAControls() map[string]ComplianceControl {
 		Remediation: "Implement unique user identification and access control",
 		LastTested:  time.Now(),
 	}
-	
+
 	// 164.312(d) Person or Entity Authentication
 	controls["164.312.d"] = ComplianceControl{
 		ID:          "164.312.d",
@@ -2061,7 +2063,7 @@ func (s *SecurityScanner) generateHIPAAControls() map[string]ComplianceControl {
 		Remediation: "Implement strong authentication mechanisms",
 		LastTested:  time.Now(),
 	}
-	
+
 	// 164.312(e)(1) Transmission Security
 	controls["164.312.e.1"] = ComplianceControl{
 		ID:          "164.312.e.1",
@@ -2073,14 +2075,14 @@ func (s *SecurityScanner) generateHIPAAControls() map[string]ComplianceControl {
 		Remediation: "Implement secure transmission protocols",
 		LastTested:  time.Now(),
 	}
-	
+
 	return controls
 }
 
 // generatePCIControls generates PCI DSS compliance controls
 func (s *SecurityScanner) generatePCIControls() map[string]ComplianceControl {
 	controls := make(map[string]ComplianceControl)
-	
+
 	// Requirement 6: Develop and maintain secure systems and applications
 	controls["6.5.1"] = ComplianceControl{
 		ID:          "6.5.1",
@@ -2092,7 +2094,7 @@ func (s *SecurityScanner) generatePCIControls() map[string]ComplianceControl {
 		Remediation: "Implement proper input validation and parameterized queries",
 		LastTested:  time.Now(),
 	}
-	
+
 	// Requirement 7: Restrict access to cardholder data
 	controls["7.1"] = ComplianceControl{
 		ID:          "7.1",
@@ -2104,7 +2106,7 @@ func (s *SecurityScanner) generatePCIControls() map[string]ComplianceControl {
 		Remediation: "Implement role-based access control",
 		LastTested:  time.Now(),
 	}
-	
+
 	// Requirement 8: Identify and authenticate access
 	controls["8.1"] = ComplianceControl{
 		ID:          "8.1",
@@ -2116,20 +2118,20 @@ func (s *SecurityScanner) generatePCIControls() map[string]ComplianceControl {
 		Remediation: "Implement strong user identification and authentication",
 		LastTested:  time.Now(),
 	}
-	
+
 	return controls
 }
 
 // evaluateControlStatus evaluates the status of a control category
 func (s *SecurityScanner) evaluateControlStatus(category string) string {
 	issueCount := 0
-	
+
 	for _, issue := range s.issues {
 		if strings.Contains(strings.ToLower(issue.Category), category) {
 			issueCount++
 		}
 	}
-	
+
 	if issueCount == 0 {
 		return "PASS"
 	} else if issueCount <= 2 {
@@ -2143,7 +2145,7 @@ func (s *SecurityScanner) evaluateControlStatus(category string) string {
 func (s *SecurityScanner) calculateControlScore(category string) float64 {
 	issueCount := 0
 	totalSeverity := 0.0
-	
+
 	for _, issue := range s.issues {
 		if strings.Contains(strings.ToLower(issue.Category), category) {
 			issueCount++
@@ -2159,43 +2161,43 @@ func (s *SecurityScanner) calculateControlScore(category string) float64 {
 			}
 		}
 	}
-	
+
 	if issueCount == 0 {
 		return 1.0 // Perfect score
 	}
-	
+
 	// Calculate score based on severity and count
 	maxPossibleSeverity := float64(issueCount) * 4.0
 	score := 1.0 - (totalSeverity / maxPossibleSeverity)
-	
+
 	if score < 0 {
 		return 0.0
 	}
-	
+
 	return score
 }
 
 // gatherEvidence gathers evidence for a control category
 func (s *SecurityScanner) gatherEvidence(category string) string {
 	evidence := []string{}
-	
+
 	for _, issue := range s.issues {
 		if strings.Contains(strings.ToLower(issue.Category), category) {
 			evidence = append(evidence, fmt.Sprintf("%s: %s", issue.Title, issue.Evidence))
 		}
 	}
-	
+
 	if len(evidence) == 0 {
 		return "No issues found in this category"
 	}
-	
+
 	return strings.Join(evidence, "; ")
 }
 
 // identifyGaps identifies compliance gaps for a framework
 func (s *SecurityScanner) identifyGaps(framework string) []string {
 	gaps := []string{}
-	
+
 	switch framework {
 	case "soc2":
 		gaps = s.identifySOC2Gaps()
@@ -2208,14 +2210,14 @@ func (s *SecurityScanner) identifyGaps(framework string) []string {
 	case "pci":
 		gaps = s.identifyPCIGaps()
 	}
-	
+
 	return gaps
 }
 
 // identifySOC2Gaps identifies SOC2 compliance gaps
 func (s *SecurityScanner) identifySOC2Gaps() []string {
 	gaps := []string{}
-	
+
 	// Check for common SOC2 gaps
 	if s.hasIssuesInCategory("access_control") {
 		gaps = append(gaps, "Insufficient access control mechanisms")
@@ -2229,14 +2231,14 @@ func (s *SecurityScanner) identifySOC2Gaps() []string {
 	if s.hasIssuesInCategory("information_disclosure") {
 		gaps = append(gaps, "Potential confidentiality violations")
 	}
-	
+
 	return gaps
 }
 
 // identifyISO27001Gaps identifies ISO 27001 compliance gaps
 func (s *SecurityScanner) identifyISO27001Gaps() []string {
 	gaps := []string{}
-	
+
 	// Check for common ISO 27001 gaps
 	if s.hasIssuesInCategory("access_control") {
 		gaps = append(gaps, "Access control policy implementation gaps")
@@ -2247,14 +2249,14 @@ func (s *SecurityScanner) identifyISO27001Gaps() []string {
 	if s.hasIssuesInCategory("input_validation") {
 		gaps = append(gaps, "Secure development practices gaps")
 	}
-	
+
 	return gaps
 }
 
 // identifyGDPRGaps identifies GDPR compliance gaps
 func (s *SecurityScanner) identifyGDPRGaps() []string {
 	gaps := []string{}
-	
+
 	// Check for common GDPR gaps
 	if s.hasIssuesInCategory("information_disclosure") {
 		gaps = append(gaps, "Personal data protection gaps")
@@ -2265,14 +2267,14 @@ func (s *SecurityScanner) identifyGDPRGaps() []string {
 	if s.hasIssuesInCategory("access_control") {
 		gaps = append(gaps, "Data processing security gaps")
 	}
-	
+
 	return gaps
 }
 
 // identifyHIPAAGaps identifies HIPAA compliance gaps
 func (s *SecurityScanner) identifyHIPAAGaps() []string {
 	gaps := []string{}
-	
+
 	// Check for common HIPAA gaps
 	if s.hasIssuesInCategory("access_control") {
 		gaps = append(gaps, "PHI access control gaps")
@@ -2283,14 +2285,14 @@ func (s *SecurityScanner) identifyHIPAAGaps() []string {
 	if s.hasIssuesInCategory("transport_security") {
 		gaps = append(gaps, "PHI transmission security gaps")
 	}
-	
+
 	return gaps
 }
 
 // identifyPCIGaps identifies PCI DSS compliance gaps
 func (s *SecurityScanner) identifyPCIGaps() []string {
 	gaps := []string{}
-	
+
 	// Check for common PCI DSS gaps
 	if s.hasIssuesInCategory("injection") {
 		gaps = append(gaps, "Application security gaps (injection vulnerabilities)")
@@ -2304,7 +2306,7 @@ func (s *SecurityScanner) identifyPCIGaps() []string {
 	if s.hasIssuesInCategory("transport_security") {
 		gaps = append(gaps, "Cardholder data transmission security gaps")
 	}
-	
+
 	return gaps
 }
 
@@ -2321,7 +2323,7 @@ func (s *SecurityScanner) hasIssuesInCategory(category string) bool {
 // generateFrameworkRecommendations generates recommendations for a specific framework
 func (s *SecurityScanner) generateFrameworkRecommendations(framework string) []string {
 	recommendations := []string{}
-	
+
 	switch framework {
 	case "soc2":
 		recommendations = s.generateSOC2Recommendations()
@@ -2334,7 +2336,7 @@ func (s *SecurityScanner) generateFrameworkRecommendations(framework string) []s
 	case "pci":
 		recommendations = s.generatePCIRecommendations()
 	}
-	
+
 	return recommendations
 }
 
@@ -2350,7 +2352,7 @@ func (s *SecurityScanner) generateSOC2Recommendations() []string {
 		"Implement data backup and recovery procedures",
 		"Conduct regular vulnerability assessments and penetration testing",
 	}
-	
+
 	return recommendations
 }
 
@@ -2366,7 +2368,7 @@ func (s *SecurityScanner) generateISO27001Recommendations() []string {
 		"Conduct regular security audits and reviews",
 		"Establish business continuity management procedures",
 	}
-	
+
 	return recommendations
 }
 
@@ -2382,7 +2384,7 @@ func (s *SecurityScanner) generateGDPRRecommendations() []string {
 		"Implement data retention and deletion policies",
 		"Establish consent management mechanisms",
 	}
-	
+
 	return recommendations
 }
 
@@ -2398,7 +2400,7 @@ func (s *SecurityScanner) generateHIPAARecommendations() []string {
 		"Implement workforce security training programs",
 		"Deploy automatic logoff mechanisms for systems accessing PHI",
 	}
-	
+
 	return recommendations
 }
 
@@ -2414,7 +2416,7 @@ func (s *SecurityScanner) generatePCIRecommendations() []string {
 		"Implement secure key management procedures",
 		"Establish incident response procedures for security breaches",
 	}
-	
+
 	return recommendations
 }
 
@@ -2441,9 +2443,9 @@ func (s *SecurityScanner) generateSummary() string {
 	if len(s.issues) == 0 {
 		return "No security issues found during the scan."
 	}
-	
+
 	summary := fmt.Sprintf("Security scan identified %d issues across multiple categories. ", len(s.issues))
-	
+
 	categories := s.categorizeIssuesBySeverity()
 	if categories["CRITICAL"] > 0 {
 		summary += fmt.Sprintf("%d critical issues require immediate attention. ", categories["CRITICAL"])
@@ -2457,53 +2459,53 @@ func (s *SecurityScanner) generateSummary() string {
 	if categories["LOW"] > 0 {
 		summary += fmt.Sprintf("%d low-severity issues can be addressed as time permits. ", categories["LOW"])
 	}
-	
+
 	// Add compliance summary
 	if len(s.config.ComplianceFrameworks) > 0 {
 		summary += fmt.Sprintf("Compliance assessment performed against %d frameworks. ", len(s.config.ComplianceFrameworks))
 	}
-	
+
 	return summary
 }
 
 // generateRecommendations generates general security recommendations
 func (s *SecurityScanner) generateRecommendations() []string {
 	recommendations := []string{}
-	
+
 	// Generate recommendations based on found issues
 	categories := s.categorizeIssuesBySeverity()
-	
+
 	if categories["CRITICAL"] > 0 || categories["HIGH"] > 0 {
 		recommendations = append(recommendations, "Address critical and high-severity security issues immediately")
 		recommendations = append(recommendations, "Implement comprehensive security testing in CI/CD pipeline")
 	}
-	
+
 	if s.hasIssuesInCategory("input_validation") {
 		recommendations = append(recommendations, "Implement comprehensive input validation and sanitization")
 		recommendations = append(recommendations, "Deploy Web Application Firewall (WAF) for additional protection")
 	}
-	
+
 	if s.hasIssuesInCategory("authentication") {
 		recommendations = append(recommendations, "Implement multi-factor authentication for all user accounts")
 		recommendations = append(recommendations, "Deploy strong password policies and account lockout mechanisms")
 	}
-	
+
 	if s.hasIssuesInCategory("transport_security") {
 		recommendations = append(recommendations, "Upgrade to TLS 1.2 or higher for all communications")
 		recommendations = append(recommendations, "Implement certificate pinning for critical connections")
 	}
-	
+
 	if s.hasIssuesInCategory("access_control") {
 		recommendations = append(recommendations, "Implement principle of least privilege access controls")
 		recommendations = append(recommendations, "Deploy role-based access control (RBAC) mechanisms")
 	}
-	
+
 	// General recommendations
 	recommendations = append(recommendations, "Conduct regular security audits and penetration testing")
 	recommendations = append(recommendations, "Implement comprehensive logging and monitoring")
 	recommendations = append(recommendations, "Establish incident response procedures")
 	recommendations = append(recommendations, "Provide security awareness training to all personnel")
-	
+
 	return recommendations
 }
 
@@ -2511,7 +2513,7 @@ func (s *SecurityScanner) generateRecommendations() []string {
 func (s *SecurityScanner) SaveReport(report *SecurityReport, filename string) error {
 	var data []byte
 	var err error
-	
+
 	switch s.config.OutputFormat {
 	case "json":
 		data, err = json.MarshalIndent(report, "", "  ")
@@ -2527,11 +2529,11 @@ func (s *SecurityScanner) SaveReport(report *SecurityReport, filename string) er
 	default:
 		data, err = json.MarshalIndent(report, "", "  ")
 	}
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to marshal report: %w", err)
 	}
-	
+
 	return os.WriteFile(filename, data, 0644)
 }
 
@@ -2547,12 +2549,12 @@ testing, access control validation, and compliance reporting against multiple fr
 
 	// Global flags
 	var (
-		target        = rootCmd.PersistentFlags().String("target", "", "Target MCP server (e.g., stdio://./server)")
-		verbose       = rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
-		outputFormat  = rootCmd.PersistentFlags().String("output", "json", "Output format (json, xml, html, pdf)")
-		configFile    = rootCmd.PersistentFlags().String("config", "", "Configuration file path")
-		timeout       = rootCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Request timeout")
-		concurrency   = rootCmd.PersistentFlags().Int("concurrency", 10, "Maximum concurrent requests")
+		target       = rootCmd.PersistentFlags().String("target", "", "Target MCP server (e.g., stdio://./server)")
+		verbose      = rootCmd.PersistentFlags().Bool("verbose", false, "Enable verbose output")
+		outputFormat = rootCmd.PersistentFlags().String("output", "json", "Output format (json, xml, html, pdf)")
+		configFile   = rootCmd.PersistentFlags().String("config", "", "Configuration file path")
+		timeout      = rootCmd.PersistentFlags().Duration("timeout", 30*time.Second, "Request timeout")
+		concurrency  = rootCmd.PersistentFlags().Int("concurrency", 10, "Maximum concurrent requests")
 	)
 
 	// Scan command
@@ -2687,15 +2689,15 @@ func runScan(cmd *cobra.Command, args []string, target, verbose, outputFormat, c
 
 	// Load configuration
 	config := &SecurityConfig{
-		Target:             *target,
-		VulnScanEnabled:    true,
-		AuthTestEnabled:    true,
-		FuzzTestEnabled:    true,
+		Target:               *target,
+		VulnScanEnabled:      true,
+		AuthTestEnabled:      true,
+		FuzzTestEnabled:      true,
 		ComplianceFrameworks: []string{"soc2", "iso27001"},
-		OutputFormat:       *outputFormat,
-		Verbose:            *verbose,
-		Timeout:            *timeout,
-		MaxConcurrency:     *concurrency,
+		OutputFormat:         *outputFormat,
+		Verbose:              *verbose,
+		Timeout:              *timeout,
+		MaxConcurrency:       *concurrency,
 	}
 
 	// Override with command-line flags
@@ -2811,7 +2813,7 @@ func isValidIdentifier(s string) bool {
 	if len(s) == 0 {
 		return false
 	}
-	
+
 	// Check if identifier matches pattern: [a-zA-Z_][a-zA-Z0-9_]*
 	for i, r := range s {
 		if i == 0 {
@@ -2824,7 +2826,7 @@ func isValidIdentifier(s string) bool {
 			}
 		}
 	}
-	
+
 	return true
 }
 

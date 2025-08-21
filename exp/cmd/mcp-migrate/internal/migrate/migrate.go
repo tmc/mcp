@@ -55,15 +55,15 @@ type Validator interface {
 
 // AnalysisResult contains analysis results
 type AnalysisResult struct {
-	Language        string                 `json:"language"`
-	CurrentVersion  string                 `json:"current_version"`
-	TargetVersion   string                 `json:"target_version"`
-	Issues          []Issue                `json:"issues"`
-	Opportunities   []Opportunity          `json:"opportunities"`
-	Dependencies    []Dependency           `json:"dependencies"`
-	Compatibility   CompatibilityReport    `json:"compatibility"`
-	EstimatedEffort string                 `json:"estimated_effort"`
-	Recommendations []Recommendation       `json:"recommendations"`
+	Language        string              `json:"language"`
+	CurrentVersion  string              `json:"current_version"`
+	TargetVersion   string              `json:"target_version"`
+	Issues          []Issue             `json:"issues"`
+	Opportunities   []Opportunity       `json:"opportunities"`
+	Dependencies    []Dependency        `json:"dependencies"`
+	Compatibility   CompatibilityReport `json:"compatibility"`
+	EstimatedEffort string              `json:"estimated_effort"`
+	Recommendations []Recommendation    `json:"recommendations"`
 }
 
 // Issue represents a migration issue
@@ -99,10 +99,10 @@ type Dependency struct {
 
 // CompatibilityReport provides compatibility information
 type CompatibilityReport struct {
-	Compatible    bool     `json:"compatible"`
+	Compatible      bool     `json:"compatible"`
 	BreakingChanges []string `json:"breaking_changes"`
-	Warnings      []string `json:"warnings"`
-	Notes         []string `json:"notes"`
+	Warnings        []string `json:"warnings"`
+	Notes           []string `json:"notes"`
 }
 
 // Recommendation provides migration recommendations
@@ -116,11 +116,11 @@ type Recommendation struct {
 
 // TransformResult contains transformation results
 type TransformResult struct {
-	Files       []TransformedFile `json:"files"`
-	Changes     []Change          `json:"changes"`
-	Warnings    []string          `json:"warnings"`
-	Errors      []string          `json:"errors"`
-	Summary     TransformSummary  `json:"summary"`
+	Files    []TransformedFile `json:"files"`
+	Changes  []Change          `json:"changes"`
+	Warnings []string          `json:"warnings"`
+	Errors   []string          `json:"errors"`
+	Summary  TransformSummary  `json:"summary"`
 }
 
 // TransformedFile represents a transformed file
@@ -155,15 +155,15 @@ type TransformSummary struct {
 
 // MigrationPlan represents a migration plan
 type MigrationPlan struct {
-	From        string       `json:"from"`
-	To          string       `json:"to"`
-	Language    string       `json:"language"`
-	Path        string       `json:"path"`
-	Created     time.Time    `json:"created"`
-	Steps       []Step       `json:"steps"`
-	Estimate    string       `json:"estimate"`
-	Risks       []Risk       `json:"risks"`
-	Rollback    RollbackPlan `json:"rollback"`
+	From     string       `json:"from"`
+	To       string       `json:"to"`
+	Language string       `json:"language"`
+	Path     string       `json:"path"`
+	Created  time.Time    `json:"created"`
+	Steps    []Step       `json:"steps"`
+	Estimate string       `json:"estimate"`
+	Risks    []Risk       `json:"risks"`
+	Rollback RollbackPlan `json:"rollback"`
 }
 
 // Step represents a migration step
@@ -197,10 +197,10 @@ type RollbackPlan struct {
 
 // Version represents a protocol version
 type Version struct {
-	Major    int    `json:"major"`
-	Minor    int    `json:"minor"`
-	Patch    int    `json:"patch"`
-	Date     string `json:"date"`
+	Major    int      `json:"major"`
+	Minor    int      `json:"minor"`
+	Patch    int      `json:"patch"`
+	Date     string   `json:"date"`
 	Features []string `json:"features"`
 	Breaking []string `json:"breaking"`
 }
@@ -770,7 +770,7 @@ type GoTransformer struct {
 
 func (t *GoTransformer) Transform(ctx context.Context, files []string) (*TransformResult, error) {
 	start := time.Now()
-	
+
 	result := &TransformResult{
 		Files:    []TransformedFile{},
 		Changes:  []Change{},
@@ -796,9 +796,9 @@ func (t *GoTransformer) Transform(ctx context.Context, files []string) (*Transfo
 
 		// Example transformations
 		transformations := map[string]string{
-			"mcp.OldAPI":      "mcp.NewAPI",
-			"mcp.CallTool":    "mcp.CallToolWithContext",
-			"mcp.Initialize":  "mcp.InitializeWithConfig",
+			"mcp.OldAPI":     "mcp.NewAPI",
+			"mcp.CallTool":   "mcp.CallToolWithContext",
+			"mcp.Initialize": "mcp.InitializeWithConfig",
 		}
 
 		changes := 0
@@ -806,7 +806,7 @@ func (t *GoTransformer) Transform(ctx context.Context, files []string) (*Transfo
 			if strings.Contains(newContent, old) {
 				newContent = strings.ReplaceAll(newContent, old, new)
 				changes++
-				
+
 				result.Changes = append(result.Changes, Change{
 					Type:        "api_migration",
 					File:        file,
@@ -850,61 +850,73 @@ func (v *GoValidator) Validate(ctx context.Context, result *TransformResult) err
 
 // Placeholder implementations for other languages
 type TypeScriptAnalyzer struct{}
+
 func (a *TypeScriptAnalyzer) Analyze(ctx context.Context, path string) (*AnalysisResult, error) {
 	return &AnalysisResult{Language: "typescript"}, nil
 }
 
 type TypeScriptTransformer struct{}
+
 func (t *TypeScriptTransformer) Transform(ctx context.Context, files []string) (*TransformResult, error) {
 	return &TransformResult{}, nil
 }
 
 type TypeScriptValidator struct{}
+
 func (v *TypeScriptValidator) Validate(ctx context.Context, result *TransformResult) error {
 	return nil
 }
 
 type PythonAnalyzer struct{}
+
 func (a *PythonAnalyzer) Analyze(ctx context.Context, path string) (*AnalysisResult, error) {
 	return &AnalysisResult{Language: "python"}, nil
 }
 
 type PythonTransformer struct{}
+
 func (t *PythonTransformer) Transform(ctx context.Context, files []string) (*TransformResult, error) {
 	return &TransformResult{}, nil
 }
 
 type PythonValidator struct{}
+
 func (v *PythonValidator) Validate(ctx context.Context, result *TransformResult) error {
 	return nil
 }
 
 type RustAnalyzer struct{}
+
 func (a *RustAnalyzer) Analyze(ctx context.Context, path string) (*AnalysisResult, error) {
 	return &AnalysisResult{Language: "rust"}, nil
 }
 
 type RustTransformer struct{}
+
 func (t *RustTransformer) Transform(ctx context.Context, files []string) (*TransformResult, error) {
 	return &TransformResult{}, nil
 }
 
 type RustValidator struct{}
+
 func (v *RustValidator) Validate(ctx context.Context, result *TransformResult) error {
 	return nil
 }
 
 type JavaAnalyzer struct{}
+
 func (a *JavaAnalyzer) Analyze(ctx context.Context, path string) (*AnalysisResult, error) {
 	return &AnalysisResult{Language: "java"}, nil
 }
 
 type JavaTransformer struct{}
+
 func (t *JavaTransformer) Transform(ctx context.Context, files []string) (*TransformResult, error) {
 	return &TransformResult{}, nil
 }
 
 type JavaValidator struct{}
+
 func (v *JavaValidator) Validate(ctx context.Context, result *TransformResult) error {
 	return nil
 }

@@ -35,27 +35,27 @@ const (
 	DefaultConfigFile  = "~/.mcp-repl-config.json"
 	MaxHistorySize     = 1000
 	DefaultTimeout     = 30 * time.Second
-	
+
 	// ANSI color codes
-	ColorReset  = "\033[0m"
-	ColorRed    = "\033[31m"
-	ColorGreen  = "\033[32m"
-	ColorYellow = "\033[33m"
-	ColorBlue   = "\033[34m"
+	ColorReset   = "\033[0m"
+	ColorRed     = "\033[31m"
+	ColorGreen   = "\033[32m"
+	ColorYellow  = "\033[33m"
+	ColorBlue    = "\033[34m"
 	ColorMagenta = "\033[35m"
-	ColorCyan   = "\033[36m"
-	ColorGray   = "\033[37m"
-	ColorBold   = "\033[1m"
+	ColorCyan    = "\033[36m"
+	ColorGray    = "\033[37m"
+	ColorBold    = "\033[1m"
 )
 
 // Config represents the REPL configuration
 type Config struct {
-	HistoryFile    string                 `json:"history_file"`
-	AutoComplete   bool                   `json:"auto_complete"`
-	ColorOutput    bool                   `json:"color_output"`
-	DefaultTimeout time.Duration          `json:"default_timeout"`
+	HistoryFile    string                  `json:"history_file"`
+	AutoComplete   bool                    `json:"auto_complete"`
+	ColorOutput    bool                    `json:"color_output"`
+	DefaultTimeout time.Duration           `json:"default_timeout"`
 	Servers        map[string]ServerConfig `json:"servers"`
-	Aliases        map[string]string      `json:"aliases"`
+	Aliases        map[string]string       `json:"aliases"`
 }
 
 // ServerConfig represents configuration for a server connection
@@ -83,30 +83,30 @@ type Server struct {
 
 // REPL represents the main REPL instance
 type REPL struct {
-	config     *Config
-	servers    map[string]*Server
-	current    string // current server name
-	rl         *readline.Instance
-	ctx        context.Context
-	cancel     context.CancelFunc
-	history    []string
-	scripts    map[string]string
-	variables  map[string]interface{}
-	mu         sync.RWMutex
+	config    *Config
+	servers   map[string]*Server
+	current   string // current server name
+	rl        *readline.Instance
+	ctx       context.Context
+	cancel    context.CancelFunc
+	history   []string
+	scripts   map[string]string
+	variables map[string]interface{}
+	mu        sync.RWMutex
 }
 
 // Global flags
 var (
-	configFile   = flag.String("config", DefaultConfigFile, "Configuration file path")
-	historyFile  = flag.String("history", DefaultHistoryFile, "History file path")
-	noColor      = flag.Bool("no-color", false, "Disable colored output")
-	debug        = flag.Bool("debug", false, "Enable debug mode")
-	serverCmd    = flag.String("server", "", "Server command to connect to on startup")
-	serverURL    = flag.String("url", "", "Server URL (for HTTP/SSE transport)")
-	transport    = flag.String("transport", "stdio", "Transport type (stdio, http, sse)")
-	interactive  = flag.Bool("interactive", true, "Run in interactive mode")
-	script       = flag.String("script", "", "Script file to execute")
-	version      = flag.Bool("version", false, "Show version information")
+	configFile  = flag.String("config", DefaultConfigFile, "Configuration file path")
+	historyFile = flag.String("history", DefaultHistoryFile, "History file path")
+	noColor     = flag.Bool("no-color", false, "Disable colored output")
+	debug       = flag.Bool("debug", false, "Enable debug mode")
+	serverCmd   = flag.String("server", "", "Server command to connect to on startup")
+	serverURL   = flag.String("url", "", "Server URL (for HTTP/SSE transport)")
+	transport   = flag.String("transport", "stdio", "Transport type (stdio, http, sse)")
+	interactive = flag.Bool("interactive", true, "Run in interactive mode")
+	script      = flag.String("script", "", "Script file to execute")
+	version     = flag.Bool("version", false, "Show version information")
 )
 
 func main() {
@@ -132,7 +132,7 @@ func main() {
 			Transport: *transport,
 			URL:       *serverURL,
 		}
-		
+
 		serverName := "default"
 		if err := repl.ConnectServer(serverName, config); err != nil {
 			log.Fatalf("Failed to connect to server: %v", err)
@@ -173,7 +173,7 @@ func NewREPL() (*REPL, error) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	repl := &REPL{
 		config:    config,
 		servers:   make(map[string]*Server),
@@ -210,13 +210,13 @@ func NewREPL() (*REPL, error) {
 // initReadline initializes the readline instance with completions
 func (r *REPL) initReadline() error {
 	completer := &Completer{repl: r}
-	
+
 	config := &readline.Config{
-		Prompt:          r.getPrompt(),
-		HistoryFile:     r.config.HistoryFile,
-		AutoComplete:    completer,
-		InterruptPrompt: "^C",
-		EOFPrompt:       "exit",
+		Prompt:            r.getPrompt(),
+		HistoryFile:       r.config.HistoryFile,
+		AutoComplete:      completer,
+		InterruptPrompt:   "^C",
+		EOFPrompt:         "exit",
 		HistorySearchFold: true,
 	}
 
@@ -237,7 +237,7 @@ func (r *REPL) getPrompt() string {
 		}
 		return fmt.Sprintf("%smcp> %s", ColorGreen, ColorReset)
 	}
-	
+
 	if r.current != "" {
 		return fmt.Sprintf("[%s] mcp> ", r.current)
 	}
@@ -252,7 +252,7 @@ func (r *REPL) Run() {
 	for {
 		// Update prompt
 		r.rl.SetPrompt(r.getPrompt())
-		
+
 		line, err := r.rl.Readline()
 		if err != nil {
 			if err == readline.ErrInterrupt {
@@ -369,7 +369,7 @@ func (r *REPL) connectCommand(args []string) error {
 	// Parse options
 	transport := "stdio"
 	var url string
-	
+
 	// Simple option parsing
 	for i := 0; i < len(command); i++ {
 		if command[i] == "--transport" && i+1 < len(command) {
@@ -501,7 +501,7 @@ type Completer struct {
 func (c *Completer) Do(line []rune, pos int) ([][]rune, int, int) {
 	lineStr := string(line)
 	parts := strings.Fields(lineStr)
-	
+
 	if len(parts) == 0 || (len(parts) == 1 && pos == len(line)) {
 		// Complete command names
 		commands := []string{
@@ -510,19 +510,19 @@ func (c *Completer) Do(line []rune, pos int) ([][]rune, int, int) {
 			"ping", "info", "save", "load", "script", "set", "get", "history",
 			"clear", "config", "alias",
 		}
-		
+
 		var completions [][]rune
 		prefix := ""
 		if len(parts) > 0 {
 			prefix = parts[0]
 		}
-		
+
 		for _, cmd := range commands {
 			if strings.HasPrefix(cmd, prefix) {
 				completions = append(completions, []rune(cmd))
 			}
 		}
-		
+
 		return completions, 0, pos
 	}
 
@@ -550,7 +550,7 @@ func (c *Completer) completeServerNames(parts []string, pos int) ([][]rune, int,
 
 	prefix := parts[1]
 	var completions [][]rune
-	
+
 	c.repl.mu.RLock()
 	for name := range c.repl.servers {
 		if strings.HasPrefix(name, prefix) {
@@ -570,7 +570,7 @@ func (c *Completer) completeToolNames(parts []string, pos int) ([][]rune, int, i
 
 	prefix := parts[1]
 	var completions [][]rune
-	
+
 	c.repl.mu.RLock()
 	if c.repl.current != "" {
 		if server, exists := c.repl.servers[c.repl.current]; exists {
@@ -594,7 +594,7 @@ func (c *Completer) completeResourceNames(parts []string, pos int) ([][]rune, in
 
 	prefix := parts[1]
 	var completions [][]rune
-	
+
 	c.repl.mu.RLock()
 	if c.repl.current != "" {
 		if server, exists := c.repl.servers[c.repl.current]; exists {
@@ -618,7 +618,7 @@ func (c *Completer) completePromptNames(parts []string, pos int) ([][]rune, int,
 
 	prefix := parts[1]
 	var completions [][]rune
-	
+
 	c.repl.mu.RLock()
 	if c.repl.current != "" {
 		if server, exists := c.repl.servers[c.repl.current]; exists {
@@ -728,7 +728,7 @@ func (r *REPL) disconnectCommand(args []string) error {
 	}
 
 	name := args[0]
-	
+
 	r.mu.Lock()
 	server, exists := r.servers[name]
 	if !exists {
@@ -767,18 +767,18 @@ func (r *REPL) listServers(args []string) error {
 		if !server.Connected {
 			status = "disconnected"
 		}
-		
+
 		current := ""
 		if name == r.current {
 			current = " (current)"
 		}
-		
+
 		r.Printf("  %s - %s%s\n", name, status, current)
 		if server.Config.Description != "" {
 			r.Printf("    Description: %s\n", server.Config.Description)
 		}
 		r.Printf("    Transport: %s\n", server.Config.Transport)
-		r.Printf("    Tools: %d, Resources: %d, Prompts: %d\n", 
+		r.Printf("    Tools: %d, Resources: %d, Prompts: %d\n",
 			len(server.Tools), len(server.Resources), len(server.Prompts))
 	}
 
@@ -792,7 +792,7 @@ func (r *REPL) useServer(args []string) error {
 	}
 
 	name := args[0]
-	
+
 	r.mu.Lock()
 	server, exists := r.servers[name]
 	if !exists {
@@ -905,10 +905,10 @@ func (r *REPL) callTool(args []string) error {
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid argument format: %s (expected key=value)", arg)
 		}
-		
+
 		key := parts[0]
 		value := parts[1]
-		
+
 		// Try to parse as number or boolean
 		if v, err := strconv.Atoi(value); err == nil {
 			toolArgs[key] = v
@@ -998,10 +998,10 @@ func (r *REPL) getPrompt_(args []string) error {
 		if len(parts) != 2 {
 			return fmt.Errorf("invalid argument format: %s (expected key=value)", arg)
 		}
-		
+
 		key := parts[0]
 		value := parts[1]
-		
+
 		// Try to parse as number or boolean
 		if v, err := strconv.Atoi(value); err == nil {
 			promptArgs[key] = v
@@ -1041,7 +1041,7 @@ func (r *REPL) getPrompt_(args []string) error {
 // pingServer pings a server
 func (r *REPL) pingServer(args []string) error {
 	var server *Server
-	
+
 	if len(args) == 0 {
 		server = r.getCurrentServer()
 		if server == nil {
@@ -1052,7 +1052,7 @@ func (r *REPL) pingServer(args []string) error {
 		var exists bool
 		server, exists = r.servers[args[0]]
 		r.mu.RUnlock()
-		
+
 		if !exists {
 			return fmt.Errorf("server %s not found", args[0])
 		}
@@ -1076,7 +1076,7 @@ func (r *REPL) pingServer(args []string) error {
 // serverInfo shows server information
 func (r *REPL) serverInfo(args []string) error {
 	var server *Server
-	
+
 	if len(args) == 0 {
 		server = r.getCurrentServer()
 		if server == nil {
@@ -1087,7 +1087,7 @@ func (r *REPL) serverInfo(args []string) error {
 		var exists bool
 		server, exists = r.servers[args[0]]
 		r.mu.RUnlock()
-		
+
 		if !exists {
 			return fmt.Errorf("server %s not found", args[0])
 		}
@@ -1118,7 +1118,7 @@ func (r *REPL) saveSession(args []string) error {
 	}
 
 	filename := expandPath(args[0])
-	
+
 	session := SessionData{
 		Timestamp: time.Now(),
 		Current:   r.current,
@@ -1153,7 +1153,7 @@ func (r *REPL) loadSession(args []string) error {
 	}
 
 	filename := expandPath(args[0])
-	
+
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return fmt.Errorf("failed to read session file: %w", err)
@@ -1300,7 +1300,7 @@ func (r *REPL) showConfig(args []string) error {
 	r.Printf("  Default timeout: %v\n", r.config.DefaultTimeout)
 	r.Printf("  Configured servers: %d\n", len(r.config.Servers))
 	r.Printf("  Aliases: %d\n", len(r.config.Aliases))
-	
+
 	if len(r.config.Aliases) > 0 {
 		r.Printf("  Aliases:\n")
 		for name, command := range r.config.Aliases {
@@ -1319,7 +1319,7 @@ func (r *REPL) manageAlias(args []string) error {
 			r.Printf("No aliases defined.\n")
 			return nil
 		}
-		
+
 		r.Printf("Aliases:\n")
 		for name, command := range r.config.Aliases {
 			r.Printf("  %s = %s\n", name, command)
@@ -1354,11 +1354,11 @@ func (r *REPL) manageAlias(args []string) error {
 func (r *REPL) getCurrentServer() *Server {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	if r.current == "" {
 		return nil
 	}
-	
+
 	return r.servers[r.current]
 }
 
@@ -1466,17 +1466,17 @@ func (r *REPL) Close() error {
 
 // SessionData represents a saved session
 type SessionData struct {
-	Timestamp time.Time                  `json:"timestamp"`
-	Current   string                     `json:"current"`
-	Servers   map[string]ServerConfig    `json:"servers"`
-	Variables map[string]interface{}     `json:"variables"`
-	History   []string                   `json:"history"`
+	Timestamp time.Time               `json:"timestamp"`
+	Current   string                  `json:"current"`
+	Servers   map[string]ServerConfig `json:"servers"`
+	Variables map[string]interface{}  `json:"variables"`
+	History   []string                `json:"history"`
 }
 
 // LoadConfig loads configuration from file
 func LoadConfig(filename string) (*Config, error) {
 	filename = expandPath(filename)
-	
+
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -1493,7 +1493,7 @@ func LoadConfig(filename string) (*Config, error) {
 // SaveConfig saves configuration to file
 func SaveConfig(filename string, config *Config) error {
 	filename = expandPath(filename)
-	
+
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
 		return err

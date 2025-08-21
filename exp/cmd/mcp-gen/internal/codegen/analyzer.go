@@ -19,12 +19,12 @@ func (a *SchemaAnalyzer) GenerateTypeName(toolName, suffix string) string {
 // SchemaToTypes converts a JSON schema to template types
 func (a *SchemaAnalyzer) SchemaToTypes(schema map[string]interface{}) []templates.Type {
 	var types []templates.Type
-	
+
 	// Handle root schema
 	if rootType := a.schemaToType("Root", schema); rootType != nil {
 		types = append(types, *rootType)
 	}
-	
+
 	// Handle definitions
 	if definitions, ok := schema["definitions"].(map[string]interface{}); ok {
 		for name, def := range definitions {
@@ -35,7 +35,7 @@ func (a *SchemaAnalyzer) SchemaToTypes(schema map[string]interface{}) []template
 			}
 		}
 	}
-	
+
 	return types
 }
 
@@ -48,12 +48,12 @@ func (a *SchemaAnalyzer) schemaToType(name string, schema map[string]interface{}
 		Methods:     []templates.Method{},
 		Annotations: []string{},
 	}
-	
+
 	// Handle object type
 	if schemaType, ok := schema["type"].(string); ok && schemaType == "object" {
 		if properties, ok := schema["properties"].(map[string]interface{}); ok {
 			required := a.getRequiredFields(schema)
-			
+
 			for propName, propSchema := range properties {
 				if propMap, ok := propSchema.(map[string]interface{}); ok {
 					field := a.schemaToField(propName, propMap, required)
@@ -62,7 +62,7 @@ func (a *SchemaAnalyzer) schemaToType(name string, schema map[string]interface{}
 			}
 		}
 	}
-	
+
 	// Handle enum type
 	if enum, ok := schema["enum"].([]interface{}); ok {
 		typ.Annotations = append(typ.Annotations, "enum")
@@ -78,7 +78,7 @@ func (a *SchemaAnalyzer) schemaToType(name string, schema map[string]interface{}
 			typ.Fields = append(typ.Fields, field)
 		}
 	}
-	
+
 	return typ
 }
 
@@ -91,13 +91,13 @@ func (a *SchemaAnalyzer) schemaToField(name string, schema map[string]interface{
 		Optional:    !a.isRequired(name, required),
 		Tags:        make(map[string]string),
 	}
-	
+
 	// Add language-specific tags
 	field.Tags["json"] = name
 	if field.Optional {
 		field.Tags["json"] = name + ",omitempty"
 	}
-	
+
 	// Add validation tags
 	if min, ok := schema["minimum"].(float64); ok {
 		field.Tags["validate"] = fmt.Sprintf("min=%v", min)
@@ -122,7 +122,7 @@ func (a *SchemaAnalyzer) schemaToField(name string, schema map[string]interface{
 	if pattern, ok := schema["pattern"].(string); ok {
 		field.Tags["validate"] = fmt.Sprintf("regexp=%s", pattern)
 	}
-	
+
 	return field
 }
 
@@ -150,7 +150,7 @@ func (a *SchemaAnalyzer) schemaToGoType(schema map[string]interface{}) string {
 	if ref, ok := schema["$ref"].(string); ok {
 		return a.refToGoType(ref)
 	}
-	
+
 	if schemaType, ok := schema["type"].(string); ok {
 		switch schemaType {
 		case "string":
@@ -185,7 +185,7 @@ func (a *SchemaAnalyzer) schemaToGoType(schema map[string]interface{}) string {
 			return "map[string]interface{}"
 		}
 	}
-	
+
 	// Handle oneOf, anyOf, allOf
 	if oneOf, ok := schema["oneOf"].([]interface{}); ok {
 		return a.handleGoUnionType(oneOf)
@@ -196,7 +196,7 @@ func (a *SchemaAnalyzer) schemaToGoType(schema map[string]interface{}) string {
 	if allOf, ok := schema["allOf"].([]interface{}); ok {
 		return a.handleGoIntersectionType(allOf)
 	}
-	
+
 	return "interface{}"
 }
 
@@ -204,7 +204,7 @@ func (a *SchemaAnalyzer) schemaToTSType(schema map[string]interface{}) string {
 	if ref, ok := schema["$ref"].(string); ok {
 		return a.refToTSType(ref)
 	}
-	
+
 	if schemaType, ok := schema["type"].(string); ok {
 		switch schemaType {
 		case "string":
@@ -233,7 +233,7 @@ func (a *SchemaAnalyzer) schemaToTSType(schema map[string]interface{}) string {
 			return "Record<string, any>"
 		}
 	}
-	
+
 	// Handle oneOf, anyOf, allOf
 	if oneOf, ok := schema["oneOf"].([]interface{}); ok {
 		return a.handleTSUnionType(oneOf)
@@ -244,7 +244,7 @@ func (a *SchemaAnalyzer) schemaToTSType(schema map[string]interface{}) string {
 	if allOf, ok := schema["allOf"].([]interface{}); ok {
 		return a.handleTSIntersectionType(allOf)
 	}
-	
+
 	return "any"
 }
 
@@ -252,7 +252,7 @@ func (a *SchemaAnalyzer) schemaToPyType(schema map[string]interface{}) string {
 	if ref, ok := schema["$ref"].(string); ok {
 		return a.refToPyType(ref)
 	}
-	
+
 	if schemaType, ok := schema["type"].(string); ok {
 		switch schemaType {
 		case "string":
@@ -284,7 +284,7 @@ func (a *SchemaAnalyzer) schemaToPyType(schema map[string]interface{}) string {
 			return "Dict[str, Any]"
 		}
 	}
-	
+
 	// Handle oneOf, anyOf, allOf
 	if oneOf, ok := schema["oneOf"].([]interface{}); ok {
 		return a.handlePyUnionType(oneOf)
@@ -295,7 +295,7 @@ func (a *SchemaAnalyzer) schemaToPyType(schema map[string]interface{}) string {
 	if allOf, ok := schema["allOf"].([]interface{}); ok {
 		return a.handlePyIntersectionType(allOf)
 	}
-	
+
 	return "Any"
 }
 
@@ -303,7 +303,7 @@ func (a *SchemaAnalyzer) schemaToRustType(schema map[string]interface{}) string 
 	if ref, ok := schema["$ref"].(string); ok {
 		return a.refToRustType(ref)
 	}
-	
+
 	if schemaType, ok := schema["type"].(string); ok {
 		switch schemaType {
 		case "string":
@@ -327,7 +327,7 @@ func (a *SchemaAnalyzer) schemaToRustType(schema map[string]interface{}) string 
 			return "serde_json::Map<String, serde_json::Value>"
 		}
 	}
-	
+
 	// Handle oneOf, anyOf, allOf
 	if oneOf, ok := schema["oneOf"].([]interface{}); ok {
 		return a.handleRustUnionType(oneOf)
@@ -338,7 +338,7 @@ func (a *SchemaAnalyzer) schemaToRustType(schema map[string]interface{}) string 
 	if allOf, ok := schema["allOf"].([]interface{}); ok {
 		return a.handleRustIntersectionType(allOf)
 	}
-	
+
 	return "serde_json::Value"
 }
 
@@ -346,7 +346,7 @@ func (a *SchemaAnalyzer) schemaToJavaType(schema map[string]interface{}) string 
 	if ref, ok := schema["$ref"].(string); ok {
 		return a.refToJavaType(ref)
 	}
-	
+
 	if schemaType, ok := schema["type"].(string); ok {
 		switch schemaType {
 		case "string":
@@ -370,7 +370,7 @@ func (a *SchemaAnalyzer) schemaToJavaType(schema map[string]interface{}) string 
 			return "Map<String, Object>"
 		}
 	}
-	
+
 	// Handle oneOf, anyOf, allOf
 	if oneOf, ok := schema["oneOf"].([]interface{}); ok {
 		return a.handleJavaUnionType(oneOf)
@@ -381,7 +381,7 @@ func (a *SchemaAnalyzer) schemaToJavaType(schema map[string]interface{}) string 
 	if allOf, ok := schema["allOf"].([]interface{}); ok {
 		return a.handleJavaIntersectionType(allOf)
 	}
-	
+
 	return "Object"
 }
 
@@ -593,7 +593,7 @@ func toPascalCase(s string) string {
 	words := strings.FieldsFunc(s, func(c rune) bool {
 		return !unicode.IsLetter(c) && !unicode.IsNumber(c)
 	})
-	
+
 	var result strings.Builder
 	for _, word := range words {
 		result.WriteString(strings.Title(strings.ToLower(word)))
@@ -605,11 +605,11 @@ func toCamelCase(s string) string {
 	words := strings.FieldsFunc(s, func(c rune) bool {
 		return !unicode.IsLetter(c) && !unicode.IsNumber(c)
 	})
-	
+
 	if len(words) == 0 {
 		return s
 	}
-	
+
 	result := strings.ToLower(words[0])
 	for i := 1; i < len(words); i++ {
 		result += strings.Title(strings.ToLower(words[i]))

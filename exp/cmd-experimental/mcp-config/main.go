@@ -1,7 +1,7 @@
 // Package main implements mcp-config: Configuration management for MCP services
 //
 // This tool provides comprehensive configuration management capabilities for MCP services,
-// including environment-specific configurations, secret management, validation, 
+// including environment-specific configurations, secret management, validation,
 // templates, and hot reloading.
 //
 // Key features:
@@ -14,23 +14,26 @@
 // - Audit logging of configuration changes
 //
 // Usage:
-//   mcp-config [command] [flags]
+//
+//	mcp-config [command] [flags]
 //
 // Commands:
-//   init        Initialize configuration management
-//   validate    Validate configuration files
-//   template    Process configuration templates
-//   serve       Start configuration service
-//   watch       Watch for configuration changes
-//   secret      Manage secrets
-//   env         Environment management
+//
+//	init        Initialize configuration management
+//	validate    Validate configuration files
+//	template    Process configuration templates
+//	serve       Start configuration service
+//	watch       Watch for configuration changes
+//	secret      Manage secrets
+//	env         Environment management
 //
 // Examples:
-//   mcp-config init --environment production
-//   mcp-config validate --config config.yaml
-//   mcp-config template --input template.yaml --output config.yaml
-//   mcp-config serve --port 8080
-//   mcp-config watch --config config.yaml --reload-command "systemctl restart mcp-server"
+//
+//	mcp-config init --environment production
+//	mcp-config validate --config config.yaml
+//	mcp-config template --input template.yaml --output config.yaml
+//	mcp-config serve --port 8080
+//	mcp-config watch --config config.yaml --reload-command "systemctl restart mcp-server"
 package main
 
 import (
@@ -79,45 +82,45 @@ type ConfigManagementConfig struct {
 	ServiceName string `json:"service_name" yaml:"service_name"`
 	Port        int    `json:"port" yaml:"port"`
 	LogLevel    string `json:"log_level" yaml:"log_level"`
-	
+
 	// Environment configuration
-	Environment string                 `json:"environment" yaml:"environment"`
+	Environment  string                `json:"environment" yaml:"environment"`
 	Environments map[string]*EnvConfig `json:"environments" yaml:"environments"`
-	
+
 	// Secret management
 	Secrets SecretConfig `json:"secrets" yaml:"secrets"`
-	
+
 	// Template configuration
 	Templates TemplateConfig `json:"templates" yaml:"templates"`
-	
+
 	// Watching configuration
 	Watch WatchConfig `json:"watch" yaml:"watch"`
-	
+
 	// Validation configuration
 	Validation ValidationConfig `json:"validation" yaml:"validation"`
-	
+
 	// Audit configuration
 	Audit AuditConfig `json:"audit" yaml:"audit"`
 }
 
 // EnvConfig defines environment-specific configuration
 type EnvConfig struct {
-	Name        string            `json:"name" yaml:"name"`
-	Description string            `json:"description" yaml:"description"`
-	ConfigPaths []string          `json:"config_paths" yaml:"config_paths"`
-	SecretPaths []string          `json:"secret_paths" yaml:"secret_paths"`
-	Variables   map[string]string `json:"variables" yaml:"variables"`
+	Name        string                 `json:"name" yaml:"name"`
+	Description string                 `json:"description" yaml:"description"`
+	ConfigPaths []string               `json:"config_paths" yaml:"config_paths"`
+	SecretPaths []string               `json:"secret_paths" yaml:"secret_paths"`
+	Variables   map[string]string      `json:"variables" yaml:"variables"`
 	Overrides   map[string]interface{} `json:"overrides" yaml:"overrides"`
 }
 
 // SecretConfig defines secret management configuration
 type SecretConfig struct {
-	Backend   string            `json:"backend" yaml:"backend"` // vault, k8s, file, env
-	Address   string            `json:"address" yaml:"address"`
-	Token     string            `json:"token" yaml:"token"`
-	Namespace string            `json:"namespace" yaml:"namespace"`
-	Paths     map[string]string `json:"paths" yaml:"paths"`
-	Encryption EncryptionConfig `json:"encryption" yaml:"encryption"`
+	Backend    string            `json:"backend" yaml:"backend"` // vault, k8s, file, env
+	Address    string            `json:"address" yaml:"address"`
+	Token      string            `json:"token" yaml:"token"`
+	Namespace  string            `json:"namespace" yaml:"namespace"`
+	Paths      map[string]string `json:"paths" yaml:"paths"`
+	Encryption EncryptionConfig  `json:"encryption" yaml:"encryption"`
 }
 
 // EncryptionConfig defines encryption configuration for secrets
@@ -130,12 +133,12 @@ type EncryptionConfig struct {
 
 // TemplateConfig defines template system configuration
 type TemplateConfig struct {
-	Enabled       bool              `json:"enabled" yaml:"enabled"`
-	InputDir      string            `json:"input_dir" yaml:"input_dir"`
-	OutputDir     string            `json:"output_dir" yaml:"output_dir"`
-	Functions     map[string]string `json:"functions" yaml:"functions"`
-	Variables     map[string]interface{} `json:"variables" yaml:"variables"`
-	Delimiters    DelimiterConfig   `json:"delimiters" yaml:"delimiters"`
+	Enabled    bool                   `json:"enabled" yaml:"enabled"`
+	InputDir   string                 `json:"input_dir" yaml:"input_dir"`
+	OutputDir  string                 `json:"output_dir" yaml:"output_dir"`
+	Functions  map[string]string      `json:"functions" yaml:"functions"`
+	Variables  map[string]interface{} `json:"variables" yaml:"variables"`
+	Delimiters DelimiterConfig        `json:"delimiters" yaml:"delimiters"`
 }
 
 // DelimiterConfig defines template delimiters
@@ -146,32 +149,32 @@ type DelimiterConfig struct {
 
 // WatchConfig defines file watching configuration
 type WatchConfig struct {
-	Enabled       bool     `json:"enabled" yaml:"enabled"`
-	Paths         []string `json:"paths" yaml:"paths"`
-	ReloadCommand string   `json:"reload_command" yaml:"reload_command"`
-	ReloadDelay   time.Duration `json:"reload_delay" yaml:"reload_delay"`
-	IgnorePatterns []string `json:"ignore_patterns" yaml:"ignore_patterns"`
+	Enabled        bool          `json:"enabled" yaml:"enabled"`
+	Paths          []string      `json:"paths" yaml:"paths"`
+	ReloadCommand  string        `json:"reload_command" yaml:"reload_command"`
+	ReloadDelay    time.Duration `json:"reload_delay" yaml:"reload_delay"`
+	IgnorePatterns []string      `json:"ignore_patterns" yaml:"ignore_patterns"`
 }
 
 // ValidationConfig defines validation configuration
 type ValidationConfig struct {
-	Enabled     bool     `json:"enabled" yaml:"enabled"`
-	SchemaFile  string   `json:"schema_file" yaml:"schema_file"`
-	Rules       []ValidationRule `json:"rules" yaml:"rules"`
-	StrictMode  bool     `json:"strict_mode" yaml:"strict_mode"`
+	Enabled    bool             `json:"enabled" yaml:"enabled"`
+	SchemaFile string           `json:"schema_file" yaml:"schema_file"`
+	Rules      []ValidationRule `json:"rules" yaml:"rules"`
+	StrictMode bool             `json:"strict_mode" yaml:"strict_mode"`
 }
 
 // ValidationRule defines a validation rule
 type ValidationRule struct {
-	Name        string `json:"name" yaml:"name"`
-	Path        string `json:"path" yaml:"path"`
-	Type        string `json:"type" yaml:"type"` // string, number, boolean, array, object
-	Required    bool   `json:"required" yaml:"required"`
-	Pattern     string `json:"pattern" yaml:"pattern"`
-	MinLength   int    `json:"min_length" yaml:"min_length"`
-	MaxLength   int    `json:"max_length" yaml:"max_length"`
-	MinValue    float64 `json:"min_value" yaml:"min_value"`
-	MaxValue    float64 `json:"max_value" yaml:"max_value"`
+	Name          string   `json:"name" yaml:"name"`
+	Path          string   `json:"path" yaml:"path"`
+	Type          string   `json:"type" yaml:"type"` // string, number, boolean, array, object
+	Required      bool     `json:"required" yaml:"required"`
+	Pattern       string   `json:"pattern" yaml:"pattern"`
+	MinLength     int      `json:"min_length" yaml:"min_length"`
+	MaxLength     int      `json:"max_length" yaml:"max_length"`
+	MinValue      float64  `json:"min_value" yaml:"min_value"`
+	MaxValue      float64  `json:"max_value" yaml:"max_value"`
 	AllowedValues []string `json:"allowed_values" yaml:"allowed_values"`
 }
 
@@ -216,10 +219,10 @@ type SecretValue struct {
 
 // ConfigWatcher watches for configuration changes
 type ConfigWatcher struct {
-	config *ConfigManagementConfig
-	logger *slog.Logger
+	config   *ConfigManagementConfig
+	logger   *slog.Logger
 	watchers map[string]*FileWatcher
-	mutex   sync.RWMutex
+	mutex    sync.RWMutex
 }
 
 // FileWatcher represents a file watcher
@@ -231,9 +234,9 @@ type FileWatcher struct {
 
 // ConfigServer provides HTTP API for configuration management
 type ConfigServer struct {
-	config *ConfigManagementConfig
-	logger *slog.Logger
-	server *http.Server
+	config    *ConfigManagementConfig
+	logger    *slog.Logger
+	server    *http.Server
 	validator *ConfigValidator
 	templater *ConfigTemplater
 	secrets   *SecretManager
@@ -241,20 +244,20 @@ type ConfigServer struct {
 
 // EnvironmentManager manages environment-specific configurations
 type EnvironmentManager struct {
-	config *ConfigManagementConfig
-	logger *slog.Logger
+	config  *ConfigManagementConfig
+	logger  *slog.Logger
 	current *EnvConfig
 }
 
 // AuditEvent represents an audit event
 type AuditEvent struct {
-	Timestamp time.Time `json:"timestamp"`
-	Action    string    `json:"action"`
-	User      string    `json:"user"`
-	Resource  string    `json:"resource"`
+	Timestamp time.Time              `json:"timestamp"`
+	Action    string                 `json:"action"`
+	User      string                 `json:"user"`
+	Resource  string                 `json:"resource"`
 	Changes   map[string]interface{} `json:"changes"`
-	Success   bool      `json:"success"`
-	Error     string    `json:"error,omitempty"`
+	Success   bool                   `json:"success"`
+	Error     string                 `json:"error,omitempty"`
 }
 
 // NewConfigApp creates a new configuration management application
@@ -365,7 +368,7 @@ func (cv *ConfigValidator) ValidateConfig(configFile string) error {
 
 func (cv *ConfigValidator) validateRule(config map[string]interface{}, rule ValidationRule) error {
 	value, exists := getValueByPath(config, rule.Path)
-	
+
 	if !exists {
 		if rule.Required {
 			return fmt.Errorf("required field %s is missing", rule.Path)
@@ -703,10 +706,10 @@ func (cw *ConfigWatcher) StartWatching(ctx context.Context) error {
 			path: path,
 			callback: func(changedPath string) {
 				cw.logger.Info("Configuration file changed", "path", changedPath)
-				
+
 				// Wait for reload delay
 				time.Sleep(cw.config.Watch.ReloadDelay)
-				
+
 				// Execute reload command
 				if cw.config.Watch.ReloadCommand != "" {
 					if err := cw.executeReloadCommand(); err != nil {
@@ -718,7 +721,7 @@ func (cw *ConfigWatcher) StartWatching(ctx context.Context) error {
 		}
 
 		go cw.watchFile(ctx, watcher)
-		
+
 		cw.mutex.Lock()
 		cw.watchers[path] = watcher
 		cw.mutex.Unlock()
@@ -735,7 +738,7 @@ func (cw *ConfigWatcher) watchFile(ctx context.Context, watcher *FileWatcher) {
 	defer ticker.Stop()
 
 	var lastModTime time.Time
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -1063,7 +1066,7 @@ func (app *ConfigApp) Run(ctx context.Context, command string, args []string) er
 
 func (app *ConfigApp) initConfig(args []string) error {
 	app.logger.Info("Initializing configuration management")
-	
+
 	// Create default directories
 	dirs := []string{
 		"config",
@@ -1147,7 +1150,7 @@ func (app *ConfigApp) validateConfig(args []string) error {
 	}
 
 	configFile := args[0]
-	
+
 	// Load validation schema
 	if err := app.validator.LoadSchema(app.config.Validation.SchemaFile); err != nil {
 		return fmt.Errorf("failed to load schema: %w", err)
@@ -1186,7 +1189,7 @@ func (app *ConfigApp) processTemplate(args []string) error {
 func (app *ConfigApp) runServer(ctx context.Context) error {
 	// Initialize components
 	app.templater.InitializeFunctions()
-	
+
 	if err := app.validator.LoadSchema(app.config.Validation.SchemaFile); err != nil {
 		app.logger.Warn("Failed to load validation schema", "error", err)
 	}
@@ -1253,7 +1256,7 @@ func (app *ConfigApp) manageSecret(args []string) error {
 			return fmt.Errorf("secret value required")
 		}
 		value := args[2]
-		
+
 		secret := SecretValue{
 			Value:     value,
 			Version:   generateVersion(),
@@ -1297,7 +1300,7 @@ func (app *ConfigApp) manageEnvironment(args []string) error {
 			return fmt.Errorf("environment name required")
 		}
 		envName := args[1]
-		
+
 		if _, exists := app.config.Environments[envName]; !exists {
 			return fmt.Errorf("environment not found: %s", envName)
 		}
@@ -1323,17 +1326,17 @@ func main() {
 
 	// Create default configuration
 	config := &ConfigManagementConfig{
-		ServiceName: "mcp-config",
-		Port:        *port,
-		LogLevel:    *logLevel,
-		Environment: "development",
+		ServiceName:  "mcp-config",
+		Port:         *port,
+		LogLevel:     *logLevel,
+		Environment:  "development",
 		Environments: make(map[string]*EnvConfig),
 		Secrets: SecretConfig{
 			Backend: "file",
 			Paths:   make(map[string]string),
 		},
 		Templates: TemplateConfig{
-			Enabled: true,
+			Enabled:   true,
 			Variables: make(map[string]interface{}),
 		},
 		Watch: WatchConfig{

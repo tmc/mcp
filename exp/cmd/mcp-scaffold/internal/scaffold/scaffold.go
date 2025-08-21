@@ -47,19 +47,19 @@ type ProjectData struct {
 	PackageName string
 	Description string
 	Version     string
-	
+
 	// Language-specific data
 	GoModule      string
 	TSPackage     string
 	PythonPackage string
 	RustCrate     string
 	JavaPackage   string
-	
+
 	// CI/CD data
 	GitHubActions bool
 	GitLabCI      bool
 	Jenkins       bool
-	
+
 	// Features
 	HasTests        bool
 	HasDocs         bool
@@ -107,7 +107,7 @@ func (s *Scaffolder) Init(ctx context.Context) error {
 	}
 
 	data := s.createProjectData()
-	
+
 	// Create project directory
 	projectDir := filepath.Join(s.config.Output, s.config.ProjectName)
 	if err := s.createDirectory(projectDir); err != nil {
@@ -131,7 +131,7 @@ func (s *Scaffolder) CreateServer(ctx context.Context) error {
 
 	data := s.createProjectData()
 	data.Description = "MCP server implementation"
-	
+
 	// Create project directory
 	projectDir := filepath.Join(s.config.Output, s.config.ProjectName)
 	if err := s.createDirectory(projectDir); err != nil {
@@ -155,7 +155,7 @@ func (s *Scaffolder) CreateClient(ctx context.Context) error {
 
 	data := s.createProjectData()
 	data.Description = "MCP client implementation"
-	
+
 	// Create project directory
 	projectDir := filepath.Join(s.config.Output, s.config.ProjectName)
 	if err := s.createDirectory(projectDir); err != nil {
@@ -179,10 +179,10 @@ func (s *Scaffolder) AddTool(ctx context.Context) error {
 
 	data := s.createProjectData()
 	data.Name = s.config.ProjectName // Tool name in this case
-	
+
 	// Use current directory as project root
 	projectDir := s.config.Output
-	
+
 	// Generate tool files
 	templateKey := fmt.Sprintf("%s/tool", s.config.Language)
 	return s.generateFromTemplate(templateKey, data, projectDir)
@@ -200,7 +200,7 @@ func (s *Scaffolder) CreatePlugin(ctx context.Context) error {
 
 	data := s.createProjectData()
 	data.Description = "MCP plugin implementation"
-	
+
 	// Create project directory
 	projectDir := filepath.Join(s.config.Output, s.config.ProjectName)
 	if err := s.createDirectory(projectDir); err != nil {
@@ -215,7 +215,7 @@ func (s *Scaffolder) CreatePlugin(ctx context.Context) error {
 // createProjectData creates project data for template rendering
 func (s *Scaffolder) createProjectData() *ProjectData {
 	now := time.Now()
-	
+
 	data := &ProjectData{
 		Name:        s.config.ProjectName,
 		Language:    s.config.Language,
@@ -227,7 +227,7 @@ func (s *Scaffolder) createProjectData() *ProjectData {
 		Date:        now.Format("2006-01-02"),
 		Version:     "0.1.0",
 		Description: fmt.Sprintf("MCP %s project", s.config.ProjectName),
-		
+
 		// Features based on template
 		HasTests:        s.config.Template != "basic",
 		HasDocs:         s.config.Template == "advanced" || s.config.Template == "enterprise",
@@ -240,7 +240,7 @@ func (s *Scaffolder) createProjectData() *ProjectData {
 		HasChangelog:    s.config.Template == "advanced" || s.config.Template == "enterprise",
 		HasContributing: s.config.Template == "enterprise",
 		HasLicense:      s.config.License != "",
-		
+
 		// CI/CD
 		GitHubActions: s.config.CI == "github",
 		GitLabCI:      s.config.CI == "gitlab",
@@ -303,7 +303,7 @@ func (s *Scaffolder) loadTemplates() error {
 func (s *Scaffolder) generateFromTemplate(templateKey string, data *ProjectData, outputDir string) error {
 	// This is a simplified implementation - in practice, you'd have a directory
 	// structure of templates and generate multiple files
-	
+
 	// For now, generate a few key files
 	files := []string{
 		"main",
@@ -323,7 +323,7 @@ func (s *Scaffolder) generateFromTemplate(templateKey string, data *ProjectData,
 		if tmpl, exists := s.templates[templateName]; exists {
 			fileName := s.getFileName(file, data.Language)
 			filePath := filepath.Join(outputDir, fileName)
-			
+
 			if err := s.generateFile(tmpl, data, filePath); err != nil {
 				return fmt.Errorf("failed to generate %s: %w", fileName, err)
 			}
@@ -432,7 +432,7 @@ func (s *Scaffolder) createDirectory(path string) error {
 // validateConfig validates the configuration
 func validateConfig(config *Config) error {
 	supportedLanguages := []string{"go", "typescript", "python", "rust", "java"}
-	
+
 	found := false
 	for _, lang := range supportedLanguages {
 		if config.Language == lang {
@@ -440,13 +440,13 @@ func validateConfig(config *Config) error {
 			break
 		}
 	}
-	
+
 	if !found {
 		return fmt.Errorf("unsupported language: %s (supported: %v)", config.Language, supportedLanguages)
 	}
-	
+
 	supportedTemplates := []string{"basic", "advanced", "enterprise"}
-	
+
 	found = false
 	for _, tmpl := range supportedTemplates {
 		if config.Template == tmpl {
@@ -454,34 +454,34 @@ func validateConfig(config *Config) error {
 			break
 		}
 	}
-	
+
 	if !found {
 		return fmt.Errorf("unsupported template: %s (supported: %v)", config.Template, supportedTemplates)
 	}
-	
+
 	return nil
 }
 
 // createTemplateFuncs creates template functions
 func createTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"toLower":     strings.ToLower,
-		"toUpper":     strings.ToUpper,
-		"toTitle":     strings.Title,
-		"replace":     strings.ReplaceAll,
-		"trim":        strings.TrimSpace,
-		"contains":    strings.Contains,
-		"hasPrefix":   strings.HasPrefix,
-		"hasSuffix":   strings.HasSuffix,
-		"split":       strings.Split,
-		"join":        strings.Join,
-		"default":     defaultValue,
-		"formatDate":  formatDate,
-		"formatYear":  formatYear,
-		"kebabCase":   toKebabCase,
-		"snakeCase":   toSnakeCase,
-		"pascalCase":  toPascalCase,
-		"camelCase":   toCamelCase,
+		"toLower":    strings.ToLower,
+		"toUpper":    strings.ToUpper,
+		"toTitle":    strings.Title,
+		"replace":    strings.ReplaceAll,
+		"trim":       strings.TrimSpace,
+		"contains":   strings.Contains,
+		"hasPrefix":  strings.HasPrefix,
+		"hasSuffix":  strings.HasSuffix,
+		"split":      strings.Split,
+		"join":       strings.Join,
+		"default":    defaultValue,
+		"formatDate": formatDate,
+		"formatYear": formatYear,
+		"kebabCase":  toKebabCase,
+		"snakeCase":  toSnakeCase,
+		"pascalCase": toPascalCase,
+		"camelCase":  toCamelCase,
 	}
 }
 
@@ -514,7 +514,7 @@ func toPascalCase(s string) string {
 	words := strings.FieldsFunc(s, func(c rune) bool {
 		return c == '_' || c == '-' || c == ' '
 	})
-	
+
 	var result strings.Builder
 	for _, word := range words {
 		result.WriteString(strings.Title(strings.ToLower(word)))
@@ -526,11 +526,11 @@ func toCamelCase(s string) string {
 	words := strings.FieldsFunc(s, func(c rune) bool {
 		return c == '_' || c == '-' || c == ' '
 	})
-	
+
 	if len(words) == 0 {
 		return s
 	}
-	
+
 	result := strings.ToLower(words[0])
 	for i := 1; i < len(words); i++ {
 		result += strings.Title(strings.ToLower(words[i]))

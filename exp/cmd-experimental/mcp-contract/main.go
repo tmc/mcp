@@ -47,20 +47,20 @@ func (c *RecordCommand) Usage() string {
 
 func (c *RecordCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.traceFile, "trace", "", "Trace file to analyze")
 	fs.StringVar(&c.outputFile, "output", "contract.yaml", "Output contract file")
 	fs.StringVar(&c.format, "format", "yaml", "Output format (yaml, json)")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	if c.traceFile == "" {
 		return fmt.Errorf("trace file is required")
 	}
-	
+
 	recorder := NewContractRecorder(c)
 	return recorder.Record(ctx)
 }
@@ -85,22 +85,22 @@ func (c *VerifyCommand) Usage() string {
 
 func (c *VerifyCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.serverCmd, "server", "", "Server command to verify")
 	fs.StringVar(&c.contractFile, "contract", "", "Contract file to verify against")
 	fs.StringVar(&c.reportFile, "report", "", "Output report file")
 	fs.StringVar(&c.format, "format", "json", "Output format (json, yaml, junit-xml)")
 	fs.BoolVar(&c.strict, "strict", false, "Strict verification mode")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	if c.serverCmd == "" || c.contractFile == "" {
 		return fmt.Errorf("both server and contract file are required")
 	}
-	
+
 	verifier := NewContractVerifier(c)
 	return verifier.Verify(ctx)
 }
@@ -125,35 +125,35 @@ func (c *MatrixCommand) Usage() string {
 
 func (c *MatrixCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.clientsFile, "clients", "", "File containing client configurations")
 	fs.StringVar(&c.serversFile, "servers", "", "File containing server configurations")
 	fs.StringVar(&c.outputFile, "output", "matrix.json", "Output matrix file")
 	fs.StringVar(&c.format, "format", "json", "Output format (json, yaml, html)")
 	fs.IntVar(&c.parallel, "parallel", 4, "Number of parallel tests")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	if c.clientsFile == "" || c.serversFile == "" {
 		return fmt.Errorf("both clients and servers files are required")
 	}
-	
+
 	matrix := NewCompatibilityMatrix(c)
 	return matrix.Run(ctx)
 }
 
 // APIContract represents a contract for API testing
 type APIContract struct {
-	Version     string                 `json:"version" yaml:"version"`
-	Name        string                 `json:"name" yaml:"name"`
-	Description string                 `json:"description,omitempty" yaml:"description,omitempty"`
-	Provider    ContractProvider       `json:"provider" yaml:"provider"`
-	Consumer    ContractConsumer       `json:"consumer" yaml:"consumer"`
-	Interactions []ContractInteraction `json:"interactions" yaml:"interactions"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Version      string                 `json:"version" yaml:"version"`
+	Name         string                 `json:"name" yaml:"name"`
+	Description  string                 `json:"description,omitempty" yaml:"description,omitempty"`
+	Provider     ContractProvider       `json:"provider" yaml:"provider"`
+	Consumer     ContractConsumer       `json:"consumer" yaml:"consumer"`
+	Interactions []ContractInteraction  `json:"interactions" yaml:"interactions"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 }
 
 // ContractProvider describes the provider (server) side
@@ -212,13 +212,13 @@ func (r *ContractRecorder) Record(ctx context.Context) error {
 	if r.config.verbose {
 		log.Printf("Recording contract from trace: %s", r.config.traceFile)
 	}
-	
+
 	// Parse trace file
 	interactions, err := r.parseTrace(r.config.traceFile)
 	if err != nil {
 		return fmt.Errorf("failed to parse trace: %w", err)
 	}
-	
+
 	// Create contract
 	contract := &APIContract{
 		Version:     "1.0.0",
@@ -236,7 +236,7 @@ func (r *ContractRecorder) Record(ctx context.Context) error {
 			"source_trace": r.config.traceFile,
 		},
 	}
-	
+
 	// Write contract
 	return r.writeContract(contract)
 }
@@ -248,13 +248,13 @@ func (r *ContractRecorder) parseTrace(filename string) ([]ContractInteraction, e
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var interactions []ContractInteraction
 	decoder := json.NewDecoder(file)
-	
+
 	// Track request-response pairs
 	requests := make(map[interface{}]ContractRequest)
-	
+
 	for {
 		var msg map[string]interface{}
 		if err := decoder.Decode(&msg); err != nil {
@@ -266,24 +266,24 @@ func (r *ContractRecorder) parseTrace(filename string) ([]ContractInteraction, e
 			}
 			continue
 		}
-		
+
 		// Handle request
 		if method, hasMethod := msg["method"]; hasMethod {
 			req := ContractRequest{
 				Method: method.(string),
 			}
-			
+
 			if params, hasParams := msg["params"]; hasParams {
 				if paramsMap, ok := params.(map[string]interface{}); ok {
 					req.Parameters = paramsMap
 				}
 			}
-			
+
 			if id, hasID := msg["id"]; hasID {
 				requests[id] = req
 			}
 		}
-		
+
 		// Handle response
 		if result, hasResult := msg["result"]; hasResult {
 			if id, hasID := msg["id"]; hasID {
@@ -301,7 +301,7 @@ func (r *ContractRecorder) parseTrace(filename string) ([]ContractInteraction, e
 				}
 			}
 		}
-		
+
 		// Handle error response
 		if errorVal, hasError := msg["error"]; hasError {
 			if id, hasID := msg["id"]; hasID {
@@ -320,7 +320,7 @@ func (r *ContractRecorder) parseTrace(filename string) ([]ContractInteraction, e
 			}
 		}
 	}
-	
+
 	return interactions, nil
 }
 
@@ -331,7 +331,7 @@ func (r *ContractRecorder) writeContract(contract *APIContract) error {
 		return err
 	}
 	defer file.Close()
-	
+
 	switch r.config.format {
 	case "yaml":
 		encoder := yaml.NewEncoder(file)
@@ -367,11 +367,11 @@ type VerificationResult struct {
 
 // VerificationSummary provides a summary of verification results
 type VerificationSummary struct {
-	TotalInteractions int     `json:"totalInteractions"`
-	PassedInteractions int    `json:"passedInteractions"`
-	FailedInteractions int    `json:"failedInteractions"`
-	SuccessRate       float64 `json:"successRate"`
-	Status            string  `json:"status"`
+	TotalInteractions  int     `json:"totalInteractions"`
+	PassedInteractions int     `json:"passedInteractions"`
+	FailedInteractions int     `json:"failedInteractions"`
+	SuccessRate        float64 `json:"successRate"`
+	Status             string  `json:"status"`
 }
 
 // InteractionResult represents the result of testing one interaction
@@ -390,22 +390,22 @@ func (v *ContractVerifier) Verify(ctx context.Context) error {
 	if v.config.verbose {
 		log.Printf("Verifying server %s against contract %s", v.config.serverCmd, v.config.contractFile)
 	}
-	
+
 	// Load contract
 	contract, err := v.loadContract()
 	if err != nil {
 		return fmt.Errorf("failed to load contract: %w", err)
 	}
-	
+
 	// Connect to server
 	transport := mcp.NewCommandTransport(v.config.serverCmd)
 	client := mcp.NewClient(transport)
-	
+
 	if err := client.Connect(ctx); err != nil {
 		return fmt.Errorf("failed to connect to server: %w", err)
 	}
 	defer client.Close()
-	
+
 	// Initialize connection
 	initReq := modelcontextprotocol.InitializeRequest{
 		ProtocolVersion: modelcontextprotocol.LATEST_PROTOCOL_VERSION,
@@ -414,11 +414,11 @@ func (v *ContractVerifier) Verify(ctx context.Context) error {
 			Version: version,
 		},
 	}
-	
+
 	if _, err := client.Initialize(ctx, initReq); err != nil {
 		return fmt.Errorf("failed to initialize: %w", err)
 	}
-	
+
 	// Verify interactions
 	result := &VerificationResult{
 		Timestamp:    time.Now(),
@@ -426,15 +426,15 @@ func (v *ContractVerifier) Verify(ctx context.Context) error {
 		Server:       v.config.serverCmd,
 		Interactions: []InteractionResult{},
 	}
-	
+
 	for _, interaction := range contract.Interactions {
 		interactionResult := v.verifyInteraction(ctx, client, interaction)
 		result.Interactions = append(result.Interactions, interactionResult)
 	}
-	
+
 	// Calculate summary
 	result.Summary = v.calculateSummary(result.Interactions)
-	
+
 	// Output results
 	return v.outputResults(result)
 }
@@ -446,9 +446,9 @@ func (v *ContractVerifier) loadContract() (*APIContract, error) {
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var contract APIContract
-	
+
 	ext := filepath.Ext(v.config.contractFile)
 	switch ext {
 	case ".yaml", ".yml":
@@ -460,7 +460,7 @@ func (v *ContractVerifier) loadContract() (*APIContract, error) {
 	default:
 		return nil, fmt.Errorf("unsupported contract file format: %s", ext)
 	}
-	
+
 	return &contract, err
 }
 
@@ -473,7 +473,7 @@ func (v *ContractVerifier) verifyInteraction(ctx context.Context, client *mcp.Cl
 		Expected:    interaction.Response,
 		Duration:    0,
 	}
-	
+
 	// Execute the interaction based on method
 	switch interaction.Request.Method {
 	case "initialize":
@@ -496,7 +496,7 @@ func (v *ContractVerifier) verifyInteraction(ctx context.Context, client *mcp.Cl
 		result.Status = "skipped"
 		result.Error = fmt.Sprintf("Unknown method: %s", interaction.Request.Method)
 	}
-	
+
 	result.Duration = time.Since(start)
 	return result
 }
@@ -508,11 +508,11 @@ func (v *ContractVerifier) verifyInitialize(ctx context.Context, client *mcp.Cli
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	// Initialize should have already been called in Verify()
 	// This is more of a structural verification
 	result.Status = "passed"
-	
+
 	return result
 }
 
@@ -523,7 +523,7 @@ func (v *ContractVerifier) verifyPing(ctx context.Context, client *mcp.Client, i
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	err := client.Ping(ctx)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -540,7 +540,7 @@ func (v *ContractVerifier) verifyPing(ctx context.Context, client *mcp.Client, i
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -551,7 +551,7 @@ func (v *ContractVerifier) verifyToolsList(ctx context.Context, client *mcp.Clie
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	tools, err := client.ListTools(ctx)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -571,7 +571,7 @@ func (v *ContractVerifier) verifyToolsList(ctx context.Context, client *mcp.Clie
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -582,21 +582,21 @@ func (v *ContractVerifier) verifyToolsCall(ctx context.Context, client *mcp.Clie
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	// Extract tool name and arguments from request
 	toolName := ""
 	var arguments interface{}
-	
+
 	if params, ok := interaction.Request.Parameters["name"]; ok {
 		if name, ok := params.(string); ok {
 			toolName = name
 		}
 	}
-	
+
 	if params, ok := interaction.Request.Parameters["arguments"]; ok {
 		arguments = params
 	}
-	
+
 	toolResult, err := client.CallTool(ctx, toolName, arguments)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -616,7 +616,7 @@ func (v *ContractVerifier) verifyToolsCall(ctx context.Context, client *mcp.Clie
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -627,7 +627,7 @@ func (v *ContractVerifier) verifyResourcesList(ctx context.Context, client *mcp.
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	resources, err := client.ListResources(ctx)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -647,7 +647,7 @@ func (v *ContractVerifier) verifyResourcesList(ctx context.Context, client *mcp.
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -658,7 +658,7 @@ func (v *ContractVerifier) verifyResourcesRead(ctx context.Context, client *mcp.
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	// Extract URI from request
 	uri := ""
 	if params, ok := interaction.Request.Parameters["uri"]; ok {
@@ -666,7 +666,7 @@ func (v *ContractVerifier) verifyResourcesRead(ctx context.Context, client *mcp.
 			uri = uriStr
 		}
 	}
-	
+
 	resource, err := client.ReadResource(ctx, uri)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -686,7 +686,7 @@ func (v *ContractVerifier) verifyResourcesRead(ctx context.Context, client *mcp.
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -697,7 +697,7 @@ func (v *ContractVerifier) verifyPromptsList(ctx context.Context, client *mcp.Cl
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	prompts, err := client.ListPrompts(ctx)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -717,7 +717,7 @@ func (v *ContractVerifier) verifyPromptsList(ctx context.Context, client *mcp.Cl
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -728,7 +728,7 @@ func (v *ContractVerifier) verifyPromptsGet(ctx context.Context, client *mcp.Cli
 		Request:     interaction.Request,
 		Expected:    interaction.Response,
 	}
-	
+
 	// Extract prompt name from request
 	promptName := ""
 	if params, ok := interaction.Request.Parameters["name"]; ok {
@@ -736,7 +736,7 @@ func (v *ContractVerifier) verifyPromptsGet(ctx context.Context, client *mcp.Cli
 			promptName = name
 		}
 	}
-	
+
 	prompt, err := client.GetPrompt(ctx, promptName, nil)
 	if err != nil {
 		if interaction.Response.Status == "error" {
@@ -756,7 +756,7 @@ func (v *ContractVerifier) verifyPromptsGet(ctx context.Context, client *mcp.Cli
 			result.Error = "Expected error but got success"
 		}
 	}
-	
+
 	return result
 }
 
@@ -765,7 +765,7 @@ func (v *ContractVerifier) calculateSummary(interactions []InteractionResult) Ve
 	total := len(interactions)
 	passed := 0
 	failed := 0
-	
+
 	for _, interaction := range interactions {
 		switch interaction.Status {
 		case "passed":
@@ -774,23 +774,23 @@ func (v *ContractVerifier) calculateSummary(interactions []InteractionResult) Ve
 			failed++
 		}
 	}
-	
+
 	successRate := 0.0
 	if total > 0 {
 		successRate = float64(passed) / float64(total) * 100
 	}
-	
+
 	status := "passed"
 	if failed > 0 {
 		status = "failed"
 	}
-	
+
 	return VerificationSummary{
 		TotalInteractions:  total,
 		PassedInteractions: passed,
 		FailedInteractions: failed,
-		SuccessRate:       successRate,
-		Status:            status,
+		SuccessRate:        successRate,
+		Status:             status,
 	}
 }
 
@@ -805,7 +805,7 @@ func (v *ContractVerifier) outputResults(result *VerificationResult) error {
 		defer file.Close()
 		output = file
 	}
-	
+
 	switch v.config.format {
 	case "json":
 		encoder := json.NewEncoder(output)
@@ -829,20 +829,20 @@ func (v *ContractVerifier) outputJUnitXML(w io.Writer, result *VerificationResul
 		result.Summary.TotalInteractions,
 		result.Summary.FailedInteractions,
 	)
-	
+
 	for _, interaction := range result.Interactions {
 		testName := fmt.Sprintf("interaction_%s", strings.ReplaceAll(interaction.Description, " ", "_"))
 		if interaction.Status == "failed" {
 			fmt.Fprintf(w, `<testcase name="%s" classname="contract">`, testName)
-			fmt.Fprintf(w, `<failure message="%s">%s</failure>`, 
-				escapeXML(interaction.Error), 
+			fmt.Fprintf(w, `<failure message="%s">%s</failure>`,
+				escapeXML(interaction.Error),
 				escapeXML(interaction.Description))
 			fmt.Fprintln(w, `</testcase>`)
 		} else {
 			fmt.Fprintf(w, `<testcase name="%s" classname="contract"/>`, testName)
 		}
 	}
-	
+
 	fmt.Fprintln(w, `</testsuite>`)
 	return nil
 }
@@ -859,29 +859,29 @@ func NewCompatibilityMatrix(config *MatrixCommand) *CompatibilityMatrix {
 
 // MatrixResult represents compatibility matrix results
 type MatrixResult struct {
-	Summary     MatrixSummary    `json:"summary"`
-	Results     []MatrixEntry    `json:"results"`
-	Timestamp   time.Time        `json:"timestamp"`
-	ClientsFile string           `json:"clientsFile"`
-	ServersFile string           `json:"serversFile"`
+	Summary     MatrixSummary `json:"summary"`
+	Results     []MatrixEntry `json:"results"`
+	Timestamp   time.Time     `json:"timestamp"`
+	ClientsFile string        `json:"clientsFile"`
+	ServersFile string        `json:"serversFile"`
 }
 
 // MatrixSummary provides summary statistics
 type MatrixSummary struct {
-	TotalCombinations    int     `json:"totalCombinations"`
-	SuccessfulCombinations int   `json:"successfulCombinations"`
-	FailedCombinations   int     `json:"failedCombinations"`
-	CompatibilityRate    float64 `json:"compatibilityRate"`
+	TotalCombinations      int     `json:"totalCombinations"`
+	SuccessfulCombinations int     `json:"successfulCombinations"`
+	FailedCombinations     int     `json:"failedCombinations"`
+	CompatibilityRate      float64 `json:"compatibilityRate"`
 }
 
 // MatrixEntry represents a single client-server combination result
 type MatrixEntry struct {
-	Client    string  `json:"client"`
-	Server    string  `json:"server"`
-	Status    string  `json:"status"`
-	Error     string  `json:"error,omitempty"`
-	Duration  time.Duration `json:"duration"`
-	Details   VerificationResult `json:"details,omitempty"`
+	Client   string             `json:"client"`
+	Server   string             `json:"server"`
+	Status   string             `json:"status"`
+	Error    string             `json:"error,omitempty"`
+	Duration time.Duration      `json:"duration"`
+	Details  VerificationResult `json:"details,omitempty"`
 }
 
 // Run runs the compatibility matrix
@@ -889,18 +889,18 @@ func (m *CompatibilityMatrix) Run(ctx context.Context) error {
 	if m.config.verbose {
 		log.Printf("Running compatibility matrix testing")
 	}
-	
+
 	// Load client and server configurations
 	clients, err := m.loadConfigurations(m.config.clientsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load clients: %w", err)
 	}
-	
+
 	servers, err := m.loadConfigurations(m.config.serversFile)
 	if err != nil {
 		return fmt.Errorf("failed to load servers: %w", err)
 	}
-	
+
 	// Create result matrix
 	result := &MatrixResult{
 		Timestamp:   time.Now(),
@@ -908,7 +908,7 @@ func (m *CompatibilityMatrix) Run(ctx context.Context) error {
 		ServersFile: m.config.serversFile,
 		Results:     []MatrixEntry{},
 	}
-	
+
 	// Test all combinations
 	for _, client := range clients {
 		for _, server := range servers {
@@ -916,10 +916,10 @@ func (m *CompatibilityMatrix) Run(ctx context.Context) error {
 			result.Results = append(result.Results, entry)
 		}
 	}
-	
+
 	// Calculate summary
 	result.Summary = m.calculateMatrixSummary(result.Results)
-	
+
 	// Output results
 	return m.outputMatrix(result)
 }
@@ -931,12 +931,12 @@ func (m *CompatibilityMatrix) loadConfigurations(filename string) ([]string, err
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var configs []string
 	if err := json.NewDecoder(file).Decode(&configs); err != nil {
 		return nil, err
 	}
-	
+
 	return configs, nil
 }
 
@@ -947,12 +947,12 @@ func (m *CompatibilityMatrix) testCombination(ctx context.Context, client, serve
 		Client: client,
 		Server: server,
 	}
-	
+
 	// Here we would actually test the combination
 	// For now, we'll simulate it
 	entry.Status = "passed"
 	entry.Duration = time.Since(start)
-	
+
 	return entry
 }
 
@@ -961,7 +961,7 @@ func (m *CompatibilityMatrix) calculateMatrixSummary(entries []MatrixEntry) Matr
 	total := len(entries)
 	successful := 0
 	failed := 0
-	
+
 	for _, entry := range entries {
 		switch entry.Status {
 		case "passed":
@@ -970,12 +970,12 @@ func (m *CompatibilityMatrix) calculateMatrixSummary(entries []MatrixEntry) Matr
 			failed++
 		}
 	}
-	
+
 	compatibilityRate := 0.0
 	if total > 0 {
 		compatibilityRate = float64(successful) / float64(total) * 100
 	}
-	
+
 	return MatrixSummary{
 		TotalCombinations:      total,
 		SuccessfulCombinations: successful,
@@ -995,7 +995,7 @@ func (m *CompatibilityMatrix) outputMatrix(result *MatrixResult) error {
 		defer file.Close()
 		output = file
 	}
-	
+
 	switch m.config.format {
 	case "json":
 		encoder := json.NewEncoder(output)
@@ -1049,7 +1049,7 @@ func (m *CompatibilityMatrix) outputHTML(w io.Writer, result *MatrixResult) erro
             <th>Duration</th>
             <th>Error</th>
         </tr>`
-	
+
 	for _, entry := range result.Results {
 		html += fmt.Sprintf(`
         <tr class="%s">
@@ -1067,12 +1067,12 @@ func (m *CompatibilityMatrix) outputHTML(w io.Writer, result *MatrixResult) erro
 			entry.Error,
 		)
 	}
-	
+
 	html += `
     </table>
 </body>
 </html>`
-	
+
 	_, err := fmt.Fprint(w, html)
 	return err
 }
@@ -1098,9 +1098,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  version     Show version information\n")
 		os.Exit(1)
 	}
-	
+
 	ctx := context.Background()
-	
+
 	switch os.Args[1] {
 	case "record":
 		cmd := &RecordCommand{}

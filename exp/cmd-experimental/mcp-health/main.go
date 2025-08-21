@@ -11,21 +11,24 @@
 // - Cluster management and coordination
 //
 // Usage:
-//   mcp-health [command] [flags]
+//
+//	mcp-health [command] [flags]
 //
 // Commands:
-//   check       Perform health checks on MCP services
-//   discover    Discover MCP services in the cluster
-//   monitor     Start continuous health monitoring
-//   serve       Start the health service API server
-//   operator    Run Kubernetes operator mode
+//
+//	check       Perform health checks on MCP services
+//	discover    Discover MCP services in the cluster
+//	monitor     Start continuous health monitoring
+//	serve       Start the health service API server
+//	operator    Run Kubernetes operator mode
 //
 // Examples:
-//   mcp-health check --target localhost:8080
-//   mcp-health discover --consul-addr localhost:8500
-//   mcp-health monitor --config health-config.yaml
-//   mcp-health serve --port 8080
-//   mcp-health operator --kubeconfig ~/.kube/config
+//
+//	mcp-health check --target localhost:8080
+//	mcp-health discover --consul-addr localhost:8500
+//	mcp-health monitor --config health-config.yaml
+//	mcp-health serve --port 8080
+//	mcp-health operator --kubeconfig ~/.kube/config
 package main
 
 import (
@@ -61,40 +64,40 @@ type HealthApp struct {
 // HealthConfig defines configuration for the health system
 type HealthConfig struct {
 	// Service configuration
-	ServiceName string            `json:"service_name" yaml:"service_name"`
-	Port        int               `json:"port" yaml:"port"`
-	LogLevel    string            `json:"log_level" yaml:"log_level"`
-	Metrics     MetricsConfig     `json:"metrics" yaml:"metrics"`
-	
+	ServiceName string        `json:"service_name" yaml:"service_name"`
+	Port        int           `json:"port" yaml:"port"`
+	LogLevel    string        `json:"log_level" yaml:"log_level"`
+	Metrics     MetricsConfig `json:"metrics" yaml:"metrics"`
+
 	// Health checking configuration
 	HealthChecks []HealthCheckConfig `json:"health_checks" yaml:"health_checks"`
-	
+
 	// Service discovery configuration
 	Discovery ServiceDiscoveryConfig `json:"discovery" yaml:"discovery"`
-	
+
 	// Load balancing configuration
 	LoadBalancer LoadBalancerConfig `json:"load_balancer" yaml:"load_balancer"`
-	
+
 	// Kubernetes configuration
 	Kubernetes KubernetesConfig `json:"kubernetes" yaml:"kubernetes"`
-	
+
 	// Alerting configuration
 	Alerting AlertingConfig `json:"alerting" yaml:"alerting"`
 }
 
 // HealthCheckConfig defines configuration for individual health checks
 type HealthCheckConfig struct {
-	Name           string        `json:"name" yaml:"name"`
-	Target         string        `json:"target" yaml:"target"`
-	Protocol       string        `json:"protocol" yaml:"protocol"` // http, tcp, mcp
-	Interval       time.Duration `json:"interval" yaml:"interval"`
-	Timeout        time.Duration `json:"timeout" yaml:"timeout"`
-	FailureThreshold int         `json:"failure_threshold" yaml:"failure_threshold"`
-	SuccessThreshold int         `json:"success_threshold" yaml:"success_threshold"`
-	HTTPPath       string        `json:"http_path,omitempty" yaml:"http_path,omitempty"`
-	MCPMethod      string        `json:"mcp_method,omitempty" yaml:"mcp_method,omitempty"`
-	ExpectedStatus int           `json:"expected_status,omitempty" yaml:"expected_status,omitempty"`
-	Headers        map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Name             string            `json:"name" yaml:"name"`
+	Target           string            `json:"target" yaml:"target"`
+	Protocol         string            `json:"protocol" yaml:"protocol"` // http, tcp, mcp
+	Interval         time.Duration     `json:"interval" yaml:"interval"`
+	Timeout          time.Duration     `json:"timeout" yaml:"timeout"`
+	FailureThreshold int               `json:"failure_threshold" yaml:"failure_threshold"`
+	SuccessThreshold int               `json:"success_threshold" yaml:"success_threshold"`
+	HTTPPath         string            `json:"http_path,omitempty" yaml:"http_path,omitempty"`
+	MCPMethod        string            `json:"mcp_method,omitempty" yaml:"mcp_method,omitempty"`
+	ExpectedStatus   int               `json:"expected_status,omitempty" yaml:"expected_status,omitempty"`
+	Headers          map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 }
 
 // ServiceDiscoveryConfig defines service discovery configuration
@@ -107,32 +110,32 @@ type ServiceDiscoveryConfig struct {
 
 // LoadBalancerConfig defines load balancing configuration
 type LoadBalancerConfig struct {
-	Strategy string `json:"strategy" yaml:"strategy"` // round_robin, least_conn, weighted
+	Strategy string         `json:"strategy" yaml:"strategy"` // round_robin, least_conn, weighted
 	Weights  map[string]int `json:"weights,omitempty" yaml:"weights,omitempty"`
 }
 
 // KubernetesConfig defines Kubernetes integration configuration
 type KubernetesConfig struct {
-	Enabled       bool   `json:"enabled" yaml:"enabled"`
-	Kubeconfig    string `json:"kubeconfig" yaml:"kubeconfig"`
-	Namespace     string `json:"namespace" yaml:"namespace"`
-	ServiceName   string `json:"service_name" yaml:"service_name"`
-	OperatorMode  bool   `json:"operator_mode" yaml:"operator_mode"`
+	Enabled      bool   `json:"enabled" yaml:"enabled"`
+	Kubeconfig   string `json:"kubeconfig" yaml:"kubeconfig"`
+	Namespace    string `json:"namespace" yaml:"namespace"`
+	ServiceName  string `json:"service_name" yaml:"service_name"`
+	OperatorMode bool   `json:"operator_mode" yaml:"operator_mode"`
 }
 
 // AlertingConfig defines alerting configuration
 type AlertingConfig struct {
-	Enabled    bool          `json:"enabled" yaml:"enabled"`
-	Webhook    string        `json:"webhook" yaml:"webhook"`
-	Slack      SlackConfig   `json:"slack" yaml:"slack"`
-	Email      EmailConfig   `json:"email" yaml:"email"`
+	Enabled    bool             `json:"enabled" yaml:"enabled"`
+	Webhook    string           `json:"webhook" yaml:"webhook"`
+	Slack      SlackConfig      `json:"slack" yaml:"slack"`
+	Email      EmailConfig      `json:"email" yaml:"email"`
 	Prometheus PrometheusConfig `json:"prometheus" yaml:"prometheus"`
 }
 
 // MetricsConfig defines metrics configuration
 type MetricsConfig struct {
-	Enabled    bool   `json:"enabled" yaml:"enabled"`
-	Path       string `json:"path" yaml:"path"`
+	Enabled    bool             `json:"enabled" yaml:"enabled"`
+	Path       string           `json:"path" yaml:"path"`
 	Prometheus PrometheusConfig `json:"prometheus" yaml:"prometheus"`
 }
 
@@ -145,10 +148,10 @@ type SlackConfig struct {
 
 // EmailConfig defines email alerting configuration
 type EmailConfig struct {
-	Enabled  bool   `json:"enabled" yaml:"enabled"`
-	SMTPHost string `json:"smtp_host" yaml:"smtp_host"`
-	SMTPPort int    `json:"smtp_port" yaml:"smtp_port"`
-	From     string `json:"from" yaml:"from"`
+	Enabled  bool     `json:"enabled" yaml:"enabled"`
+	SMTPHost string   `json:"smtp_host" yaml:"smtp_host"`
+	SMTPPort int      `json:"smtp_port" yaml:"smtp_port"`
+	From     string   `json:"from" yaml:"from"`
 	To       []string `json:"to" yaml:"to"`
 }
 
@@ -171,11 +174,11 @@ type HealthStatus struct {
 
 // CheckResult represents the result of a health check
 type CheckResult struct {
-	Name      string    `json:"name"`
-	Status    string    `json:"status"`
-	Message   string    `json:"message"`
+	Name      string        `json:"name"`
+	Status    string        `json:"status"`
+	Message   string        `json:"message"`
 	Duration  time.Duration `json:"duration"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time     `json:"timestamp"`
 }
 
 // HealthChecker performs health checks on MCP services
@@ -250,7 +253,7 @@ func NewHealthApp(config *HealthConfig) *HealthApp {
 // HealthChecker implementation
 func (hc *HealthChecker) CheckHealth(ctx context.Context, checkConfig HealthCheckConfig) (*CheckResult, error) {
 	startTime := time.Now()
-	
+
 	result := &CheckResult{
 		Name:      checkConfig.Name,
 		Timestamp: startTime,
@@ -544,7 +547,7 @@ func (hs *HealthServer) handleHealthStatus(w http.ResponseWriter, r *http.Reques
 	}
 
 	status := hs.monitor.GetAllStatus()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(status); err != nil {
 		hs.logger.Error("Failed to encode health status", "error", err)
@@ -665,7 +668,7 @@ func (hs *HealthServer) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte("# HELP mcp_health_checks_total Total number of health checks\n"))
 	w.Write([]byte("# TYPE mcp_health_checks_total counter\n"))
-	
+
 	// Add metrics for each service
 	for serviceName, status := range hs.monitor.GetAllStatus() {
 		for _, check := range status.Checks {

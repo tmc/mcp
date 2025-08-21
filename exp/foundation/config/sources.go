@@ -25,7 +25,7 @@ func (s *FileSource) Load(ctx context.Context) (*Config, error) {
 	if s.Path == "" {
 		return nil, fmt.Errorf("file path is empty")
 	}
-	
+
 	file, err := os.Open(s.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -34,14 +34,14 @@ func (s *FileSource) Load(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 	defer file.Close()
-	
+
 	data, err := io.ReadAll(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	var config Config
-	
+
 	// Determine format based on file extension
 	ext := strings.ToLower(filepath.Ext(s.Path))
 	switch ext {
@@ -61,13 +61,13 @@ func (s *FileSource) Load(ctx context.Context) (*Config, error) {
 			}
 		}
 	}
-	
+
 	// Set runtime config
 	config.Runtime.ConfigPath = s.Path
 	if wd, err := os.Getwd(); err == nil {
 		config.Runtime.WorkingDir = wd
 	}
-	
+
 	return &config, nil
 }
 
@@ -91,48 +91,48 @@ func (s *EnvSource) Load(ctx context.Context) (*Config, error) {
 	if s.Prefix == "" {
 		s.Prefix = "MCP_"
 	}
-	
+
 	config := &Config{
 		Global: GlobalConfig{},
 		Tools:  make(map[string]json.RawMessage),
 	}
-	
+
 	// Get all environment variables with our prefix
 	vars := s.getEnvVars()
 	if len(vars) == 0 {
 		return nil, nil // No environment variables found
 	}
-	
+
 	// Parse environment variables
 	for key, value := range vars {
 		if err := s.parseEnvVar(config, key, value); err != nil {
 			return nil, fmt.Errorf("failed to parse env var %s: %w", key, err)
 		}
 	}
-	
+
 	return config, nil
 }
 
 // getEnvVars returns all environment variables with the configured prefix.
 func (s *EnvSource) getEnvVars() map[string]string {
 	vars := make(map[string]string)
-	
+
 	for _, env := range os.Environ() {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		
+
 		key := parts[0]
 		value := parts[1]
-		
+
 		if strings.HasPrefix(key, s.Prefix) {
 			// Remove prefix and convert to lowercase
 			configKey := strings.ToLower(key[len(s.Prefix):])
 			vars[configKey] = value
 		}
 	}
-	
+
 	return vars
 }
 
@@ -142,22 +142,22 @@ func (s *EnvSource) parseEnvVar(config *Config, key, value string) error {
 	if len(parts) == 0 {
 		return nil
 	}
-	
+
 	// Handle global configuration
 	if parts[0] == "global" || parts[0] == "log" || parts[0] == "output" || parts[0] == "transport" {
 		return s.parseGlobalEnvVar(config, parts, value)
 	}
-	
+
 	// Handle tool-specific configuration
 	if len(parts) >= 2 && parts[0] == "tool" {
 		return s.parseToolEnvVar(config, parts[1:], value)
 	}
-	
+
 	// Handle runtime configuration
 	if parts[0] == "runtime" || parts[0] == "working" || parts[0] == "config" {
 		return s.parseRuntimeEnvVar(config, parts, value)
 	}
-	
+
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (s *EnvSource) parseGlobalEnvVar(config *Config, parts []string, value stri
 	case matchesPath(parts, "security", "allowed", "hosts"):
 		config.Global.Security.AllowedHosts = strings.Split(value, ",")
 	}
-	
+
 	return nil
 }
 
@@ -210,10 +210,10 @@ func (s *EnvSource) parseToolEnvVar(config *Config, parts []string, value string
 	if len(parts) < 2 {
 		return nil
 	}
-	
+
 	toolName := parts[0]
 	configPath := strings.Join(parts[1:], ".")
-	
+
 	// Get existing tool config or create new
 	var toolConfig map[string]interface{}
 	if existing, exists := config.Tools[toolName]; exists {
@@ -223,16 +223,16 @@ func (s *EnvSource) parseToolEnvVar(config *Config, parts []string, value string
 	} else {
 		toolConfig = make(map[string]interface{})
 	}
-	
+
 	// Set nested value
 	setNestedValue(toolConfig, configPath, value)
-	
+
 	// Marshal back to JSON
 	data, err := json.Marshal(toolConfig)
 	if err != nil {
 		return fmt.Errorf("failed to marshal tool config: %w", err)
 	}
-	
+
 	config.Tools[toolName] = data
 	return nil
 }
@@ -247,7 +247,7 @@ func (s *EnvSource) parseRuntimeEnvVar(config *Config, parts []string, value str
 	case matchesPath(parts, "reload", "enabled"):
 		config.Runtime.ReloadEnabled = parseBool(value)
 	}
-	
+
 	return nil
 }
 
@@ -271,41 +271,41 @@ func (s *MultiSource) Load(ctx context.Context) (*Config, error) {
 	if len(s.Sources) == 0 {
 		return nil, nil
 	}
-	
+
 	// Sort sources by priority
 	sources := make([]Source, len(s.Sources))
 	copy(sources, s.Sources)
 	sort.Slice(sources, func(i, j int) bool {
 		return sources[i].Priority() < sources[j].Priority()
 	})
-	
+
 	// Load from first source
 	config, err := sources[0].Load(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load from primary source: %w", err)
 	}
-	
+
 	if config == nil {
 		config = &Config{
 			Global: GlobalConfig{},
 			Tools:  make(map[string]json.RawMessage),
 		}
 	}
-	
+
 	// Merge remaining sources
 	for i := 1; i < len(sources); i++ {
 		sourceConfig, err := sources[i].Load(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load from source %s: %w", sources[i].Name(), err)
 		}
-		
+
 		if sourceConfig != nil {
 			if err := mergeConfigs(config, sourceConfig); err != nil {
 				return nil, fmt.Errorf("failed to merge source %s: %w", sources[i].Name(), err)
 			}
 		}
 	}
-	
+
 	return config, nil
 }
 
@@ -333,13 +333,13 @@ func matchesPath(parts []string, path ...string) bool {
 	if len(parts) != len(path) {
 		return false
 	}
-	
+
 	for i, part := range parts {
 		if part != path[i] {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -353,7 +353,7 @@ func parseBool(s string) bool {
 func setNestedValue(m map[string]interface{}, path, value string) {
 	parts := strings.Split(path, ".")
 	current := m
-	
+
 	for i, part := range parts {
 		if i == len(parts)-1 {
 			// Last part, set the value
@@ -376,16 +376,16 @@ func mergeConfigs(target, source *Config) error {
 	if err := mergeStruct(&target.Global, &source.Global); err != nil {
 		return fmt.Errorf("failed to merge global config: %w", err)
 	}
-	
+
 	// Merge tools
 	for toolName, toolConfig := range source.Tools {
 		target.Tools[toolName] = toolConfig
 	}
-	
+
 	// Merge runtime config
 	if err := mergeStruct(&target.Runtime, &source.Runtime); err != nil {
 		return fmt.Errorf("failed to merge runtime config: %w", err)
 	}
-	
+
 	return nil
 }

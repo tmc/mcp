@@ -22,28 +22,28 @@ import (
 type Plugin interface {
 	// Name returns the plugin name
 	Name() string
-	
+
 	// Version returns the plugin version
 	Version() string
-	
+
 	// Description returns the plugin description
 	Description() string
-	
+
 	// Dependencies returns the plugin dependencies
 	Dependencies() []Dependency
-	
+
 	// Initialize initializes the plugin with the given context and configuration
 	Initialize(ctx context.Context, config Config) error
-	
+
 	// Start starts the plugin
 	Start(ctx context.Context) error
-	
+
 	// Stop stops the plugin
 	Stop(ctx context.Context) error
-	
+
 	// Cleanup cleans up plugin resources
 	Cleanup() error
-	
+
 	// Health returns the plugin health status
 	Health() HealthStatus
 }
@@ -52,10 +52,10 @@ type Plugin interface {
 type Dependency struct {
 	// Plugin name
 	Name string `json:"name"`
-	
+
 	// Version constraint
 	Version string `json:"version"`
-	
+
 	// Whether the dependency is optional
 	Optional bool `json:"optional"`
 }
@@ -64,19 +64,19 @@ type Dependency struct {
 type Config struct {
 	// Plugin name
 	Name string `json:"name"`
-	
+
 	// Plugin enabled
 	Enabled bool `json:"enabled"`
-	
+
 	// Plugin configuration
 	Config map[string]interface{} `json:"config"`
-	
+
 	// Plugin settings
 	Settings map[string]interface{} `json:"settings"`
-	
+
 	// Plugin timeout
 	Timeout time.Duration `json:"timeout"`
-	
+
 	// Plugin priority
 	Priority int `json:"priority"`
 }
@@ -85,16 +85,16 @@ type Config struct {
 type HealthStatus struct {
 	// Plugin name
 	Name string `json:"name"`
-	
+
 	// Health status
 	Status Status `json:"status"`
-	
+
 	// Health message
 	Message string `json:"message"`
-	
+
 	// Last check time
 	LastCheck time.Time `json:"last_check"`
-	
+
 	// Health details
 	Details map[string]interface{} `json:"details,omitempty"`
 }
@@ -126,27 +126,27 @@ type Registry struct {
 type PluginInfo struct {
 	// Plugin instance
 	Plugin Plugin `json:"-"`
-	
+
 	// Plugin metadata
 	Name        string    `json:"name"`
 	Version     string    `json:"version"`
 	Description string    `json:"description"`
 	LoadTime    time.Time `json:"load_time"`
-	
+
 	// Plugin configuration
 	Config Config `json:"config"`
-	
+
 	// Plugin status
 	Status Status `json:"status"`
-	
+
 	// Plugin dependencies
 	Dependencies []Dependency `json:"dependencies"`
-	
+
 	// Plugin health
 	Health HealthStatus `json:"health"`
-	
+
 	// Plugin context
-	Context context.Context `json:"-"`
+	Context context.Context    `json:"-"`
 	Cancel  context.CancelFunc `json:"-"`
 }
 
@@ -154,16 +154,16 @@ type PluginInfo struct {
 type RegistryConfig struct {
 	// Plugin directory
 	PluginDir string `json:"plugin_dir"`
-	
+
 	// Enable hot reload
 	HotReload bool `json:"hot_reload"`
-	
+
 	// Plugin timeout
 	Timeout time.Duration `json:"timeout"`
-	
+
 	// Maximum concurrent plugins
 	MaxConcurrent int `json:"max_concurrent"`
-	
+
 	// Health check interval
 	HealthCheckInterval time.Duration `json:"health_check_interval"`
 }
@@ -172,7 +172,7 @@ type RegistryConfig struct {
 type Hook interface {
 	// Name returns the hook name
 	Name() string
-	
+
 	// Execute executes the hook
 	Execute(ctx context.Context, data interface{}) error
 }
@@ -195,21 +195,21 @@ func NewRegistry(config RegistryConfig) (*Registry, error) {
 	if config.Timeout == 0 {
 		config.Timeout = 30 * time.Second
 	}
-	
+
 	if config.MaxConcurrent == 0 {
 		config.MaxConcurrent = 10
 	}
-	
+
 	if config.HealthCheckInterval == 0 {
 		config.HealthCheckInterval = 30 * time.Second
 	}
-	
+
 	r := &Registry{
 		plugins: make(map[string]*PluginInfo),
 		hooks:   make(map[string][]Hook),
 		config:  config,
 	}
-	
+
 	return r, nil
 }
 
@@ -217,20 +217,20 @@ func NewRegistry(config RegistryConfig) (*Registry, error) {
 func (r *Registry) Register(plugin Plugin, config Config) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	name := plugin.Name()
 	if name == "" {
 		return errors.InvalidArgument("plugin name cannot be empty")
 	}
-	
+
 	// Check if plugin already registered
 	if _, exists := r.plugins[name]; exists {
 		return errors.AlreadyExists(fmt.Sprintf("plugin %s already registered", name))
 	}
-	
+
 	// Create plugin context
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create plugin info
 	info := &PluginInfo{
 		Plugin:       plugin,
@@ -250,30 +250,30 @@ func (r *Registry) Register(plugin Plugin, config Config) error {
 		Context: ctx,
 		Cancel:  cancel,
 	}
-	
+
 	// Validate dependencies
 	if err := r.validateDependencies(info); err != nil {
 		cancel()
 		return errors.Wrapf(err, errors.CodeValidation, "dependency validation failed for plugin %s", name)
 	}
-	
+
 	// Register plugin
 	r.plugins[name] = info
-	
+
 	// Execute pre-register hooks
 	if err := r.executeHooks(ctx, "pre-register", info); err != nil {
 		delete(r.plugins, name)
 		cancel()
 		return errors.Wrapf(err, errors.CodePlugin, "pre-register hook failed for plugin %s", name)
 	}
-	
+
 	// Execute post-register hooks
 	if err := r.executeHooks(ctx, "post-register", info); err != nil {
 		delete(r.plugins, name)
 		cancel()
 		return errors.Wrapf(err, errors.CodePlugin, "post-register hook failed for plugin %s", name)
 	}
-	
+
 	return nil
 }
 
@@ -281,40 +281,40 @@ func (r *Registry) Register(plugin Plugin, config Config) error {
 func (r *Registry) Unregister(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	info, exists := r.plugins[name]
 	if !exists {
 		return errors.NotFound(fmt.Sprintf("plugin %s not found", name))
 	}
-	
+
 	// Stop plugin if running
 	if info.Status == StatusRunning {
 		if err := r.stopPlugin(info); err != nil {
 			return errors.Wrapf(err, errors.CodePlugin, "failed to stop plugin %s", name)
 		}
 	}
-	
+
 	// Execute pre-unregister hooks
 	if err := r.executeHooks(info.Context, "pre-unregister", info); err != nil {
 		return errors.Wrapf(err, errors.CodePlugin, "pre-unregister hook failed for plugin %s", name)
 	}
-	
+
 	// Cleanup plugin
 	if err := info.Plugin.Cleanup(); err != nil {
 		return errors.Wrapf(err, errors.CodePlugin, "cleanup failed for plugin %s", name)
 	}
-	
+
 	// Cancel context
 	info.Cancel()
-	
+
 	// Remove from registry
 	delete(r.plugins, name)
-	
+
 	// Execute post-unregister hooks
 	if err := r.executeHooks(context.Background(), "post-unregister", info); err != nil {
 		return errors.Wrapf(err, errors.CodePlugin, "post-unregister hook failed for plugin %s", name)
 	}
-	
+
 	return nil
 }
 
@@ -322,12 +322,12 @@ func (r *Registry) Unregister(name string) error {
 func (r *Registry) Get(name string) (Plugin, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	info, exists := r.plugins[name]
 	if !exists {
 		return nil, errors.NotFound(fmt.Sprintf("plugin %s not found", name))
 	}
-	
+
 	return info.Plugin, nil
 }
 
@@ -335,12 +335,12 @@ func (r *Registry) Get(name string) (Plugin, error) {
 func (r *Registry) List() map[string]*PluginInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	result := make(map[string]*PluginInfo)
 	for name, info := range r.plugins {
 		result[name] = info
 	}
-	
+
 	return result
 }
 
@@ -348,30 +348,30 @@ func (r *Registry) List() map[string]*PluginInfo {
 func (r *Registry) Initialize(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	info, exists := r.plugins[name]
 	if !exists {
 		return errors.NotFound(fmt.Sprintf("plugin %s not found", name))
 	}
-	
+
 	if info.Status != StatusLoading {
 		return errors.InvalidArgument(fmt.Sprintf("plugin %s is not in loading state", name))
 	}
-	
+
 	// Initialize plugin
 	if err := info.Plugin.Initialize(info.Context, info.Config); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "initialization failed for plugin %s", name)
 	}
-	
+
 	info.Status = StatusInitialized
-	
+
 	// Execute post-initialize hooks
 	if err := r.executeHooks(info.Context, "post-initialize", info); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "post-initialize hook failed for plugin %s", name)
 	}
-	
+
 	return nil
 }
 
@@ -379,16 +379,16 @@ func (r *Registry) Initialize(name string) error {
 func (r *Registry) Start(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	info, exists := r.plugins[name]
 	if !exists {
 		return errors.NotFound(fmt.Sprintf("plugin %s not found", name))
 	}
-	
+
 	if info.Status != StatusInitialized {
 		return errors.InvalidArgument(fmt.Sprintf("plugin %s is not initialized", name))
 	}
-	
+
 	return r.startPlugin(info)
 }
 
@@ -396,16 +396,16 @@ func (r *Registry) Start(name string) error {
 func (r *Registry) Stop(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	info, exists := r.plugins[name]
 	if !exists {
 		return errors.NotFound(fmt.Sprintf("plugin %s not found", name))
 	}
-	
+
 	if info.Status != StatusRunning {
 		return errors.InvalidArgument(fmt.Sprintf("plugin %s is not running", name))
 	}
-	
+
 	return r.stopPlugin(info)
 }
 
@@ -413,10 +413,10 @@ func (r *Registry) Stop(name string) error {
 func (r *Registry) StartAll() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	// Sort plugins by priority and dependencies
 	plugins := r.sortPlugins()
-	
+
 	for _, info := range plugins {
 		if info.Status == StatusInitialized {
 			if err := r.startPlugin(info); err != nil {
@@ -424,7 +424,7 @@ func (r *Registry) StartAll() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -432,7 +432,7 @@ func (r *Registry) StartAll() error {
 func (r *Registry) StopAll() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	// Stop plugins in reverse order
 	plugins := r.sortPlugins()
 	for i := len(plugins) - 1; i >= 0; i-- {
@@ -443,7 +443,7 @@ func (r *Registry) StopAll() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -451,12 +451,12 @@ func (r *Registry) StopAll() error {
 func (r *Registry) Health() map[string]HealthStatus {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	
+
 	result := make(map[string]HealthStatus)
 	for name, info := range r.plugins {
 		result[name] = info.Plugin.Health()
 	}
-	
+
 	return result
 }
 
@@ -464,7 +464,7 @@ func (r *Registry) Health() map[string]HealthStatus {
 func (r *Registry) AddHook(name string, hook Hook) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	r.hooks[name] = append(r.hooks[name], hook)
 }
 
@@ -472,7 +472,7 @@ func (r *Registry) AddHook(name string, hook Hook) {
 func (r *Registry) RemoveHook(name string, hook Hook) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	hooks := r.hooks[name]
 	for i, h := range hooks {
 		if h == hook {
@@ -486,7 +486,7 @@ func (r *Registry) RemoveHook(name string, hook Hook) {
 func (r *Registry) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	
+
 	// Stop all plugins
 	for _, info := range r.plugins {
 		if info.Status == StatusRunning {
@@ -495,7 +495,7 @@ func (r *Registry) Close() error {
 			}
 		}
 	}
-	
+
 	// Cleanup all plugins
 	for name, info := range r.plugins {
 		if err := info.Plugin.Cleanup(); err != nil {
@@ -503,11 +503,11 @@ func (r *Registry) Close() error {
 		}
 		info.Cancel()
 	}
-	
+
 	// Clear registry
 	r.plugins = make(map[string]*PluginInfo)
 	r.hooks = make(map[string][]Hook)
-	
+
 	return nil
 }
 
@@ -521,81 +521,81 @@ func (r *Registry) validateDependencies(info *PluginInfo) error {
 			}
 			continue
 		}
-		
+
 		// Check version compatibility
 		if dep.Version != "" && !isVersionCompatible(depInfo.Version, dep.Version) {
-			return fmt.Errorf("dependency %s version %s is not compatible with required %s", 
+			return fmt.Errorf("dependency %s version %s is not compatible with required %s",
 				dep.Name, depInfo.Version, dep.Version)
 		}
 	}
-	
+
 	return nil
 }
 
 // startPlugin starts a plugin.
 func (r *Registry) startPlugin(info *PluginInfo) error {
 	info.Status = StatusStarting
-	
+
 	// Execute pre-start hooks
 	if err := r.executeHooks(info.Context, "pre-start", info); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "pre-start hook failed for plugin %s", info.Name)
 	}
-	
+
 	// Start plugin
 	if err := info.Plugin.Start(info.Context); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "start failed for plugin %s", info.Name)
 	}
-	
+
 	info.Status = StatusRunning
-	
+
 	// Execute post-start hooks
 	if err := r.executeHooks(info.Context, "post-start", info); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "post-start hook failed for plugin %s", info.Name)
 	}
-	
+
 	return nil
 }
 
 // stopPlugin stops a plugin.
 func (r *Registry) stopPlugin(info *PluginInfo) error {
 	info.Status = StatusStopping
-	
+
 	// Execute pre-stop hooks
 	if err := r.executeHooks(info.Context, "pre-stop", info); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "pre-stop hook failed for plugin %s", info.Name)
 	}
-	
+
 	// Stop plugin
 	if err := info.Plugin.Stop(info.Context); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "stop failed for plugin %s", info.Name)
 	}
-	
+
 	info.Status = StatusStopped
-	
+
 	// Execute post-stop hooks
 	if err := r.executeHooks(info.Context, "post-stop", info); err != nil {
 		info.Status = StatusError
 		return errors.Wrapf(err, errors.CodePlugin, "post-stop hook failed for plugin %s", info.Name)
 	}
-	
+
 	return nil
 }
 
 // executeHooks executes all hooks for a given event.
 func (r *Registry) executeHooks(ctx context.Context, event string, data interface{}) error {
 	hooks := r.hooks[event]
-	
+
 	for _, hook := range hooks {
 		if err := hook.Execute(ctx, data); err != nil {
 			return errors.Wrapf(err, errors.CodePlugin, "hook %s failed", hook.Name())
 		}
 	}
-	
+
 	return nil
 }
 
@@ -605,14 +605,14 @@ func (r *Registry) sortPlugins() []*PluginInfo {
 	for _, info := range r.plugins {
 		plugins = append(plugins, info)
 	}
-	
+
 	// Sort by priority (higher priority first)
 	sort.Slice(plugins, func(i, j int) bool {
 		return plugins[i].Config.Priority > plugins[j].Config.Priority
 	})
-	
+
 	// TODO: Implement topological sort for dependency order
-	
+
 	return plugins
 }
 
@@ -627,7 +627,7 @@ func isVersionCompatible(version, constraint string) bool {
 type Loader interface {
 	// Load loads a plugin from a source
 	Load(source string) (Plugin, error)
-	
+
 	// SupportsSource returns whether the loader supports the given source
 	SupportsSource(source string) bool
 }
@@ -654,7 +654,7 @@ func (r *LoaderRegistry) Load(source string) (Plugin, error) {
 			return loader.Load(source)
 		}
 	}
-	
+
 	return nil, errors.NotFound(fmt.Sprintf("no loader found for source: %s", source))
 }
 
@@ -696,7 +696,7 @@ func (l *BuiltinLoader) Load(source string) (Plugin, error) {
 	if !exists {
 		return nil, errors.NotFound(fmt.Sprintf("built-in plugin %s not found", source))
 	}
-	
+
 	return plugin, nil
 }
 
@@ -722,18 +722,18 @@ func NewManager(cfg config.Config) (*Manager, error) {
 		MaxConcurrent:       10,
 		HealthCheckInterval: 30 * time.Second,
 	}
-	
+
 	registry, err := NewRegistry(registryConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, errors.CodePlugin, "failed to create plugin registry")
 	}
-	
+
 	loaders := NewLoaderRegistry()
-	
+
 	// Add built-in loaders
 	loaders.AddLoader(NewBuiltinLoader())
 	loaders.AddLoader(&GoPluginLoader{})
-	
+
 	return &Manager{
 		registry: registry,
 		loaders:  loaders,
@@ -747,11 +747,11 @@ func (m *Manager) LoadPlugin(source string, config Config) error {
 	if err != nil {
 		return errors.Wrapf(err, errors.CodePlugin, "failed to load plugin from %s", source)
 	}
-	
+
 	if err := m.registry.Register(plugin, config); err != nil {
 		return errors.Wrapf(err, errors.CodePlugin, "failed to register plugin %s", plugin.Name())
 	}
-	
+
 	return nil
 }
 
@@ -761,7 +761,7 @@ func (m *Manager) LoadPluginsFromDir(dir string) error {
 	if err != nil {
 		return errors.Wrapf(err, errors.CodeFileSystem, "failed to glob plugins in %s", dir)
 	}
-	
+
 	for _, match := range matches {
 		config := Config{
 			Enabled:  true,
@@ -770,12 +770,12 @@ func (m *Manager) LoadPluginsFromDir(dir string) error {
 			Timeout:  30 * time.Second,
 			Priority: 0,
 		}
-		
+
 		if err := m.LoadPlugin(match, config); err != nil {
 			return errors.Wrapf(err, errors.CodePlugin, "failed to load plugin %s", match)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -903,27 +903,27 @@ func (p *BasePlugin) Health() HealthStatus {
 func GetPluginInfo(plugin Plugin) map[string]interface{} {
 	v := reflect.ValueOf(plugin)
 	t := reflect.TypeOf(plugin)
-	
+
 	info := make(map[string]interface{})
 	info["name"] = plugin.Name()
 	info["version"] = plugin.Version()
 	info["description"] = plugin.Description()
 	info["type"] = t.String()
 	info["methods"] = getMethodNames(t)
-	
+
 	return info
 }
 
 // getMethodNames returns method names of a type.
 func getMethodNames(t reflect.Type) []string {
 	var methods []string
-	
+
 	for i := 0; i < t.NumMethod(); i++ {
 		method := t.Method(i)
 		if method.IsExported() {
 			methods = append(methods, method.Name)
 		}
 	}
-	
+
 	return methods
 }

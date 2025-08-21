@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tmc/mcp"
 	"github.com/tmc/mcp/exp/cmd/mcp-gen/internal/config"
 	"github.com/tmc/mcp/exp/cmd/mcp-gen/internal/templates"
-	"github.com/tmc/mcp"
 )
 
 // Generator provides code generation capabilities
@@ -66,7 +66,7 @@ func New(cfg *config.Config) (*Generator, error) {
 
 	analyzer := &SchemaAnalyzer{config: cfg}
 	validators := make(map[string]Validator)
-	
+
 	// Register language validators
 	validators["go"] = &GoValidator{}
 	validators["typescript"] = &TypeScriptValidator{}
@@ -218,21 +218,21 @@ func (g *Generator) extractToolsFromServer(ctx context.Context, serverPath strin
 	// Start server process
 	cmd := exec.CommandContext(ctx, serverPath)
 	cmd.Stderr = os.Stderr
-	
+
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
-	
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
-	
+
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start server: %w", err)
 	}
-	
+
 	defer func() {
 		stdin.Close()
 		stdout.Close()
@@ -412,7 +412,7 @@ func (g *Generator) extractToolsFromGeneratedCode(dir string) ([]templates.Tool,
 // generateClient generates client code
 func (g *Generator) generateClient(tools []templates.Tool) error {
 	templateName := fmt.Sprintf("%s/client", g.config.Language)
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,
@@ -438,7 +438,7 @@ func (g *Generator) generateClient(tools []templates.Tool) error {
 // generateServer generates server code
 func (g *Generator) generateServer(tools []templates.Tool) error {
 	templateName := fmt.Sprintf("%s/server", g.config.Language)
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,
@@ -464,9 +464,9 @@ func (g *Generator) generateServer(tools []templates.Tool) error {
 // generateTypesFromSchema generates types from schema
 func (g *Generator) generateTypesFromSchema(schema map[string]interface{}) error {
 	templateName := fmt.Sprintf("%s/types", g.config.Language)
-	
+
 	types := g.analyzer.SchemaToTypes(schema)
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,
@@ -487,7 +487,7 @@ func (g *Generator) generateTypesFromSchema(schema map[string]interface{}) error
 // generateDocumentation generates documentation
 func (g *Generator) generateDocumentation(tools []templates.Tool) error {
 	templateName := "docs/markdown"
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,
@@ -513,7 +513,7 @@ func (g *Generator) generateDocumentation(tools []templates.Tool) error {
 // generateTestSuite generates test suite
 func (g *Generator) generateTestSuite(tools []templates.Tool) error {
 	templateName := fmt.Sprintf("%s/tests", g.config.Language)
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,
@@ -538,7 +538,7 @@ func (g *Generator) generateTestSuite(tools []templates.Tool) error {
 // generatePluginBoilerplate generates plugin boilerplate
 func (g *Generator) generatePluginBoilerplate(pluginName string) error {
 	templateName := fmt.Sprintf("%s/plugin", g.config.Language)
-	
+
 	data := &templates.TemplateData{
 		Config:   g.config,
 		Language: g.config.Language,

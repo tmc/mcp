@@ -70,7 +70,7 @@ type globalFlags struct {
 
 func main() {
 	var gf globalFlags
-	
+
 	flag.StringVar(&gf.language, "lang", "go", "Target language (go, typescript, python, rust, java)")
 	flag.StringVar(&gf.output, "output", ".", "Output directory")
 	flag.StringVar(&gf.pkg, "package", "", "Package/module name")
@@ -159,7 +159,7 @@ func runClientCommand(ctx context.Context, gen *codegen.Generator, args []string
 	}
 
 	input := args[0]
-	
+
 	// Check if input is a server binary or schema file
 	if strings.HasSuffix(input, ".json") {
 		// Generate client from schema
@@ -211,6 +211,6 @@ func runPluginCommand(ctx context.Context, gen *codegen.Generator, args []string
 	if len(args) > 0 {
 		pluginName = args[0]
 	}
-	
+
 	return gen.GeneratePlugin(ctx, pluginName)
 }

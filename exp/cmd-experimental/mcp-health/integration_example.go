@@ -17,19 +17,19 @@ import (
 
 // ProductionOperationsConfig represents the combined configuration for all production tools
 type ProductionOperationsConfig struct {
-	Health HealthConfig       `json:"health" yaml:"health"`
+	Health HealthConfig           `json:"health" yaml:"health"`
 	Config ConfigManagementConfig `json:"config" yaml:"config"`
-	Deploy DeploymentConfig   `json:"deploy" yaml:"deploy"`
+	Deploy DeploymentConfig       `json:"deploy" yaml:"deploy"`
 }
 
 // ProductionOperationsManager manages all production operations tools
 type ProductionOperationsManager struct {
-	logger      *slog.Logger
-	healthApp   *HealthApp
-	configApp   *ConfigApp
-	deployApp   *DeployApp
-	mcpServer   *mcp.Server
-	middleware  []mcp.Middleware
+	logger     *slog.Logger
+	healthApp  *HealthApp
+	configApp  *ConfigApp
+	deployApp  *DeployApp
+	mcpServer  *mcp.Server
+	middleware []mcp.Middleware
 }
 
 // NewProductionOperationsManager creates a new production operations manager
@@ -109,7 +109,7 @@ func (m *ProductionOperationsManager) setupMiddleware() error {
 	auditMiddleware := mcp.MiddlewareFunc(func(next mcp.Handler) mcp.Handler {
 		return mcp.HandlerFunc(func(ctx context.Context, req mcp.Request) (mcp.Response, error) {
 			start := time.Now()
-			
+
 			// Log request
 			m.logger.Info("Production operations request",
 				"method", req.GetMethod(),
@@ -325,7 +325,7 @@ func (m *ProductionOperationsManager) registerDeployTools() error {
 func (m *ProductionOperationsManager) isSystemHealthy(ctx context.Context) bool {
 	// Check health of critical services
 	allStatus := m.healthApp.monitor.GetAllStatus()
-	
+
 	criticalServices := []string{"database", "redis", "api-server"}
 	for _, service := range criticalServices {
 		if status, exists := allStatus[service]; exists {
@@ -342,7 +342,7 @@ func (m *ProductionOperationsManager) isSystemHealthy(ctx context.Context) bool 
 // isDeploymentInProgress checks if a deployment is in progress
 func (m *ProductionOperationsManager) isDeploymentInProgress(ctx context.Context) bool {
 	deployments := m.deployApp.deployer.ListDeployments()
-	
+
 	for _, deployment := range deployments {
 		if deployment.Status == "deploying" || deployment.Status == "rolling_back" {
 			return true
@@ -378,7 +378,7 @@ func (m *ProductionOperationsManager) performHealthCheck(ctx context.Context, se
 		return "", fmt.Errorf("health check failed: %w", err)
 	}
 
-	return fmt.Sprintf("Status: %s, Duration: %s, Message: %s", 
+	return fmt.Sprintf("Status: %s, Duration: %s, Message: %s",
 		result.Status, result.Duration, result.Message), nil
 }
 
@@ -525,7 +525,7 @@ func (m *ProductionOperationsManager) rollbackDeployment(ctx context.Context, de
 
 // sendDeploymentNotification sends deployment notifications
 func (m *ProductionOperationsManager) sendDeploymentNotification(ctx context.Context, deployment *Deployment, status string) {
-	message := fmt.Sprintf("Deployment %s: %s to %s (%s)", 
+	message := fmt.Sprintf("Deployment %s: %s to %s (%s)",
 		status, deployment.Version, deployment.Environment, deployment.ID)
 
 	// Send to configured alerting channels
@@ -560,7 +560,7 @@ func (m *ProductionOperationsManager) Run(ctx context.Context) error {
 
 	// Start MCP server with middleware
 	transport := mcp.NewStdioTransport()
-	
+
 	// Apply middleware
 	handler := m.mcpServer.Handler()
 	for i := len(m.middleware) - 1; i >= 0; i-- {
@@ -575,7 +575,7 @@ func (m *ProductionOperationsManager) Run(ctx context.Context) error {
 
 	// Set up server with middleware-wrapped handler
 	// This would require extending the server to accept custom handlers
-	
+
 	m.logger.Info("Production operations manager started")
 
 	// Wait for context cancellation

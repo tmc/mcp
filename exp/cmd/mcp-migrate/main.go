@@ -73,7 +73,7 @@ type globalFlags struct {
 
 func main() {
 	var gf globalFlags
-	
+
 	flag.StringVar(&gf.from, "from", "", "Source version")
 	flag.StringVar(&gf.to, "to", "", "Target version")
 	flag.StringVar(&gf.language, "lang", "", "Project language")

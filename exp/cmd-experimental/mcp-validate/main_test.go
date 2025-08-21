@@ -20,10 +20,10 @@ import (
 
 func TestValidateCommand(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     []string
-		wantErr  bool
-		setup    func(t *testing.T) (cleanup func())
+		name    string
+		args    []string
+		wantErr bool
+		setup   func(t *testing.T) (cleanup func())
 	}{
 		{
 			name:    "no target specified",
@@ -60,12 +60,12 @@ func TestValidateCommand(t *testing.T) {
 						},
 					},
 				}
-				
+
 				file, err := os.Create("test.mcp")
 				if err != nil {
 					t.Fatal(err)
 				}
-				
+
 				encoder := json.NewEncoder(file)
 				for _, msg := range trace {
 					if err := encoder.Encode(msg); err != nil {
@@ -73,14 +73,14 @@ func TestValidateCommand(t *testing.T) {
 					}
 				}
 				file.Close()
-				
+
 				return func() {
 					os.Remove("test.mcp")
 				}
 			},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var cleanup func()
@@ -88,10 +88,10 @@ func TestValidateCommand(t *testing.T) {
 				cleanup = tt.setup(t)
 				defer cleanup()
 			}
-			
+
 			cmd := &ValidateCommand{}
 			err := cmd.Execute(context.Background(), tt.args)
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -177,22 +177,22 @@ func TestValidator_validateMessage(t *testing.T) {
 			wantViolations: 0,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator(&ValidateCommand{})
-			
+
 			msgBytes, err := json.Marshal(tt.message)
 			if err != nil {
 				t.Fatal(err)
 			}
-			
+
 			v.validateMessage(msgBytes, 1)
-			
+
 			if len(v.report.Violations) != tt.wantViolations {
 				t.Errorf("got %d violations, want %d", len(v.report.Violations), tt.wantViolations)
 			}
-			
+
 			if tt.wantViolations > 0 && len(v.report.Violations) > 0 {
 				if v.report.Violations[0].Severity != tt.wantSeverity {
 					t.Errorf("got severity %s, want %s", v.report.Violations[0].Severity, tt.wantSeverity)
@@ -204,13 +204,13 @@ func TestValidator_validateMessage(t *testing.T) {
 
 func TestValidator_validateProtocolVersion(t *testing.T) {
 	v := NewValidator(&ValidateCommand{})
-	
+
 	// Test matching version
 	v.validateProtocolVersion("2025-03-26")
 	if len(v.report.Violations) != 0 {
 		t.Errorf("expected no violations for matching version")
 	}
-	
+
 	// Test mismatched version
 	v.validateProtocolVersion("2024-01-01")
 	if len(v.report.Violations) != 1 {
@@ -260,12 +260,12 @@ func TestValidator_validateServerInfo(t *testing.T) {
 			wantViolations: 1,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := NewValidator(&ValidateCommand{})
 			v.validateServerInfo(tt.serverInfo)
-			
+
 			if len(v.report.Violations) != tt.wantViolations {
 				t.Errorf("got %d violations, want %d", len(v.report.Violations), tt.wantViolations)
 			}
@@ -275,33 +275,33 @@ func TestValidator_validateServerInfo(t *testing.T) {
 
 func TestValidator_outputFormats(t *testing.T) {
 	v := NewValidator(&ValidateCommand{})
-	
+
 	// Add some test violations
 	v.addViolation("error", "test", "test_rule", "Test error message", "line 1")
 	v.addViolation("warning", "test", "test_warning", "Test warning message", "line 2")
-	
+
 	t.Run("JSON output", func(t *testing.T) {
 		var buf bytes.Buffer
 		if err := v.outputJSON(&buf); err != nil {
 			t.Fatal(err)
 		}
-		
+
 		var report ValidationReport
 		if err := json.Unmarshal(buf.Bytes(), &report); err != nil {
 			t.Fatalf("invalid JSON output: %v", err)
 		}
-		
+
 		if len(report.Violations) != 2 {
 			t.Errorf("expected 2 violations in JSON output")
 		}
 	})
-	
+
 	t.Run("JUnit XML output", func(t *testing.T) {
 		var buf bytes.Buffer
 		if err := v.outputJUnitXML(&buf); err != nil {
 			t.Fatal(err)
 		}
-		
+
 		output := buf.String()
 		if !strings.Contains(output, `<?xml version="1.0" encoding="UTF-8"?>`) {
 			t.Error("missing XML declaration")
@@ -313,13 +313,13 @@ func TestValidator_outputFormats(t *testing.T) {
 			t.Error("incorrect failure count")
 		}
 	})
-	
+
 	t.Run("HTML output", func(t *testing.T) {
 		var buf bytes.Buffer
 		if err := v.outputHTML(&buf); err != nil {
 			t.Fatal(err)
 		}
-		
+
 		output := buf.String()
 		if !strings.Contains(output, `<!DOCTYPE html>`) {
 			t.Error("missing HTML doctype")
@@ -338,8 +338,8 @@ func TestValidator_outputFormats(t *testing.T) {
 
 func TestValidator_suggestions(t *testing.T) {
 	tests := []struct {
-		category   string
-		rule       string
+		category       string
+		rule           string
 		wantSuggestion string
 	}{
 		{
@@ -358,7 +358,7 @@ func TestValidator_suggestions(t *testing.T) {
 			wantSuggestion: "",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s/%s", tt.category, tt.rule), func(t *testing.T) {
 			got := getSuggestion(tt.category, tt.rule)
@@ -383,7 +383,7 @@ func TestValidator_isValidMethod(t *testing.T) {
 		{"", false},
 		{"tools/unknown", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.method, func(t *testing.T) {
 			if got := isValidMethod(tt.method); got != tt.want {
@@ -395,20 +395,20 @@ func TestValidator_isValidMethod(t *testing.T) {
 
 func TestValidator_reportGeneration(t *testing.T) {
 	v := NewValidator(&ValidateCommand{})
-	
+
 	// Add various violations
 	v.addViolation("error", "protocol", "test1", "Error 1", "")
 	v.addViolation("error", "protocol", "test2", "Error 2", "")
 	v.addViolation("warning", "performance", "test3", "Warning 1", "")
 	v.addViolation("info", "info", "test4", "Info 1", "")
-	
+
 	// Generate report to update summary
 	var buf bytes.Buffer
 	v.config.outputFmt = "json"
 	if err := v.generateReport(); err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Check summary calculations
 	if v.report.Summary.TotalChecks != 4 {
 		t.Errorf("expected 4 total checks, got %d", v.report.Summary.TotalChecks)
@@ -436,15 +436,15 @@ func TestValidator_mergeReport(t *testing.T) {
 	v1.report.Summary.TotalChecks = 2
 	v1.report.Summary.PassedChecks = 1
 	v1.report.Summary.FailedChecks = 1
-	
+
 	v2 := NewValidator(&ValidateCommand{})
 	v2.addViolation("warning", "test", "test2", "Warning 1", "")
 	v2.report.Summary.TotalChecks = 3
 	v2.report.Summary.PassedChecks = 2
 	v2.report.Summary.WarningCount = 1
-	
+
 	v1.mergeReport(v2.report)
-	
+
 	if len(v1.report.Violations) != 2 {
 		t.Errorf("expected 2 violations after merge, got %d", len(v1.report.Violations))
 	}
@@ -470,12 +470,15 @@ type MockMCPServer struct {
 func NewMockMCPServer(t *testing.T) *MockMCPServer {
 	mock := &MockMCPServer{
 		capabilities: modelcontextprotocol.ServerCapabilities{
-			Tools:     &struct{ ListChanged bool }{},
-			Resources: &struct{ Subscribe bool; ListChanged bool }{},
-			Prompts:   &struct{ ListChanged bool }{},
+			Tools: &struct{ ListChanged bool }{},
+			Resources: &struct {
+				Subscribe   bool
+				ListChanged bool
+			}{},
+			Prompts: &struct{ ListChanged bool }{},
 		},
 	}
-	
+
 	mock.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -483,12 +486,12 @@ func NewMockMCPServer(t *testing.T) *MockMCPServer {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
-		
+
 		method, _ := req["method"].(string)
 		id := req["id"]
-		
+
 		var response interface{}
-		
+
 		switch method {
 		case "initialize":
 			response = map[string]interface{}{
@@ -550,11 +553,11 @@ func NewMockMCPServer(t *testing.T) *MockMCPServer {
 				},
 			}
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
 	}))
-	
+
 	return mock
 }
 
@@ -570,7 +573,7 @@ func TestEscapeXML(t *testing.T) {
 		{"'apostrophe'", "&apos;apostrophe&apos;"},
 		{"<>&\"'", "&lt;&gt;&amp;&quot;&apos;"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			got := escapeXML(tt.input)

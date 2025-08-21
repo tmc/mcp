@@ -52,7 +52,7 @@ func (c *ValidateCommand) Usage() string {
 
 func (c *ValidateCommand) Execute(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet(c.Name(), flag.ExitOnError)
-	
+
 	fs.StringVar(&c.serverCmd, "server", "", "Server command to validate")
 	fs.StringVar(&c.traceFile, "trace", "", "Trace file to validate")
 	fs.StringVar(&c.schemaDir, "schema-dir", "", "Directory containing JSON schemas")
@@ -63,11 +63,11 @@ func (c *ValidateCommand) Execute(ctx context.Context, args []string) error {
 	fs.BoolVar(&c.live, "live", false, "Live validation mode")
 	fs.StringVar(&c.target, "target", "", "Target server for live validation")
 	fs.BoolVar(&c.verbose, "verbose", false, "Verbose output")
-	
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
-	
+
 	validator := NewValidator(c)
 	return validator.Run(ctx)
 }
@@ -80,47 +80,47 @@ type Validator struct {
 
 // ValidationReport holds validation results
 type ValidationReport struct {
-	Version      string              `json:"version"`
-	Timestamp    time.Time           `json:"timestamp"`
-	Summary      ValidationSummary   `json:"summary"`
-	Violations   []Violation         `json:"violations"`
-	Capabilities CapabilityReport    `json:"capabilities"`
+	Version      string            `json:"version"`
+	Timestamp    time.Time         `json:"timestamp"`
+	Summary      ValidationSummary `json:"summary"`
+	Violations   []Violation       `json:"violations"`
+	Capabilities CapabilityReport  `json:"capabilities"`
 }
 
 // ValidationSummary provides high-level statistics
 type ValidationSummary struct {
-	TotalChecks    int    `json:"totalChecks"`
-	PassedChecks   int    `json:"passedChecks"`
-	FailedChecks   int    `json:"failedChecks"`
-	WarningCount   int    `json:"warningCount"`
+	TotalChecks    int     `json:"totalChecks"`
+	PassedChecks   int     `json:"passedChecks"`
+	FailedChecks   int     `json:"failedChecks"`
+	WarningCount   int     `json:"warningCount"`
 	ComplianceRate float64 `json:"complianceRate"`
 	Status         string  `json:"status"`
 }
 
 // Violation represents a protocol compliance violation
 type Violation struct {
-	Severity    string          `json:"severity"`
-	Category    string          `json:"category"`
-	Rule        string          `json:"rule"`
-	Message     string          `json:"message"`
-	Location    string          `json:"location"`
-	Details     json.RawMessage `json:"details,omitempty"`
-	Suggestion  string          `json:"suggestion,omitempty"`
+	Severity   string          `json:"severity"`
+	Category   string          `json:"category"`
+	Rule       string          `json:"rule"`
+	Message    string          `json:"message"`
+	Location   string          `json:"location"`
+	Details    json.RawMessage `json:"details,omitempty"`
+	Suggestion string          `json:"suggestion,omitempty"`
 }
 
 // CapabilityReport shows capability compliance
 type CapabilityReport struct {
 	DeclaredCapabilities map[string]interface{} `json:"declared"`
 	ActualCapabilities   map[string]interface{} `json:"actual"`
-	Mismatches          []CapabilityMismatch   `json:"mismatches"`
+	Mismatches           []CapabilityMismatch   `json:"mismatches"`
 }
 
 // CapabilityMismatch represents capability declaration vs implementation mismatch
 type CapabilityMismatch struct {
-	Capability string `json:"capability"`
-	Declared   bool   `json:"declared"`
-	Implemented bool  `json:"implemented"`
-	Issue      string `json:"issue"`
+	Capability  string `json:"capability"`
+	Declared    bool   `json:"declared"`
+	Implemented bool   `json:"implemented"`
+	Issue       string `json:"issue"`
 }
 
 // NewValidator creates a new validator instance
@@ -128,8 +128,8 @@ func NewValidator(config *ValidateCommand) *Validator {
 	return &Validator{
 		config: config,
 		report: &ValidationReport{
-			Version:   version,
-			Timestamp: time.Now(),
+			Version:    version,
+			Timestamp:  time.Now(),
 			Violations: []Violation{},
 		},
 	}
@@ -140,7 +140,7 @@ func (v *Validator) Run(ctx context.Context) error {
 	if v.config.verbose {
 		log.Printf("Starting MCP validation...")
 	}
-	
+
 	// Determine validation mode
 	switch {
 	case v.config.serverCmd != "":
@@ -161,19 +161,19 @@ func (v *Validator) validateServer(ctx context.Context, serverCmd string) error 
 	if v.config.verbose {
 		log.Printf("Validating server: %s", serverCmd)
 	}
-	
+
 	// Create a test client
 	transport := mcp.NewCommandTransport(serverCmd)
 	client := mcp.NewClient(transport)
-	
+
 	// Connect and initialize
 	if err := client.Connect(ctx); err != nil {
-		v.addViolation("error", "connection", "server_connect", 
+		v.addViolation("error", "connection", "server_connect",
 			fmt.Sprintf("Failed to connect to server: %v", err), "")
 		return v.generateReport()
 	}
 	defer client.Close()
-	
+
 	// Initialize connection
 	initReq := modelcontextprotocol.InitializeRequest{
 		ProtocolVersion: modelcontextprotocol.LATEST_PROTOCOL_VERSION,
@@ -183,26 +183,26 @@ func (v *Validator) validateServer(ctx context.Context, serverCmd string) error 
 		},
 		Capabilities: modelcontextprotocol.ClientCapabilities{},
 	}
-	
+
 	initResult, err := client.Initialize(ctx, initReq)
 	if err != nil {
-		v.addViolation("error", "protocol", "initialization", 
+		v.addViolation("error", "protocol", "initialization",
 			fmt.Sprintf("Initialization failed: %v", err), "")
 		return v.generateReport()
 	}
-	
+
 	// Validate protocol version
 	v.validateProtocolVersion(initResult.ProtocolVersion)
-	
+
 	// Validate server info
 	v.validateServerInfo(initResult.ServerInfo)
-	
+
 	// Validate capabilities
 	v.validateCapabilities(ctx, client, initResult.Capabilities)
-	
+
 	// Run protocol compliance tests
 	v.runProtocolTests(ctx, client)
-	
+
 	return v.generateReport()
 }
 
@@ -210,7 +210,7 @@ func (v *Validator) validateServer(ctx context.Context, serverCmd string) error 
 func (v *Validator) validateProtocolVersion(version string) {
 	if version != modelcontextprotocol.LATEST_PROTOCOL_VERSION {
 		v.addViolation("warning", "protocol", "version_mismatch",
-			fmt.Sprintf("Server uses protocol version %s, expected %s", 
+			fmt.Sprintf("Server uses protocol version %s, expected %s",
 				version, modelcontextprotocol.LATEST_PROTOCOL_VERSION),
 			"",
 		)
@@ -224,7 +224,7 @@ func (v *Validator) validateServerInfo(info modelcontextprotocol.Implementation)
 			"Server name is required but empty", "",
 		)
 	}
-	
+
 	if strings.TrimSpace(info.Version) == "" {
 		v.addViolation("error", "protocol", "server_info",
 			"Server version is required but empty", "",
@@ -236,7 +236,7 @@ func (v *Validator) validateServerInfo(info modelcontextprotocol.Implementation)
 func (v *Validator) validateCapabilities(ctx context.Context, client *mcp.Client, caps modelcontextprotocol.ServerCapabilities) {
 	v.report.Capabilities.DeclaredCapabilities = structToMap(caps)
 	v.report.Capabilities.ActualCapabilities = make(map[string]interface{})
-	
+
 	// Test tools capability
 	if caps.Tools != nil {
 		if _, err := client.ListTools(ctx); err != nil {
@@ -252,7 +252,7 @@ func (v *Validator) validateCapabilities(ctx context.Context, client *mcp.Client
 			v.report.Capabilities.ActualCapabilities["tools"] = true
 		}
 	}
-	
+
 	// Test resources capability
 	if caps.Resources != nil {
 		if _, err := client.ListResources(ctx); err != nil {
@@ -268,7 +268,7 @@ func (v *Validator) validateCapabilities(ctx context.Context, client *mcp.Client
 			v.report.Capabilities.ActualCapabilities["resources"] = true
 		}
 	}
-	
+
 	// Test prompts capability
 	if caps.Prompts != nil {
 		if _, err := client.ListPrompts(ctx); err != nil {
@@ -290,13 +290,13 @@ func (v *Validator) validateCapabilities(ctx context.Context, client *mcp.Client
 func (v *Validator) runProtocolTests(ctx context.Context, client *mcp.Client) {
 	// Test required endpoints
 	v.testPing(ctx, client)
-	
+
 	// Test error handling
 	v.testErrorHandling(ctx, client)
-	
+
 	// Test parameter validation
 	v.testParameterValidation(ctx, client)
-	
+
 	if v.config.strict {
 		// Run strict mode tests
 		v.runStrictTests(ctx, client)
@@ -361,10 +361,10 @@ func (v *Validator) validateTrace(ctx context.Context, traceFile string) error {
 		return fmt.Errorf("failed to open trace file: %w", err)
 	}
 	defer file.Close()
-	
+
 	decoder := json.NewDecoder(file)
 	lineNum := 0
-	
+
 	for {
 		var msg json.RawMessage
 		if err := decoder.Decode(&msg); err != nil {
@@ -378,11 +378,11 @@ func (v *Validator) validateTrace(ctx context.Context, traceFile string) error {
 			continue
 		}
 		lineNum++
-		
+
 		// Validate message structure
 		v.validateMessage(msg, lineNum)
 	}
-	
+
 	return v.generateReport()
 }
 
@@ -395,7 +395,7 @@ func (v *Validator) validateMessage(msg json.RawMessage, lineNum int) {
 		Result  interface{} `json:"result,omitempty"`
 		Error   interface{} `json:"error,omitempty"`
 	}
-	
+
 	if err := json.Unmarshal(msg, &baseMsg); err != nil {
 		v.addViolation("error", "message", "invalid_structure",
 			fmt.Sprintf("Invalid message structure: %v", err),
@@ -403,7 +403,7 @@ func (v *Validator) validateMessage(msg json.RawMessage, lineNum int) {
 		)
 		return
 	}
-	
+
 	// Validate JSON-RPC version
 	if baseMsg.Jsonrpc != "2.0" {
 		v.addViolation("error", "protocol", "jsonrpc_version",
@@ -411,7 +411,7 @@ func (v *Validator) validateMessage(msg json.RawMessage, lineNum int) {
 			fmt.Sprintf("line %d", lineNum),
 		)
 	}
-	
+
 	// Validate message type
 	if baseMsg.Method != "" {
 		// Request or notification
@@ -421,7 +421,7 @@ func (v *Validator) validateMessage(msg json.RawMessage, lineNum int) {
 				fmt.Sprintf("line %d", lineNum),
 			)
 		}
-		
+
 		// Validate method name
 		if !isValidMethod(baseMsg.Method) {
 			v.addViolation("warning", "protocol", "unknown_method",
@@ -459,30 +459,30 @@ func (v *Validator) validateBatch(ctx context.Context, batchFile string) error {
 		return fmt.Errorf("failed to open batch file: %w", err)
 	}
 	defer file.Close()
-	
+
 	decoder := json.NewDecoder(file)
 	var servers []string
 	if err := decoder.Decode(&servers); err != nil {
 		return fmt.Errorf("failed to parse batch file: %w", err)
 	}
-	
+
 	for _, server := range servers {
 		if v.config.verbose {
 			log.Printf("Validating server: %s", server)
 		}
-		
+
 		// Create a new validator for each server
 		subValidator := NewValidator(v.config)
 		subValidator.config.serverCmd = server
-		
+
 		if err := subValidator.validateServer(ctx, server); err != nil {
 			log.Printf("Failed to validate %s: %v", server, err)
 		}
-		
+
 		// Merge results
 		v.mergeReport(subValidator.report)
 	}
-	
+
 	return v.generateReport()
 }
 
@@ -502,12 +502,12 @@ func (v *Validator) addViolation(severity, category, rule, message, location str
 		Message:  message,
 		Location: location,
 	}
-	
+
 	// Add suggestions based on common issues
 	violation.Suggestion = getSuggestion(category, rule)
-	
+
 	v.report.Violations = append(v.report.Violations, violation)
-	
+
 	// Update summary
 	v.report.Summary.TotalChecks++
 	if severity == "error" {
@@ -523,10 +523,10 @@ func (v *Validator) addViolation(severity, category, rule, message, location str
 func (v *Validator) generateReport() error {
 	// Calculate compliance rate
 	if v.report.Summary.TotalChecks > 0 {
-		v.report.Summary.ComplianceRate = float64(v.report.Summary.PassedChecks) / 
+		v.report.Summary.ComplianceRate = float64(v.report.Summary.PassedChecks) /
 			float64(v.report.Summary.TotalChecks) * 100
 	}
-	
+
 	// Set status
 	if v.report.Summary.FailedChecks > 0 {
 		v.report.Summary.Status = "failed"
@@ -535,7 +535,7 @@ func (v *Validator) generateReport() error {
 	} else {
 		v.report.Summary.Status = "passed"
 	}
-	
+
 	// Output report
 	var output io.Writer = os.Stdout
 	if v.config.reportFile != "" {
@@ -546,7 +546,7 @@ func (v *Validator) generateReport() error {
 		defer file.Close()
 		output = file
 	}
-	
+
 	switch v.config.outputFmt {
 	case "json":
 		return v.outputJSON(output)
@@ -575,20 +575,20 @@ func (v *Validator) outputJUnitXML(w io.Writer) error {
 		v.report.Summary.FailedChecks,
 		0,
 	)
-	
+
 	for _, violation := range v.report.Violations {
 		testName := fmt.Sprintf("%s.%s", violation.Category, violation.Rule)
 		if violation.Severity == "error" {
 			fmt.Fprintf(w, `<testcase name="%s" classname="%s">`, testName, violation.Category)
-			fmt.Fprintf(w, `<failure message="%s">%s</failure>`, 
-				escapeXML(violation.Message), 
+			fmt.Fprintf(w, `<failure message="%s">%s</failure>`,
+				escapeXML(violation.Message),
 				escapeXML(violation.Suggestion))
 			fmt.Fprintln(w, `</testcase>`)
 		} else {
 			fmt.Fprintf(w, `<testcase name="%s" classname="%s"/>`, testName, violation.Category)
 		}
 	}
-	
+
 	fmt.Fprintln(w, `</testsuite>`)
 	return nil
 }
@@ -633,7 +633,7 @@ func (v *Validator) outputHTML(w io.Writer) error {
 		v.report.Summary.Status,
 		strings.ToUpper(v.report.Summary.Status),
 	)
-	
+
 	if len(v.report.Violations) > 0 {
 		html += `
     <h2>Violations</h2>
@@ -646,7 +646,7 @@ func (v *Validator) outputHTML(w io.Writer) error {
             <th>Location</th>
             <th>Suggestion</th>
         </tr>`
-		
+
 		for _, violation := range v.report.Violations {
 			html += fmt.Sprintf(`
         <tr>
@@ -669,11 +669,11 @@ func (v *Validator) outputHTML(w io.Writer) error {
 		html += `
     </table>`
 	}
-	
+
 	html += `
 </body>
 </html>`
-	
+
 	_, err := fmt.Fprint(w, html)
 	return err
 }
@@ -707,7 +707,7 @@ func isValidMethod(method string) bool {
 		"notifications/prompts/list_changed",
 		"notifications/tools/list_changed",
 	}
-	
+
 	for _, valid := range validMethods {
 		if method == valid {
 			return true
@@ -725,16 +725,16 @@ func isValidMCPError(err error) bool {
 func getSuggestion(category, rule string) string {
 	suggestions := map[string]map[string]string{
 		"protocol": {
-			"version_mismatch":  "Update server to use the latest protocol version",
-			"server_info":       "Ensure server provides complete implementation info",
-			"jsonrpc_version":   "Use JSON-RPC 2.0 for all messages",
-			"unknown_method":    "Check method name spelling and protocol documentation",
+			"version_mismatch": "Update server to use the latest protocol version",
+			"server_info":      "Ensure server provides complete implementation info",
+			"jsonrpc_version":  "Use JSON-RPC 2.0 for all messages",
+			"unknown_method":   "Check method name spelling and protocol documentation",
 		},
 		"connection": {
 			"server_connect": "Check server is running and accessible",
 		},
 		"error_handling": {
-			"missing_error":       "Server should return appropriate errors for invalid requests",
+			"missing_error":        "Server should return appropriate errors for invalid requests",
 			"invalid_error_format": "Use standard MCP error format with code and message",
 		},
 		"message": {
@@ -747,7 +747,7 @@ func getSuggestion(category, rule string) string {
 			"slow_ping": "Optimize server response time for basic operations",
 		},
 	}
-	
+
 	if catSuggestions, ok := suggestions[category]; ok {
 		if suggestion, ok := catSuggestions[rule]; ok {
 			return suggestion
@@ -781,9 +781,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  version     Show version information\n")
 		os.Exit(1)
 	}
-	
+
 	ctx := context.Background()
-	
+
 	switch os.Args[1] {
 	case "validate":
 		cmd := &ValidateCommand{}

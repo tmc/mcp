@@ -71,7 +71,7 @@ type globalFlags struct {
 
 func main() {
 	var gf globalFlags
-	
+
 	flag.StringVar(&gf.language, "lang", "go", "Target language")
 	flag.StringVar(&gf.template, "template", "basic", "Project template")
 	flag.StringVar(&gf.output, "output", ".", "Output directory")

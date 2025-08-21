@@ -16,7 +16,7 @@ type ColorProvider struct {
 // Color codes for ANSI terminal colors.
 const (
 	colorReset = "\033[0m"
-	
+
 	// Regular colors
 	colorBlack   = "\033[0;30m"
 	colorRed     = "\033[0;31m"
@@ -26,7 +26,7 @@ const (
 	colorMagenta = "\033[0;35m"
 	colorCyan    = "\033[0;36m"
 	colorWhite   = "\033[0;37m"
-	
+
 	// Bold colors
 	colorBoldBlack   = "\033[1;30m"
 	colorBoldRed     = "\033[1;31m"
@@ -36,7 +36,7 @@ const (
 	colorBoldMagenta = "\033[1;35m"
 	colorBoldCyan    = "\033[1;36m"
 	colorBoldWhite   = "\033[1;37m"
-	
+
 	// Background colors
 	colorBgBlack   = "\033[40m"
 	colorBgRed     = "\033[41m"
@@ -54,7 +54,7 @@ func NewColorProvider(enabled bool) *ColorProvider {
 	if enabled {
 		enabled = supportsColor()
 	}
-	
+
 	return &ColorProvider{
 		enabled: enabled,
 		scheme:  DefaultColorScheme(),
@@ -190,12 +190,12 @@ func (c *ColorProvider) Hex(text, hex string) string {
 	if !c.enabled {
 		return text
 	}
-	
+
 	r, g, b, err := parseHex(hex)
 	if err != nil {
 		return text
 	}
-	
+
 	return c.RGB(text, r, g, b)
 }
 
@@ -204,12 +204,12 @@ func (c *ColorProvider) BgHex(text, hex string) string {
 	if !c.enabled {
 		return text
 	}
-	
+
 	r, g, b, err := parseHex(hex)
 	if err != nil {
 		return text
 	}
-	
+
 	return c.BgRGB(text, r, g, b)
 }
 
@@ -217,7 +217,7 @@ func (c *ColorProvider) BgHex(text, hex string) string {
 func (c *ColorProvider) Strip(text string) string {
 	// Simple regex would be better, but avoiding dependencies
 	result := text
-	
+
 	// Remove common ANSI escape sequences
 	sequences := []string{
 		colorReset,
@@ -229,11 +229,11 @@ func (c *ColorProvider) Strip(text string) string {
 		colorBgBlue, colorBgMagenta, colorBgCyan, colorBgWhite,
 		"\033[1m", "\033[3m", "\033[4m", "\033[9m",
 	}
-	
+
 	for _, seq := range sequences {
 		result = strings.ReplaceAll(result, seq, "")
 	}
-	
+
 	return result
 }
 
@@ -242,30 +242,30 @@ func (c *ColorProvider) ColorizeJSON(json string) string {
 	if !c.enabled {
 		return json
 	}
-	
+
 	// Simple JSON colorization
 	result := json
-	
+
 	// Colorize strings (values in quotes)
 	result = strings.ReplaceAll(result, `"`, c.Secondary(`"`))
-	
+
 	// Colorize numbers
 	for _, char := range "0123456789" {
 		result = strings.ReplaceAll(result, string(char), c.Info(string(char)))
 	}
-	
+
 	// Colorize booleans
 	result = strings.ReplaceAll(result, "true", c.Success("true"))
 	result = strings.ReplaceAll(result, "false", c.Error("false"))
-	
+
 	// Colorize null
 	result = strings.ReplaceAll(result, "null", c.Muted("null"))
-	
+
 	// Colorize punctuation
 	for _, char := range "{}[],:." {
 		result = strings.ReplaceAll(result, string(char), c.Primary(string(char)))
 	}
-	
+
 	return result
 }
 
@@ -274,25 +274,25 @@ func (c *ColorProvider) ColorizeYAML(yaml string) string {
 	if !c.enabled {
 		return yaml
 	}
-	
+
 	lines := strings.Split(yaml, "\n")
 	var result []string
-	
+
 	for _, line := range lines {
 		colorized := line
-		
+
 		// Colorize keys (text before colon)
 		if strings.Contains(line, ":") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {
 				key := parts[0]
 				value := parts[1]
-				
+
 				// Colorize key
 				colorized = c.Primary(key) + ":" + value
 			}
 		}
-		
+
 		// Colorize comments
 		if strings.Contains(colorized, "#") {
 			parts := strings.SplitN(colorized, "#", 2)
@@ -300,10 +300,10 @@ func (c *ColorProvider) ColorizeYAML(yaml string) string {
 				colorized = parts[0] + c.Muted("#"+parts[1])
 			}
 		}
-		
+
 		result = append(result, colorized)
 	}
-	
+
 	return strings.Join(result, "\n")
 }
 
@@ -313,23 +313,23 @@ func supportsColor() bool {
 	if os.Getenv("NO_COLOR") != "" {
 		return false
 	}
-	
+
 	// Check FORCE_COLOR environment variable
 	if os.Getenv("FORCE_COLOR") != "" {
 		return true
 	}
-	
+
 	// Check if stdout is a terminal
 	if !isTerminal() {
 		return false
 	}
-	
+
 	// Check TERM environment variable
 	term := os.Getenv("TERM")
 	if term == "" {
 		return false
 	}
-	
+
 	// Check for color support in TERM
 	colorTerms := []string{
 		"xterm", "xterm-color", "xterm-256color",
@@ -338,18 +338,18 @@ func supportsColor() bool {
 		"rxvt", "rxvt-unicode", "rxvt-unicode-256color",
 		"linux", "cygwin",
 	}
-	
+
 	for _, colorTerm := range colorTerms {
 		if strings.Contains(term, colorTerm) {
 			return true
 		}
 	}
-	
+
 	// Check COLORTERM environment variable
 	if os.Getenv("COLORTERM") != "" {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -366,28 +366,28 @@ func parseHex(hex string) (int, int, int, error) {
 	if strings.HasPrefix(hex, "#") {
 		hex = hex[1:]
 	}
-	
+
 	// Ensure hex is 6 characters
 	if len(hex) != 6 {
 		return 0, 0, 0, fmt.Errorf("invalid hex color: %s", hex)
 	}
-	
+
 	// Parse RGB components
 	r, err := strconv.ParseInt(hex[0:2], 16, 0)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("invalid red component: %w", err)
 	}
-	
+
 	g, err := strconv.ParseInt(hex[2:4], 16, 0)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("invalid green component: %w", err)
 	}
-	
+
 	b, err := strconv.ParseInt(hex[4:6], 16, 0)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("invalid blue component: %w", err)
 	}
-	
+
 	return int(r), int(g), int(b), nil
 }
 

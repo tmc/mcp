@@ -11,34 +11,36 @@
 // - Compliance with cryptographic standards (FIPS 140-2, Common Criteria)
 //
 // Usage:
-//   mcp-crypto [command] [options]
+//
+//	mcp-crypto [command] [options]
 //
 // Commands:
-//   keygen        Generate cryptographic keys
-//   encrypt       Encrypt data or messages
-//   decrypt       Decrypt data or messages
-//   sign          Create digital signatures
-//   verify        Verify digital signatures
-//   cert          Certificate management operations
-//   hsm           Hardware Security Module operations
-//   policy        Cryptographic policy management
-//   rotate        Key rotation operations
-//   escrow        Key escrow and recovery
-//   audit         Cryptographic audit operations
+//
+//	keygen        Generate cryptographic keys
+//	encrypt       Encrypt data or messages
+//	decrypt       Decrypt data or messages
+//	sign          Create digital signatures
+//	verify        Verify digital signatures
+//	cert          Certificate management operations
+//	hsm           Hardware Security Module operations
+//	policy        Cryptographic policy management
+//	rotate        Key rotation operations
+//	escrow        Key escrow and recovery
+//	audit         Cryptographic audit operations
 //
 // Examples:
-//   mcp-crypto keygen --type rsa --bits 2048 --output private.pem
-//   mcp-crypto encrypt --key public.pem --input message.txt --output encrypted.bin
-//   mcp-crypto decrypt --key private.pem --input encrypted.bin --output decrypted.txt
-//   mcp-crypto sign --key private.pem --input document.pdf --output signature.sig
-//   mcp-crypto verify --key public.pem --input document.pdf --signature signature.sig
-//   mcp-crypto cert --create --subject "CN=example.com" --key private.pem
-//   mcp-crypto hsm --list-keys --slot 0
-//   mcp-crypto policy --enforce --config crypto-policy.yaml
-//   mcp-crypto rotate --key-id key123 --schedule weekly
-//   mcp-crypto escrow --backup --key-id key123 --trustees 3
-//   mcp-crypto audit --report --compliance fips140-2
 //
+//	mcp-crypto keygen --type rsa --bits 2048 --output private.pem
+//	mcp-crypto encrypt --key public.pem --input message.txt --output encrypted.bin
+//	mcp-crypto decrypt --key private.pem --input encrypted.bin --output decrypted.txt
+//	mcp-crypto sign --key private.pem --input document.pdf --output signature.sig
+//	mcp-crypto verify --key public.pem --input document.pdf --signature signature.sig
+//	mcp-crypto cert --create --subject "CN=example.com" --key private.pem
+//	mcp-crypto hsm --list-keys --slot 0
+//	mcp-crypto policy --enforce --config crypto-policy.yaml
+//	mcp-crypto rotate --key-id key123 --schedule weekly
+//	mcp-crypto escrow --backup --key-id key123 --trustees 3
+//	mcp-crypto audit --report --compliance fips140-2
 package main
 
 import (
@@ -79,21 +81,21 @@ import (
 
 // CryptoConfig represents the cryptographic configuration
 type CryptoConfig struct {
-	KeyStore         string            `json:"key_store"`
-	DefaultKeyType   string            `json:"default_key_type"`
-	DefaultKeySize   int               `json:"default_key_size"`
-	EncryptionAlg    string            `json:"encryption_algorithm"`
-	SignatureAlg     string            `json:"signature_algorithm"`
-	HashAlg          string            `json:"hash_algorithm"`
-	KDFAlg           string            `json:"kdf_algorithm"`
-	KDFIterations    int               `json:"kdf_iterations"`
+	KeyStore          string            `json:"key_store"`
+	DefaultKeyType    string            `json:"default_key_type"`
+	DefaultKeySize    int               `json:"default_key_size"`
+	EncryptionAlg     string            `json:"encryption_algorithm"`
+	SignatureAlg      string            `json:"signature_algorithm"`
+	HashAlg           string            `json:"hash_algorithm"`
+	KDFAlg            string            `json:"kdf_algorithm"`
+	KDFIterations     int               `json:"kdf_iterations"`
 	KeyRotationPolicy KeyRotationPolicy `json:"key_rotation_policy"`
-	HSMConfig        HSMConfig         `json:"hsm_config"`
-	PolicyConfig     PolicyConfig      `json:"policy_config"`
-	EscrowConfig     EscrowConfig      `json:"escrow_config"`
-	AuditConfig      AuditConfig       `json:"audit_config"`
-	ComplianceMode   string            `json:"compliance_mode"`
-	FIPSMode         bool              `json:"fips_mode"`
+	HSMConfig         HSMConfig         `json:"hsm_config"`
+	PolicyConfig      PolicyConfig      `json:"policy_config"`
+	EscrowConfig      EscrowConfig      `json:"escrow_config"`
+	AuditConfig       AuditConfig       `json:"audit_config"`
+	ComplianceMode    string            `json:"compliance_mode"`
+	FIPSMode          bool              `json:"fips_mode"`
 }
 
 // KeyRotationPolicy represents key rotation policy
@@ -119,24 +121,24 @@ type HSMConfig struct {
 
 // PolicyConfig represents cryptographic policy configuration
 type PolicyConfig struct {
-	Enabled            bool     `json:"enabled"`
-	MinKeySize         int      `json:"min_key_size"`
-	AllowedAlgorithms  []string `json:"allowed_algorithms"`
-	ForbiddenAlgorithms []string `json:"forbidden_algorithms"`
-	RequireHSM         bool     `json:"require_hsm"`
-	RequireFIPS        bool     `json:"require_fips"`
-	MaxKeyAge          time.Duration `json:"max_key_age"`
-	RequireEscrow      bool     `json:"require_escrow"`
+	Enabled             bool          `json:"enabled"`
+	MinKeySize          int           `json:"min_key_size"`
+	AllowedAlgorithms   []string      `json:"allowed_algorithms"`
+	ForbiddenAlgorithms []string      `json:"forbidden_algorithms"`
+	RequireHSM          bool          `json:"require_hsm"`
+	RequireFIPS         bool          `json:"require_fips"`
+	MaxKeyAge           time.Duration `json:"max_key_age"`
+	RequireEscrow       bool          `json:"require_escrow"`
 }
 
 // EscrowConfig represents key escrow configuration
 type EscrowConfig struct {
-	Enabled       bool   `json:"enabled"`
-	MinTrustees   int    `json:"min_trustees"`
-	MaxTrustees   int    `json:"max_trustees"`
-	Threshold     int    `json:"threshold"`
+	Enabled        bool   `json:"enabled"`
+	MinTrustees    int    `json:"min_trustees"`
+	MaxTrustees    int    `json:"max_trustees"`
+	Threshold      int    `json:"threshold"`
 	BackupLocation string `json:"backup_location"`
-	EncryptBackup bool   `json:"encrypt_backup"`
+	EncryptBackup  bool   `json:"encrypt_backup"`
 }
 
 // AuditConfig represents audit configuration
@@ -151,51 +153,51 @@ type AuditConfig struct {
 
 // CryptoKey represents a cryptographic key
 type CryptoKey struct {
-	ID           string                 `json:"id"`
-	Type         string                 `json:"type"`
-	Algorithm    string                 `json:"algorithm"`
-	Size         int                    `json:"size"`
-	Usage        []string               `json:"usage"`
-	CreatedAt    time.Time              `json:"created_at"`
-	ExpiresAt    time.Time              `json:"expires_at"`
-	Status       string                 `json:"status"`
-	Location     string                 `json:"location"`
-	HSMBacked    bool                   `json:"hsm_backed"`
-	Escrow       bool                   `json:"escrow"`
-	Metadata     map[string]interface{} `json:"metadata"`
-	PublicKey    []byte                 `json:"public_key,omitempty"`
-	PrivateKey   []byte                 `json:"private_key,omitempty"`
-	Certificate  []byte                 `json:"certificate,omitempty"`
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Algorithm   string                 `json:"algorithm"`
+	Size        int                    `json:"size"`
+	Usage       []string               `json:"usage"`
+	CreatedAt   time.Time              `json:"created_at"`
+	ExpiresAt   time.Time              `json:"expires_at"`
+	Status      string                 `json:"status"`
+	Location    string                 `json:"location"`
+	HSMBacked   bool                   `json:"hsm_backed"`
+	Escrow      bool                   `json:"escrow"`
+	Metadata    map[string]interface{} `json:"metadata"`
+	PublicKey   []byte                 `json:"public_key,omitempty"`
+	PrivateKey  []byte                 `json:"private_key,omitempty"`
+	Certificate []byte                 `json:"certificate,omitempty"`
 }
 
 // CryptoOperation represents a cryptographic operation
 type CryptoOperation struct {
-	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`
-	Algorithm   string                 `json:"algorithm"`
-	KeyID       string                 `json:"key_id"`
-	Input       []byte                 `json:"input,omitempty"`
-	Output      []byte                 `json:"output,omitempty"`
-	Signature   []byte                 `json:"signature,omitempty"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Status      string                 `json:"status"`
-	Error       string                 `json:"error,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
+	ID        string                 `json:"id"`
+	Type      string                 `json:"type"`
+	Algorithm string                 `json:"algorithm"`
+	KeyID     string                 `json:"key_id"`
+	Input     []byte                 `json:"input,omitempty"`
+	Output    []byte                 `json:"output,omitempty"`
+	Signature []byte                 `json:"signature,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	Status    string                 `json:"status"`
+	Error     string                 `json:"error,omitempty"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // CertificateRequest represents a certificate request
 type CertificateRequest struct {
-	Subject            pkix.Name     `json:"subject"`
-	DNSNames           []string      `json:"dns_names"`
-	IPAddresses        []string      `json:"ip_addresses"`
-	EmailAddresses     []string      `json:"email_addresses"`
-	KeyUsage           x509.KeyUsage `json:"key_usage"`
+	Subject            pkix.Name          `json:"subject"`
+	DNSNames           []string           `json:"dns_names"`
+	IPAddresses        []string           `json:"ip_addresses"`
+	EmailAddresses     []string           `json:"email_addresses"`
+	KeyUsage           x509.KeyUsage      `json:"key_usage"`
 	ExtKeyUsage        []x509.ExtKeyUsage `json:"ext_key_usage"`
-	ValidityPeriod     time.Duration `json:"validity_period"`
-	IsCA               bool          `json:"is_ca"`
-	MaxPathLength      int           `json:"max_path_length"`
-	SerialNumber       *big.Int      `json:"serial_number"`
-	SignatureAlgorithm string        `json:"signature_algorithm"`
+	ValidityPeriod     time.Duration      `json:"validity_period"`
+	IsCA               bool               `json:"is_ca"`
+	MaxPathLength      int                `json:"max_path_length"`
+	SerialNumber       *big.Int           `json:"serial_number"`
+	SignatureAlgorithm string             `json:"signature_algorithm"`
 }
 
 // KeyManager manages cryptographic keys
@@ -322,12 +324,12 @@ func DefaultCryptoConfig() *CryptoConfig {
 			RequireEscrow:       false,
 		},
 		EscrowConfig: EscrowConfig{
-			Enabled:       false,
-			MinTrustees:   3,
-			MaxTrustees:   7,
-			Threshold:     2,
+			Enabled:        false,
+			MinTrustees:    3,
+			MaxTrustees:    7,
+			Threshold:      2,
 			BackupLocation: "escrow/",
-			EncryptBackup: true,
+			EncryptBackup:  true,
 		},
 		AuditConfig: AuditConfig{
 			Enabled:       true,
@@ -1824,14 +1826,14 @@ func runCert(cmd *cobra.Command, args []string, configFile, keyStore, verbose *s
 
 	// Create certificate request
 	certReq := &CertificateRequest{
-		Subject:         subjectPkix,
-		DNSNames:        dnsNames,
-		EmailAddresses:  emailAddresses,
-		ValidityPeriod:  validity,
-		IsCA:            isCA,
-		SerialNumber:    big.NewInt(1),
-		KeyUsage:        x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Subject:        subjectPkix,
+		DNSNames:       dnsNames,
+		EmailAddresses: emailAddresses,
+		ValidityPeriod: validity,
+		IsCA:           isCA,
+		SerialNumber:   big.NewInt(1),
+		KeyUsage:       x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
 	var result []byte

@@ -33,7 +33,7 @@ const (
 	Name    = "mcp-docs"
 
 	// Default configuration
-	DefaultOutputDir = "./docs"
+	DefaultOutputDir  = "./docs"
 	DefaultConfigFile = "mcp-docs.yaml"
 )
 
@@ -44,19 +44,19 @@ var templateFiles embed.FS
 type Config struct {
 	// Source configuration
 	Sources []SourceConfig `yaml:"sources"`
-	
+
 	// Output configuration
 	Output OutputConfig `yaml:"output"`
-	
+
 	// Documentation settings
 	Documentation DocumentationConfig `yaml:"documentation"`
-	
+
 	// Template configuration
 	Templates TemplateConfig `yaml:"templates"`
-	
+
 	// Version management
 	Versions VersionConfig `yaml:"versions"`
-	
+
 	// Integration settings
 	Integration IntegrationConfig `yaml:"integration"`
 }
@@ -111,8 +111,8 @@ type SidebarConfig struct {
 
 // NavigationConfig represents navigation configuration
 type NavigationConfig struct {
-	Enabled bool              `yaml:"enabled"`
-	Items   []NavigationItem  `yaml:"items"`
+	Enabled bool             `yaml:"enabled"`
+	Items   []NavigationItem `yaml:"items"`
 }
 
 // NavigationItem represents a navigation item
@@ -125,15 +125,15 @@ type NavigationItem struct {
 
 // SearchConfig represents search configuration
 type SearchConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Provider string `yaml:"provider"` // "local", "algolia"
+	Enabled  bool              `yaml:"enabled"`
+	Provider string            `yaml:"provider"` // "local", "algolia"
 	Config   map[string]string `yaml:"config"`
 }
 
 // AnalyticsConfig represents analytics configuration
 type AnalyticsConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Provider string `yaml:"provider"` // "google", "plausible"
+	Enabled  bool              `yaml:"enabled"`
+	Provider string            `yaml:"provider"` // "google", "plausible"
 	Config   map[string]string `yaml:"config"`
 }
 
@@ -170,10 +170,10 @@ type IntegrationConfig struct {
 
 // ExamplesConfig represents examples configuration
 type ExamplesConfig struct {
-	Enabled   bool     `yaml:"enabled"`
-	Directory string   `yaml:"directory"`
-	Languages []string `yaml:"languages"`
-	Interactive bool   `yaml:"interactive"`
+	Enabled     bool     `yaml:"enabled"`
+	Directory   string   `yaml:"directory"`
+	Languages   []string `yaml:"languages"`
+	Interactive bool     `yaml:"interactive"`
 }
 
 // PlaygroundConfig represents playground configuration
@@ -204,18 +204,18 @@ type Documentation struct {
 
 // ServerDoc represents documentation for an MCP server
 type ServerDoc struct {
-	Name         string           `json:"name"`
-	Description  string           `json:"description"`
-	Version      string           `json:"version"`
-	Author       string           `json:"author"`
-	Command      []string         `json:"command"`
-	Transport    string           `json:"transport"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description"`
+	Version      string             `json:"version"`
+	Author       string             `json:"author"`
+	Command      []string           `json:"command"`
+	Transport    string             `json:"transport"`
 	Capabilities ServerCapabilities `json:"capabilities"`
-	Tools        []*ToolDoc       `json:"tools"`
-	Resources    []*ResourceDoc   `json:"resources"`
-	Prompts      []*PromptDoc     `json:"prompts"`
-	Examples     []*ExampleDoc    `json:"examples"`
-	Health       *HealthDoc       `json:"health"`
+	Tools        []*ToolDoc         `json:"tools"`
+	Resources    []*ResourceDoc     `json:"resources"`
+	Prompts      []*PromptDoc       `json:"prompts"`
+	Examples     []*ExampleDoc      `json:"examples"`
+	Health       *HealthDoc         `json:"health"`
 }
 
 // ServerCapabilities represents server capabilities
@@ -276,8 +276,8 @@ type GuideDoc struct {
 
 // ReferenceDoc represents API reference documentation
 type ReferenceDoc struct {
-	Section string                 `json:"section"`
-	Items   []*ReferenceItem       `json:"items"`
+	Section string           `json:"section"`
+	Items   []*ReferenceItem `json:"items"`
 }
 
 // ReferenceItem represents a reference item
@@ -304,31 +304,31 @@ type PackageDoc struct {
 
 // TypeDoc represents a Go type
 type TypeDoc struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Type        string         `json:"type"`
-	Methods     []*MethodDoc   `json:"methods"`
-	Examples    []*ExampleDoc  `json:"examples"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Type        string        `json:"type"`
+	Methods     []*MethodDoc  `json:"methods"`
+	Examples    []*ExampleDoc `json:"examples"`
 }
 
 // FunctionDoc represents a Go function
 type FunctionDoc struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Signature   string         `json:"signature"`
-	Parameters  []Parameter    `json:"parameters"`
-	Returns     []Return       `json:"returns"`
-	Examples    []*ExampleDoc  `json:"examples"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Signature   string        `json:"signature"`
+	Parameters  []Parameter   `json:"parameters"`
+	Returns     []Return      `json:"returns"`
+	Examples    []*ExampleDoc `json:"examples"`
 }
 
 // MethodDoc represents a Go method
 type MethodDoc struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Signature   string         `json:"signature"`
-	Parameters  []Parameter    `json:"parameters"`
-	Returns     []Return       `json:"returns"`
-	Examples    []*ExampleDoc  `json:"examples"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Signature   string        `json:"signature"`
+	Parameters  []Parameter   `json:"parameters"`
+	Returns     []Return      `json:"returns"`
+	Examples    []*ExampleDoc `json:"examples"`
 }
 
 // VariableDoc represents a Go variable
@@ -512,7 +512,7 @@ func NewGenerator(config *Config) (*Generator, error) {
 			// Format Go type names
 			return strings.TrimPrefix(t, "*")
 		},
-		"join": strings.Join,
+		"join":  strings.Join,
 		"lower": strings.ToLower,
 		"upper": strings.ToUpper,
 		"title": strings.Title,
@@ -751,7 +751,7 @@ func (g *Generator) processPackage(doc *Documentation, source SourceConfig) erro
 
 	for _, pkg := range pkgs {
 		docPkg := doc.New(pkg, source.Path, doc.Mode(0))
-		
+
 		packageDoc := &PackageDoc{
 			Name:        pkg.Name,
 			ImportPath:  source.Path,
@@ -970,7 +970,7 @@ func (g *Generator) generateToolExamples(tool mcp.Tool) []*ExampleDoc {
 		{
 			Title:       fmt.Sprintf("Using %s", tool.Name),
 			Description: fmt.Sprintf("Example usage of the %s tool", tool.Name),
-			Code:        fmt.Sprintf(`client.CallTool(ctx, mcp.CallToolRequest{
+			Code: fmt.Sprintf(`client.CallTool(ctx, mcp.CallToolRequest{
     Name: "%s",
     Arguments: map[string]interface{}{
         // Add your arguments here
@@ -990,7 +990,7 @@ func (g *Generator) generateResourceExamples(resource mcp.Resource) []*ExampleDo
 		{
 			Title:       fmt.Sprintf("Reading %s", resource.Name),
 			Description: fmt.Sprintf("Example of reading the %s resource", resource.Name),
-			Code:        fmt.Sprintf(`client.ReadResource(ctx, mcp.ReadResourceRequest{
+			Code: fmt.Sprintf(`client.ReadResource(ctx, mcp.ReadResourceRequest{
     URI: "%s",
 })`, resource.URI),
 			Language:    "go",
@@ -1007,7 +1007,7 @@ func (g *Generator) generatePromptExamples(prompt mcp.Prompt) []*ExampleDoc {
 		{
 			Title:       fmt.Sprintf("Using %s", prompt.Name),
 			Description: fmt.Sprintf("Example usage of the %s prompt", prompt.Name),
-			Code:        fmt.Sprintf(`client.GetPrompt(ctx, mcp.GetPromptRequest{
+			Code: fmt.Sprintf(`client.GetPrompt(ctx, mcp.GetPromptRequest{
     Name: "%s",
     Arguments: map[string]interface{}{
         // Add your arguments here

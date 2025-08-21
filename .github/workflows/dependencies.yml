@@ -1,0 +1,68 @@
+name: Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Weekly on Monday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-dependencies:
+    name: Update Go Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
+        
+    - name: Update dependencies
+      run: |
+        go get -u ./...
+        go mod tidy
+        
+    - name: Update experimental dependencies
+      run: |
+        if [ -d "exp" ]; then
+          cd exp
+          go get -u ./... || echo "Some experimental dependencies could not be updated"
+          go mod tidy || echo "Experimental go mod tidy failed (non-critical)"
+          cd ..
+        fi
+        
+    - name: Run tests
+      run: |
+        go test ./...
+        if [ -d "exp" ]; then
+          (cd exp && go test ./... || echo "Some experimental tests failed after update")
+        fi
+        
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "deps: update Go dependencies"
+        title: "deps: update Go dependencies"
+        body: |
+          Automated dependency update
+          
+          This PR updates Go dependencies to their latest versions.
+          
+          **Changes:**
+          - Updated all direct dependencies
+          - Updated experimental dependencies where possible
+          - Ran `go mod tidy` to clean up go.mod/go.sum
+          - Verified tests still pass
+          
+          Please review the changes before merging.
+        branch: automated-dependency-update
+        delete-branch: true

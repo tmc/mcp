@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -147,6 +148,7 @@ type OAuthProvider interface {
 
 // MemoryOAuthProvider provides an in-memory OAuth provider for testing/development
 type MemoryOAuthProvider struct {
+	mu            sync.RWMutex
 	clients       map[string]*OAuthClientInfo
 	authCodes     map[string]*AuthorizationCode
 	accessTokens  map[string]*AccessToken
@@ -173,12 +175,16 @@ func (p *MemoryOAuthProvider) RegisterClient(ctx context.Context, req *OAuthClie
 		req.ClientSecret = generateRandomString(64)
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.clients[req.ClientID] = req
 	return req, nil
 }
 
 // GetClient implements OAuthProvider
 func (p *MemoryOAuthProvider) GetClient(ctx context.Context, clientID string) (*OAuthClientInfo, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	client, exists := p.clients[clientID]
 	if !exists {
 		return nil, &OAuthError{
@@ -253,12 +259,16 @@ func (p *MemoryOAuthProvider) CreateAuthorizationCode(ctx context.Context, req *
 		RedirectURIExplicit: req.RedirectURI != "",
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.authCodes[code.Code] = code
 	return code, nil
 }
 
 // GetAuthorizationCode implements OAuthProvider
 func (p *MemoryOAuthProvider) GetAuthorizationCode(ctx context.Context, code string) (*AuthorizationCode, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	authCode, exists := p.authCodes[code]
 	if !exists {
 		return nil, &OAuthError{
@@ -280,6 +290,8 @@ func (p *MemoryOAuthProvider) GetAuthorizationCode(ctx context.Context, code str
 
 // RevokeAuthorizationCode implements OAuthProvider
 func (p *MemoryOAuthProvider) RevokeAuthorizationCode(ctx context.Context, code string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	delete(p.authCodes, code)
 	return nil
 }
@@ -310,6 +322,8 @@ func (p *MemoryOAuthProvider) CreateAccessToken(ctx context.Context, authCode *A
 		ExpiresAt: refreshExpiresAt,
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.accessTokens[accessToken] = token
 	p.refreshTokens[refreshToken] = refresh
 
@@ -318,7 +332,9 @@ func (p *MemoryOAuthProvider) CreateAccessToken(ctx context.Context, authCode *A
 
 // RefreshAccessToken implements OAuthProvider
 func (p *MemoryOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTokenStr string) (*AccessToken, error) {
+	p.mu.RLock()
 	refresh, exists := p.refreshTokens[refreshTokenStr]
+	p.mu.RUnlock()
 	if !exists {
 		return nil, &OAuthError{
 			Code:        ErrorInvalidGrant,
@@ -327,7 +343,9 @@ func (p *MemoryOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 	}
 
 	if time.Now().After(refresh.ExpiresAt) {
+		p.mu.Lock()
 		delete(p.refreshTokens, refreshTokenStr)
+		p.mu.Unlock()
 		return nil, &OAuthError{
 			Code:        ErrorInvalidGrant,
 			Description: "Refresh token expired",
@@ -349,12 +367,16 @@ func (p *MemoryOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 		ExpiresAt:    expiresAt,
 	}
 
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.accessTokens[accessToken] = token
 	return token, nil
 }
 
 // ValidateAccessToken implements OAuthProvider
 func (p *MemoryOAuthProvider) ValidateAccessToken(ctx context.Context, tokenStr string) (*AccessToken, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	token, exists := p.accessTokens[tokenStr]
 	if !exists {
 		return nil, &OAuthError{
@@ -376,6 +398,9 @@ func (p *MemoryOAuthProvider) ValidateAccessToken(ctx context.Context, tokenStr 
 
 // RevokeToken implements OAuthProvider
 func (p *MemoryOAuthProvider) RevokeToken(ctx context.Context, token string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	
 	// Try to revoke as access token
 	if _, exists := p.accessTokens[token]; exists {
 		delete(p.accessTokens, token)

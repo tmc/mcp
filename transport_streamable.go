@@ -52,7 +52,7 @@ type StreamableHTTPOptions struct {
 type StreamableHTTPHandler struct {
 	getServer func(*http.Request) *Server
 	opts      StreamableHTTPOptions
-	
+
 	sessionsMu sync.RWMutex
 	sessions   map[string]*StreamableServerTransport
 }
@@ -71,7 +71,7 @@ func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *Strea
 	if opts.SessionTimeout <= 0 {
 		opts.SessionTimeout = 5 * time.Minute
 	}
-	
+
 	return &StreamableHTTPHandler{
 		getServer: getServer,
 		opts:      *opts,
@@ -81,16 +81,16 @@ func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *Strea
 
 // ServeHTTP implements the HTTP handler interface
 func (h *StreamableHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.opts.Logger.DebugContext(r.Context(), "StreamableHTTPHandler: handling request", 
+	h.opts.Logger.DebugContext(r.Context(), "StreamableHTTPHandler: handling request",
 		"method", r.Method, "path", r.URL.Path)
-	
+
 	// Check Accept header for required content types
 	accept := r.Header.Get("Accept")
 	if !strings.Contains(accept, "application/json") || !strings.Contains(accept, "text/event-stream") {
 		http.Error(w, "Accept header must include both application/json and text/event-stream", http.StatusNotAcceptable)
 		return
 	}
-	
+
 	switch r.Method {
 	case http.MethodGet:
 		h.handleSSEStream(w, r)
@@ -109,7 +109,7 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 	if sessionID == "" {
 		sessionID = randText()
 	}
-	
+
 	h.sessionsMu.Lock()
 	session, exists := h.sessions[sessionID]
 	if !exists {
@@ -117,12 +117,12 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 		h.sessions[sessionID] = session
 	}
 	h.sessionsMu.Unlock()
-	
+
 	// Handle resumption via Last-Event-ID
 	lastEventID := r.Header.Get("Last-Event-ID")
 	resumeStreamID := streamID(0)
 	resumeIndex := 0
-	
+
 	if lastEventID != "" {
 		sid, idx, ok := parseEventID(lastEventID)
 		if ok {
@@ -130,24 +130,24 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 			resumeIndex = idx + 1
 		}
 	}
-	
+
 	// Set up SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	
+
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "SSE not supported", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Send endpoint event
 	fmt.Fprintf(w, "event: endpoint\n")
 	fmt.Fprintf(w, "data: /message?session=%s\n\n", sessionID)
 	flusher.Flush()
-	
+
 	// Stream messages
 	session.streamMessages(r.Context(), w, flusher, resumeStreamID, resumeIndex)
 }
@@ -159,28 +159,28 @@ func (h *StreamableHTTPHandler) handleMessage(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Missing session parameter", http.StatusBadRequest)
 		return
 	}
-	
+
 	h.sessionsMu.RLock()
 	session, exists := h.sessions[sessionID]
 	h.sessionsMu.RUnlock()
-	
+
 	if !exists {
 		http.Error(w, "Session not found", http.StatusNotFound)
 		return
 	}
-	
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return
 	}
-	
+
 	var msg JSONRPCMessage
 	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, "Invalid JSON-RPC message", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Send message to session
 	select {
 	case session.incoming <- msg:
@@ -199,7 +199,7 @@ func (h *StreamableHTTPHandler) handleSessionDelete(w http.ResponseWriter, r *ht
 		http.Error(w, "Missing session parameter", http.StatusBadRequest)
 		return
 	}
-	
+
 	h.sessionsMu.Lock()
 	session, exists := h.sessions[sessionID]
 	if exists {
@@ -207,7 +207,7 @@ func (h *StreamableHTTPHandler) handleSessionDelete(w http.ResponseWriter, r *ht
 		session.Close()
 	}
 	h.sessionsMu.Unlock()
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -226,7 +226,7 @@ type StreamableServerTransport struct {
 	id           string
 	incoming     chan JSONRPCMessage
 	logger       *slog.Logger
-	
+
 	mu               sync.RWMutex
 	isDone           bool
 	done             chan struct{}
@@ -276,24 +276,24 @@ func (t *StreamableServerTransport) Read(ctx context.Context) (JSONRPCMessage, e
 func (t *StreamableServerTransport) Write(ctx context.Context, msg JSONRPCMessage) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	if t.isDone {
 		return io.ErrClosedPipe
 	}
-	
+
 	// Determine stream ID based on message type
 	sid := t.getStreamID(msg)
-	
+
 	// Create streamable message
 	msgIndex := len(t.outgoingMessages[sid])
 	streamableMsg := &streamableMsg{
 		Message: msg,
 		EventID: formatEventID(sid, msgIndex),
 	}
-	
+
 	// Store message
 	t.outgoingMessages[sid] = append(t.outgoingMessages[sid], streamableMsg)
-	
+
 	// Signal waiting streams
 	if ch, exists := t.signals[sid]; exists {
 		select {
@@ -301,7 +301,7 @@ func (t *StreamableServerTransport) Write(ctx context.Context, msg JSONRPCMessag
 		default:
 		}
 	}
-	
+
 	return nil
 }
 
@@ -309,12 +309,12 @@ func (t *StreamableServerTransport) Write(ctx context.Context, msg JSONRPCMessag
 func (t *StreamableServerTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	
+
 	if !t.isDone {
 		t.isDone = true
 		close(t.done)
 	}
-	
+
 	return nil
 }
 
@@ -325,7 +325,7 @@ func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
 		if sid, exists := t.requestStreams[msg.ID]; exists {
 			return sid
 		}
-		
+
 		// Create new stream
 		sid := streamID(t.nextStreamID.Add(1))
 		t.requestStreams[msg.ID] = sid
@@ -335,12 +335,12 @@ func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
 		t.streamRequests[sid][msg.ID] = struct{}{}
 		return sid
 	}
-	
+
 	// For responses, use existing stream
 	if sid, exists := t.requestStreams[msg.ID]; exists {
 		return sid
 	}
-	
+
 	// Default stream
 	return streamID(1)
 }
@@ -348,7 +348,7 @@ func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
 // streamMessages streams messages to SSE client
 func (t *StreamableServerTransport) streamMessages(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, resumeStreamID streamID, resumeIndex int) {
 	t.mu.RLock()
-	
+
 	// Send buffered messages for resumption
 	if resumeStreamID > 0 {
 		if messages, exists := t.outgoingMessages[resumeStreamID]; exists {
@@ -359,22 +359,22 @@ func (t *StreamableServerTransport) streamMessages(ctx context.Context, w http.R
 			}
 		}
 	}
-	
+
 	// Create signal channel for this stream
 	signalCh := make(chan struct{}, 1)
 	t.signals[resumeStreamID] = signalCh
 	t.mu.RUnlock()
-	
+
 	defer func() {
 		t.mu.Lock()
 		delete(t.signals, resumeStreamID)
 		t.mu.Unlock()
 	}()
-	
+
 	// Stream new messages
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -407,7 +407,7 @@ func (t *StreamableServerTransport) writeSSEMessage(w http.ResponseWriter, msg *
 		t.logger.Error("Failed to marshal message", "error", err)
 		return
 	}
-	
+
 	fmt.Fprintf(w, "id: %s\n", msg.EventID)
 	fmt.Fprintf(w, "data: %s\n\n", string(data))
 }
@@ -428,11 +428,11 @@ func scanEvents(r io.Reader) iter.Seq2[event, error] {
 	scanner := bufio.NewScanner(r)
 	const maxTokenSize = 1 * 1024 * 1024 // 1 MiB max line size
 	scanner.Buffer(nil, maxTokenSize)
-	
+
 	return func(yield func(event, error) bool) {
 		var evt event
 		var dataBuf *bytes.Buffer
-		
+
 		for scanner.Scan() {
 			line := scanner.Bytes()
 			if len(line) == 0 {
@@ -449,13 +449,13 @@ func scanEvents(r io.Reader) iter.Seq2[event, error] {
 				dataBuf = nil
 				continue
 			}
-			
+
 			before, after, found := bytes.Cut(line, []byte{':'})
 			if !found {
 				yield(event{}, fmt.Errorf("malformed line: %q", string(line)))
 				return
 			}
-			
+
 			switch {
 			case bytes.Equal(before, []byte("event")):
 				evt.name = strings.TrimSpace(string(after))
@@ -472,7 +472,7 @@ func scanEvents(r io.Reader) iter.Seq2[event, error] {
 				}
 			}
 		}
-		
+
 		if err := scanner.Err(); err != nil {
 			yield(event{}, err)
 		}
@@ -490,17 +490,17 @@ func parseEventID(eventID string) (sid streamID, idx int, ok bool) {
 	if len(parts) != 2 {
 		return 0, 0, false
 	}
-	
+
 	stream, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil || stream < 0 {
 		return 0, 0, false
 	}
-	
+
 	idx, err = strconv.Atoi(parts[1])
 	if err != nil || idx < 0 {
 		return 0, 0, false
 	}
-	
+
 	return streamID(stream), idx, true
 }
 
@@ -527,24 +527,24 @@ type streamableRWCAdapter struct {
 func (a *streamableRWCAdapter) Read(p []byte) (n int, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	
+
 	if a.readBuf.Len() > 0 {
 		return a.readBuf.Read(p)
 	}
-	
+
 	msg, err := a.transport.Read(context.Background())
 	if err != nil {
 		return 0, err
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	data = append(data, '\n')
 	a.readBuf.Write(data)
-	
+
 	return a.readBuf.Read(p)
 }
 
@@ -553,11 +553,11 @@ func (a *streamableRWCAdapter) Write(p []byte) (n int, err error) {
 	if err := json.Unmarshal(p, &msg); err != nil {
 		return 0, err
 	}
-	
+
 	if err := a.transport.Write(context.Background(), msg); err != nil {
 		return 0, err
 	}
-	
+
 	return len(p), nil
 }
 

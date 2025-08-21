@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -234,7 +235,7 @@ func TestCompositeRateLimiter(t *testing.T) {
 	}
 
 	// Test "any" strategy - at least one must pass
-	tokenBucket2 := NewTokenBucketRateLimiter(1, 1) // Very restrictive
+	tokenBucket2 := NewTokenBucketRateLimiter(1, 1)                 // Very restrictive
 	slidingWindow2 := NewSlidingWindowRateLimiter(time.Second, 100) // Very permissive
 
 	anyLimiter := NewCompositeRateLimiter("any", tokenBucket2, slidingWindow2)
@@ -294,16 +295,10 @@ func TestRateLimiterConcurrency(t *testing.T) {
 }
 
 func TestRateLimiterCleanup(t *testing.T) {
-	// Create limiter with short cleanup interval
-	limiter := &TokenBucketRateLimiter{
-		defaultRate:     10,
-		defaultBurst:    5,
-		cleanupInterval: 100 * time.Millisecond,
-		perKeyRules:     make(map[string]RateLimitRule),
-	}
-	limiter.stats.Store(&RateLimitStats{
-		PerKeyStats: make(map[string]*KeyStats),
-	})
+	// Create limiter using proper constructor
+	limiter := NewTokenBucketRateLimiter(10, 5)
+	// Override cleanup interval for testing
+	limiter.cleanupInterval = 100 * time.Millisecond
 
 	// Create buckets for multiple keys
 	for i := 0; i < 5; i++ {
@@ -346,9 +341,9 @@ func TestEnhancedRateLimitMiddleware(t *testing.T) {
 
 	middleware := NewEnhancedRateLimitMiddleware(limiter, config)
 
-	// Create test handler
+	// Create test handler that returns success when rate limiting allows the request
 	handler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &ErrorResponseImpl{}, nil
+		return &SuccessResponseImpl{Result: "success"}, nil
 	})
 
 	protected := middleware.Apply(handler)
@@ -364,7 +359,7 @@ func TestEnhancedRateLimitMiddleware(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		req := &mockMCPRequest{method: "tools/call"}
 		resp, err = protected.Handle(context.Background(), req)
-		
+
 		if i < 2 {
 			// First 2 should succeed (burst size)
 			if err != nil || resp.IsError() {
@@ -417,7 +412,7 @@ func BenchmarkRateLimiterWithStats(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("bench-key-%d", i%100)
 		limiter.Allow(ctx, key)
-		
+
 		// Periodically check stats
 		if i%1000 == 0 {
 			_ = limiter.Stats()

@@ -32,11 +32,11 @@ type StreamableClientTransport struct {
 // NewStreamableClientTransport creates a new streamable client transport
 func NewStreamableClientTransport(url string, opts *StreamableClientTransportOptions) *StreamableClientTransport {
 	t := &StreamableClientTransport{url: url}
-	
+
 	if opts != nil {
 		t.opts = *opts
 	}
-	
+
 	// Set defaults
 	if t.opts.HTTPClient == nil {
 		t.opts.HTTPClient = &http.Client{
@@ -55,7 +55,7 @@ func NewStreamableClientTransport(url string, opts *StreamableClientTransportOpt
 	if t.opts.RetryDelay <= 0 {
 		t.opts.RetryDelay = time.Second
 	}
-	
+
 	return t
 }
 
@@ -75,21 +75,21 @@ func (t *StreamableClientTransport) Dial(ctx context.Context) (io.ReadWriteClose
 
 // streamableClientConnection implements the Connection interface for clients
 type streamableClientConnection struct {
-	url           string
-	sessionID     string
-	postURL       string
-	opts          StreamableClientTransportOptions
-	httpClient    *http.Client
-	
-	mu           sync.RWMutex
-	closed       bool
-	eventSource  *eventSource
-	lastEventID  string
-	
+	url        string
+	sessionID  string
+	postURL    string
+	opts       StreamableClientTransportOptions
+	httpClient *http.Client
+
+	mu          sync.RWMutex
+	closed      bool
+	eventSource *eventSource
+	lastEventID string
+
 	// Message handling
-	incomingCh   chan JSONRPCMessage
-	errorCh      chan error
-	closeCh      chan struct{}
+	incomingCh chan JSONRPCMessage
+	errorCh    chan error
+	closeCh    chan struct{}
 }
 
 // newStreamableClientConnection creates a new streamable client connection
@@ -102,12 +102,12 @@ func newStreamableClientConnection(ctx context.Context, baseURL string, opts Str
 		errorCh:    make(chan error, 10),
 		closeCh:    make(chan struct{}),
 	}
-	
+
 	// Start SSE connection
 	if err := conn.startSSEConnection(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start SSE connection: %w", err)
 	}
-	
+
 	return conn, nil
 }
 
@@ -117,48 +117,48 @@ func (c *streamableClientConnection) startSSEConnection(ctx context.Context) err
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
-	
+
 	// Add session parameter if we have one
 	query := u.Query()
 	if c.sessionID != "" {
 		query.Set("session", c.sessionID)
 	}
 	u.RawQuery = query.Encode()
-	
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("create SSE request: %w", err)
 	}
-	
+
 	// Set required headers
 	req.Header.Set("Accept", "text/event-stream, application/json")
 	req.Header.Set("Cache-Control", "no-cache")
-	
+
 	// Add Last-Event-ID for resumption
 	if c.lastEventID != "" {
 		req.Header.Set("Last-Event-ID", c.lastEventID)
 	}
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("SSE request failed: %w", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		return fmt.Errorf("SSE request failed with status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Create event source
 	c.eventSource = &eventSource{
 		resp:   resp,
 		logger: c.opts.Logger,
 	}
-	
+
 	// Start processing events
 	go c.processEvents(ctx)
-	
+
 	return nil
 }
 
@@ -171,7 +171,7 @@ func (c *streamableClientConnection) processEvents(ctx context.Context) {
 		}
 		c.mu.Unlock()
 	}()
-	
+
 	for evt, err := range scanEvents(c.eventSource.resp.Body) {
 		if err != nil {
 			c.opts.Logger.ErrorContext(ctx, "SSE event error", "error", err)
@@ -184,7 +184,7 @@ func (c *streamableClientConnection) processEvents(ctx context.Context) {
 			}
 			continue
 		}
-		
+
 		// Handle different event types
 		switch evt.name {
 		case "endpoint":
@@ -199,7 +199,7 @@ func (c *streamableClientConnection) processEvents(ctx context.Context) {
 		default:
 			c.opts.Logger.DebugContext(ctx, "Ignoring unknown event type", "event", evt.name)
 		}
-		
+
 		// Update last event ID
 		if evt.id != "" {
 			c.lastEventID = evt.id
@@ -210,21 +210,21 @@ func (c *streamableClientConnection) processEvents(ctx context.Context) {
 // handleEndpointEvent handles the endpoint event to extract POST URL
 func (c *streamableClientConnection) handleEndpointEvent(ctx context.Context, evt event) error {
 	endpoint := strings.TrimSpace(string(evt.data))
-	
+
 	baseURL, err := url.Parse(c.url)
 	if err != nil {
 		return fmt.Errorf("invalid base URL: %w", err)
 	}
-	
+
 	postURL, err := baseURL.Parse(endpoint)
 	if err != nil {
 		return fmt.Errorf("invalid endpoint URL: %w", err)
 	}
-	
+
 	c.mu.Lock()
 	c.postURL = postURL.String()
 	c.mu.Unlock()
-	
+
 	c.opts.Logger.DebugContext(ctx, "Received POST endpoint", "url", postURL.String())
 	return nil
 }
@@ -235,7 +235,7 @@ func (c *streamableClientConnection) handleMessageEvent(ctx context.Context, evt
 	if err := json.Unmarshal(evt.data, &msg); err != nil {
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}
-	
+
 	select {
 	case c.incomingCh <- msg:
 		return nil
@@ -269,35 +269,35 @@ func (c *streamableClientConnection) Write(ctx context.Context, msg JSONRPCMessa
 	}
 	postURL := c.postURL
 	c.mu.RUnlock()
-	
+
 	if postURL == "" {
 		return fmt.Errorf("POST endpoint not yet available")
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
-	
+
 	// Send HTTP POST request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("create POST request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("POST request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("POST request failed with status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	return nil
 }
 
@@ -305,18 +305,18 @@ func (c *streamableClientConnection) Write(ctx context.Context, msg JSONRPCMessa
 func (c *streamableClientConnection) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	if c.closed {
 		return nil
 	}
-	
+
 	c.closed = true
 	close(c.closeCh)
-	
+
 	if c.eventSource != nil {
 		c.eventSource.close()
 	}
-	
+
 	return nil
 }
 
@@ -342,24 +342,24 @@ type streamableClientRWCAdapter struct {
 func (a *streamableClientRWCAdapter) Read(p []byte) (n int, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	
+
 	if a.readBuf.Len() > 0 {
 		return a.readBuf.Read(p)
 	}
-	
+
 	msg, err := a.conn.Read(context.Background())
 	if err != nil {
 		return 0, err
 	}
-	
+
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	data = append(data, '\n')
 	a.readBuf.Write(data)
-	
+
 	return a.readBuf.Read(p)
 }
 
@@ -368,11 +368,11 @@ func (a *streamableClientRWCAdapter) Write(p []byte) (n int, err error) {
 	if err := json.Unmarshal(p, &msg); err != nil {
 		return 0, err
 	}
-	
+
 	if err := a.conn.Write(context.Background(), msg); err != nil {
 		return 0, err
 	}
-	
+
 	return len(p), nil
 }
 

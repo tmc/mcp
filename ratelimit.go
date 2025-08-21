@@ -24,38 +24,38 @@ type RateLimitRule struct {
 type RateLimiter interface {
 	// Allow checks if a request should be allowed
 	Allow(ctx context.Context, key string) bool
-	
+
 	// AllowN checks if n requests should be allowed
 	AllowN(ctx context.Context, key string, n int) bool
-	
+
 	// Wait blocks until a request can proceed or context is cancelled
 	Wait(ctx context.Context, key string) error
-	
+
 	// WaitN blocks until n requests can proceed or context is cancelled
 	WaitN(ctx context.Context, key string, n int) error
-	
+
 	// Reset resets the rate limiter for a specific key
 	Reset(key string)
-	
+
 	// Stats returns rate limiting statistics
 	Stats() RateLimitStats
 }
 
 // RateLimitStats provides rate limiting statistics
 type RateLimitStats struct {
-	TotalRequests    int64                      `json:"totalRequests"`
-	AllowedRequests  int64                      `json:"allowedRequests"`
-	RejectedRequests int64                      `json:"rejectedRequests"`
-	ActiveLimiters   int                        `json:"activeLimiters"`
-	PerKeyStats      map[string]*KeyStats       `json:"perKeyStats,omitempty"`
+	TotalRequests    int64                `json:"totalRequests"`
+	AllowedRequests  int64                `json:"allowedRequests"`
+	RejectedRequests int64                `json:"rejectedRequests"`
+	ActiveLimiters   int                  `json:"activeLimiters"`
+	PerKeyStats      map[string]*KeyStats `json:"perKeyStats,omitempty"`
 }
 
 // KeyStats provides per-key rate limiting statistics
 type KeyStats struct {
-	Requests  int64     `json:"requests"`
-	Allowed   int64     `json:"allowed"`
-	Rejected  int64     `json:"rejected"`
-	LastSeen  time.Time `json:"lastSeen"`
+	Requests int64     `json:"requests"`
+	Allowed  int64     `json:"allowed"`
+	Rejected int64     `json:"rejected"`
+	LastSeen time.Time `json:"lastSeen"`
 }
 
 // TokenBucketRateLimiter implements token bucket algorithm
@@ -72,12 +72,12 @@ type TokenBucketRateLimiter struct {
 
 // tokenBucket represents a single token bucket
 type tokenBucket struct {
-	tokens    float64
-	lastFill  time.Time
-	rate      float64
-	burst     int
-	mu        sync.Mutex
-	stats     *KeyStats
+	tokens   float64
+	lastFill time.Time
+	rate     float64
+	burst    int
+	mu       sync.Mutex
+	stats    *KeyStats
 }
 
 // NewTokenBucketRateLimiter creates a new token bucket rate limiter
@@ -144,7 +144,7 @@ func (rl *TokenBucketRateLimiter) Wait(ctx context.Context, key string) error {
 // WaitN implements RateLimiter
 func (rl *TokenBucketRateLimiter) WaitN(ctx context.Context, key string, n int) error {
 	bucket := rl.getBucket(key)
-	
+
 	for {
 		// Check if we can proceed
 		if bucket.allowN(n) {
@@ -157,7 +157,7 @@ func (rl *TokenBucketRateLimiter) WaitN(ctx context.Context, key string, n int) 
 
 		// Calculate wait time
 		waitTime := bucket.timeToAvailable(n)
-		
+
 		select {
 		case <-ctx.Done():
 			// Update rejected stats
@@ -180,7 +180,7 @@ func (rl *TokenBucketRateLimiter) Reset(key string) {
 // Stats implements RateLimiter
 func (rl *TokenBucketRateLimiter) Stats() RateLimitStats {
 	stats := rl.stats.Load().(*RateLimitStats)
-	
+
 	// Count active limiters
 	count := 0
 	rl.limiters.Range(func(_, _ interface{}) bool {
@@ -431,7 +431,7 @@ func (rl *SlidingWindowRateLimiter) Reset(key string) {
 // Stats implements RateLimiter
 func (rl *SlidingWindowRateLimiter) Stats() RateLimitStats {
 	stats := rl.stats.Load().(*RateLimitStats)
-	
+
 	// Count active windows
 	count := 0
 	rl.windows.Range(func(_, _ interface{}) bool {

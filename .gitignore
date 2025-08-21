@@ -12,6 +12,18 @@ coverage/
 dist/
 build/
 
+# Binary executables (should not be committed)
+mcp-debug
+mcp-probe
+mcp-proxy
+mcp-replay
+mcp-serve
+mcp-shadow
+mcpcat
+mcpdiff
+mcpspy
+/cmd/mcp-replay/mcp-replay
+
 # Test artifacts
 *.test
 *_test_*

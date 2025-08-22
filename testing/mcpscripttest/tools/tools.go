@@ -63,7 +63,7 @@ func DefaultToolsWithScripttestOptions() *ToolsOptions {
 			"mcp-connect", "mcp-proxy", "mcp-serve", "mcp-debug",
 			// mcpscripttest analysis tools - only include those that exist and can build
 			"apply-edits", "coverage-by-program", "coverage-hotspots", "depgraph", "digraph-compat",
-			"cmd-docs",
+			"cmd-docs", "testgraph", "testcallgraph", "testcallgraph-coverage", "stitch-demo",
 		},
 		VerboseOutput: false,
 	}

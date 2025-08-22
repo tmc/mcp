@@ -7,5 +7,5 @@ use (
 	./internal/integration_testing/marklabs-interop
 	./internal/integration_testing/protocol-interop
 	./testing/mcpscripttest
-	// ./testing/mcptestutil  # Temporarily disabled due to interface issues
+	./testing/mcptestutil
 )

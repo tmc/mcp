@@ -13,7 +13,7 @@ func TestDebugSecureOAuth(t *testing.T) {
 
 	// Create base provider
 	baseProvider := NewMemoryOAuthProvider()
-	
+
 	// Register a test client
 	client := &OAuthClientInfo{
 		ClientID:     "test-client",
@@ -47,7 +47,7 @@ func TestDebugSecureOAuth(t *testing.T) {
 	// Create access token
 	ctx := context.WithValue(context.Background(), "User-Agent", "test-agent")
 	ctx = context.WithValue(ctx, "RemoteAddr", "127.0.0.1")
-	
+
 	token, err := secureProvider.CreateAccessToken(ctx, authCode)
 	if err != nil {
 		t.Fatalf("Failed to create access token: %v", err)

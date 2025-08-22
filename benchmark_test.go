@@ -738,7 +738,7 @@ func BenchmarkWithMemoryProfile(b *testing.B) {
 			// Allocate memory to simulate work
 			data := make([]byte, 1024*10) // 10KB allocation
 			_ = data
-			
+
 			return &CallToolResult{
 				Content: []any{
 					map[string]string{
@@ -794,7 +794,7 @@ func BenchmarkWithMemoryProfile(b *testing.B) {
 func BenchmarkPerformanceBaseline(b *testing.B) {
 	// This benchmark serves as a baseline for performance regression detection
 	// Run with: go test -bench=BenchmarkPerformanceBaseline -benchtime=5s
-	
+
 	transport := &mockTransport{responses: make(chan json.RawMessage, 1000)}
 	client, err := NewClient(transport)
 	if err != nil {
@@ -838,21 +838,21 @@ func BenchmarkPerformanceBaseline(b *testing.B) {
 	// Report key performance metrics
 	opsPerSecond := float64(b.N) / elapsed.Seconds()
 	avgLatency := elapsed.Nanoseconds() / int64(b.N)
-	
+
 	b.ReportMetric(opsPerSecond, "ops/sec")
 	b.ReportMetric(float64(avgLatency)/1e6, "avg-latency-ms")
-	
+
 	// Set performance thresholds for regression detection
 	minOpsPerSecond := 10000.0 // Minimum 10k ops/sec
-	maxLatencyMs := 1.0       // Maximum 1ms average latency
-	
+	maxLatencyMs := 1.0        // Maximum 1ms average latency
+
 	if opsPerSecond < minOpsPerSecond {
-		b.Logf("WARNING: Performance below threshold: %.2f ops/sec (min: %.2f)", 
+		b.Logf("WARNING: Performance below threshold: %.2f ops/sec (min: %.2f)",
 			opsPerSecond, minOpsPerSecond)
 	}
-	
+
 	if float64(avgLatency)/1e6 > maxLatencyMs {
-		b.Logf("WARNING: Latency above threshold: %.2f ms (max: %.2f)", 
+		b.Logf("WARNING: Latency above threshold: %.2f ms (max: %.2f)",
 			float64(avgLatency)/1e6, maxLatencyMs)
 	}
 }
@@ -863,9 +863,9 @@ func BenchmarkPerformanceBaseline(b *testing.B) {
 
 func BenchmarkBottleneckAnalysis_JSONProcessing(b *testing.B) {
 	// Test JSON marshaling/unmarshaling performance as potential bottleneck
-	
+
 	payloadSizes := []int{100, 1024, 10240, 102400}
-	
+
 	for _, size := range payloadSizes {
 		b.Run(fmt.Sprintf("Marshal_%d", size), func(b *testing.B) {
 			data := make(map[string]interface{})
@@ -875,10 +875,10 @@ func BenchmarkBottleneckAnalysis_JSONProcessing(b *testing.B) {
 				"size": size,
 				"type": "benchmark",
 			}
-			
+
 			b.SetBytes(int64(size))
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				_, err := json.Marshal(data)
 				if err != nil {
@@ -886,17 +886,17 @@ func BenchmarkBottleneckAnalysis_JSONProcessing(b *testing.B) {
 				}
 			}
 		})
-		
+
 		b.Run(fmt.Sprintf("Unmarshal_%d", size), func(b *testing.B) {
 			data := make(map[string]interface{})
 			data["payload"] = string(make([]byte, size))
 			data["timestamp"] = time.Now().Unix()
-			
+
 			jsonData, _ := json.Marshal(data)
-			
+
 			b.SetBytes(int64(len(jsonData)))
 			b.ResetTimer()
-			
+
 			for i := 0; i < b.N; i++ {
 				var result map[string]interface{}
 				err := json.Unmarshal(jsonData, &result)
@@ -910,7 +910,7 @@ func BenchmarkBottleneckAnalysis_JSONProcessing(b *testing.B) {
 
 func BenchmarkBottleneckAnalysis_ContextOverhead(b *testing.B) {
 	// Test context overhead as potential bottleneck
-	
+
 	b.Run("ContextCreation", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -920,15 +920,15 @@ func BenchmarkBottleneckAnalysis_ContextOverhead(b *testing.B) {
 			_ = ctx
 		}
 	})
-	
+
 	b.Run("ContextPropagation", func(b *testing.B) {
 		baseCtx := context.Background()
 		baseCtx = context.WithValue(baseCtx, "session_id", "test-session")
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ctx := context.WithValue(baseCtx, "request_id", fmt.Sprintf("req-%d", i))
-			
+
 			// Simulate context propagation through multiple layers
 			for j := 0; j < 5; j++ {
 				ctx = context.WithValue(ctx, fmt.Sprintf("layer_%d", j), j)
@@ -940,7 +940,7 @@ func BenchmarkBottleneckAnalysis_ContextOverhead(b *testing.B) {
 
 func BenchmarkBottleneckAnalysis_GoroutineOverhead(b *testing.B) {
 	// Test goroutine creation overhead
-	
+
 	b.Run("DirectExecution", func(b *testing.B) {
 		work := func() {
 			// Simulate some work
@@ -950,13 +950,13 @@ func BenchmarkBottleneckAnalysis_GoroutineOverhead(b *testing.B) {
 			}
 			_ = sum
 		}
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			work()
 		}
 	})
-	
+
 	b.Run("GoroutineExecution", func(b *testing.B) {
 		work := func() {
 			sum := 0
@@ -965,7 +965,7 @@ func BenchmarkBottleneckAnalysis_GoroutineOverhead(b *testing.B) {
 			}
 			_ = sum
 		}
-		
+
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			var wg sync.WaitGroup

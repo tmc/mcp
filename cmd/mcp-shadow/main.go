@@ -46,17 +46,17 @@ type message struct {
 }
 
 type shadowServer struct {
-	primary  *exec.Cmd
-	shadow   *exec.Cmd
-	stdin    io.Writer
-	stdout   io.Reader
-	stderr   io.Reader
-	messages chan message
-	shutdown chan struct{}
+	primary      *exec.Cmd
+	shadow       *exec.Cmd
+	stdin        io.Writer
+	stdout       io.Reader
+	stderr       io.Reader
+	messages     chan message
+	shutdown     chan struct{}
 	shutdownOnce sync.Once
-	wg       sync.WaitGroup
-	ctx      context.Context
-	cancel   context.CancelFunc
+	wg           sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
 
 	// For primary server
 	primaryStdin  io.WriteCloser
@@ -342,18 +342,18 @@ func (s *shadowServer) monitorOutput(reader io.Reader, source string, isStderr b
 	defer s.wg.Done()
 
 	scanner := bufio.NewScanner(reader)
-	
+
 	// Use a channel-based approach for better cancellation handling
 	lineCh := make(chan []byte)
 	errCh := make(chan error, 1)
-	
+
 	go func() {
 		defer close(lineCh)
 		for scanner.Scan() {
 			// Copy the bytes since scanner reuses the buffer
 			line := make([]byte, len(scanner.Bytes()))
 			copy(line, scanner.Bytes())
-			
+
 			select {
 			case lineCh <- line:
 			case <-s.ctx.Done():
@@ -367,7 +367,7 @@ func (s *shadowServer) monitorOutput(reader io.Reader, source string, isStderr b
 			}
 		}
 	}()
-	
+
 	for {
 		select {
 		case <-s.ctx.Done():

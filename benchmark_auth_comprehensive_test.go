@@ -18,7 +18,7 @@ import (
 func BenchmarkAuthPipeline_Complete(b *testing.B) {
 	// Test both regular and secure providers
 	testCases := []struct {
-		name     string
+		name      string
 		setupFunc func() (OAuthProvider, func())
 	}{
 		{
@@ -29,7 +29,7 @@ func BenchmarkAuthPipeline_Complete(b *testing.B) {
 			},
 		},
 		{
-			name: "SecureProvider", 
+			name: "SecureProvider",
 			setupFunc: func() (OAuthProvider, func()) {
 				baseProvider := NewMemoryOAuthProvider()
 				encryptionKey := []byte("test-key-32-bytes-long!!!!!!!!!!!")
@@ -251,7 +251,7 @@ func BenchmarkAuthSecurity_CompareProviders(b *testing.B) {
 				}
 				authCode, _ := provider.CreateAuthorizationCode(context.Background(), authReq)
 				token, _ := provider.CreateAccessToken(context.Background(), authCode)
-				
+
 				_, err := provider.ValidateAccessToken(context.Background(), token.AccessToken)
 				return err
 			},
@@ -259,7 +259,7 @@ func BenchmarkAuthSecurity_CompareProviders(b *testing.B) {
 	}
 
 	providers := []struct {
-		name     string
+		name      string
 		setupFunc func() OAuthProvider
 	}{
 		{
@@ -304,17 +304,17 @@ func BenchmarkAuthSecurity_CompareProviders(b *testing.B) {
 // BenchmarkAuthRegressionDetection tests for performance regressions
 func BenchmarkAuthRegressionDetection(b *testing.B) {
 	// This benchmark establishes performance baselines for regression detection
-	
+
 	provider := NewMemoryOAuthProvider()
 	client, _ := provider.RegisterClient(context.Background(), &OAuthClientInfo{
 		ClientID:     "regression-client",
-		ClientSecret: "regression-secret", 
+		ClientSecret: "regression-secret",
 		RedirectURIs: []string{"http://localhost:8080/callback"},
 	})
 
 	// Baseline metrics for regression detection
 	baselineMetrics := map[string]struct {
-		maxLatency  time.Duration
+		maxLatency   time.Duration
 		minOpsPerSec float64
 	}{
 		"TokenCreation":   {maxLatency: 5 * time.Millisecond, minOpsPerSec: 500},
@@ -325,7 +325,7 @@ func BenchmarkAuthRegressionDetection(b *testing.B) {
 	for metricName, baseline := range baselineMetrics {
 		b.Run(metricName, func(b *testing.B) {
 			start := time.Now()
-			
+
 			switch metricName {
 			case "TokenCreation":
 				for i := 0; i < b.N; i++ {
@@ -346,7 +346,7 @@ func BenchmarkAuthRegressionDetection(b *testing.B) {
 				}
 				authCode, _ := provider.CreateAuthorizationCode(context.Background(), authReq)
 				token, _ := provider.CreateAccessToken(context.Background(), authCode)
-				
+
 				for i := 0; i < b.N; i++ {
 					_, _ = provider.ValidateAccessToken(context.Background(), token.AccessToken)
 				}
@@ -375,7 +375,7 @@ func BenchmarkAuthRegressionDetection(b *testing.B) {
 
 			// Check for regressions
 			if avgLatency > baseline.maxLatency {
-				b.Logf("REGRESSION WARNING: Average latency %.2fms exceeds baseline %.2fms", 
+				b.Logf("REGRESSION WARNING: Average latency %.2fms exceeds baseline %.2fms",
 					float64(avgLatency.Nanoseconds())/1e6, float64(baseline.maxLatency.Nanoseconds())/1e6)
 			}
 			if opsPerSec < baseline.minOpsPerSec {
@@ -477,7 +477,7 @@ func BenchmarkAuthProfile_CPUUsage(b *testing.B) {
 				provider := NewMemoryOAuthProvider()
 				encryptionKey := []byte("cpu-test-key-32-bytes-long!!!!!!!!")
 				secureProvider, _ := NewSecureOAuthProvider(provider, encryptionKey, nil)
-				
+
 				client, _ := provider.RegisterClient(context.Background(), &OAuthClientInfo{
 					ClientID:     "cpu-client",
 					ClientSecret: "cpu-secret",

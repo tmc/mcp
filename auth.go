@@ -400,7 +400,7 @@ func (p *MemoryOAuthProvider) ValidateAccessToken(ctx context.Context, tokenStr 
 func (p *MemoryOAuthProvider) RevokeToken(ctx context.Context, token string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	// Try to revoke as access token
 	if _, exists := p.accessTokens[token]; exists {
 		delete(p.accessTokens, token)

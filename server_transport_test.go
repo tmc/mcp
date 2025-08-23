@@ -9,6 +9,39 @@ import (
 	"testing"
 )
 
+// mockReadWriteCloser is a mock implementation for testing
+type mockReadWriteCloser struct {
+	readData    []byte
+	writtenData []byte
+	readIndex   int
+	closed      bool
+}
+
+func (m *mockReadWriteCloser) Read(p []byte) (n int, err error) {
+	if m.closed {
+		return 0, io.EOF
+	}
+	if m.readIndex >= len(m.readData) {
+		return 0, io.EOF
+	}
+	n = copy(p, m.readData[m.readIndex:])
+	m.readIndex += n
+	return n, nil
+}
+
+func (m *mockReadWriteCloser) Write(p []byte) (n int, err error) {
+	if m.closed {
+		return 0, io.ErrClosedPipe
+	}
+	m.writtenData = append(m.writtenData, p...)
+	return len(p), nil
+}
+
+func (m *mockReadWriteCloser) Close() error {
+	m.closed = true
+	return nil
+}
+
 // TestSingleConnListener tests the singleConnListener
 func TestSingleConnListenerInternal(t *testing.T) {
 	mockConn := &mockReadWriteCloser{

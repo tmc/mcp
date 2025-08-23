@@ -215,7 +215,7 @@ func (p *SecureOAuthProvider) ValidateAccessToken(ctx context.Context, encrypted
 		debugLog("ValidateAccessToken: Underlying provider validation failed: %v", err)
 		return nil, err
 	}
-	
+
 	debugLog("ValidateAccessToken: Validation successful")
 	return result, nil
 }
@@ -410,13 +410,13 @@ func (p *SecureOAuthProvider) isEncryptedToken(token string) bool {
 	if err != nil {
 		return false
 	}
-	
+
 	// Encrypted tokens have nonce + ciphertext
 	// Also check minimum size - encrypted JSON of AccessToken is much larger
 	if len(decoded) <= p.storage.cipher.NonceSize() || len(decoded) < 100 {
 		return false
 	}
-	
+
 	// Try to decrypt to be sure - if it fails, it's not encrypted
 	// Extract nonce and try decryption
 	nonce, ciphertext := decoded[:p.storage.cipher.NonceSize()], decoded[p.storage.cipher.NonceSize():]
@@ -688,8 +688,8 @@ func DumpTokenState(token *SecureToken) {
 			debugLog("Token state: nil")
 			return
 		}
-		debugLog("Token state: version=%d, useCount=%d, rotationCount=%d, clientID=%s", 
-			token.Version, token.UseCount, token.RotationCount, 
+		debugLog("Token state: version=%d, useCount=%d, rotationCount=%d, clientID=%s",
+			token.Version, token.UseCount, token.RotationCount,
 			func() string {
 				if token.AccessToken != nil {
 					return token.AccessToken.ClientID

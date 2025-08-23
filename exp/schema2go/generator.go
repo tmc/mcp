@@ -166,7 +166,7 @@ func (g *Generator) FromMCPSchema(schemaData []byte) (string, error) {
 
 func (g *Generator) generateTypeFromSchema(name string, schema map[string]interface{}) {
 	schemaType, _ := schema["type"].(string)
-	
+
 	switch schemaType {
 	case "object":
 		g.generateObjectType(name, schema)
@@ -222,7 +222,7 @@ func (g *Generator) generateObjectType(name string, schema map[string]interface{
 	// Get properties
 	properties, _ := schema["properties"].(map[string]interface{})
 	required, _ := schema["required"].([]interface{})
-	
+
 	// Create required set for quick lookup
 	requiredSet := make(map[string]bool)
 	for _, req := range required {
@@ -261,12 +261,12 @@ func (g *Generator) generateField(name string, schema map[string]interface{}, re
 
 	// Determine Go type
 	fieldType := g.schemaTypeToGo(schema)
-	
+
 	// Make optional fields pointers
 	if !required && !isBasicType(fieldType) {
 		fieldType = "*" + fieldType
 	}
-	
+
 	field.Type = fieldType
 
 	// Add struct tags
@@ -294,7 +294,7 @@ func (g *Generator) generateField(name string, schema map[string]interface{}, re
 
 func (g *Generator) schemaTypeToGo(schema map[string]interface{}) string {
 	schemaType, _ := schema["type"].(string)
-	
+
 	switch schemaType {
 	case "string":
 		if format, ok := schema["format"].(string); ok {
@@ -405,9 +405,9 @@ func (g *Generator) generateMCPTool(tool map[string]interface{}, index int) {
 	if name == "" {
 		name = fmt.Sprintf("Tool%d", index)
 	}
-	
+
 	typeName := g.options.Prefix + toGoName(name) + "Tool"
-	
+
 	// Generate tool struct
 	typeDef := &TypeDef{
 		Name:        typeName,
@@ -422,7 +422,7 @@ func (g *Generator) generateMCPTool(tool map[string]interface{}, index int) {
 		Type:   "string",
 		Tags:   map[string]string{"json": "name"},
 	})
-	
+
 	typeDef.Fields = append(typeDef.Fields, FieldDef{
 		GoName: "Description",
 		Type:   "string",
@@ -433,7 +433,7 @@ func (g *Generator) generateMCPTool(tool map[string]interface{}, index int) {
 	if inputSchema, ok := tool["inputSchema"].(map[string]interface{}); ok {
 		inputTypeName := typeName + "Input"
 		g.generateTypeFromSchema(inputTypeName, inputSchema)
-		
+
 		typeDef.Fields = append(typeDef.Fields, FieldDef{
 			GoName: "InputSchema",
 			Type:   "*" + inputTypeName,
@@ -449,9 +449,9 @@ func (g *Generator) generateMCPResource(resource map[string]interface{}, index i
 	if name == "" {
 		name = fmt.Sprintf("Resource%d", index)
 	}
-	
+
 	typeName := g.options.Prefix + toGoName(name) + "Resource"
-	
+
 	// Generate resource struct
 	typeDef := &TypeDef{
 		Name:        typeName,
@@ -466,13 +466,13 @@ func (g *Generator) generateMCPResource(resource map[string]interface{}, index i
 		Type:   "string",
 		Tags:   map[string]string{"json": "name"},
 	})
-	
+
 	typeDef.Fields = append(typeDef.Fields, FieldDef{
 		GoName: "Description",
 		Type:   "string",
 		Tags:   map[string]string{"json": "description"},
 	})
-	
+
 	typeDef.Fields = append(typeDef.Fields, FieldDef{
 		GoName: "URI",
 		Type:   "string",
@@ -484,7 +484,7 @@ func (g *Generator) generateMCPResource(resource map[string]interface{}, index i
 
 func (g *Generator) buildGoCode() (string, error) {
 	var buf bytes.Buffer
-	
+
 	// Template for Go file
 	tmpl := `package {{ .Package }}
 
@@ -532,11 +532,11 @@ const (
 	sort.Strings(importList)
 
 	data := map[string]interface{}{
-		"Package":   g.options.PackageName,
-		"Imports":   importList,
-		"Types":     sortedTypes,
+		"Package":    g.options.PackageName,
+		"Imports":    importList,
+		"Types":      sortedTypes,
 		"NoComments": g.options.NoComments,
-		"Prefix":    g.options.Prefix,
+		"Prefix":     g.options.Prefix,
 	}
 
 	if err := t.Execute(&buf, data); err != nil {
@@ -557,9 +557,10 @@ const (
 
 func (g *Generator) validateJSONSchema(schema map[string]interface{}) error {
 	// Basic validation
-	if _, ok := schema["type"]; !ok && 
-	   _, ok := schema["properties"]; !ok &&
-	   _, ok := schema["$ref"]; !ok {
+	_, hasType := schema["type"]
+	_, hasProps := schema["properties"]
+	_, hasRef := schema["$ref"]
+	if !hasType && !hasProps && !hasRef {
 		return fmt.Errorf("schema must have type, properties, or $ref")
 	}
 	return nil
@@ -570,18 +571,18 @@ func toGoName(s string) string {
 	words := strings.FieldsFunc(s, func(r rune) bool {
 		return r == '_' || r == '-' || r == ' ' || r == '.'
 	})
-	
+
 	for i, word := range words {
 		words[i] = strings.Title(strings.ToLower(word))
 	}
-	
+
 	name := strings.Join(words, "")
-	
+
 	// Ensure it starts with uppercase
 	if len(name) > 0 {
 		name = strings.ToUpper(name[:1]) + name[1:]
 	}
-	
+
 	// Handle special cases
 	replacements := map[string]string{
 		"Id":   "ID",
@@ -592,11 +593,11 @@ func toGoName(s string) string {
 		"Xml":  "XML",
 		"Http": "HTTP",
 	}
-	
+
 	for old, new := range replacements {
 		name = strings.ReplaceAll(name, old, new)
 	}
-	
+
 	return name
 }
 
@@ -627,11 +628,11 @@ func (f FieldDef) Tags() string {
 	if len(f.Tags) == 0 {
 		return ""
 	}
-	
+
 	var tagParts []string
 	for key, value := range f.Tags {
 		tagParts = append(tagParts, fmt.Sprintf(`%s:"%s"`, key, value))
 	}
-	
+
 	return "`" + strings.Join(tagParts, " ") + "`"
 }

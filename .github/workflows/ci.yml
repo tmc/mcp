@@ -131,7 +131,7 @@ jobs:
         for tool in cmd/*; do
           if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
             echo "Building $(basename $tool)..."
-            go build "$tool"
+            go build "./$tool"
           fi
         done
 
@@ -142,7 +142,7 @@ jobs:
           cd exp
           for tool in cmd/*; do
             if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
-              if go build -tags=k8s "$tool" 2>/dev/null; then
+              if go build -tags=k8s "./$tool" 2>/dev/null; then
                 echo "✅ Built exp/$(basename $tool)"
               else
                 echo "⚠️  Failed to build exp/$(basename $tool) (possibly conditional)"
@@ -366,7 +366,7 @@ jobs:
         cache: true
 
     - name: Run Gosec Security Scanner
-      uses: securecodewarrior/github-action-gosec@master
+      uses: securecodewarrior/github-action-gosec@v1
       with:
         args: '-no-fail -fmt sarif -out results.sarif ./...'
 

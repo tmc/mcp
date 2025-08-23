@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,14 +15,14 @@ import (
 
 func main() {
 	var (
-		target      = flag.String("target", "", "Target test file or directory to analyze")
-		output      = flag.String("output", "tool-graph", "Output directory for visualization")
-		format      = flag.String("format", "react", "Output format: react, dot, json")
-		maxDepth    = flag.Int("max-depth", 10, "Maximum depth to traverse")
-		includeStd  = flag.Bool("include-std", false, "Include standard library tools")
-		server      = flag.Bool("server", false, "Start a web server for the visualization")
-		port        = flag.Int("port", 8080, "Port for the web server")
-		verbose     = flag.Bool("verbose", false, "Verbose output")
+		target     = flag.String("target", "", "Target test file or directory to analyze")
+		output     = flag.String("output", "tool-graph", "Output directory for visualization")
+		format     = flag.String("format", "react", "Output format: react, dot, json")
+		maxDepth   = flag.Int("max-depth", 10, "Maximum depth to traverse")
+		includeStd = flag.Bool("include-std", false, "Include standard library tools")
+		server     = flag.Bool("server", false, "Start a web server for the visualization")
+		port       = flag.Int("port", 8080, "Port for the web server")
+		verbose    = flag.Bool("verbose", false, "Verbose output")
 	)
 	flag.Parse()
 
@@ -430,8 +431,3 @@ const container = document.getElementById('root');
 const root = ReactDOM.createRoot(container);
 root.render(React.createElement(ToolGraphFlow));`
 }
-
-// Add missing import
-import (
-	"net/http"
-)

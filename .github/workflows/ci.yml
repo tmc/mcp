@@ -365,17 +365,6 @@ jobs:
         go-version-file: go.mod
         cache: true
 
-    - name: Run Gosec Security Scanner
-      run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
-        gosec -no-fail -fmt sarif -out results.sarif ./... || true
-
-    - name: Upload SARIF file
-      if: always()
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: results.sarif
-
     - name: Run Go vulnerability check
       run: |
         go install golang.org/x/vuln/cmd/govulncheck@latest

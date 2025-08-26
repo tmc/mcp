@@ -130,8 +130,13 @@ jobs:
         echo "Building core tools..."
         for tool in cmd/*; do
           if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
-            echo "Building $(basename $tool)..."
-            go build "./$tool"
+            # Skip tools with their own go.mod (they need separate handling)
+            if [ -f "$tool/go.mod" ]; then
+              echo "⚠️  Skipping $(basename $tool) (has own go.mod)"
+            else
+              echo "Building $(basename $tool)..."
+              go build "./$tool"
+            fi
           fi
         done
 
@@ -142,7 +147,10 @@ jobs:
           cd exp
           for tool in cmd/*; do
             if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
-              if go build -tags=k8s "./$tool" 2>/dev/null; then
+              # Skip tools with their own go.mod
+              if [ -f "$tool/go.mod" ]; then
+                echo "⚠️  Skipping exp/$(basename $tool) (has own go.mod)"
+              elif go build -tags=k8s "./$tool" 2>/dev/null; then
                 echo "✅ Built exp/$(basename $tool)"
               else
                 echo "⚠️  Failed to build exp/$(basename $tool) (possibly conditional)"

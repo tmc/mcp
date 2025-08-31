@@ -159,15 +159,8 @@ func BenchmarkClient_ListTools(b *testing.B) {
 // =============================================================================
 
 func BenchmarkServer_HandleRequest(b *testing.B) {
-	server := NewServer("benchmark-server", "1.0.0")
-
-	// Register a simple tool
-	tool := Tool{
-		Name:        "echo",
-		Description: "Echo the input",
-		InputSchema: json.RawMessage(`{"type": "object"}`),
-	}
-	err := server.RegisterTool(tool, func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+	// Create a simple handler function
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 		return &CallToolResult{
 			Content: []any{
 				map[string]any{
@@ -176,19 +169,16 @@ func BenchmarkServer_HandleRequest(b *testing.B) {
 				},
 			},
 		}, nil
-	})
-	if err != nil {
-		b.Fatalf("Failed to register tool: %v", err)
 	}
 
 	for _, payloadSize := range benchmarkPayloadSizes {
 		b.Run(fmt.Sprintf("PayloadSize_%d", payloadSize), func(b *testing.B) {
-			benchmarkServerHandle(b, server, payloadSize)
+			benchmarkServerHandle(b, handler, payloadSize)
 		})
 	}
 }
 
-func benchmarkServerHandle(b *testing.B, server *Server, payloadSize int) {
+func benchmarkServerHandle(b *testing.B, handler ToolHandlerFunc, payloadSize int) {
 	// Generate payload of specified size
 	payload := make(map[string]interface{})
 	dataStr := string(make([]byte, payloadSize))
@@ -204,18 +194,15 @@ func benchmarkServerHandle(b *testing.B, server *Server, payloadSize int) {
 		Arguments: payloadJSON,
 	}
 
-	reqData, err := json.Marshal(req)
-	if err != nil {
-		b.Fatalf("Failed to marshal request: %v", err)
-	}
-
 	b.ResetTimer()
 	b.SetBytes(int64(payloadSize))
 
 	for i := 0; i < b.N; i++ {
-		// TODO: This benchmark needs to be updated to use public server methods
-		// For now, just simulate the work
-		_ = reqData
+		ctx := context.Background()
+		_, err := handler(ctx, req)
+		if err != nil {
+			b.Fatalf("handler failed: %v", err)
+		}
 	}
 }
 

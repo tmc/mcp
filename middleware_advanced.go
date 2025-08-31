@@ -563,19 +563,63 @@ func NewContentTransformationMiddleware() *ContentTransformationMiddleware {
 func (m *ContentTransformationMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Transform request content if needed
-		// TODO: Implement request transformation
+		transformedReq := m.transformRequest(ctx, req)
 
 		// Execute handler
-		resp, err := next.Handle(ctx, req)
+		resp, err := next.Handle(ctx, transformedReq)
 		if err != nil {
 			return resp, err
 		}
 
 		// Transform response content if needed
-		// TODO: Implement response transformation
+		transformedResp := m.transformResponse(ctx, resp)
 
-		return resp, err
+		return transformedResp, err
 	})
+}
+
+func (m *ContentTransformationMiddleware) transformRequest(ctx context.Context, req MCPRequest) MCPRequest {
+	// Safely transform request parameters using available transformers
+	params := req.GetParams()
+	if params != nil && len(params) > 0 {
+		for _, transformer := range m.transformers {
+			if transformer.CanTransform("application/json") {
+				// Parse, transform, and re-marshal JSON parameters
+				var parsedParams interface{}
+				if err := json.Unmarshal(params, &parsedParams); err == nil {
+					if transformed, err := transformer.Transform(ctx, parsedParams); err == nil {
+						if newParams, err := json.Marshal(transformed); err == nil {
+							// Create new request with transformed params
+							return &transformedRequest{
+								original: req,
+								params:   newParams,
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return req
+}
+
+func (m *ContentTransformationMiddleware) transformResponse(ctx context.Context, resp MCPResponse) MCPResponse {
+	// Safely transform response result using available transformers
+	result := resp.GetResult()
+	if result != nil {
+		for _, transformer := range m.transformers {
+			if transformer.CanTransform("application/json") {
+				if transformed, err := transformer.Transform(ctx, result); err == nil {
+					// Create new response with transformed result
+					return &transformedResponse{
+						original: resp,
+						result:   transformed,
+					}
+				}
+			}
+		}
+	}
+	return resp
 }
 
 func (m *ContentTransformationMiddleware) Name() string {
@@ -584,6 +628,53 @@ func (m *ContentTransformationMiddleware) Name() string {
 
 func (m *ContentTransformationMiddleware) Priority() int {
 	return 100 // Very low priority, applied last
+}
+
+// transformedRequest wraps an MCPRequest with transformed parameters
+type transformedRequest struct {
+	original MCPRequest
+	params   json.RawMessage
+}
+
+func (tr *transformedRequest) GetMethod() string {
+	return tr.original.GetMethod()
+}
+
+func (tr *transformedRequest) GetID() interface{} {
+	return tr.original.GetID()
+}
+
+func (tr *transformedRequest) GetParams() json.RawMessage {
+	return tr.params
+}
+
+func (tr *transformedRequest) GetContext() context.Context {
+	return tr.original.GetContext()
+}
+
+func (tr *transformedRequest) WithContext(ctx context.Context) MCPRequest {
+	return &transformedRequest{
+		original: tr.original.WithContext(ctx),
+		params:   tr.params,
+	}
+}
+
+// transformedResponse wraps an MCPResponse with transformed result
+type transformedResponse struct {
+	original MCPResponse
+	result   interface{}
+}
+
+func (tr *transformedResponse) GetResult() interface{} {
+	return tr.result
+}
+
+func (tr *transformedResponse) GetError() *ResponseError {
+	return tr.original.GetError()
+}
+
+func (tr *transformedResponse) IsError() bool {
+	return tr.original.IsError()
 }
 
 // ConditionalMiddleware applies middleware based on conditions

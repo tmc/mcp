@@ -81,3 +81,4 @@ temp/example_server_design_exploration/
 temp/mock_client_fix.go
 exp/schema2go/generator.go
 exp/cmd/mcp-tool-graph/main.go
+exp/cmd/mcp2go/mcp2go

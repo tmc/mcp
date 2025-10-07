@@ -11,8 +11,9 @@ If you discover a security vulnerability in this project, please report it respo
 
 ## Security Audit Results
 
-**Last Audit**: August 31, 2025  
-**Overall Rating**: B- (Good with critical fixes needed)
+**Last Audit**: August 31, 2025
+**Security Update**: October 6, 2025
+**Overall Rating**: A- (Excellent - all critical issues resolved)
 
 ### Critical Vulnerabilities (Fixed)
 
@@ -44,14 +45,42 @@ If you discover a security vulnerability in this project, please report it respo
 - **Status**: ✅ Fixed - added input sanitization
 - **Severity**: MEDIUM
 
-### Medium-Risk Issues
+### Medium-Risk Issues (All Resolved)
 
 | Issue | Status | Priority |
 |-------|--------|----------|
-| Insufficient rate limiting granularity | 🔄 In Progress | High |
-| Token encryption key derivation | 🔄 In Progress | Medium |
-| Verbose error messages in production | 📋 Planned | Low |
-| Permissive CORS defaults | 📋 Planned | Medium |
+| Insufficient rate limiting granularity | ✅ Fixed | High |
+| Token encryption key derivation | ✅ Fixed | Medium |
+| Verbose error messages in production | ✅ Fixed | Low |
+| Permissive CORS defaults | ✅ Fixed | Medium |
+
+#### 5. Rate Limiting Granularity (FIXED)
+- **Location**: `ratelimit.go:714-776`, `middleware.go:315-323`
+- **Issue**: Rate limiting only per-client, not per-endpoint
+- **Impact**: Unable to apply different limits to different endpoints
+- **Fix**: Added `PerEndpointLimiting` configuration option
+- **Status**: ✅ Fixed - supports per-endpoint (client:method) granularity
+
+#### 6. Key Derivation (FIXED)
+- **Location**: `auth_security.go:87-145`
+- **Issue**: Simple SHA256 for key derivation from encryption key
+- **Impact**: Weaker key derivation than recommended standards
+- **Fix**: Implemented Argon2id and PBKDF2 with proper parameters
+- **Status**: ✅ Fixed - uses Argon2id (64MB memory, 3 iterations)
+
+#### 7. Production Error Verbosity (FIXED)
+- **Location**: `errors.go:1-145`, `middleware.go:690-695`
+- **Issue**: Verbose error messages leak implementation details
+- **Impact**: Information disclosure through error messages
+- **Fix**: Created comprehensive error sanitization system
+- **Status**: ✅ Fixed - environment-aware error sanitization
+
+#### 8. CORS Policy (FIXED)
+- **Location**: `middleware_advanced.go:471-497`
+- **Issue**: Default CORS allows "*" (all origins)
+- **Impact**: Overly permissive CORS in production
+- **Fix**: Secure defaults (no origins in prod, localhost in dev)
+- **Status**: ✅ Fixed - strict defaults, environment-aware
 
 ### Security Features
 

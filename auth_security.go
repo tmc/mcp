@@ -18,6 +18,9 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/argon2"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // Token security error constants
@@ -81,6 +84,34 @@ type SecureOAuthProvider struct {
 	mu             sync.RWMutex
 }
 
+// KeyDerivationMethod specifies the key derivation algorithm to use
+type KeyDerivationMethod string
+
+const (
+	// KeyDerivationPBKDF2 uses PBKDF2-SHA256 for key derivation
+	KeyDerivationPBKDF2 KeyDerivationMethod = "pbkdf2"
+	// KeyDerivationArgon2 uses Argon2id for key derivation (recommended)
+	KeyDerivationArgon2 KeyDerivationMethod = "argon2"
+)
+
+// deriveKey derives a cryptographic key from a master key using the specified method
+func deriveKey(masterKey []byte, salt []byte, purpose string, method KeyDerivationMethod) []byte {
+	// Add purpose to salt for domain separation
+	purposeSalt := append(salt, []byte(purpose)...)
+
+	switch method {
+	case KeyDerivationArgon2:
+		// Argon2id parameters: 64MB memory, 3 iterations, 4 threads
+		return argon2.IDKey(masterKey, purposeSalt, 3, 64*1024, 4, 32)
+	case KeyDerivationPBKDF2:
+		// PBKDF2-SHA256 with 100,000 iterations
+		return pbkdf2.Key(masterKey, purposeSalt, 100000, 32, sha256.New)
+	default:
+		// Fallback to PBKDF2
+		return pbkdf2.Key(masterKey, purposeSalt, 100000, 32, sha256.New)
+	}
+}
+
 // NewSecureOAuthProvider creates a new secure OAuth provider
 func NewSecureOAuthProvider(provider OAuthProvider, encryptionKey []byte, rotationPolicy *TokenRotationPolicy) (*SecureOAuthProvider, error) {
 	if provider == nil {
@@ -96,14 +127,20 @@ func NewSecureOAuthProvider(provider OAuthProvider, encryptionKey []byte, rotati
 		rotationPolicy = DefaultTokenRotationPolicy()
 	}
 
-	// Generate signing key from encryption key
-	signingKey := sha256.Sum256(append(encryptionKey, []byte("signing")...))
+	// Generate salt for key derivation
+	salt := make([]byte, 32)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, fmt.Errorf("failed to generate salt: %w", err)
+	}
+
+	// Derive signing key using Argon2id (recommended)
+	signingKey := deriveKey(encryptionKey, salt, "signing", KeyDerivationArgon2)
 
 	return &SecureOAuthProvider{
 		provider:       provider,
 		storage:        storage,
 		rotationPolicy: rotationPolicy,
-		signingKey:     signingKey[:],
+		signingKey:     signingKey,
 	}, nil
 }
 

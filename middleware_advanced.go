@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -470,18 +471,25 @@ type CORSMiddleware struct {
 
 // NewCORSMiddleware creates a new CORS middleware
 func NewCORSMiddleware(config CORSConfig) *CORSMiddleware {
-	// Set defaults
+	// SECURITY: Set secure defaults (no origins allowed by default in production)
+	// This prevents accidental exposure. Origins must be explicitly configured.
 	if len(config.AllowOrigins) == 0 {
-		config.AllowOrigins = []string{"*"}
+		// Check if we're in development mode
+		if os.Getenv("MCP_ENV") == "development" || os.Getenv("MCP_ENV") == "dev" {
+			config.AllowOrigins = []string{"http://localhost:*", "http://127.0.0.1:*"}
+		} else {
+			// Production: require explicit configuration, deny all by default
+			config.AllowOrigins = []string{}
+		}
 	}
 	if len(config.AllowMethods) == 0 {
-		config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+		config.AllowMethods = []string{"GET", "POST", "OPTIONS"}
 	}
 	if len(config.AllowHeaders) == 0 {
 		config.AllowHeaders = []string{"Content-Type", "Authorization"}
 	}
 	if config.MaxAge == 0 {
-		config.MaxAge = 86400 // 24 hours
+		config.MaxAge = 3600 // 1 hour (more conservative)
 	}
 
 	return &CORSMiddleware{

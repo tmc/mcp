@@ -690,7 +690,7 @@ func NewErrorResponse(message string, code int) MCPResponse {
 func NewAuthError(message, code string) error {
 	return &OAuthError{
 		Code:        code,
-		Description: message,
+		Description: SanitizeErrorMessage(message),
 	}
 }
 

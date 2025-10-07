@@ -313,12 +313,13 @@ type RateLimitMiddleware struct {
 
 // RateLimitConfig configures rate limiting behavior
 type RateLimitConfig struct {
-	RequestsPerSecond int
-	BurstSize         int
-	KeyExtractor      func(ctx context.Context, req MCPRequest) string
-	SkipMethods       []string
-	WindowSize        time.Duration
-	CleanupInterval   time.Duration
+	RequestsPerSecond   int
+	BurstSize           int
+	KeyExtractor        func(ctx context.Context, req MCPRequest) string
+	SkipMethods         []string
+	WindowSize          time.Duration
+	CleanupInterval     time.Duration
+	PerEndpointLimiting bool // Enable per-endpoint (client:method) rate limiting granularity
 }
 
 // NewRateLimitMiddleware creates a new rate limiting middleware

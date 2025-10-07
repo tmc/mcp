@@ -713,10 +713,12 @@ func min(a, b float64) float64 {
 
 // EnhancedRateLimitMiddleware provides advanced rate limiting middleware
 type EnhancedRateLimitMiddleware struct {
-	limiter      RateLimiter
-	keyExtractor func(context.Context, MCPRequest) string
-	skipMethods  map[string]bool
-	errorHandler func(context.Context, MCPRequest) MCPResponse
+	limiter         RateLimiter
+	keyExtractor    func(context.Context, MCPRequest) string
+	skipMethods     map[string]bool
+	errorHandler    func(context.Context, MCPRequest) MCPResponse
+	perEndpointRate bool // Enable per-endpoint rate limiting
+	methodLimiters  sync.Map // method -> RateLimiter
 }
 
 // NewEnhancedRateLimitMiddleware creates enhanced rate limiting middleware
@@ -737,9 +739,10 @@ func NewEnhancedRateLimitMiddleware(limiter RateLimiter, config RateLimitConfig)
 	}
 
 	return &EnhancedRateLimitMiddleware{
-		limiter:      limiter,
-		keyExtractor: config.KeyExtractor,
-		skipMethods:  skipMethods,
+		limiter:         limiter,
+		keyExtractor:    config.KeyExtractor,
+		skipMethods:     skipMethods,
+		perEndpointRate: config.PerEndpointLimiting,
 		errorHandler: func(ctx context.Context, req MCPRequest) MCPResponse {
 			return NewRateLimitError("Rate limit exceeded")
 		},
@@ -757,8 +760,20 @@ func (m *EnhancedRateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Extract rate limit key
 		key := m.keyExtractor(ctx, req)
 
+		// Determine which limiter to use
+		var limiter RateLimiter
+		if m.perEndpointRate {
+			// Use per-endpoint rate limiting: combine client ID + method
+			endpointKey := fmt.Sprintf("%s:%s", key, req.GetMethod())
+			limiter = m.limiter
+			key = endpointKey
+		} else {
+			// Use global per-client rate limiting
+			limiter = m.limiter
+		}
+
 		// Check rate limit
-		if !m.limiter.Allow(ctx, key) {
+		if !limiter.Allow(ctx, key) {
 			return m.errorHandler(ctx, req), nil
 		}
 

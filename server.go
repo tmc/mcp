@@ -16,17 +16,13 @@ import (
 	"golang.org/x/exp/jsonrpc2"
 )
 
-// serverBinder is a custom JSON-RPC binder that provides enhanced server functionality.
-// It wraps the standard JSON-RPC handler with additional capabilities including
-// cancellation support through the CancellablePreempter, which enables proper
-// handling of client-initiated request cancellations.
+// serverBinder implements jsonrpc2.Binder with cancellation support
 type serverBinder struct {
 	handler jsonrpc2.Handler
 	logger  *slog.Logger
 }
 
-// Bind implements the jsonrpc2.Binder interface
-func (b *serverBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
+func (b serverBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
 	return jsonrpc2.ConnectionOptions{
 		Handler: b.handler,
 		Preempter: &CancellablePreempter{
@@ -784,16 +780,9 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 		transport = StdioTransport()
 	}
 
-	// Create a handler for the connection
+	// Create the connection with cancellation support
 	handler := jsonrpc2.HandlerFunc(s.handleRequest)
-
-	// Create a custom binder that includes cancellation support
-	binder := &serverBinder{
-		handler: handler,
-		logger:  s.logger,
-	}
-
-	// Create the connection
+	binder := serverBinder{handler: handler, logger: s.logger}
 	conn, err := jsonrpc2.Dial(ctx, transport, binder)
 	if err != nil {
 		return fmt.Errorf("failed to establish connection: %w", err)

@@ -47,17 +47,9 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 		opt(c)
 	}
 
-	// Create a handler for the connection
-	handler := jsonrpc2.HandlerFunc(c.handleMessage)
-
-	// Create a binder for the connection options
-	binder := jsonrpc2util.ConnectionBinder{
-		Handler: handler,
-	}
-
-	// Transport implements the jsonrpc2.Dialer interface directly
 	// Create the connection
-	conn, err := jsonrpc2.Dial(ctx, transport, binder)
+	handler := jsonrpc2.HandlerFunc(c.handleMessage)
+	conn, err := jsonrpc2.Dial(ctx, transport, jsonrpc2util.ConnectionBinder{Handler: handler})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JSON-RPC connection: %w", err)
 	}

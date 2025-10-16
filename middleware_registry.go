@@ -510,8 +510,20 @@ func (f *MetricsMiddlewareFactory) Description() string {
 type CORSMiddlewareFactory struct{}
 
 func (f *CORSMiddlewareFactory) Create(config interface{}) (Middleware, error) {
-	// Implementation would go here
-	return &NoOpMiddleware{name: "cors"}, nil
+	var corsConfig CORSConfig
+	if config != nil {
+		if cc, ok := config.(*CORSConfig); ok {
+			corsConfig = *cc
+		} else if cc, ok := config.(CORSConfig); ok {
+			corsConfig = cc
+		} else {
+			if err := mapToStruct(config, &corsConfig); err != nil {
+				return nil, fmt.Errorf("invalid CORS config: %w", err)
+			}
+		}
+	}
+
+	return NewCORSMiddleware(corsConfig), nil
 }
 
 func (f *CORSMiddlewareFactory) ConfigType() interface{} {

@@ -1,6 +1,6 @@
 # MCP Go Implementation - Development Makefile
 
-.PHONY: test test-synctest test-race test-coverage build build-tools fmt vet lint pre-commit clean help
+.PHONY: test test-synctest test-race test-coverage build build-tools fmt vet lint pre-commit clean help security-scan security-quick security-baseline
 
 # Default target
 all: test
@@ -47,6 +47,21 @@ vet:
 lint:
 	golangci-lint run
 
+# Security targets
+security-scan:
+	@echo "Running comprehensive security scan..."
+	@./scripts/security-scan.sh
+
+security-quick:
+	@echo "Running quick security scan (gosec only)..."
+	@gosec -severity medium -confidence medium -exclude-generated ./...
+
+security-baseline:
+	@echo "Establishing security baseline..."
+	@mkdir -p security-reports
+	@./scripts/security-scan.sh
+	@echo "Baseline reports saved to security-reports/"
+
 # Development workflow
 pre-commit:
 	./scripts/pre-commit.sh
@@ -56,7 +71,7 @@ tidy:
 	@if [ -d "exp" ]; then cd exp && go mod tidy; fi
 
 # CI/CD simulation
-ci-local: fmt vet build test test-race
+ci-local: fmt vet build test test-race security-quick
 	@echo "✅ Local CI checks passed"
 
 # Docker targets
@@ -70,6 +85,7 @@ docker-run:
 clean:
 	go clean ./...
 	rm -rf coverage/
+	rm -rf security-reports/
 	rm -f mcp-*
 	@if [ -d "exp" ]; then cd exp && go clean ./...; fi
 
@@ -85,6 +101,9 @@ help:
 	@echo "  fmt            - Format code with gofmt"
 	@echo "  vet            - Run go vet"
 	@echo "  lint           - Run golangci-lint"
+	@echo "  security-scan  - Run comprehensive security scan (gosec + govulncheck)"
+	@echo "  security-quick - Run quick security scan (gosec only)"
+	@echo "  security-baseline - Establish security baseline reports"
 	@echo "  pre-commit     - Run pre-commit checks"
 	@echo "  tidy           - Run go mod tidy"
 	@echo "  ci-local       - Simulate CI pipeline locally"

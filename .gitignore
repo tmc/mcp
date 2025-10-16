@@ -4,6 +4,10 @@
 coverage/
 *.out
 
+# Security scan reports
+security-reports/
+*.sarif
+
 # Build artifacts
 *.exe
 *.dll

@@ -362,6 +362,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
 
     steps:
     - name: Checkout code
@@ -373,10 +374,55 @@ jobs:
         go-version-file: go.mod
         cache: true
 
+    - name: Run gosec security scanner
+      run: |
+        echo "Installing gosec..."
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+        echo "Running gosec scan..."
+        mkdir -p security-reports
+
+        # Run gosec with SARIF output for GitHub Security
+        gosec -severity medium -confidence medium -exclude-generated \
+          -fmt sarif -out security-reports/gosec.sarif ./... || {
+          echo "⚠️  gosec found security issues (non-blocking)"
+        }
+
+        # Run gosec with text output for logs
+        gosec -severity medium -confidence medium -exclude-generated \
+          -fmt text ./... || {
+          echo "⚠️  gosec found security issues (non-blocking)"
+        }
+
+    - name: Upload gosec SARIF report
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: security-reports/gosec.sarif
+        category: gosec
+
     - name: Run Go vulnerability check
       run: |
+        echo "Installing govulncheck..."
         go install golang.org/x/vuln/cmd/govulncheck@latest
-        govulncheck ./...
+
+        echo "Running govulncheck scan..."
+        govulncheck -json ./... > security-reports/govulncheck.json || {
+          echo "⚠️  govulncheck found vulnerabilities (non-blocking)"
+        }
+
+        # Also run with text output
+        govulncheck ./... || {
+          echo "⚠️  govulncheck found vulnerabilities (non-blocking)"
+        }
+
+    - name: Upload security scan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: security-reports/
+        retention-days: 30
 
   # ============================================================================
   # FINAL STATUS

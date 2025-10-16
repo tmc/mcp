@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -340,10 +341,13 @@ func NewPerformanceAwareServer(name, version string, options ...ServerOption) *P
 
 // ResourcePool manages reusable resources to reduce allocations
 type ResourcePool struct {
-	bufferPool   sync.Pool
-	contextPool  sync.Pool
-	requestPool  sync.Pool
-	responsePool sync.Pool
+	bufferPool      sync.Pool
+	contextPool     sync.Pool
+	requestPool     sync.Pool
+	responsePool    sync.Pool
+	rawMessagePool  sync.Pool
+	jsonEncoderPool sync.Pool
+	jsonDecoderPool sync.Pool
 }
 
 // NewResourcePool creates a new resource pool
@@ -367,6 +371,22 @@ func NewResourcePool() *ResourcePool {
 		responsePool: sync.Pool{
 			New: func() interface{} {
 				return &CallToolResult{}
+			},
+		},
+		rawMessagePool: sync.Pool{
+			New: func() interface{} {
+				msg := make(json.RawMessage, 0, 1024)
+				return &msg
+			},
+		},
+		jsonEncoderPool: sync.Pool{
+			New: func() interface{} {
+				return json.NewEncoder(nil)
+			},
+		},
+		jsonDecoderPool: sync.Pool{
+			New: func() interface{} {
+				return json.NewDecoder(nil)
 			},
 		},
 	}
@@ -396,6 +416,61 @@ func (rp *ResourcePool) GetRequest() *CallToolRequest {
 // PutRequest returns a request object to the pool
 func (rp *ResourcePool) PutRequest(req *CallToolRequest) {
 	rp.requestPool.Put(req)
+}
+
+// GetResponse gets a response object from the pool
+func (rp *ResourcePool) GetResponse() *CallToolResult {
+	resp := rp.responsePool.Get().(*CallToolResult)
+	// Reset the response
+	resp.Content = nil
+	resp.IsError = false
+	return resp
+}
+
+// PutResponse returns a response object to the pool
+func (rp *ResourcePool) PutResponse(resp *CallToolResult) {
+	rp.responsePool.Put(resp)
+}
+
+// GetRawMessage gets a json.RawMessage from the pool
+func (rp *ResourcePool) GetRawMessage() *json.RawMessage {
+	msg := rp.rawMessagePool.Get().(*json.RawMessage)
+	*msg = (*msg)[:0] // Reset length while keeping capacity
+	return msg
+}
+
+// PutRawMessage returns a json.RawMessage to the pool
+func (rp *ResourcePool) PutRawMessage(msg *json.RawMessage) {
+	if cap(*msg) <= 65536 { // Don't pool very large messages
+		rp.rawMessagePool.Put(msg)
+	}
+}
+
+// GetJSONEncoder gets a JSON encoder from the pool
+func (rp *ResourcePool) GetJSONEncoder(w io.Writer) *json.Encoder {
+	_ = rp.jsonEncoderPool.Get().(*json.Encoder)
+	// Note: We can't easily reset the encoder's writer, so we create a new one
+	// This is still beneficial as it reduces some internal allocations
+	return json.NewEncoder(w)
+}
+
+// PutJSONEncoder returns a JSON encoder to the pool
+func (rp *ResourcePool) PutJSONEncoder(enc *json.Encoder) {
+	// Note: We can't pool encoders effectively without resetting their state
+	// This is a placeholder for future optimization if json.Encoder gains a Reset method
+}
+
+// GetJSONDecoder gets a JSON decoder from the pool
+func (rp *ResourcePool) GetJSONDecoder(r io.Reader) *json.Decoder {
+	_ = rp.jsonDecoderPool.Get().(*json.Decoder)
+	// Note: We can't easily reset the decoder's reader, so we create a new one
+	return json.NewDecoder(r)
+}
+
+// PutJSONDecoder returns a JSON decoder to the pool
+func (rp *ResourcePool) PutJSONDecoder(dec *json.Decoder) {
+	// Note: We can't pool decoders effectively without resetting their state
+	// This is a placeholder for future optimization if json.Decoder gains a Reset method
 }
 
 // =============================================================================

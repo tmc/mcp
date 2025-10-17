@@ -225,13 +225,11 @@ func NewEngine(opts ...*MCPScripttestOptions) *script.Engine {
 		e.Conds[k] = v
 	}
 
-	// Add default MCP commands if enabled
+	// Add default MCP commands and server support if enabled
 	if options.IncludeDefaultMCPCommands {
 		addDefaultMCPCommands(e)
+		registerServerCommands(e)
 	}
-
-	// Add server command support
-	registerServerCommands(e)
 
 	// Add custom commands and conditions
 	for k, v := range options.CustomCommands {
@@ -702,10 +700,10 @@ func isSynctestContext(ctx context.Context) bool {
 	return false
 }
 
-// Wrapper functions to expose the minimal functionality
+// TestMinimal runs tests in minimal mode without MCP-specific commands and server support.
+// This provides lighter-weight testing suitable for basic script testing without external dependencies.
 func TestMinimal(t *testing.T, pattern string, opts ...*MCPScripttestMinimalOptions) {
-	// For now, just delegate to the existing Test function with compatible options
-	// TODO: Implement proper minimal mode once we've moved the fancy commands out
+	// Convert minimal options to full options with MCP commands disabled
 	var fullOpts *MCPScripttestOptions
 	if len(opts) > 0 && opts[0] != nil {
 		minOpts := opts[0]

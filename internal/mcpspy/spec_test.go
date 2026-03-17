@@ -89,14 +89,16 @@ func TestSpecTrackerBuildsSpecFromTraffic(t *testing.T) {
 }
 
 func TestSpecFilenameFor(t *testing.T) {
+	t.Setenv("HOME", "/tmp/mcpspy-home")
 	tests := []struct {
 		in   string
 		want string
 	}{
-		{"", ""},
-		{"trace.mcp", "trace.mcpspec"},
-		{"/tmp/trace.json", "/tmp/trace.mcpspec"},
-		{"trace", "trace.mcpspec"},
+		{"", "/tmp/mcpspy-home/.mcpspy/specs/stdin.mcpspec"},
+		{"trace.mcp", "/tmp/mcpspy-home/.mcpspy/specs/trace.mcpspec"},
+		{"/tmp/trace.json", "/tmp/mcpspy-home/.mcpspy/specs/trace.mcpspec"},
+		{"trace", "/tmp/mcpspy-home/.mcpspy/specs/trace.mcpspec"},
+		{"mcp server", "/tmp/mcpspy-home/.mcpspy/specs/mcp-server.mcpspec"},
 	}
 	for _, tt := range tests {
 		if got := SpecFilenameFor(tt.in); got != tt.want {

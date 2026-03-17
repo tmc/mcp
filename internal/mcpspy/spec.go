@@ -880,14 +880,35 @@ func cloneMap(src map[string]any) map[string]any {
 	return dst
 }
 
-// SpecFilenameFor returns the default sidecar .mcpspec path for a recording.
-func SpecFilenameFor(path string) string {
-	if path == "" {
-		return ""
+// SpecFilenameFor returns the default .mcpspec path for a wrapped tool.
+func SpecFilenameFor(tool string) string {
+	name := sanitizeSpecName(tool)
+	dir, err := os.UserHomeDir()
+	if err == nil && dir != "" {
+		return filepath.Join(dir, ".mcpspy", "specs", name+".mcpspec")
 	}
-	ext := filepath.Ext(path)
-	if ext == "" {
-		return path + ".mcpspec"
+	return filepath.Join(".mcpspy", "specs", name+".mcpspec")
+}
+
+func sanitizeSpecName(tool string) string {
+	tool = strings.TrimSpace(tool)
+	if tool == "" {
+		return "stdin"
 	}
-	return strings.TrimSuffix(path, ext) + ".mcpspec"
+	tool = filepath.Base(tool)
+	if ext := filepath.Ext(tool); ext != "" {
+		tool = strings.TrimSuffix(tool, ext)
+	}
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		" ", "-",
+	)
+	tool = replacer.Replace(tool)
+	tool = strings.Trim(tool, ".-")
+	if tool == "" {
+		return "stdin"
+	}
+	return tool
 }

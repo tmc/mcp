@@ -26,12 +26,26 @@ func TestOpenRequiresListen(t *testing.T) {
 }
 
 func TestListenKeepsRecording(t *testing.T) {
-	tmp := t.TempDir()
+	tmp, err := os.MkdirTemp("", "mcpspy-listen-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeAllWritable(t, tmp)
+	homeDir := filepath.Join(tmp, "home")
 	recording := filepath.Join(tmp, "out.mcp")
-	specPath := filepath.Join(tmp, "out.mcpspec")
+	specPath := filepath.Join(homeDir, ".mcpspy", "specs", "cat.mcpspec")
+	goPath := filepath.Join(tmp, "gopath")
+	goModCache := filepath.Join(tmp, "gomodcache")
 	cmd := exec.Command("go", "run", ".", "-l", "-http", "127.0.0.1:0", "-f", recording, "--", "cat")
 	cmd.Dir = "."
 	cmd.Stdin = strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"message\":\"ping\"}}}\n")
+	cmd.Env = append(
+		os.Environ(),
+		"HOME="+homeDir,
+		"GOCACHE="+filepath.Join(tmp, "gocache"),
+		"GOPATH="+goPath,
+		"GOMODCACHE="+goModCache,
+	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -59,6 +73,24 @@ func TestListenKeepsRecording(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "http://127.0.0.1:") {
 		t.Fatalf("stderr=%q", stderr.String())
+	}
+}
+
+func removeAllWritable(t *testing.T, root string) {
+	t.Helper()
+	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			_ = os.Chmod(path, 0755)
+			return nil
+		}
+		_ = os.Chmod(path, 0644)
+		return nil
+	})
+	if err := os.RemoveAll(root); err != nil {
+		t.Fatalf("remove temp dir %s: %v", root, err)
 	}
 }
 

@@ -41,7 +41,7 @@ var (
 	openBrowser     = flag.Bool("open", false, "open the UI in the browser")
 	nameFlag        = flag.String("name", "", "optional human-readable instance name")
 	sessionFlag     = flag.String("session", "", "session identifier shared across related mcpspy processes")
-	specFile        = flag.String("spec-file", "", "output .mcpspec file (defaults to a sidecar next to the recording)")
+	specFile        = flag.String("spec-file", "", "output .mcpspec file (defaults to ~/.mcpspy/specs/<tool>.mcpspec)")
 )
 
 func main() {
@@ -88,7 +88,11 @@ func main() {
 		*outFile = generateFilename(command)
 	}
 	if *specFile == "" {
-		*specFile = mcpspy.SpecFilenameFor(*outFile)
+		specName := *nameFlag
+		if specName == "" && len(command) > 0 {
+			specName = command[0]
+		}
+		*specFile = mcpspy.SpecFilenameFor(specName)
 	}
 
 	writer, err := newSafeWriter(*outFile, *useAppend)

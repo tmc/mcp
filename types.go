@@ -11,7 +11,7 @@ import (
 
 // Protocol constants
 const (
-	LATEST_PROTOCOL_VERSION = "2025-03-26"
+	LATEST_PROTOCOL_VERSION = "2025-11-25"
 	JSONRPC_VERSION         = "2.0"
 )
 
@@ -79,23 +79,38 @@ const (
 type MCPMethod string
 
 const (
-	MethodInitialize             MCPMethod = "initialize"
-	MethodPing                   MCPMethod = "ping"
-	MethodResourcesList          MCPMethod = "resources/list"
-	MethodResourcesTemplatesList MCPMethod = "resources/templates/list"
-	MethodResourcesRead          MCPMethod = "resources/read"
-	MethodPromptsList            MCPMethod = "prompts/list"
-	MethodPromptsGet             MCPMethod = "prompts/get"
-	MethodToolsList              MCPMethod = "tools/list"
-	MethodToolsCall              MCPMethod = "tools/call"
-	MethodNotificationCancelled  MCPMethod = "notifications/cancelled"
+	MethodInitialize              MCPMethod = "initialize"
+	MethodPing                    MCPMethod = "ping"
+	MethodRootsList               MCPMethod = "roots/list"
+	MethodCompletionComplete      MCPMethod = "completion/complete"
+	MethodLoggingSetLevel         MCPMethod = "logging/setLevel"
+	MethodSamplingCreateMessage   MCPMethod = "sampling/createMessage"
+	MethodElicitationCreate       MCPMethod = "elicitation/create"
+	MethodTasksList               MCPMethod = "tasks/list"
+	MethodTasksGet                MCPMethod = "tasks/get"
+	MethodTasksResult             MCPMethod = "tasks/result"
+	MethodTasksCancel             MCPMethod = "tasks/cancel"
+	MethodResourcesList           MCPMethod = "resources/list"
+	MethodResourcesTemplatesList  MCPMethod = "resources/templates/list"
+	MethodResourcesSubscribe      MCPMethod = "resources/subscribe"
+	MethodResourcesUnsubscribe    MCPMethod = "resources/unsubscribe"
+	MethodResourcesRead           MCPMethod = "resources/read"
+	MethodPromptsList             MCPMethod = "prompts/list"
+	MethodPromptsGet              MCPMethod = "prompts/get"
+	MethodToolsList               MCPMethod = "tools/list"
+	MethodToolsCall               MCPMethod = "tools/call"
+	MethodNotificationCancelled   MCPMethod = "notifications/cancelled"
+	MethodNotificationInitialized MCPMethod = "notifications/initialized"
 
 	// Notification methods
 	MethodProgress            MCPMethod = "notifications/progress"
 	MethodLogging             MCPMethod = "notifications/message"
+	MethodResourceUpdated     MCPMethod = "notifications/resources/updated"
 	MethodResourceListChanged MCPMethod = "notifications/resources/list_changed"
 	MethodPromptListChanged   MCPMethod = "notifications/prompts/list_changed"
 	MethodToolListChanged     MCPMethod = "notifications/tools/list_changed"
+	MethodRootsListChanged    MCPMethod = "notifications/roots/list_changed"
+	MethodTasksStatus         MCPMethod = "notifications/tasks/status"
 )
 
 // JSONRPCNotification represents a notification message in the JSON-RPC protocol.
@@ -145,6 +160,20 @@ func (e *JSONRPCError) Error() string {
 	return e.Message
 }
 
+// Root represents a client-side filesystem root exposed to a server.
+type Root struct {
+	URI  string `json:"uri"`
+	Name string `json:"name,omitempty"`
+}
+
+// ListRootsRequest is sent by servers to retrieve the client's current roots.
+type ListRootsRequest struct{}
+
+// ListRootsResult contains the client's current roots.
+type ListRootsResult struct {
+	Roots []Root `json:"roots"`
+}
+
 // Implementation describes the name and version of an MCP client or server.
 // This information is exchanged during the initialization handshake to identify
 // the software and version being used on each side of the connection.
@@ -158,7 +187,27 @@ type Implementation struct {
 // enabling servers to optimize their behavior based on client features.
 type ClientCapabilities struct {
 	Experimental map[string]any `json:"experimental,omitempty"`
-	Sampling     *struct{}      `json:"sampling,omitempty"`
+	Roots        *struct {
+		ListChanged bool `json:"listChanged,omitempty"`
+	} `json:"roots,omitempty"`
+	Sampling    *struct{} `json:"sampling,omitempty"`
+	Elicitation *struct {
+		Form bool `json:"form,omitempty"`
+		URL  bool `json:"url,omitempty"`
+	} `json:"elicitation,omitempty"`
+	Tasks *struct {
+		List     bool `json:"list,omitempty"`
+		Cancel   bool `json:"cancel,omitempty"`
+		Results  bool `json:"results,omitempty"`
+		Requests *struct {
+			Sampling *struct {
+				CreateMessage bool `json:"createMessage,omitempty"`
+			} `json:"sampling,omitempty"`
+			Elicitation *struct {
+				Create bool `json:"create,omitempty"`
+			} `json:"elicitation,omitempty"`
+		} `json:"requests,omitempty"`
+	} `json:"tasks,omitempty"`
 }
 
 // ServerCapabilities describes the features supported by an MCP server.
@@ -166,6 +215,8 @@ type ClientCapabilities struct {
 // about available features like tools, resources, prompts, and change notifications.
 type ServerCapabilities struct {
 	Experimental map[string]any `json:"experimental,omitempty"`
+	Logging      *struct{}      `json:"logging,omitempty"`
+	Completions  *struct{}      `json:"completions,omitempty"`
 	Tools        *struct {
 		ListChanged bool `json:"listChanged,omitempty"`
 	} `json:"tools,omitempty"`
@@ -176,6 +227,16 @@ type ServerCapabilities struct {
 	Prompts *struct {
 		ListChanged bool `json:"listChanged,omitempty"`
 	} `json:"prompts,omitempty"`
+	Tasks *struct {
+		List     bool `json:"list,omitempty"`
+		Cancel   bool `json:"cancel,omitempty"`
+		Results  bool `json:"results,omitempty"`
+		Requests *struct {
+			Tools *struct {
+				Call bool `json:"call,omitempty"`
+			} `json:"tools,omitempty"`
+		} `json:"requests,omitempty"`
+	} `json:"tasks,omitempty"`
 }
 
 // InitializeRequest is the client's request to initialize the MCP connection.
@@ -261,6 +322,68 @@ type CallToolResult struct {
 	Content []any `json:"content"`
 	IsError bool  `json:"isError,omitempty"`
 	Meta    any   `json:"_meta,omitempty"`
+}
+
+// CompleteRequest describes a completion lookup for a prompt or resource reference.
+type CompleteRequest struct {
+	Ref      any `json:"ref"`
+	Argument struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	} `json:"argument"`
+}
+
+// CompleteResult contains server-provided completion candidates.
+type CompleteResult struct {
+	Completion struct {
+		Values  []string `json:"values"`
+		Total   *int     `json:"total,omitempty"`
+		HasMore *bool    `json:"hasMore,omitempty"`
+	} `json:"completion"`
+}
+
+// SetLevelRequest changes the logging level on a server that supports protocol logging.
+type SetLevelRequest struct {
+	Level LoggingLevel `json:"level"`
+}
+
+// LoggingMessageNotification contains structured logging notification data.
+type LoggingMessageNotification struct {
+	Level  LoggingLevel    `json:"level"`
+	Logger string          `json:"logger,omitempty"`
+	Data   json.RawMessage `json:"data"`
+}
+
+// TaskInfo describes the current state of a durable task.
+type TaskInfo struct {
+	TaskID        string `json:"taskId"`
+	Status        string `json:"status"`
+	StatusMessage string `json:"statusMessage,omitempty"`
+	CreatedAt     string `json:"createdAt,omitempty"`
+	LastUpdatedAt string `json:"lastUpdatedAt,omitempty"`
+	TTL           *int64 `json:"ttl,omitempty"`
+	PollInterval  *int64 `json:"pollInterval,omitempty"`
+}
+
+// ListTasksRequest requests the current set of tasks.
+type ListTasksRequest struct {
+	Cursor string `json:"cursor,omitempty"`
+}
+
+// ListTasksResult contains the current page of tasks.
+type ListTasksResult struct {
+	Tasks      []TaskInfo `json:"tasks"`
+	NextCursor string     `json:"nextCursor,omitempty"`
+}
+
+// GetTaskRequest requests the current status of a task.
+type GetTaskRequest struct {
+	TaskID string `json:"taskId"`
+}
+
+// CancelTaskRequest requests cancellation of a task.
+type CancelTaskRequest struct {
+	TaskID string `json:"taskId"`
 }
 
 // ListPromptsRequest is the client's request to list available prompts.

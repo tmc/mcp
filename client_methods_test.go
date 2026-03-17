@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tmc/mcp/internal/jsonrpc2util"
 	"golang.org/x/exp/jsonrpc2"
 )
 
@@ -85,6 +84,8 @@ func TestClientAllMethods(t *testing.T) {
 			{Template: "test://template/{id}", Description: "Test Template"},
 		},
 	}
+
+	mockServer.responses["completion/complete"] = CompleteResult{}
 
 	// Create client and server connection
 	client, cleanup := createTestClientServer(t, mockServer)
@@ -237,6 +238,16 @@ func TestClientAllMethods(t *testing.T) {
 			t.Errorf("Unexpected templates result: %+v", result)
 		}
 	})
+
+	t.Run("CallRaw", func(t *testing.T) {
+		raw, err := client.CallRaw(context.Background(), string(MethodCompletionComplete), CompleteRequest{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(raw) == "" {
+			t.Fatal("expected raw JSON")
+		}
+	})
 }
 
 // TestClientCancellation tests context cancellation handling
@@ -385,10 +396,12 @@ func createTestClientServer(t *testing.T, server *mockMCPServer) (*Client, func(
 
 	go func() {
 		handler := jsonrpc2.HandlerFunc(server.handleRequest)
-		binder := jsonrpc2util.ConnectionBinder{Handler: handler}
 		serverReady <- struct{}{}
 
-		conn, err := jsonrpc2.Dial(context.Background(), &ReadWriteCloserTransport{serverConn}, binder)
+		conn, err := jsonrpc2.Dial(context.Background(), &ReadWriteCloserTransport{serverConn}, jsonrpc2.ConnectionOptions{
+			Framer:  jsonrpc2.RawFramer(),
+			Handler: handler,
+		})
 		if err != nil {
 			t.Logf("Server dial error: %v", err)
 			close(serverDone)

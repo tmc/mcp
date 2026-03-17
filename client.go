@@ -2,11 +2,11 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sync"
 
-	"github.com/tmc/mcp/internal/jsonrpc2util"
 	"golang.org/x/exp/jsonrpc2"
 )
 
@@ -19,6 +19,8 @@ type Client struct {
 	conn               *jsonrpc2.Connection
 	notificationMu     sync.RWMutex
 	notifyHandler      func(notification JSONRPCNotification)
+	requestMu          sync.RWMutex
+	requestHandlers    map[string]RequestHandler
 	serverInfo         Implementation
 	serverCapabilities ServerCapabilities
 	initialized        bool
@@ -27,6 +29,9 @@ type Client struct {
 
 // ClientOption defines a function for configuring a Client instance.
 type ClientOption func(*Client)
+
+// RequestHandler handles server-to-client MCP requests.
+type RequestHandler func(ctx context.Context, params json.RawMessage) (any, error)
 
 // WithNotificationHandler sets a notification handler for the client.
 func WithNotificationHandler(handler func(notification JSONRPCNotification)) ClientOption {
@@ -40,7 +45,9 @@ func WithNotificationHandler(handler func(notification JSONRPCNotification)) Cli
 // NewClient creates a new MCP client instance using the provided transport.
 func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	ctx := context.Background()
-	c := &Client{}
+	c := &Client{
+		requestHandlers: make(map[string]RequestHandler),
+	}
 
 	// Apply options
 	for _, opt := range opts {
@@ -49,7 +56,10 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 
 	// Create the connection
 	handler := jsonrpc2.HandlerFunc(c.handleMessage)
-	conn, err := jsonrpc2.Dial(ctx, transport, jsonrpc2util.ConnectionBinder{Handler: handler})
+	conn, err := jsonrpc2.Dial(ctx, transport, jsonrpc2.ConnectionOptions{
+		Framer:  jsonrpc2.RawFramer(),
+		Handler: handler,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JSON-RPC connection: %w", err)
 	}
@@ -80,9 +90,13 @@ func (c *Client) handleMessage(ctx context.Context, req *jsonrpc2.Request) (inte
 		return nil, nil
 	}
 
-	// For regular requests, reply with method not implemented
-	// (clients typically don't handle requests, just responses)
-	return nil, errors.New("method not implemented on client")
+	c.requestMu.RLock()
+	handler := c.requestHandlers[req.Method]
+	c.requestMu.RUnlock()
+	if handler == nil {
+		return nil, errors.New("method not implemented on client")
+	}
+	return handler(ctx, req.Params)
 }
 
 // OnNotification registers a handler function to be called when asynchronous
@@ -91,6 +105,17 @@ func (c *Client) OnNotification(handler func(notification JSONRPCNotification)) 
 	c.notificationMu.Lock()
 	c.notifyHandler = handler
 	c.notificationMu.Unlock()
+}
+
+// OnRequest registers a handler for a specific server-to-client request method.
+func (c *Client) OnRequest(method string, handler RequestHandler) {
+	c.requestMu.Lock()
+	if handler == nil {
+		delete(c.requestHandlers, method)
+	} else {
+		c.requestHandlers[method] = handler
+	}
+	c.requestMu.Unlock()
 }
 
 // Initialize performs the initial MCP handshake with the server.
@@ -228,6 +253,48 @@ func (c *Client) ListResourceTemplates(ctx context.Context, request ListResource
 // Close terminates the connection to the server.
 func (c *Client) Close() error {
 	return c.conn.Close()
+}
+
+// Notify sends a JSON-RPC notification to the server.
+func (c *Client) Notify(ctx context.Context, method string, params interface{}) error {
+	if c.conn == nil {
+		return errors.New("client connection is not established")
+	}
+	return c.conn.Notify(ctx, method, params)
+}
+
+// Call invokes an arbitrary MCP method and unmarshals the result into result.
+func (c *Client) Call(ctx context.Context, method string, params, result interface{}) error {
+	if method != string(MethodInitialize) {
+		if err := c.checkInitialized(); err != nil {
+			return err
+		}
+	}
+	return c.call(ctx, method, params, result)
+}
+
+// CallRaw invokes an arbitrary MCP method and returns the raw JSON result.
+func (c *Client) CallRaw(ctx context.Context, method string, params interface{}) (json.RawMessage, error) {
+	var raw json.RawMessage
+	if err := c.Call(ctx, method, params, &raw); err != nil {
+		return nil, err
+	}
+	return raw, nil
+}
+
+// Complete requests protocol-backed completions when the server supports them.
+func (c *Client) Complete(ctx context.Context, request CompleteRequest) (*CompleteResult, error) {
+	var result CompleteResult
+	if err := c.Call(ctx, string(MethodCompletionComplete), request, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// SetLoggingLevel requests a server logging level change.
+func (c *Client) SetLoggingLevel(ctx context.Context, level LoggingLevel) error {
+	var result any
+	return c.Call(ctx, string(MethodLoggingSetLevel), SetLevelRequest{Level: level}, &result)
 }
 
 // call is a helper method that performs a JSON-RPC call with automatic cancellation notification.

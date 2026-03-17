@@ -1,0 +1,14 @@
+{
+  "name": "mcpspy-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "preact": "^10.26.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tmc/mcp"
+	"golang.org/x/term"
 )
 
 const (
@@ -31,10 +35,17 @@ type bootstrapOptions struct {
 	Cmd             string
 	HTTPURL         string
 	SSEURL          string
+	ConfigFile      string
+	ServerName      string
 	Timeout         time.Duration
 	ProtocolVersion string
 	Raw             bool
 	ServerStderr    bool
+	SpyRecord       string
+	SpyUI           bool
+	SpyOpen         bool
+	SpyPretty       bool
+	SpySpecFile     string
 }
 
 type backend interface {
@@ -76,6 +87,20 @@ type app struct {
 	tools   []mcp.Tool
 }
 
+func (a *app) reloadTools(ctx context.Context) error {
+	if a == nil || a.backend == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, a.opts.Timeout)
+	defer cancel()
+	tools, err := listAllTools(ctx, a.backend)
+	if err != nil {
+		return fmt.Errorf("list tools: %w", err)
+	}
+	a.tools = tools
+	return nil
+}
+
 func main() {
 	if err := run(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -106,6 +131,23 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 }
 
 func buildRootCommand(ctx context.Context, opts bootstrapOptions) (*cobra.Command, *app, error) {
+	var loaded *app
+	if opts.transportCount() != 0 {
+		backend, err := newLiveBackend(ctx, opts)
+		if err != nil {
+			return nil, nil, err
+		}
+		a := &app{backend: backend, opts: opts}
+		if err := a.load(ctx); err != nil {
+			_ = backend.Close()
+			return nil, nil, err
+		}
+		loaded = a
+	}
+	return newRootCommand(opts, loaded), loaded, nil
+}
+
+func newRootCommand(opts bootstrapOptions, app *app) *cobra.Command {
 	root := &cobra.Command{
 		Use:                toolName + " [flags] <tool>",
 		Short:              "Dynamic shell for MCP tools",
@@ -116,6 +158,9 @@ func buildRootCommand(ctx context.Context, opts bootstrapOptions) (*cobra.Comman
 		SilenceUsage:       true,
 		SilenceErrors:      true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 && app != nil && term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd())) {
+				return runInteractiveShell(cmd, opts, app)
+			}
 			return cmd.Help()
 		},
 	}
@@ -124,26 +169,17 @@ func buildRootCommand(ctx context.Context, opts bootstrapOptions) (*cobra.Comman
 	root.AddCommand(newCompletionCommand())
 	addPersistentFlags(root, &opts)
 
-	if opts.transportCount() == 0 {
-		return root, nil, nil
-	}
-
-	backend, err := newLiveBackend(ctx, opts)
-	if err != nil {
-		return nil, nil, err
-	}
-	app := &app{backend: backend, opts: opts}
-	if err := app.load(ctx); err != nil {
-		_ = backend.Close()
-		return nil, nil, err
+	if app == nil {
+		return root
 	}
 
 	root.Short = shortHelp(app.server)
 	root.Long = longHelp(app.server, app.tools)
 	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})
 	root.AddCommand(newToolsCommand(app))
+	root.AddCommand(newShellCommand(opts, app))
 	addToolCommands(root, app)
-	return root, app, nil
+	return root
 }
 
 func newCompletionCommand() *cobra.Command {
@@ -202,10 +238,17 @@ func addPersistentFlags(cmd *cobra.Command, opts *bootstrapOptions) {
 	flags.StringVar(&opts.Cmd, "cmd", opts.Cmd, "shell command to start an MCP stdio server")
 	flags.StringVar(&opts.HTTPURL, "http", opts.HTTPURL, "streamable HTTP MCP endpoint")
 	flags.StringVar(&opts.SSEURL, "sse", opts.SSEURL, "SSE MCP endpoint")
+	flags.StringVar(&opts.ConfigFile, "config", opts.ConfigFile, "path to .mcp.json config file (auto-discovered if omitted)")
+	flags.StringVar(&opts.ServerName, "server", opts.ServerName, "server name from .mcp.json config")
 	flags.DurationVar(&opts.Timeout, "timeout", opts.Timeout, "request timeout")
 	flags.StringVar(&opts.ProtocolVersion, "protocol-version", opts.ProtocolVersion, "MCP protocol version")
 	flags.BoolVar(&opts.Raw, "raw", opts.Raw, "print raw JSON tool results")
 	flags.BoolVar(&opts.ServerStderr, "server-stderr", opts.ServerStderr, "forward wrapped server stderr to stderr")
+	flags.StringVar(&opts.SpyRecord, "spy-record", opts.SpyRecord, "record wrapped stdio server traffic with mcpspy")
+	flags.BoolVar(&opts.SpyUI, "spy-ui", opts.SpyUI, "serve wrapped stdio server traffic in the mcpspy web UI")
+	flags.BoolVar(&opts.SpyOpen, "spy-open", opts.SpyOpen, "open the mcpspy UI in a browser")
+	flags.BoolVar(&opts.SpyPretty, "spy-pretty", opts.SpyPretty, "pretty-print mcpspy JSON output")
+	flags.StringVar(&opts.SpySpecFile, "spy-spec-file", opts.SpySpecFile, "write observed mcpspy spec output to this .mcpspec path")
 }
 
 func (o bootstrapOptions) transportCount() int {
@@ -300,7 +343,83 @@ func parseBootstrapArgs(args []string) (bootstrapOptions, error) {
 				return opts, fmt.Errorf("parse --server-stderr: %w", err)
 			}
 			opts.ServerStderr = v
+		case "--spy-record":
+			if !hasValue {
+				i++
+				if i >= len(args) {
+					return opts, errors.New("missing value for --spy-record")
+				}
+				value = args[i]
+			}
+			opts.SpyRecord = value
+		case "--spy-ui":
+			if !hasValue {
+				opts.SpyUI = true
+				continue
+			}
+			v, err := strconv.ParseBool(value)
+			if err != nil {
+				return opts, fmt.Errorf("parse --spy-ui: %w", err)
+			}
+			opts.SpyUI = v
+		case "--spy-open":
+			if !hasValue {
+				opts.SpyOpen = true
+				continue
+			}
+			v, err := strconv.ParseBool(value)
+			if err != nil {
+				return opts, fmt.Errorf("parse --spy-open: %w", err)
+			}
+			opts.SpyOpen = v
+		case "--spy-pretty":
+			if !hasValue {
+				opts.SpyPretty = true
+				continue
+			}
+			v, err := strconv.ParseBool(value)
+			if err != nil {
+				return opts, fmt.Errorf("parse --spy-pretty: %w", err)
+			}
+			opts.SpyPretty = v
+		case "--spy-spec-file":
+			if !hasValue {
+				i++
+				if i >= len(args) {
+					return opts, errors.New("missing value for --spy-spec-file")
+				}
+				value = args[i]
+			}
+			opts.SpySpecFile = value
+		case "--config":
+			if !hasValue {
+				i++
+				if i >= len(args) {
+					return opts, errors.New("missing value for --config")
+				}
+				value = args[i]
+			}
+			opts.ConfigFile = value
+		case "--server":
+			if !hasValue {
+				i++
+				if i >= len(args) {
+					return opts, errors.New("missing value for --server")
+				}
+				value = args[i]
+			}
+			opts.ServerName = value
 		}
+	}
+	if opts.SpyOpen && !opts.SpyUI {
+		return opts, errors.New("--spy-open requires --spy-ui")
+	}
+	if opts.Cmd != "" && opts.spyEnabled() && opts.SpyPretty {
+		return opts, errors.New("--spy-pretty is not supported when wrapping a live stdio server")
+	}
+	// Resolve --config/--server before transport validation.
+	if err := resolveConfig(&opts); err != nil {
+		return opts, err
 	}
 	if opts.transportCount() > 1 {
 		return opts, errors.New("choose exactly one of --cmd, --http, or --sse")
@@ -326,7 +445,11 @@ func newLiveBackend(ctx context.Context, opts bootstrapOptions) (backend, error)
 	if err != nil {
 		return nil, err
 	}
-	client, err := mcp.NewClient(transport)
+	clientOpts := []mcp.ClientOption{}
+	if opts.Cmd != "" {
+		clientOpts = append(clientOpts, mcp.WithFramer(mcp.LineFramer()))
+	}
+	client, err := mcp.NewClient(transport, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +459,7 @@ func newLiveBackend(ctx context.Context, opts bootstrapOptions) (backend, error)
 func newTransport(opts bootstrapOptions) (mcp.Transport, error) {
 	switch {
 	case opts.Cmd != "":
-		return commandTransport(opts.Cmd, serverStderr(opts)), nil
+		return commandTransport(wrappedCommand(opts), serverStderr(opts)), nil
 	case opts.SSEURL != "":
 		return mcp.NewSSEClientTransport(opts.SSEURL, nil)
 	case opts.HTTPURL != "":
@@ -347,10 +470,78 @@ func newTransport(opts bootstrapOptions) (mcp.Transport, error) {
 }
 
 func serverStderr(opts bootstrapOptions) io.Writer {
-	if opts.ServerStderr {
+	if opts.ServerStderr || opts.SpyUI {
 		return os.Stderr
 	}
 	return io.Discard
+}
+
+func (o bootstrapOptions) spyEnabled() bool {
+	return o.SpyRecord != "" || o.SpyUI || o.SpyOpen || o.SpyPretty || o.SpySpecFile != ""
+}
+
+func wrappedCommand(opts bootstrapOptions) string {
+	if !opts.spyEnabled() {
+		return opts.Cmd
+	}
+	args := spyCommandParts()
+	if opts.SpyRecord != "" {
+		args = append(args, "-f", opts.SpyRecord)
+	}
+	if opts.SpyUI {
+		args = append(args, "-l")
+	}
+	if opts.SpyOpen {
+		args = append(args, "-open")
+	}
+	if opts.SpySpecFile != "" {
+		args = append(args, "--spec-file", opts.SpySpecFile)
+	}
+	args = append(args, "--pass-through")
+	if !opts.ServerStderr {
+		args = append(args, "-no-stderr")
+	}
+	args = append(args, "--")
+	if runtime.GOOS == "windows" {
+		args = append(args, "cmd", "/C", opts.Cmd)
+	} else {
+		args = append(args, "sh", "-lc", opts.Cmd)
+	}
+	return joinShellCommand(args)
+}
+
+func joinShellCommand(args []string) string {
+	quoted := make([]string, len(args))
+	for i, arg := range args {
+		quoted[i] = shellQuote(arg)
+	}
+	return strings.Join(quoted, " ")
+}
+
+func shellQuote(s string) string {
+	if s == "" {
+		return "''"
+	}
+	if !strings.ContainsAny(s, " \t\n'\"\\$`!&|;<>()[]{}*?~#") {
+		return s
+	}
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func spyCommandParts() []string {
+	if _, err := os.Stat(filepath.Join("cmd", "mcpspy", "main.go")); err == nil {
+		return []string{"go", "run", "./cmd/mcpspy"}
+	}
+	if exe, err := os.Executable(); err == nil {
+		sibling := filepath.Join(filepath.Dir(exe), "mcpspy")
+		if info, err := os.Stat(sibling); err == nil && info.Mode().IsRegular() {
+			return []string{sibling}
+		}
+	}
+	if path, err := exec.LookPath("mcpspy"); err == nil {
+		return []string{path}
+	}
+	return []string{"mcpspy"}
 }
 
 func (a *app) load(ctx context.Context) error {
@@ -445,8 +636,14 @@ PowerShell:
 
 func rootExamples() string {
 	return `  mcpsh --cmd 'server --stdio' echo --message hello
+  mcpsh --cmd 'server --stdio'
+  mcpsh --cmd 'server --stdio' shell
+  mcpsh --cmd 'server --stdio' --spy-record session.mcp --spy-ui
   mcpsh --http http://127.0.0.1:8080/mcp tools
-  mcpsh --sse http://127.0.0.1:8080/sse completion zsh`
+  mcpsh --sse http://127.0.0.1:8080/sse completion zsh
+  mcpsh --config .mcp.json --server cdp tools
+  mcpsh --config .mcp.json                       # auto-select if single server
+  mcpsh --server cdp                              # auto-discover .mcp.json`
 }
 
 func renderResult(result *mcp.CallToolResult, raw bool) ([]byte, error) {

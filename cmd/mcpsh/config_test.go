@@ -1,9 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/tmc/mcp"
 )
 
 func TestLoadMCPConfig(t *testing.T) {
@@ -109,9 +116,17 @@ func TestResolveConfig_multipleServers(t *testing.T) {
 	}`), 0o644)
 
 	opts := bootstrapOptions{ConfigFile: path}
-	err := resolveConfig(&opts)
-	if err == nil {
-		t.Fatal("expected error for multiple servers without --server")
+	if err := resolveConfig(&opts); err != nil {
+		t.Fatal(err)
+	}
+	if len(opts.configServers) != 2 {
+		t.Fatalf("got %d config servers, want 2", len(opts.configServers))
+	}
+	if opts.configServers[0].name != "a" || opts.configServers[1].name != "b" {
+		t.Fatalf("got names %q %q, want a b", opts.configServers[0].name, opts.configServers[1].name)
+	}
+	if opts.Cmd != "" {
+		t.Fatal("Cmd should not be set in multi-server mode")
 	}
 }
 
@@ -181,5 +196,112 @@ func TestResolveConfig_noFlags(t *testing.T) {
 	}
 	if opts.Cmd != "" {
 		t.Fatal("expected no Cmd when no config flags given")
+	}
+}
+
+func TestMultiServerAllTools(t *testing.T) {
+	a := &app{
+		servers: []*serverConn{
+			{
+				name: "srv-a",
+				tools: []mcp.Tool{
+					{Name: "alpha"},
+					{Name: "beta"},
+				},
+			},
+			{
+				name: "srv-b",
+				tools: []mcp.Tool{
+					{Name: "gamma"},
+				},
+			},
+		},
+	}
+	tools := a.allTools()
+	if len(tools) != 3 {
+		t.Fatalf("got %d tools, want 3", len(tools))
+	}
+	// Multi-server should prefix with server name.
+	names := make([]string, len(tools))
+	for i, nt := range tools {
+		names[i] = nt.displayName()
+	}
+	// Sorted: srv-a/alpha, srv-a/beta, srv-b/gamma
+	if names[0] != "srv-a/alpha" || names[1] != "srv-a/beta" || names[2] != "srv-b/gamma" {
+		t.Fatalf("tool names = %v", names)
+	}
+}
+
+func TestSingleServerNoPrefix(t *testing.T) {
+	a := &app{
+		servers: []*serverConn{
+			{
+				name:  "only",
+				tools: []mcp.Tool{{Name: "alpha"}},
+			},
+		},
+	}
+	tools := a.allTools()
+	if len(tools) != 1 {
+		t.Fatalf("got %d tools, want 1", len(tools))
+	}
+	if tools[0].displayName() != "alpha" {
+		t.Fatalf("displayName = %q, want %q", tools[0].displayName(), "alpha")
+	}
+}
+
+func TestMultiServerToolCommands(t *testing.T) {
+	backendA := &fakeBackend{result: &mcp.CallToolResult{
+		Content: []any{map[string]any{"type": "text", "text": "from-a"}},
+	}}
+	backendB := &fakeBackend{result: &mcp.CallToolResult{
+		Content: []any{map[string]any{"type": "text", "text": "from-b"}},
+	}}
+	a := &app{
+		servers: []*serverConn{
+			{
+				name:    "srv-a",
+				backend: backendA,
+				tools: []mcp.Tool{
+					{Name: "echo", Description: "Echo from A", InputSchema: json.RawMessage(`{"type":"object","properties":{"msg":{"type":"string"}},"required":["msg"]}`)},
+				},
+			},
+			{
+				name:    "srv-b",
+				backend: backendB,
+				tools: []mcp.Tool{
+					{Name: "ping", Description: "Ping from B"},
+				},
+			},
+		},
+		opts: bootstrapOptions{Timeout: time.Second},
+	}
+	root := &cobra.Command{Use: toolName}
+	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})
+	addToolCommands(root, a)
+
+	// srv-a echo should work
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"srv-a", "echo", "--msg", "hello"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if backendA.call.Name != "echo" {
+		t.Fatalf("expected call to echo, got %q", backendA.call.Name)
+	}
+	if !strings.Contains(out.String(), "from-a") {
+		t.Fatalf("output = %q", out.String())
+	}
+
+	// srv-b ping should work
+	out.Reset()
+	root.SetArgs([]string{"srv-b", "ping"})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if backendB.call.Name != "ping" {
+		t.Fatalf("expected call to ping, got %q", backendB.call.Name)
 	}
 }

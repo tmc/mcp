@@ -73,6 +73,26 @@ func TestParseBootstrapArgs(t *testing.T) {
 	if !opts.ServerStderr {
 		t.Fatal("server stderr flag not set")
 	}
+
+	opts, err = parseBootstrapArgs([]string{"tools", "--cmd", "server", "--spy-record", "session.mcp", "--spy-ui", "--spy-pretty", "--spy-spec-file", "server.mcpspec"})
+	if err == nil || !strings.Contains(err.Error(), "--spy-pretty is not supported") {
+		t.Fatalf("err=%v", err)
+	}
+
+	opts, err = parseBootstrapArgs([]string{"tools", "--http", "http://localhost:8080/mcp", "--spy-record", "session.mcp", "--spy-ui", "--spy-pretty", "--spy-spec-file", "server.mcpspec"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.SpyRecord != "session.mcp" || !opts.SpyUI || !opts.SpyPretty || opts.SpySpecFile != "server.mcpspec" {
+		t.Fatalf("unexpected spy opts: %+v", opts)
+	}
+}
+
+func TestParseBootstrapArgsRejectsSpyOpenWithoutUI(t *testing.T) {
+	_, err := parseBootstrapArgs([]string{"tools", "--cmd", "server", "--spy-open"})
+	if err == nil || !strings.Contains(err.Error(), "--spy-open requires --spy-ui") {
+		t.Fatalf("err=%v", err)
+	}
 }
 
 func TestDynamicToolCommandExecutes(t *testing.T) {
@@ -82,16 +102,19 @@ func TestDynamicToolCommandExecutes(t *testing.T) {
 		},
 	}
 	app := &app{
-		backend: backend,
-		opts:    bootstrapOptions{Timeout: time.Second},
-		server:  &mcp.InitializeResult{ServerInfo: mcp.Implementation{Name: "fake", Version: "1.0.0"}},
-		tools: []mcp.Tool{
-			{
-				Name:        "echo",
-				Description: "Echo a message",
-				InputSchema: json.RawMessage(`{"type":"object","properties":{"message":{"type":"string","description":"message"},"mode":{"type":"string","enum":["loud","quiet"]}},"required":["message"]}`),
+		servers: []*serverConn{{
+			name:    "fake",
+			backend: backend,
+			info:    &mcp.InitializeResult{ServerInfo: mcp.Implementation{Name: "fake", Version: "1.0.0"}},
+			tools: []mcp.Tool{
+				{
+					Name:        "echo",
+					Description: "Echo a message",
+					InputSchema: json.RawMessage(`{"type":"object","properties":{"message":{"type":"string","description":"message"},"mode":{"type":"string","enum":["loud","quiet"]}},"required":["message"]}`),
+				},
 			},
-		},
+		}},
+		opts: bootstrapOptions{Timeout: time.Second},
 	}
 	root := &cobra.Command{Use: toolName}
 	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})
@@ -123,15 +146,18 @@ func TestDynamicToolCommandExecutes(t *testing.T) {
 func TestDynamicToolCommandCompletion(t *testing.T) {
 	backend := &fakeBackend{}
 	app := &app{
-		backend: backend,
-		opts:    bootstrapOptions{Timeout: time.Second},
-		tools: []mcp.Tool{
-			{
-				Name:        "echo",
-				Description: "Echo a message",
-				InputSchema: json.RawMessage(`{"type":"object","properties":{"mode":{"type":"string","enum":["loud","quiet"]}}}`),
+		servers: []*serverConn{{
+			name:    "fake",
+			backend: backend,
+			tools: []mcp.Tool{
+				{
+					Name:        "echo",
+					Description: "Echo a message",
+					InputSchema: json.RawMessage(`{"type":"object","properties":{"mode":{"type":"string","enum":["loud","quiet"]}}}`),
+				},
 			},
-		},
+		}},
+		opts: bootstrapOptions{Timeout: time.Second},
 	}
 	root := &cobra.Command{Use: toolName}
 	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})
@@ -155,11 +181,14 @@ func TestDynamicToolCommandCompletion(t *testing.T) {
 
 func TestToolsCommandListsDiscoveredTools(t *testing.T) {
 	app := &app{
+		servers: []*serverConn{{
+			name: "test",
+			tools: []mcp.Tool{
+				{Name: "zeta", Description: "last"},
+				{Name: "alpha", Description: "first"},
+			},
+		}},
 		opts: bootstrapOptions{Timeout: time.Second},
-		tools: []mcp.Tool{
-			{Name: "zeta", Description: "last"},
-			{Name: "alpha", Description: "first"},
-		},
 	}
 	root := &cobra.Command{Use: toolName}
 	root.AddGroup(&cobra.Group{ID: groupMeta, Title: "Support Commands"})
@@ -185,6 +214,45 @@ func TestServerStderr(t *testing.T) {
 	if got := serverStderr(bootstrapOptions{ServerStderr: true}); got != os.Stderr {
 		t.Fatalf("forwarded stderr = %T, want os.Stderr", got)
 	}
+	if got := serverStderr(bootstrapOptions{SpyUI: true}); got != os.Stderr {
+		t.Fatalf("spy ui stderr = %T, want os.Stderr", got)
+	}
+}
+
+func TestWrappedCommandWithoutSpy(t *testing.T) {
+	opts := bootstrapOptions{Cmd: "server --stdio"}
+	if got := wrappedCommand(opts); got != opts.Cmd {
+		t.Fatalf("wrapped=%q", got)
+	}
+}
+
+func TestWrappedCommandWithSpy(t *testing.T) {
+	opts := bootstrapOptions{
+		Cmd:          "server --stdio",
+		SpyRecord:    "session.mcp",
+		SpyUI:        true,
+		SpyPretty:    true,
+		SpySpecFile:  "server.mcpspec",
+		ServerStderr: false,
+	}
+	got := wrappedCommand(opts)
+	for _, want := range []string{
+		"mcpspy",
+		"-f",
+		"session.mcp",
+		"-l",
+		"--spec-file",
+		"server.mcpspec",
+		"--pass-through",
+		"-no-stderr",
+		"sh",
+		"-lc",
+		"server --stdio",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("wrapped=%q missing %q", got, want)
+		}
+	}
 }
 
 func TestNameNormalization(t *testing.T) {
@@ -209,15 +277,18 @@ func TestNameNormalization(t *testing.T) {
 func TestJSONFlagMergesWithExplicitFlags(t *testing.T) {
 	backend := &fakeBackend{result: &mcp.CallToolResult{}}
 	app := &app{
-		backend: backend,
-		opts:    bootstrapOptions{Timeout: time.Second},
-		tools: []mcp.Tool{
-			{
-				Name:        "compose",
-				Description: "Compose an object",
-				InputSchema: json.RawMessage(`{"type":"object","properties":{"name":{"type":"string"},"config":{"type":"object"}},"required":["name","config"]}`),
+		servers: []*serverConn{{
+			name:    "fake",
+			backend: backend,
+			tools: []mcp.Tool{
+				{
+					Name:        "compose",
+					Description: "Compose an object",
+					InputSchema: json.RawMessage(`{"type":"object","properties":{"name":{"type":"string"},"config":{"type":"object"}},"required":["name","config"]}`),
+				},
 			},
-		},
+		}},
+		opts: bootstrapOptions{Timeout: time.Second},
 	}
 	root := &cobra.Command{Use: toolName}
 	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})

@@ -78,7 +78,8 @@ func enabledServerNames(cfg *mcpConfig) []string {
 }
 
 // resolveConfig applies --config and --server flags to bootstrap options.
-// It sets opts.Cmd (or opts.HTTPURL/opts.SSEURL) from the config file entry.
+// With --server, it sets opts.Cmd/opts.HTTPURL for a single server.
+// Without --server, it populates opts.configServers for multi-server mode.
 func resolveConfig(opts *bootstrapOptions) error {
 	if opts.ConfigFile == "" && opts.ServerName == "" {
 		return nil
@@ -103,15 +104,29 @@ func resolveConfig(opts *bootstrapOptions) error {
 		return fmt.Errorf("no enabled servers in %s", opts.ConfigFile)
 	}
 
-	name := opts.ServerName
-	if name == "" {
-		if len(names) == 1 {
+	// Single server: --server given, or only one in config.
+	if opts.ServerName != "" || len(names) == 1 {
+		name := opts.ServerName
+		if name == "" {
 			name = names[0]
-		} else {
-			return fmt.Errorf("multiple servers in %s; use --server to choose one: %s",
-				opts.ConfigFile, strings.Join(names, ", "))
 		}
+		return resolveSingleServer(opts, cfg, name)
 	}
+
+	// Multi-server: connect to all enabled servers.
+	for _, name := range names {
+		srv := cfg.MCPServers[name]
+		entry := configServerEntry{name: name, cfg: srv}
+		if srv.Command != "" {
+			entry.command = envPrefix(srv) + serverCommand(srv)
+		}
+		opts.configServers = append(opts.configServers, entry)
+	}
+	return nil
+}
+
+func resolveSingleServer(opts *bootstrapOptions, cfg *mcpConfig, name string) error {
+	names := enabledServerNames(cfg)
 	srv, ok := cfg.MCPServers[name]
 	if !ok {
 		return fmt.Errorf("server %q not found in %s; available: %s",
@@ -120,8 +135,6 @@ func resolveConfig(opts *bootstrapOptions) error {
 	if srv.Disabled {
 		return fmt.Errorf("server %q is disabled in %s", name, opts.ConfigFile)
 	}
-
-	// URL-based server (streamable HTTP or SSE).
 	if srv.URL != "" {
 		if srv.Command != "" {
 			return fmt.Errorf("server %q has both command and url in %s", name, opts.ConfigFile)
@@ -132,21 +145,22 @@ func resolveConfig(opts *bootstrapOptions) error {
 	if srv.Command == "" {
 		return fmt.Errorf("server %q has no command or url in %s", name, opts.ConfigFile)
 	}
-
-	// Build env prefix if env vars are specified.
-	var envPrefix string
-	if len(srv.Env) > 0 {
-		envKeys := make([]string, 0, len(srv.Env))
-		for k := range srv.Env {
-			envKeys = append(envKeys, k)
-		}
-		sort.Strings(envKeys)
-		var parts []string
-		for _, k := range envKeys {
-			parts = append(parts, shellQuote(k+"="+srv.Env[k]))
-		}
-		envPrefix = strings.Join(parts, " ") + " "
-	}
-	opts.Cmd = envPrefix + serverCommand(srv)
+	opts.Cmd = envPrefix(srv) + serverCommand(srv)
 	return nil
+}
+
+func envPrefix(srv mcpServerConfig) string {
+	if len(srv.Env) == 0 {
+		return ""
+	}
+	envKeys := make([]string, 0, len(srv.Env))
+	for k := range srv.Env {
+		envKeys = append(envKeys, k)
+	}
+	sort.Strings(envKeys)
+	var parts []string
+	for _, k := range envKeys {
+		parts = append(parts, shellQuote(k+"="+srv.Env[k]))
+	}
+	return strings.Join(parts, " ") + " "
 }

@@ -55,20 +55,47 @@ type propertyBinding struct {
 }
 
 func addToolCommands(root *cobra.Command, app *app) {
+	addToolCommandsMulti(root, app, app.allTools())
+}
+
+func addToolCommandsMulti(root *cobra.Command, app *app, tools []namespacedTool) {
 	used := make(map[string]int)
-	for _, tool := range app.tools {
-		builder := newToolCommandBuilder(tool, app)
+	// For multi-server with prefixes, create server subcommands.
+	if len(app.servers) > 1 {
+		serverCmds := make(map[string]*cobra.Command)
+		for _, srv := range app.servers {
+			name := cobraName(srv.name)
+			cmd := &cobra.Command{
+				Use:     name,
+				Short:   fmt.Sprintf("Tools from %s", srv.name),
+				GroupID: groupTools,
+			}
+			serverCmds[srv.name] = cmd
+			root.AddCommand(cmd)
+		}
+		for _, nt := range tools {
+			builder := newToolCommandBuilder(nt.tool, nt.server.backend, app.opts)
+			cmd := builder.command(used)
+			cmd.GroupID = "" // sub-commands don't use groups
+			if parent, ok := serverCmds[nt.server.name]; ok {
+				parent.AddCommand(cmd)
+			}
+		}
+		return
+	}
+	for _, nt := range tools {
+		builder := newToolCommandBuilder(nt.tool, nt.server.backend, app.opts)
 		cmd := builder.command(used)
 		root.AddCommand(cmd)
 	}
 }
 
-func newToolCommandBuilder(tool mcp.Tool, app *app) *toolCommandBuilder {
+func newToolCommandBuilder(tool mcp.Tool, b backend, opts bootstrapOptions) *toolCommandBuilder {
 	builder := &toolCommandBuilder{
 		tool:         tool,
-		backend:      app.backend,
-		timeout:      app.opts.Timeout,
-		raw:          app.opts.Raw,
+		backend:      b,
+		timeout:      opts.Timeout,
+		raw:          opts.Raw,
 		required:     make(map[string]bool),
 		jsonFlagName: "json",
 	}
@@ -182,6 +209,12 @@ func (b *toolCommandBuilder) addSchemaFlags(cmd *cobra.Command) {
 		addFlag(cmd.Flags(), binding)
 		if len(binding.enumValues) > 0 {
 			values := append([]string(nil), binding.enumValues...)
+			if flag := cmd.Flags().Lookup(binding.flagName); flag != nil {
+				if flag.Annotations == nil {
+					flag.Annotations = make(map[string][]string)
+				}
+				flag.Annotations[completionAnnotation] = values
+			}
 			cmd.RegisterFlagCompletionFunc(binding.flagName, func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 				return values, cobra.ShellCompDirectiveNoFileComp
 			})

@@ -46,6 +46,16 @@ type bootstrapOptions struct {
 	SpyOpen         bool
 	SpyPretty       bool
 	SpySpecFile     string
+
+	// configServers is populated by resolveConfig for multi-server mode.
+	configServers []configServerEntry
+}
+
+// configServerEntry holds resolved config for one server from .mcp.json.
+type configServerEntry struct {
+	name    string
+	cfg     mcpServerConfig
+	command string // pre-built shell command (empty for url-based)
 }
 
 type backend interface {
@@ -80,26 +90,80 @@ func (b *liveBackend) Close() error {
 	return b.client.Close()
 }
 
-type app struct {
+// serverConn represents a single connected MCP server.
+type serverConn struct {
+	name    string
 	backend backend
-	opts    bootstrapOptions
-	server  *mcp.InitializeResult
+	info    *mcp.InitializeResult
 	tools   []mcp.Tool
 }
 
+type app struct {
+	servers []*serverConn
+	opts    bootstrapOptions
+}
+
+// allTools returns all tools across all servers, sorted by display name.
+func (a *app) allTools() []namespacedTool {
+	multi := len(a.servers) > 1
+	var all []namespacedTool
+	for _, srv := range a.servers {
+		for _, tool := range srv.tools {
+			nt := namespacedTool{
+				server: srv,
+				tool:   tool,
+			}
+			if multi {
+				nt.prefix = srv.name
+			}
+			all = append(all, nt)
+		}
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].displayName() < all[j].displayName()
+	})
+	return all
+}
+
+// namespacedTool pairs a tool with its owning server.
+type namespacedTool struct {
+	server *serverConn
+	tool   mcp.Tool
+	prefix string
+}
+
+func (nt namespacedTool) displayName() string {
+	if nt.prefix == "" {
+		return cobraName(nt.tool.Name)
+	}
+	return cobraName(nt.prefix) + "/" + cobraName(nt.tool.Name)
+}
+
 func (a *app) reloadTools(ctx context.Context) error {
-	if a == nil || a.backend == nil {
+	if a == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(ctx, a.opts.Timeout)
-	defer cancel()
-	tools, err := listAllTools(ctx, a.backend)
-	if err != nil {
-		return fmt.Errorf("list tools: %w", err)
+	var errs []error
+	for _, srv := range a.servers {
+		ctx, cancel := context.WithTimeout(ctx, a.opts.Timeout)
+		tools, err := listAllTools(ctx, srv.backend)
+		cancel()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("%s: list tools: %w", srv.name, err))
+			continue
+		}
+		srv.tools = tools
 	}
-	a.tools = tools
-	return nil
+	return errors.Join(errs...)
 }
+
+func (a *app) close() {
+	for _, srv := range a.servers {
+		_ = srv.backend.Close()
+	}
+}
+
+
 
 func main() {
 	if err := run(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
@@ -114,13 +178,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	root, app, err := buildRootCommand(ctx, opts)
+	root, a, err := buildRootCommand(ctx, opts)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if app != nil && app.backend != nil {
-			_ = app.backend.Close()
+		if a != nil {
+			a.close()
 		}
 	}()
 
@@ -131,20 +195,91 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 }
 
 func buildRootCommand(ctx context.Context, opts bootstrapOptions) (*cobra.Command, *app, error) {
-	var loaded *app
-	if opts.transportCount() != 0 {
-		backend, err := newLiveBackend(ctx, opts)
-		if err != nil {
-			return nil, nil, err
-		}
-		a := &app{backend: backend, opts: opts}
-		if err := a.load(ctx); err != nil {
-			_ = backend.Close()
-			return nil, nil, err
-		}
-		loaded = a
+	loaded, err := connectServers(ctx, opts)
+	if err != nil {
+		return nil, nil, err
 	}
 	return newRootCommand(opts, loaded), loaded, nil
+}
+
+// connectServers builds an app with all configured server connections.
+func connectServers(ctx context.Context, opts bootstrapOptions) (*app, error) {
+	// Multi-server from config.
+	if opts.configServers != nil {
+		a := &app{opts: opts}
+		var errs []error
+		for _, entry := range opts.configServers {
+			srvOpts := opts
+			srvOpts.Cmd = ""
+			srvOpts.HTTPURL = ""
+			srvOpts.SSEURL = ""
+			if entry.cfg.URL != "" {
+				srvOpts.HTTPURL = entry.cfg.URL
+			} else {
+				srvOpts.Cmd = entry.command
+			}
+			b, err := newLiveBackend(ctx, srvOpts)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", entry.name, err))
+				continue
+			}
+			conn := &serverConn{name: entry.name, backend: b}
+			if err := conn.load(ctx, opts); err != nil {
+				_ = b.Close()
+				errs = append(errs, fmt.Errorf("%s: %w", entry.name, err))
+				continue
+			}
+			a.servers = append(a.servers, conn)
+		}
+		if len(a.servers) == 0 {
+			return nil, fmt.Errorf("no servers connected: %w", errors.Join(errs...))
+		}
+		if len(errs) > 0 {
+			// Partial success — log but continue.
+			fmt.Fprintf(os.Stderr, "warning: some servers failed to connect: %v\n", errors.Join(errs...))
+		}
+		return a, nil
+	}
+	// Single server from --cmd/--http/--sse.
+	if opts.transportCount() == 0 {
+		return nil, nil
+	}
+	b, err := newLiveBackend(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	conn := &serverConn{name: "default", backend: b}
+	if err := conn.load(ctx, opts); err != nil {
+		_ = b.Close()
+		return nil, err
+	}
+	return &app{servers: []*serverConn{conn}, opts: opts}, nil
+}
+
+func (sc *serverConn) load(ctx context.Context, opts bootstrapOptions) error {
+	ctx, cancel := context.WithTimeout(ctx, opts.Timeout)
+	defer cancel()
+
+	result, err := sc.backend.Initialize(ctx, mcp.InitializeRequest{
+		ProtocolVersion: opts.ProtocolVersion,
+		ClientInfo: mcp.Implementation{
+			Name:    toolName,
+			Version: toolVersion,
+		},
+		Capabilities: mcp.ClientCapabilities{},
+	})
+	if err != nil {
+		return fmt.Errorf("initialize server: %w", err)
+	}
+	sc.info = result
+	_ = sc.backend.Notify(ctx, "notifications/initialized", map[string]any{})
+
+	tools, err := listAllTools(ctx, sc.backend)
+	if err != nil {
+		return fmt.Errorf("list tools: %w", err)
+	}
+	sc.tools = tools
+	return nil
 }
 
 func newRootCommand(opts bootstrapOptions, app *app) *cobra.Command {
@@ -169,16 +304,18 @@ func newRootCommand(opts bootstrapOptions, app *app) *cobra.Command {
 	root.AddCommand(newCompletionCommand())
 	addPersistentFlags(root, &opts)
 
-	if app == nil {
+	if app == nil || len(app.servers) == 0 {
 		return root
 	}
 
-	root.Short = shortHelp(app.server)
-	root.Long = longHelp(app.server, app.tools)
+	allTools := app.allTools()
+	root.Short = shortHelpMulti(app)
+	root.Long = longHelpMulti(app, allTools)
 	root.AddGroup(&cobra.Group{ID: groupTools, Title: "Discovered Tools"})
 	root.AddCommand(newToolsCommand(app))
+	root.AddCommand(newServersCommand(app))
 	root.AddCommand(newShellCommand(opts, app))
-	addToolCommands(root, app)
+	addToolCommandsMulti(root, app, allTools)
 	return root
 }
 
@@ -212,13 +349,41 @@ func newToolsCommand(app *app) *cobra.Command {
 	return &cobra.Command{
 		Use:     "tools",
 		Short:   "List discovered tools",
-		Long:    "List the tools exposed by the configured MCP server.",
+		Long:    "List the tools exposed by the configured MCP server(s).",
 		GroupID: groupMeta,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 8, 2, ' ', 0)
-			for _, tool := range app.tools {
-				if _, err := fmt.Fprintf(w, "%s\t%s\n", cobraName(tool.Name), shortToolHelp(tool)); err != nil {
+			for _, nt := range app.allTools() {
+				if _, err := fmt.Fprintf(w, "%s\t%s\n", nt.displayName(), shortToolHelp(nt.tool)); err != nil {
+					return err
+				}
+			}
+			return w.Flush()
+		},
+	}
+}
+
+func newServersCommand(app *app) *cobra.Command {
+	return &cobra.Command{
+		Use:     "servers",
+		Short:   "List connected servers",
+		Long:    "List the MCP servers that are currently connected.",
+		GroupID: groupMeta,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 8, 2, ' ', 0)
+			for _, srv := range app.servers {
+				name := srv.name
+				info := ""
+				if srv.info != nil && srv.info.ServerInfo.Name != "" {
+					info = srv.info.ServerInfo.Name
+					if srv.info.ServerInfo.Version != "" {
+						info += " " + srv.info.ServerInfo.Version
+					}
+				}
+				tools := len(srv.tools)
+				if _, err := fmt.Fprintf(w, "%s\t%s\t%d tools\n", name, info, tools); err != nil {
 					return err
 				}
 			}
@@ -544,31 +709,6 @@ func spyCommandParts() []string {
 	return []string{"mcpspy"}
 }
 
-func (a *app) load(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, a.opts.Timeout)
-	defer cancel()
-
-	result, err := a.backend.Initialize(ctx, mcp.InitializeRequest{
-		ProtocolVersion: a.opts.ProtocolVersion,
-		ClientInfo: mcp.Implementation{
-			Name:    toolName,
-			Version: toolVersion,
-		},
-		Capabilities: mcp.ClientCapabilities{},
-	})
-	if err != nil {
-		return fmt.Errorf("initialize server: %w", err)
-	}
-	a.server = result
-	_ = a.backend.Notify(ctx, "notifications/initialized", map[string]any{})
-
-	tools, err := listAllTools(ctx, a.backend)
-	if err != nil {
-		return fmt.Errorf("list tools: %w", err)
-	}
-	a.tools = tools
-	return nil
-}
 
 func listAllTools(ctx context.Context, backend backend) ([]mcp.Tool, error) {
 	cursor := ""
@@ -590,21 +730,39 @@ func listAllTools(ctx context.Context, backend backend) ([]mcp.Tool, error) {
 	return all, nil
 }
 
-func shortHelp(init *mcp.InitializeResult) string {
-	if init == nil || init.ServerInfo.Name == "" {
-		return "Dynamic shell for MCP tools"
+func shortHelpMulti(app *app) string {
+	if len(app.servers) == 1 {
+		srv := app.servers[0]
+		if srv.info != nil && srv.info.ServerInfo.Name != "" {
+			return fmt.Sprintf("Dynamic shell for %s", srv.info.ServerInfo.Name)
+		}
 	}
-	return fmt.Sprintf("Dynamic shell for %s", init.ServerInfo.Name)
+	if len(app.servers) > 1 {
+		return fmt.Sprintf("Dynamic shell for %d MCP servers", len(app.servers))
+	}
+	return "Dynamic shell for MCP tools"
 }
 
-func longHelp(init *mcp.InitializeResult, tools []mcp.Tool) string {
+func longHelpMulti(app *app, tools []namespacedTool) string {
 	var b strings.Builder
 	b.WriteString(baseLongHelp())
-	if init != nil && init.ServerInfo.Name != "" {
-		fmt.Fprintf(&b, "\n\nServer:\n  %s %s", init.ServerInfo.Name, init.ServerInfo.Version)
-	}
-	if init != nil && init.Instructions != "" {
-		fmt.Fprintf(&b, "\n\nInstructions:\n  %s", strings.ReplaceAll(init.Instructions, "\n", "\n  "))
+	if len(app.servers) == 1 {
+		srv := app.servers[0]
+		if srv.info != nil && srv.info.ServerInfo.Name != "" {
+			fmt.Fprintf(&b, "\n\nServer:\n  %s %s", srv.info.ServerInfo.Name, srv.info.ServerInfo.Version)
+		}
+		if srv.info != nil && srv.info.Instructions != "" {
+			fmt.Fprintf(&b, "\n\nInstructions:\n  %s", strings.ReplaceAll(srv.info.Instructions, "\n", "\n  "))
+		}
+	} else {
+		fmt.Fprintf(&b, "\n\nServers:")
+		for _, srv := range app.servers {
+			name := srv.name
+			if srv.info != nil && srv.info.ServerInfo.Name != "" {
+				name = srv.info.ServerInfo.Name
+			}
+			fmt.Fprintf(&b, "\n  %s (%d tools)", name, len(srv.tools))
+		}
 	}
 	if len(tools) > 0 {
 		fmt.Fprintf(&b, "\n\nDiscovered %d tools. Run %q to list them or %q for generated shell completion.", len(tools), toolName+" tools", toolName+" completion")

@@ -37,6 +37,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 test_server "$SCRIPT_DIR/mcp-time-server"
 test_server "$SCRIPT_DIR/mcp-echo-server"
 test_server "$SCRIPT_DIR/mcp-weather-server"
+test_server "$SCRIPT_DIR/mcp-screencapture-server"
 
 echo ""
 echo "=== All server tests completed ==="

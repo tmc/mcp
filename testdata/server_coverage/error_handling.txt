@@ -6,7 +6,7 @@ env MCP_TOOL_TIMEOUT=10s
 
 # Test that mcp-probe prints sample requests when no args given
 exec mcp-probe
-stdout 'Content-Length'
+stdout '"method":"initialize"'
 
 # Test that mcpspy handles malformed JSON gracefully
 exec bash -c 'echo "invalid json" | mcpspy --pretty 2>&1'

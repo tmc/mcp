@@ -11,4 +11,4 @@ stdout '"method": "test"'
 
 # Test mcp-probe basic performance (sample output)
 exec mcp-probe
-stdout 'Content-Length'
+stdout '"method":"initialize"'

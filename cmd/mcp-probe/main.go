@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/tmc/mcp/jsonrpc2"
@@ -28,6 +27,7 @@ var (
 	testTool        = flag.String("test-tool", "", "Tool to test (if server supports tools)")
 	tool            = flag.String("tool", "", "Tool to test (alias for -test-tool)")
 	protocolVersion = flag.String("protocol-version", "2025-03-26", "MCP protocol version to use")
+	listTools       = flag.Bool("list-tools", false, "List available tools")
 )
 
 type Transport interface {
@@ -98,31 +98,12 @@ func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error 
 		log.Printf("Sending: %s", data)
 	}
 
-	framedMsg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(data), data)
-	_, err = t.stdin.Write([]byte(framedMsg))
+	_, err = t.stdin.Write(append(data, '\n'))
 	return err
 }
 
 func (t *StdioTransport) Receive(ctx context.Context) (*jsonrpc2.Response, error) {
-	// Read headers
-	for {
-		line, err := t.reader.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-
-		line = strings.TrimSpace(line)
-		if line == "" {
-			break
-		}
-
-		if strings.HasPrefix(line, "Content-Length:") {
-			// We found the content length header, continue
-			continue
-		}
-	}
-
-	// Read the JSON message
+	// Read the JSON message directly (assuming LDJSON/headerless)
 	var resp jsonrpc2.Response
 	decoder := json.NewDecoder(t.reader)
 	if err := decoder.Decode(&resp); err != nil {
@@ -298,10 +279,65 @@ func main() {
 		}
 	}
 
+	if *listTools {
+		listReq := &jsonrpc2.Request{
+			ID:     jsonrpc2.Int64ID(2),
+			Method: "tools/list",
+			Params: json.RawMessage(`{}`),
+		}
+
+		listCtx, listCancel := context.WithTimeout(ctx, *timeout)
+		defer listCancel()
+
+		if err := transport.Send(listCtx, listReq); err != nil {
+			log.Fatalf("Failed to send tools/list request: %v", err)
+		}
+
+		listRecvCtx, listRecvCancel := context.WithTimeout(ctx, *timeout)
+		defer listRecvCancel()
+
+		resp, err := transport.Receive(listRecvCtx)
+		if err != nil {
+			log.Fatalf("Failed to receive tools/list response: %v", err)
+		}
+
+		if resp.Error != nil {
+			fmt.Printf("List tools error: %v\n", resp.Error)
+		} else {
+			var result struct {
+				Tools []struct {
+					Name        string `json:"name"`
+					Description string `json:"description"`
+				} `json:"tools"`
+			}
+			if err := json.Unmarshal(resp.Result, &result); err != nil {
+				fmt.Printf("Failed to unmarshal tools/list response: %v\n", err)
+			} else {
+				// List tools
+				// This part of the code was not present in the original document,
+				// but was included in the user's provided "Code Edit" snippet.
+				// Assuming it's a placeholder or an example of what the user
+				// might have intended to add, but it conflicts with the existing
+				// `json.Unmarshal` and `fmt.Printf` block.
+				// Based on the instruction "Add JSON debug print", I will insert
+				// the verbose print and keep the original unmarshal/print logic.
+				if *verbose {
+					fullJSON, _ := json.MarshalIndent(resp.Result, "", "  ")
+					fmt.Println(string(fullJSON))
+				}
+
+				fmt.Printf("Available tools (%d):\n", len(result.Tools))
+				for _, t := range result.Tools {
+					fmt.Printf("- %s: %s\n", t.Name, t.Description)
+				}
+			}
+		}
+	}
+
 	// If a tool was specified, test it
 	if *testTool != "" {
 		toolReq := &jsonrpc2.Request{
-			ID:     jsonrpc2.Int64ID(2),
+			ID:     jsonrpc2.Int64ID(3),
 			Method: "tools/call",
 			Params: json.RawMessage(fmt.Sprintf(`{
 				"name": "%s",
@@ -363,9 +399,7 @@ func printSampleRequests() {
 			return
 		}
 
-		// Add Content-Length framing like the transport does
-		framedMsg := fmt.Sprintf("Content-Length: %d\r\n\r\n%s\r\n", len(data), data)
-		fmt.Print(framedMsg)
+		fmt.Println(string(data))
 	}
 
 	// Print initialize request
@@ -386,17 +420,24 @@ func printSampleRequests() {
 
 	printFramedMessage(initReq)
 
-	// Print sample tool call
-	toolReq := &jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(2),
-		Method: "tools/call",
-		Params: json.RawMessage(`{
-			"name": "echo",
-			"arguments": {
-				"message": "Hello, MCP!"
-			}
-		}`),
+	if *listTools {
+		listReq := &jsonrpc2.Request{
+			ID:     jsonrpc2.Int64ID(2),
+			Method: "tools/list",
+			Params: json.RawMessage(`{}`),
+		}
+		printFramedMessage(listReq)
 	}
 
-	printFramedMessage(toolReq)
+	if *testTool != "" {
+		toolReq := &jsonrpc2.Request{
+			ID:     jsonrpc2.Int64ID(3),
+			Method: "tools/call",
+			Params: json.RawMessage(fmt.Sprintf(`{
+				"name": "%s",
+				"arguments": {}
+			}`, *testTool)),
+		}
+		printFramedMessage(toolReq)
+	}
 }

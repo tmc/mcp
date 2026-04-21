@@ -21,6 +21,7 @@ type Client struct {
 	notifyHandler      func(notification JSONRPCNotification)
 	requestMu          sync.RWMutex
 	requestHandlers    map[string]RequestHandler
+	framer             jsonrpc2.Framer
 	serverInfo         Implementation
 	serverCapabilities ServerCapabilities
 	initialized        bool
@@ -42,11 +43,19 @@ func WithNotificationHandler(handler func(notification JSONRPCNotification)) Cli
 	}
 }
 
+// WithFramer sets the JSON-RPC framing used by the client connection.
+func WithFramer(framer jsonrpc2.Framer) ClientOption {
+	return func(c *Client) {
+		c.framer = framer
+	}
+}
+
 // NewClient creates a new MCP client instance using the provided transport.
 func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	ctx := context.Background()
 	c := &Client{
 		requestHandlers: make(map[string]RequestHandler),
+		framer:          jsonrpc2.RawFramer(),
 	}
 
 	// Apply options
@@ -57,7 +66,7 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	// Create the connection
 	handler := jsonrpc2.HandlerFunc(c.handleMessage)
 	conn, err := jsonrpc2.Dial(ctx, transport, jsonrpc2.ConnectionOptions{
-		Framer:  jsonrpc2.RawFramer(),
+		Framer:  c.framer,
 		Handler: handler,
 	})
 	if err != nil {

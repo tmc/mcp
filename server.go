@@ -25,6 +25,7 @@ type serverBinder struct {
 func (b serverBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
 	return jsonrpc2.ConnectionOptions{
 		Handler: b.handler,
+		Framer:  jsonrpc2.RawFramer(),
 		Preempter: &CancellablePreempter{
 			Conn:   conn,
 			Logger: b.logger,
@@ -199,6 +200,25 @@ func (f *flushingReadWriteCloser) Write(p []byte) (n int, err error) {
 	}
 
 	return n, nil
+}
+
+// flushingDialer wraps a Dialer to return a flushingReadWriteCloser
+type flushingDialer struct {
+	dialer interface {
+		Dial(context.Context) (io.ReadWriteCloser, error)
+	}
+	logger *slog.Logger
+}
+
+func (d *flushingDialer) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
+	rwc, err := d.dialer.Dial(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &flushingReadWriteCloser{
+		ReadWriteCloser: rwc,
+		logger:          d.logger,
+	}, nil
 }
 
 // singleConnListener implements jsonrpc2.Listener for single-connection MCP servers.
@@ -780,10 +800,19 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 		transport = StdioTransport()
 	}
 
+	// Wrap transport to ensure flushing
+	// We need to implement the Dialer interface which matches Transport's Dial method signature
+	// but jsonrpc2.Dial expects a specific interface.
+	// Since Transport matches Dialer interface, we can just wrap it.
+	flushingd := &flushingDialer{
+		dialer: transport,
+		logger: s.logger,
+	}
+
 	// Create the connection with cancellation support
 	handler := jsonrpc2.HandlerFunc(s.handleRequest)
 	binder := serverBinder{handler: handler, logger: s.logger}
-	conn, err := jsonrpc2.Dial(ctx, transport, binder)
+	conn, err := jsonrpc2.Dial(ctx, flushingd, binder)
 	if err != nil {
 		return fmt.Errorf("failed to establish connection: %w", err)
 	}

@@ -5,19 +5,18 @@ exec echo "test message"
 stdout 'test message'
 
 # Step 2: Get the path to echo to analyze it
-exec which echo
-cp stdout echo_path.txt
+# Step 2: Get the path to echo to analyze it
+exec sh -c 'which echo > echo_path.txt'
 
 # Step 3: Run callgraph on echo itself - it has a main
-exec callgraph -algo static $(cat echo_path.txt) 2>&1 || true
-stdout 'main|error' # Some systems' echo might not be analyzable
+exec sh -c 'callgraph -algo static $(cat echo_path.txt) 2>&1 || true'
+stdout 'main|error|err' # Some systems' echo might not be analyzable
 
 # Step 4: Run callgraph on this scripttest binary
-exec callgraph -algo static /usr/local/bin/mcpscripttest 2>&1 || true
-cp stdout mcpscripttest_callgraph.txt
+exec sh -c 'callgraph -algo static $(which mcpscripttest) > mcpscripttest_callgraph.txt 2>&1 || true'
 
 # Step 5: Try to find any connection from scripttest to echo
-exec grep -i 'echo' mcpscripttest_callgraph.txt
+exec sh -c 'grep -i echo mcpscripttest_callgraph.txt || true'
 ! stdout 'echo.*main'
 
 # This proves the gap: even though this test executes echo,

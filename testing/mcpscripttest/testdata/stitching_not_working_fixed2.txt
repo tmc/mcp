@@ -8,8 +8,7 @@ stderr 'Usage'
 mkdir -p test_project
 
 # Create the test file as a single concatenated string
-setstdin package main_test\n\nimport (\n    "os/exec"\n    "testing"\n)\n\nfunc TestCallsMCPDiff(t *testing.T) {\n    cmd := exec.Command("mcpdiff", "--version")\n    if err := cmd.Run(); err != nil {\n        t.Fatal(err)\n    }\n}
-exec cat > test_project/test_example.go
+exec sh -c 'printf "package main_test\n\nimport (\n    \"os/exec\"\n    \"testing\"\n)\n\nfunc TestCallsMCPDiff(t *testing.T) {\n    cmd := exec.Command(\"mcpdiff\", \"--version\")\n    if err := cmd.Run(); err != nil {\n        t.Fatal(err)\n    }\n}" > test_project/test_example.go'
 
 # If we ran standard callgraph on this, it would show:
 # - The test calls exec.Command

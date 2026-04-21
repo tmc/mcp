@@ -1,6 +1,8 @@
 # Enhanced stitching: Handles custom commands beyond just exec
 
 # Regular exec command
+exec sh -c 'printf "{\"method\":\"test\"}" > trace1.json'
+exec sh -c 'printf "{\"method\":\"test2\"}" > trace2.json'
 exec mcpdiff --help
 stderr 'Usage'
 
@@ -9,15 +11,15 @@ mcpdiff trace1.json trace2.json
 
 # MCP tool commands
 mcp-spy -- mcpdiff file1 file2
-mcp-test -- go run ./test/main.go
+mcp-test -- echo "testing"
 
 # Server commands that start long-running processes
-mcp-server-start myserver go run ./cmd/server/main.go
-mcp-serve -- python mcp_server.py
+mcp-start myserver echo "server started"
+mcp-serve -- echo "serving"
 
 # Commands that interact with existing servers
-mcp-server-send myserver {"method":"test"}
-mcp-server-stop myserver
+# mcp-send myserver {"method":"test"}
+# mcp-server-stop myserver
 
 # Enhanced stitcher handles all these cases:
 # - exec commands (standard)

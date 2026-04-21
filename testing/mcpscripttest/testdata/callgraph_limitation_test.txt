@@ -1,21 +1,25 @@
 # Test demonstrating callgraph limitation: doesn't connect test scripts to called programs
 
+# Create source files
+exec sh -c 'printf "package main\\nimport (\\n    \"fmt\"\\n    \"os\"\\n)\\nfunc main() {\\n    fmt.Println(\"Simple program running...\")\\n    processArgs()\\n}\\nfunc processArgs() {\\n    fmt.Printf(\"Args: %%v\\\\n\", os.Args[1:])\\n}\\nfunc helperFunc() {\\n    fmt.Println(\"Helper function\")\\n}\\n" > simple_program.go'
+
+exec sh -c 'printf "package main\\nimport (\\n    \"fmt\"\\n    \"os/exec\"\\n)\\nfunc main() {\\n    cmd := exec.Command(\"./simple_program\", \"arg1\", \"arg2\")\\n    output, err := cmd.CombinedOutput()\\n    if err != nil {\\n        fmt.Printf(\"Error: %%v\\\\n\", err)\\n        return\\n    }\\n    fmt.Printf(\"Output: %%s\\\\n\", output)\\n}\\nfunc runTest() {\\n    fmt.Println(\"Running test...\")\\n}\\n" > test_runner.go'
+
 # First, create a simple program that calls another program
 # This simulates what happens in script tests
-exec go build -o test_runner ./testdata/callgraph_test/test_runner.go
-exec go build -o simple_program ./testdata/callgraph_test/simple_program.go
+exec go build -o test_runner test_runner.go
+exec go build -o simple_program simple_program.go
 
 # Run callgraph on the test runner
-exec callgraph -algo static test_runner
+exec callgraph -algo static test_runner.go
 cp stdout callgraph_output.txt
 
 # Try to find the main function of the program it calls
 # This should fail - callgraph doesn't see this connection
-exec grep 'simple_program.main' callgraph_output.txt
-! stdout .
+! exec grep 'simple_program.main' callgraph_output.txt
 
 # Run callgraph on the actual program to show it has a main
-exec callgraph -algo static simple_program  
+exec callgraph -algo static simple_program.go  
 stdout 'main'
 
 # This demonstrates the gap: callgraph sees the internals of each program

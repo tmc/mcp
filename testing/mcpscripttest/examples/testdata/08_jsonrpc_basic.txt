@@ -1,0 +1,35 @@
+# Basic JSON-RPC Test - Verify JSON-RPC 2.0 Message Format
+# Demonstrates: JSON-RPC request structure, response validation, protocol compliance
+
+# Test valid JSON-RPC request format
+# All JSON-RPC 2.0 requests must have: jsonrpc, id, method
+# Optional: params
+
+# Valid request with parameters
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26"}}
+
+# Verify response contains required fields
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"result":'
+
+# Response must have either result or error, not both
+! stdout '"result":.*"error":'
+
+# Test request without parameters
+setstdin {"jsonrpc":"2.0","id":2,"method":"resources/list"}
+stdout '"jsonrpc":"2.0"'
+stdout '"id":2'
+
+# Test notification (no ID, no response expected)
+# Notifications are fire-and-forget
+setstdin {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}}
+! stdout '"id":'
+
+# Test batch format (array of requests)
+setstdin [{"jsonrpc":"2.0","id":101,"method":"echo","params":{"msg":"test1"}},{"jsonrpc":"2.0","id":102,"method":"echo","params":{"msg":"test2"}}]
+stdout '"id":101'
+stdout '"id":102'
+
+# Verify batch responses are valid
+stdout '"result":'

@@ -1,35 +1,17 @@
 # Demonstration of differential coverage with testcallgraph
 
 # Create a test that runs different programs
-mkdir -p tests
-exec cat > tests/test1.txt << 'EOF'
-exec mcpdiff --help
-exec mcp-spy -- trace.json
-EOF
-
-exec cat > tests/test2.txt << 'EOF'
-exec mcpspy -- trace.json
-exec mcp-test -- go test ./...
-exec go test -cover ./pkg/...
-EOF
+exec mkdir -p tests
+exec sh -c 'printf "exec mcpdiff --help\\nexec mcp-spy -- trace.json\\n" > tests/test1.txt'
+exec sh -c 'printf "exec mcpspy -- trace.json\\nexec mcp-test -- go test ./...\\nexec go test -cover ./pkg/...\\n" > tests/test2.txt'
 
 # Simulate baseline coverage
-mkdir -p cov/baseline
-exec cat > cov/baseline/summary.txt << 'EOF'
-github.com/tmc/mcp/cmd/mcpdiff	70.5%
-github.com/tmc/mcp/cmd/mcp-spy	65.0%
-github.com/tmc/mcp/core	80.0%
-EOF
+exec mkdir -p cov/baseline
+exec sh -c 'printf "github.com/tmc/mcp/cmd/mcpdiff\\t70.5%%\\ngithub.com/tmc/mcp/cmd/mcp-spy\\t65.0%%\\ngithub.com/tmc/mcp/core\\t80.0%%\\n" > cov/baseline/summary.txt'
 
 # Simulate improved coverage after running test2
-mkdir -p cov/after_test2
-exec cat > cov/after_test2/summary.txt << 'EOF'
-github.com/tmc/mcp/cmd/mcpdiff	70.5%
-github.com/tmc/mcp/cmd/mcp-spy	68.0%
-github.com/tmc/mcp/cmd/mcp-test	55.0%
-github.com/tmc/mcp/core	82.5%
-github.com/tmc/mcp/pkg	45.0%
-EOF
+exec mkdir -p cov/after_test2
+exec sh -c 'printf "github.com/tmc/mcp/cmd/mcpdiff\\t70.5%%\\ngithub.com/tmc/mcp/cmd/mcp-spy\\t68.0%%\\ngithub.com/tmc/mcp/cmd/mcp-test\\t55.0%%\\ngithub.com/tmc/mcp/core\\t82.5%%\\ngithub.com/tmc/mcp/pkg\\t45.0%%\\n" > cov/after_test2/summary.txt'
 
 # Analyze which test contributed to coverage improvements
 echo "=== Analyzing test contributions to coverage ==="

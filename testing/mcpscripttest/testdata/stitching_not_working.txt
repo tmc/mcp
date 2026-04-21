@@ -9,20 +9,7 @@ stderr 'Usage'
 
 # First, let's create a simple Go test that uses exec.Command
 mkdir -p test_project
-setstdin package main_test
-
-import (
-    "os/exec"
-    "testing"
-)
-
-func TestCallsMCPDiff(t *testing.T) {
-    cmd := exec.Command("mcpdiff", "--version")
-    if err := cmd.Run(); err != nil {
-        t.Fatal(err)
-    }
-}
-exec cat > test_project/test_example.go
+exec sh -c 'printf "package main_test\\n\\nimport (\\n    \"os/exec\"\\n    \"testing\"\\n)\\n\\nfunc TestCallsMCPDiff(t *testing.T) {\\n    cmd := exec.Command(\"mcpdiff\", \"--version\")\\n    if err := cmd.Run(); err != nil {\\n        t.Fatal(err)\\n    }\\n}\\n" > test_project/test_example.go'
 
 # If we ran standard callgraph on this, it would show:
 # - The test calls exec.Command

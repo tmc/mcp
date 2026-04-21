@@ -1,0 +1,24 @@
+# Stderr Validation Test - Verify Error Output Handling
+# Demonstrates: stderr assertion, error condition testing, negation
+
+# Test that successful commands have no stderr
+exec echo "Success"
+! stderr "."
+
+# Test command that produces stderr
+exec sh -c 'echo "Error occurred" >&2'
+stderr "Error occurred"
+
+# Test command failure with stderr
+exec sh -c 'echo "Operation failed" >&2; exit 1'
+stderr "Operation failed"
+
+# Verify both success and absence of unexpected errors
+exec true
+! stderr "error"
+! stderr "failed"
+
+# Test stderr with specific patterns
+exec sh -c 'echo "WARNING: deprecated feature" >&2'
+stderr "WARNING"
+stderr "deprecated"

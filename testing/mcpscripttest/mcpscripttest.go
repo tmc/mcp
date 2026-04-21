@@ -44,6 +44,12 @@ type Options = internal.Options
 // MinimalOptions represents configuration for minimal script testing.
 type MinimalOptions = internal.MinimalOptions
 
+// CoverageOptions represents configuration for coverage.
+type CoverageOptions = coverage.CoverageOptions
+
+// TestRunner is a runner for script tests.
+type TestRunner = internal.TestRunner
+
 // DefaultOptions returns the default options for full-featured script testing.
 func DefaultOptions() *Options {
 	return internal.DefaultOptions()

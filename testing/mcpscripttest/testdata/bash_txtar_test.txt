@@ -3,7 +3,7 @@ env MCP_BASH_COVERAGE=1
 env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
 
 # Make the script executable
-exec chmod +x test.sh
+exec chmod 0755 test.sh
 
 # Run a bash script from txtar file
 bash './test.sh hello'

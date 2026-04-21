@@ -1,0 +1,38 @@
+# File Operations Test - Verify File Manipulation During Tests
+# Demonstrates: file creation, reading, copying, directory management
+
+# Create test directory structure
+exec mkdir -p /tmp/mcptest
+cd /tmp/mcptest
+
+# Test file creation and reading
+exec sh -c 'echo "test content" > test.txt'
+exec cat test.txt
+stdout "test content"
+
+# Test file copying
+exec cp test.txt test_copy.txt
+exec cat test_copy.txt
+stdout "test content"
+
+# Test multiple files
+exec sh -c 'echo "file1" > file1.txt; echo "file2" > file2.txt'
+exec ls -1
+stdout "file1.txt"
+stdout "file2.txt"
+
+# Test file modification
+exec sh -c 'echo "appended" >> test.txt'
+exec cat test.txt
+stdout "test content"
+stdout "appended"
+
+# Test file removal
+exec rm test_copy.txt
+exec ls -1
+! stdout "test_copy.txt"
+
+# Verify only expected files remain
+exec ls -1
+stdout "test.txt"
+stdout "file1.txt"

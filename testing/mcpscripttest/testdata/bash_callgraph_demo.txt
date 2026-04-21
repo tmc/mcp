@@ -6,11 +6,14 @@ env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
 bash 'echo "Direct command test"'
 
 # Create and run a script
-exec chmod +x pipeline.sh
+exec chmod 0755 pipeline.sh
 bash './pipeline.sh'
 
+# Create a dummy scripttest file to analyze
+exec sh -c 'printf "exec bash \"echo hello\"\nexec bash ./pipeline.sh\n" > demo.txt'
+
 # Show the call graph
-testcallgraph -bash -format text .
+exec testcallgraph -bash -format text demo.txt
 
 -- pipeline.sh --
 #!/bin/bash

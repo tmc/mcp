@@ -100,8 +100,8 @@ exec cat spy.mcp
 stdout 'mcp-recv\|mcp-send'
 
 # Test mcp-shadow (if available)
-chmod +x primary_server.sh
-chmod +x shadow_server.sh
+chmod 0755 primary_server.sh
+chmod 0755 shadow_server.sh
 
 # Note: mcp-shadow test commented out as it requires specific setup
 # setstdin '{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}'

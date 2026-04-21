@@ -1,4 +1,34 @@
-// cmd-docs analyzes mcpscripttest custom commands and generates documentation suggestions
+// cmd-docs analyzes mcpscripttest custom commands and generates documentation suggestions.
+//
+// cmd-docs discovers all custom commands registered in a codebase, analyzes their
+// documentation completeness, and generates improvement suggestions. It supports
+// multiple output formats (text, JSON, structured edits) for different use cases.
+//
+// Usage:
+//
+//	cmd-docs [options]
+//
+// Examples:
+//
+//	# Analyze commands in current directory and print text documentation
+//	cmd-docs
+//
+//	# Generate JSON output for programmatic processing
+//	cmd-docs -format json -output commands.json
+//
+//	# Focus on specific command
+//	cmd-docs -cmd "mcp-server-start"
+//
+//	# Generate structured edit suggestions for documentation improvements
+//	cmd-docs -format edits -output improvements.json
+//
+// The tool identifies command registrations in Go source files using AST parsing:
+//
+//	e.Cmds["command-name"] = handlerFunc
+//	e.Commands["command-name"] = handlerFunc
+//
+// Documentation is inferred from function names and patterns, with improvement
+// suggestions generated for gaps in coverage.
 package main
 
 import (
@@ -19,12 +49,12 @@ import (
 )
 
 var (
-	sourceDir  string
-	outputFile string
-	format     string
-	verbose    bool
-	structEdit bool
-	filterCmd  string
+	sourceDir  string        // Directory to analyze for Go source files
+	outputFile string        // Output file path (empty = stdout)
+	format     string        // Output format: text, json, or edits
+	verbose    bool          // Enable verbose error reporting during analysis
+	structEdit bool          // Enable structured edit suggestion output
+	filterCmd  string        // Filter analysis to specific command by name
 )
 
 func init() {
@@ -53,42 +83,53 @@ func init() {
 	}
 }
 
+// Command represents a discovered custom command in the codebase.
+//
+// Each command corresponds to a registration in the source code and includes
+// documentation, arguments, examples, and suggestions for improvement.
 type Command struct {
-	Name         string       `json:"name"`
-	File         string       `json:"file"`
-	Line         int          `json:"line"`
-	Function     string       `json:"function"`
-	Description  string       `json:"description"`
-	Usage        string       `json:"usage"`
-	Arguments    []Argument   `json:"arguments"`
-	Examples     []Example    `json:"examples"`
-	Registration Registration `json:"registration"`
-	Suggestions  []Suggestion `json:"suggestions"`
+	Name         string       `json:"name"`         // Command name (e.g., "mcp-server-start")
+	File         string       `json:"file"`         // Source file containing the registration
+	Line         int          `json:"line"`         // Line number in source file
+	Function     string       `json:"function"`     // Handler function name
+	Description  string       `json:"description"` // Documentation description
+	Usage        string       `json:"usage"`       // Usage string
+	Arguments    []Argument   `json:"arguments"`   // Command arguments
+	Examples     []Example    `json:"examples"`    // Usage examples
+	Registration Registration `json:"registration"` // Registration details
+	Suggestions  []Suggestion `json:"suggestions"` // Improvement suggestions
 }
 
+// Argument represents a single command argument with documentation.
 type Argument struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"`
-	Required    bool   `json:"required"`
-	Description string `json:"description"`
+	Name        string `json:"name"`        // Argument name
+	Type        string `json:"type"`        // Argument type (string, int, bool, etc.)
+	Required    bool   `json:"required"`    // Whether argument is required
+	Description string `json:"description"` // Argument documentation
 }
 
+// Example represents a command usage example with explanation.
 type Example struct {
-	Command     string `json:"command"`
-	Description string `json:"description"`
+	Command     string `json:"command"`     // Example command line
+	Description string `json:"description"` // Explanation of the example
 }
 
+// Registration contains metadata about how a command was registered.
 type Registration struct {
-	Type     string `json:"type"` // "Cmds", "Commands", etc.
-	Location string `json:"location"`
+	Type     string `json:"type"`     // Registration type ("Cmds", "Commands", etc.)
+	Location string `json:"location"` // File and line location of registration
 }
 
+// Suggestion represents a documentation improvement suggestion.
+//
+// Suggestions are generated for commands with incomplete documentation,
+// missing examples, or undocumented arguments.
 type Suggestion struct {
-	Type      string `json:"type"`
-	Field     string `json:"field"`
-	Current   string `json:"current"`
-	Suggested string `json:"suggested"`
-	Reason    string `json:"reason"`
+	Type      string `json:"type"`      // Suggestion type (e.g., "documentation")
+	Field     string `json:"field"`     // Which field needs improvement (description, arguments, etc.)
+	Current   string `json:"current"`   // Current value or "none" if missing
+	Suggested string `json:"suggested"` // Suggested improvement
+	Reason    string `json:"reason"`    // Why this suggestion is needed
 }
 
 type Edit struct {
@@ -152,6 +193,12 @@ func main() {
 	}
 }
 
+// findCommands recursively searches the given directory for all custom command
+// registrations in Go source files.
+//
+// It walks the directory tree, parses each .go file (excluding _test.go files),
+// and extracts all command registrations. If verbose is enabled, parse errors
+// are logged but don't stop the search.
 func findCommands(dir string) ([]Command, error) {
 	var commands []Command
 
@@ -177,6 +224,14 @@ func findCommands(dir string) ([]Command, error) {
 	return commands, err
 }
 
+// parseFile parses a single Go source file and extracts all command registrations.
+//
+// It identifies command registrations in two patterns:
+//   - e.Cmds["command-name"] = handler
+//   - e.Commands["command-name"] = handler
+//
+// The parser extracts the command name, handler function, file location, and
+// registration type. It uses Go's AST to ensure accurate parsing.
 func parseFile(filename string) ([]Command, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, filename, nil, parser.ParseComments)
@@ -186,11 +241,11 @@ func parseFile(filename string) ([]Command, error) {
 
 	var commands []Command
 
-	// Look for command registrations
+	// Look for command registrations in assignment statements
 	ast.Inspect(node, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.AssignStmt:
-			// Look for e.Cmds["name"] = ...
+			// Look for e.Cmds["name"] = ... or e.Commands["name"] = ...
 			if len(x.Lhs) == 1 && len(x.Rhs) == 1 {
 				if indexExpr, ok := x.Lhs[0].(*ast.IndexExpr); ok {
 					if selExpr, ok := indexExpr.X.(*ast.SelectorExpr); ok {
@@ -207,7 +262,7 @@ func parseFile(filename string) ([]Command, error) {
 									},
 								}
 
-								// Extract function info
+								// Extract function info - can be direct identifier or function call
 								if ident, ok := x.Rhs[0].(*ast.Ident); ok {
 									cmd.Function = ident.Name
 								} else if callExpr, ok := x.Rhs[0].(*ast.CallExpr); ok {
@@ -229,8 +284,12 @@ func parseFile(filename string) ([]Command, error) {
 	return commands, nil
 }
 
+// analyzeCommand performs automatic documentation inference for a command.
+//
+// It infers description, usage, arguments, and examples based on the command
+// name and common patterns. This provides a baseline for documentation that
+// can be improved by explicit documentation in source code.
 func analyzeCommand(cmd *Command) {
-	// Try to find documentation from comments
 	cmd.Description = inferDescription(cmd)
 	cmd.Usage = inferUsage(cmd)
 	cmd.Arguments = inferArguments(cmd)
@@ -320,8 +379,18 @@ func findExamples(cmd *Command) []Example {
 	return examples
 }
 
+// generateSuggestions analyzes a command's documentation and generates
+// improvement suggestions for missing or incomplete documentation.
+//
+// Suggestions are created for:
+//   - Missing or generic descriptions
+//   - Undocumented command arguments
+//   - Missing usage examples
+//
+// These suggestions help prioritize documentation efforts and ensure
+// comprehensive command coverage.
 func generateSuggestions(cmd *Command) {
-	// Generate improvement suggestions
+	// Generate improvement suggestions for missing or generic descriptions
 	if cmd.Description == "" || strings.Contains(cmd.Description, "Execute") {
 		cmd.Suggestions = append(cmd.Suggestions, Suggestion{
 			Type:      "documentation",
@@ -332,6 +401,7 @@ func generateSuggestions(cmd *Command) {
 		})
 	}
 
+	// Suggest documenting command arguments if none were found
 	if len(cmd.Arguments) == 0 && !strings.HasSuffix(cmd.Name, "-help") {
 		cmd.Suggestions = append(cmd.Suggestions, Suggestion{
 			Type:      "documentation",
@@ -342,6 +412,7 @@ func generateSuggestions(cmd *Command) {
 		})
 	}
 
+	// Suggest adding examples to commands without them
 	if len(cmd.Examples) == 0 {
 		cmd.Suggestions = append(cmd.Suggestions, Suggestion{
 			Type:      "documentation",
@@ -353,6 +424,11 @@ func generateSuggestions(cmd *Command) {
 	}
 }
 
+// outputText formats commands as human-readable text documentation.
+//
+// This is the default output format, suitable for reading in a terminal or
+// including in documentation. It displays all command information including
+// descriptions, usage, arguments, examples, and improvement suggestions.
 func outputText(w io.Writer, commands []Command) {
 	fmt.Fprintf(w, "=== MCPScriptTest Commands Documentation ===\n\n")
 
@@ -399,12 +475,21 @@ func outputText(w io.Writer, commands []Command) {
 	fmt.Fprintf(w, "Total commands found: %d\n", len(commands))
 }
 
+// outputJSON formats commands as JSON for programmatic processing.
+//
+// This format is suitable for tools, APIs, and integration with other systems.
+// Each command is serialized with full details including suggestions.
 func outputJSON(w io.Writer, commands []Command) {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 	encoder.Encode(commands)
 }
 
+// outputEdits generates structured edit suggestions for documentation improvements.
+//
+// This format is designed for automated application of documentation updates
+// to source files. Each edit includes the file, line numbers, and suggested
+// documentation block to add.
 func outputEdits(w io.Writer, commands []Command) {
 	var edits []Edit
 

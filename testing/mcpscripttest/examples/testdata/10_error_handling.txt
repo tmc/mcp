@@ -1,0 +1,37 @@
+# Error Handling Test - Verify Proper Error Response Handling
+# Demonstrates: error format, invalid requests, error codes, graceful failure
+
+# Test invalid method error
+setstdin {"jsonrpc":"2.0","id":1,"method":"invalid/method","params":{}}
+stdout '"error":'
+stdout '"code":'
+stdout '"message":'
+! stdout '"result":'
+
+# Test missing required method field
+setstdin {"jsonrpc":"2.0","id":2,"params":{}}
+stdout '"error":'
+stdout '"code":'
+
+# Test invalid JSON-RPC version
+setstdin {"jsonrpc":"1.0","id":3,"method":"test"}
+stdout '"error":'
+
+# Test null ID (invalid in MCP)
+setstdin {"jsonrpc":"2.0","id":null,"method":"initialize"}
+stdout '"error":'
+
+# Test error with details
+setstdin {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"nonexistent"}}
+stdout '"error":'
+stdout '"message":'
+
+# Verify response structure on error
+stdout '"jsonrpc":"2.0"'
+
+# Verify we get error not result
+! stdout '"result":'
+
+# Test malformed request handling
+setstdin {incomplete
+! stdout '"result":'

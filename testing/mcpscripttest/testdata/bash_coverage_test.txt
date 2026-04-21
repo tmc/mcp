@@ -3,9 +3,9 @@ env MCP_BASH_COVERAGE=1
 env MCP_BASH_COVERAGE_DIR=$WORK/bash-coverage
 
 # Make test scripts executable
-exec chmod +x test_script.sh
-exec chmod +x complex_script.sh
-exec chmod +x tool_script.sh
+exec chmod 0755 test_script.sh
+exec chmod 0755 complex_script.sh
+exec chmod 0755 tool_script.sh
 
 # Run bash commands with coverage enabled
 bash './test_script.sh hello'

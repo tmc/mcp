@@ -8,15 +8,12 @@ exec mcpdiff --help
 stderr 'Usage'
 
 # Create a simple demo showing what callgraph can and cannot see
-mkdir -p demo
+exec mkdir -p demo
 
 # Create a test that runs another program
-setstdin #!/bin/bash
-mcpdiff --help
-echo "test complete"
-exec cat > demo/test.sh
+exec sh -c 'printf "#!/bin/bash\\nmcpdiff --help\\necho \"test complete\"\\n" > demo/test.sh'
 
-exec chmod +x demo/test.sh
+exec chmod 0755 demo/test.sh
 exec ./demo/test.sh
 stderr 'Usage'
 stdout 'test complete'

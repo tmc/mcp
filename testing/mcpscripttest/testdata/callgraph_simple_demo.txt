@@ -6,15 +6,8 @@ exec mcpdiff --help
 stderr 'Usage'
 
 # Step 2: Create a simple Go program that also executes mcpdiff
-mkdir -p demo
-exec cat > demo/test_runner.go << 'EOF'
-package main
-import "os/exec"
-func main() {
-    cmd := exec.Command("mcpdiff", "--help")
-    cmd.Run()
-}
-EOF
+exec mkdir -p demo
+exec sh -c 'printf "package main\nimport \"os/exec\"\nfunc main() {\n    cmd := exec.Command(\"mcpdiff\", \"--help\")\n    cmd.Run()\n}\n" > demo/test_runner.go'
 
 # Step 3: If we had callgraph, it would show:
 # - The test_runner.go calls exec.Command

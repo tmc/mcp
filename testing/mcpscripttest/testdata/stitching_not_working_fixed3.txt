@@ -8,21 +8,7 @@ stderr 'Usage'
 mkdir -p test_project
 
 # Create the test file using bash heredoc via bash -c
-exec bash -c 'cat > test_project/test_example.go << EOF
-package main_test
-
-import (
-    "os/exec"
-    "testing"
-)
-
-func TestCallsMCPDiff(t *testing.T) {
-    cmd := exec.Command("mcpdiff", "--version")
-    if err := cmd.Run(); err != nil {
-        t.Fatal(err)
-    }
-}
-EOF'
+exec sh -c 'printf "package main_test\n\nimport (\n    \"os/exec\"\n    \"testing\"\n)\n\nfunc TestCallsMCPDiff(t *testing.T) {\n    cmd := exec.Command(\"mcpdiff\", \"--version\")\n    if err := cmd.Run(); err != nil {\n        t.Fatal(err)\n    }\n}\n" > test_project/test_example.go'
 
 # If we ran standard callgraph on this, it would show:
 # - The test calls exec.Command

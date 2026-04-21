@@ -6,8 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
+
+var toolsPathMu sync.Mutex
 
 type ToolCoverMode string
 
@@ -64,6 +67,8 @@ func DefaultToolsWithScripttestOptions() *ToolsOptions {
 			// mcpscripttest analysis tools - only include those that exist and can build
 			"apply-edits", "coverage-by-program", "coverage-hotspots", "depgraph", "digraph-compat",
 			"cmd-docs", "testgraph", "testcallgraph", "testcallgraph-coverage", "stitch-demo",
+			"mcpscripttest", "callgraph",
+			"mcp-spy", "mcpspy", "mcpdiff", "mcp-serve", "mcp-start", "mcp-test",
 		},
 		VerboseOutput: false,
 	}
@@ -107,6 +112,9 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 			t.Fatalf("Failed to create tools directory: %v", err)
 		}
 	}
+
+	// PATH is process-global, so parallel tests must serialize tool installation.
+	toolsPathMu.Lock()
 
 	// Save the original PATH to restore later
 	originalPath := os.Getenv("PATH")
@@ -166,6 +174,7 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 				t.Logf("Warning: Failed to remove temporary tools directory: %v", err)
 			}
 		}
+		toolsPathMu.Unlock()
 	}
 }
 
@@ -198,6 +207,12 @@ func getToolImportPath(toolName string) string {
 		"testcallgraph-coverage": "github.com/tmc/mcp/testing/mcpscripttest/cmd/testcallgraph-coverage",
 		"stitch-demo":            "github.com/tmc/mcp/testing/mcpscripttest/cmd/stitch-demo",
 		"cmd-docs":               "github.com/tmc/mcp/testing/mcpscripttest/cmd/cmd-docs",
+		"mcpscripttest":          "github.com/tmc/mcp/exp/cmd/mcpscripttest",
+		"callgraph":              "golang.org/x/tools/cmd/callgraph",
+		"mcp-spy":                "github.com/tmc/mcp/exp/cmd/mcp-spy",
+
+		"mcp-start": "github.com/tmc/mcp/exp/cmd/mcp-start",
+		"mcp-test":  "github.com/tmc/mcp/exp/cmd/mcp-test",
 	}
 
 	if path, exists := toolPaths[toolName]; exists {
@@ -219,10 +234,12 @@ func SetupMCPToolsPath(t *testing.T, toolsDir string) func() {
 	}
 
 	// Save the original PATH to restore later
+	toolsPathMu.Lock()
 	originalPath := os.Getenv("PATH")
 
 	// Check if the directory is already in PATH
 	if strings.Contains(originalPath, toolsDir) {
+		toolsPathMu.Unlock()
 		return func() {} // No change needed
 	}
 
@@ -234,5 +251,6 @@ func SetupMCPToolsPath(t *testing.T, toolsDir string) func() {
 	return func() {
 		// Restore the original PATH
 		os.Setenv("PATH", originalPath)
+		toolsPathMu.Unlock()
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -21,7 +22,7 @@ import (
 	"github.com/tmc/mcp/testing/mcpscripttest/coverage"
 )
 
-var defaultInheritEnv = []string{"USER", "HOME", "PATH"}
+var defaultInheritEnv = []string{"USER", "HOME", "PATH", "GOCOVERDIR"}
 
 // stdinStore stores pending stdin for the next command
 var stdinStore struct {
@@ -375,7 +376,7 @@ var mcpShadowCmd = script.Command(
 // stdoutVerifyCmd verifies stdout contains specific text or matches a pattern
 var stdoutVerifyCmd = script.Command(
 	script.CmdUsage{
-		Summary: "verify stdout contains text",
+		Summary: "verify stdout contains text or matches regex",
 		Args:    "pattern",
 	},
 	func(s *script.State, args ...string) (script.WaitFunc, error) {
@@ -384,10 +385,24 @@ var stdoutVerifyCmd = script.Command(
 		}
 		pattern := args[0]
 		stdout := s.Stdout()
-		if !strings.Contains(stdout, pattern) {
-			return nil, fmt.Errorf("stdout did not contain expected text: %q", pattern)
+
+		// Try treating as regex first
+		matched, err := regexp.MatchString(pattern, stdout)
+		if err == nil && matched {
+			return nil, nil
 		}
-		return nil, nil
+
+		// If simple string, check if it's contained (fallback/literal check)
+		if strings.Contains(stdout, pattern) {
+			return nil, nil
+		}
+
+		// If we had a regex error, return that, otherwise generic error
+		if err != nil {
+			return nil, fmt.Errorf("invalid regex %q: %v", pattern, err)
+		}
+
+		return nil, fmt.Errorf("stdout did not match expected pattern: %q", pattern)
 	},
 )
 

@@ -2,12 +2,10 @@
 
 # Create a simple test file to analyze
 mkdir -p testdir
-exec sh -c 'cat > testdir/simple.txt << EOF
-exec echo "hello"
-exec mcpdiff --help
-mcpdiff file1 file2
-mcp-spy -- trace.json
-EOF'
+exec sh -c 'echo "exec echo \"hello\"" > testdir/simple.txt'
+exec sh -c 'echo "exec mcpdiff --help" >> testdir/simple.txt'
+exec sh -c 'echo "mcpdiff file1 file2" >> testdir/simple.txt'
+exec sh -c 'echo "mcp-spy -- trace.json" >> testdir/simple.txt'
 
 # Test basic analysis
 exec testcallgraph testdir/simple.txt
@@ -38,5 +36,5 @@ stdout 'mcp-spy:'
 
 # Test help
 exec testcallgraph -h
-stdout 'Usage:'
-stdout 'Options:'
+stderr 'Usage:'
+stderr 'Options:'

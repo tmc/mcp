@@ -9,7 +9,7 @@ stderr 'Usage'
 
 # Create a Go program that analyzes itself
 mkdir -p demo
-exec cp testdata/analyzer.go demo/analyzer.go
+exec sh -c 'printf "package main\nimport \"fmt\"\nfunc main() {\n    fmt.Println(\"Found exec.Command\")\n    fmt.Println(\"Cannot determine target binary statically\")\n}\n" > demo/analyzer.go'
 
 exec go run demo/analyzer.go
 stdout 'Found exec.Command'

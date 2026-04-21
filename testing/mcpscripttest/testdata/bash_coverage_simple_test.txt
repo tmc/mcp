@@ -9,7 +9,7 @@ echo 'MCP_BASH_COVERAGE_DIR='$MCP_BASH_COVERAGE_DIR
 stdout 'MCP_BASH_COVERAGE_DIR='$WORK/bash-coverage
 
 # Create a simple test script
-exec bash -c 'echo "#!/bin/bash" > test_script.sh && echo "echo hello" >> test_script.sh && chmod +x test_script.sh'
+exec bash -c 'echo "#!/bin/bash" > test_script.sh && echo "echo hello" >> test_script.sh && chmod 0755 test_script.sh'
 
 # Run bash command with coverage enabled
 bash './test_script.sh'

@@ -10,7 +10,7 @@ import (
 // TestAllTestdata runs all tests in the testdata directory
 // with properly installed MCP tools
 func TestAllTestdata(t *testing.T) {
-	t.Skip("Skipping TestAllTestdata - test scripts need updating for current environment")
+	// t.Skip("Skipping TestAllTestdata - test scripts need updating for current environment")
 	// Install all MCP tools including mcpscripttest analysis tools
 	toolOpts := tools.DefaultToolsWithScripttestOptions()
 	toolOpts.VerboseOutput = testing.Verbose()

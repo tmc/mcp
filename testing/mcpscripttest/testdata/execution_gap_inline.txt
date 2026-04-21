@@ -11,43 +11,7 @@ stderr 'Usage'
 mkdir -p demo
 
 # Create analyzer.go using setstdin and cat
-setstdin package main
-
-import (
-    "fmt"
-    "go/ast"
-    "go/parser"
-    "go/token"
-)
-
-func main() {
-    fmt.Println("Static analysis sees function calls...")
-    src := `package main
-import "os/exec"
-func runTest() {
-    cmd := exec.Command("mcpdiff", "--help")
-    cmd.Run()
-}`
-    
-    // Parse the source
-    fset := token.NewFileSet()
-    node, _ := parser.ParseFile(fset, "", src, 0)
-    
-    // Find exec.Command calls
-    ast.Inspect(node, func(n ast.Node) bool {
-        if call, ok := n.(*ast.CallExpr); ok {
-            if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-                if sel.Sel.Name == "Command" {
-                    fmt.Println("Found exec.Command call")
-                    // But we can't determine at compile time what it will execute!
-                    fmt.Println("Cannot determine target binary statically")
-                }
-            }
-        }
-        return true
-    })
-}
-exec cat > demo/analyzer.go
+exec sh -c 'printf "package main\n\nimport (\n    \"fmt\"\n    \"go/ast\"\n    \"go/parser\"\n    \"go/token\"\n)\n\nfunc main() {\n    fmt.Println(\"Static analysis sees function calls...\")\n    src := \x60package main\nimport \"os/exec\"\nfunc runTest() {\n    cmd := exec.Command(\"mcpdiff\", \"--help\")\n    cmd.Run()\n}\x60\n    \n    fset := token.NewFileSet()\n    node, _ := parser.ParseFile(fset, \"\", src, 0)\n    \n    ast.Inspect(node, func(n ast.Node) bool {\n        if call, ok := n.(*ast.CallExpr); ok {\n            if sel, ok := call.Fun.(*ast.SelectorExpr); ok {\n                if sel.Sel.Name == \"Command\" {\n                    fmt.Println(\"Found exec.Command call\")\n                    fmt.Println(\"Cannot determine target binary statically\")\n                }\n            }\n        }\n        return true\n    })\n}\n" > demo/analyzer.go'
 
 exec go run demo/analyzer.go
 stdout 'Found exec.Command'

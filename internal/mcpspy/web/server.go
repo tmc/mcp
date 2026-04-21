@@ -289,10 +289,16 @@ func (s *Server) staticHandler() http.Handler {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		})
 	}
+	indexData, indexErr := fs.ReadFile(sub, "index.html")
 	fileServer := http.FileServer(http.FS(sub))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			r.URL.Path = "/index.html"
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			if indexErr != nil {
+				http.Error(w, indexErr.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.ServeContent(w, r, "index.html", time.Time{}, bytes.NewReader(indexData))
+			return
 		}
 		fileServer.ServeHTTP(w, r)
 	})

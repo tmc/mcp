@@ -47,6 +47,22 @@ func TestServerEndpoints(t *testing.T) {
 		t.Fatal("missing self info")
 	}
 
+	resp, err = http.Get(url + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("root status=%d", resp.StatusCode)
+	}
+	if !strings.Contains(string(body), "<!doctype html>") && !strings.Contains(strings.ToLower(string(body)), "<html") {
+		t.Fatalf("root body=%q", string(body))
+	}
+
 	resp, err = http.Get(url + "/api/snapshot")
 	if err != nil {
 		t.Fatal(err)

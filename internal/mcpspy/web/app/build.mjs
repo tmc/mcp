@@ -13,6 +13,8 @@ await build({
   entryPoints: [join(src, "main.jsx")],
   bundle: true,
   format: "esm",
+  jsxFactory: "h",
+  jsxFragment: "Fragment",
   sourcemap: false,
   minify: true,
   target: ["es2020"],

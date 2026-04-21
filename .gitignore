@@ -16,21 +16,43 @@ security-reports/
 dist/
 build/
 
-# Binary executables (should not be committed)
-mcp-debug
-mcp-probe
-mcp-proxy
-mcp-replay
-mcp-serve
-mcp-shadow
-mcpcat
-mcpdiff
-mcpspy
-/cmd/mcp-replay/mcp-replay
+# Binary executables in root
+/mcp-debug
+/mcp-probe
+/mcp-proxy
+/mcp-replay
+/mcp-serve
+/mcp-shadow
+/mcp-vet
+/mcpcat
+/mcpdiff
+/mcpspy
+/mcptel
+/test-server
+
+# Binary executables in exp/cmd/<tool>/<tool>
+exp/cmd/*/jsonrpc2gostruct
+exp/cmd/*/mcpd
+exp/cmd/*/mcpdeadcode
+exp/cmd/*/mcp2go
+
+# Binary executables in examples/servers/<name>/<name>
+examples/servers/*/mcp-*-server
+
+# Binary executables in cmd directories
+cmd/*/mcp-debug
+cmd/*/mcp-probe
+cmd/*/mcp-proxy
+cmd/*/mcp-replay
+cmd/*/mcp-serve
+cmd/*/mcp-shadow
+cmd/*/mcpcat
+cmd/*/mcpdiff
+cmd/*/mcpspy
 
 # Test artifacts
 *.test
-*_test_*
+# *_test_*
 test_output/
 test_results/
 *.log
@@ -55,7 +77,12 @@ tmp/
 .DS_Store
 
 # Go workspace files
+go.work
 go.work.sum
+examples/servers/*/go.work
+examples/servers/*/go.work.sum
+exp/cmd/*/go.work
+exp/cmd/*/go.work.sum
 
 # Local development artifacts
 bin/
@@ -75,6 +102,22 @@ Thumbs.db
 .env
 .env.local
 *.local
+
+# Local issue tracker
+.beads/
+
+# Ad-hoc dev artifacts
+proxy_log.txt
+proxy_output.txt
+test_output*.log
+screenshot-*.png
+lastsession.txt
+mcpd.log
+mcpscripttest_run.log
+*.disabled
+
+# node_modules (internal/mcpspy/web/app)
+node_modules/
 
 # Generated documentation
 *.html

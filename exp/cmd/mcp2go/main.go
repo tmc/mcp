@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tmc/mcp/exp/mcpspec"
 	"github.com/tmc/mcp/exp/sourcegen"
 )
 
@@ -27,8 +28,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nGenerate Go source code from MCP tool descriptions or JSON schemas\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  %s tool.json                    # auto-detect format\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -type mcp mcp-tool.json      # MCP tool description\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -type jsonschema schema.json # JSON schema\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -type mcp mcp-tool.json      # MCP tool description\n  %s -type jsonschema schema.json # JSON schema\n  %s -type mcpspec server.mcpspec # MCP server spec\n", os.Args[0], os.Args[0], os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
 	}
@@ -71,13 +71,13 @@ func main() {
 
 	switch actualType {
 	case "mcp":
-		var tool sourcegen.MCPToolDescription
+		var tool mcpspec.ToolDefinition
 		if err := json.Unmarshal(data, &tool); err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing MCP tool description: %v\n", err)
 			os.Exit(1)
 		}
 
-		output, err = gen.GenerateFromMCPTool(&tool)
+		output, err = gen.GenerateFromTool(&tool)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error generating code: %v\n", err)
 			os.Exit(1)
@@ -91,7 +91,7 @@ func main() {
 		// Parse MCP tools response format
 		var response struct {
 			Result struct {
-				Tools []sourcegen.MCPToolDescription `json:"tools"`
+				Tools []mcpspec.ToolDefinition `json:"tools"`
 			} `json:"result"`
 		}
 		if err := json.Unmarshal(data, &response); err != nil {
@@ -102,7 +102,7 @@ func main() {
 		// Generate code for all tools
 		var outputs []string
 		for _, tool := range response.Result.Tools {
-			toolOutput, err := gen.GenerateFromMCPTool(&tool)
+			toolOutput, err := gen.GenerateFromTool(&tool)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error generating code for tool %s: %v\n", tool.Name, err)
 				os.Exit(1)
@@ -151,7 +151,7 @@ func main() {
 		}
 
 	case "jsonschema":
-		var schema sourcegen.JSONSchema
+		var schema mcpspec.JSONSchema
 		if err := json.Unmarshal(data, &schema); err != nil {
 			fmt.Fprintf(os.Stderr, "Error parsing JSON schema: %v\n", err)
 			os.Exit(1)
@@ -169,6 +169,23 @@ func main() {
 
 		if *fileName == "" {
 			outputFileName = strings.ToLower(typeName) + ".go"
+		}
+
+	case "mcpspec":
+		spec, err := mcpspec.Parse(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing MCPSpec: %v\n", err)
+			os.Exit(1)
+		}
+
+		output, err = gen.GenerateFromSpec(spec)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating code: %v\n", err)
+			os.Exit(1)
+		}
+
+		if *fileName == "" {
+			outputFileName = strings.ToLower(spec.Server.Name) + "_server.go"
 		}
 
 	default:
@@ -243,6 +260,11 @@ func detectInputType(data []byte) string {
 	}
 	if _, hasSchema := generic["$schema"]; hasSchema {
 		return "jsonschema"
+	}
+
+	// Check for MCPSpec
+	if _, hasSpecVersion := generic["specVersion"]; hasSpecVersion {
+		return "mcpspec"
 	}
 
 	return ""

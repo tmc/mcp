@@ -1,0 +1,50 @@
+{
+  "specVersion": "0.1.0",
+  "server": {
+    "name": "weather-server",
+    "version": "1.0.0",
+    "description": "Provides weather information for cities."
+  },
+  "tools": [
+    {
+      "name": "get_weather",
+      "description": "Get current weather for a city",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "city": {
+            "type": "string",
+            "description": "City name"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"],
+            "default": "celsius"
+          }
+        },
+        "required": ["city"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "uri": "weather://{city}/current",
+      "name": "Current Weather",
+      "mimeType": "application/json",
+      "description": "Current weather data for a specific city"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "weather_report",
+      "description": "Generate a weather report for a city",
+      "arguments": [
+        {
+          "name": "city",
+          "description": "City to report on",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tmc/mcp/exp/mcpspec"
 	"github.com/tmc/mcp/exp/sourcegen"
 )
 
@@ -36,7 +37,7 @@ func TestCCToolsRoundTrip(t *testing.T) {
 	// Test each tool in the array
 	for i, toolJSON := range result.Result.Tools {
 		// Parse as MCP tool description
-		var tool sourcegen.MCPToolDescription
+		var tool mcpspec.ToolDefinition
 		if err := json.Unmarshal(toolJSON, &tool); err != nil {
 			t.Errorf("Failed to parse tool %d: %v", i, err)
 			continue
@@ -44,7 +45,7 @@ func TestCCToolsRoundTrip(t *testing.T) {
 
 		// Generate Go code
 		gen := sourcegen.NewGenerator("main")
-		code, err := gen.GenerateFromMCPTool(&tool)
+		code, err := gen.GenerateFromTool(&tool)
 		if err != nil {
 			t.Errorf("Failed to generate code for tool %s: %v", tool.Name, err)
 			continue

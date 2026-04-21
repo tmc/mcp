@@ -11,6 +11,7 @@
 ## TODO List (Priority Order)
 
 ### 1. Fix Critical Test Failures (HIGH PRIORITY)
+- [x] Fix race condition in `auth_security_test.go` (Resolved: Added mutex locks in TestConcurrentTokenOperations)
 - [ ] Fix chmod mode issue in TestAllTestdata
 - [ ] Add proper skip conditions for tests requiring missing tools
 - [ ] Fix or skip tests that use unavailable commands (testgraph, testcallgraph)

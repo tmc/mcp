@@ -5,18 +5,19 @@ This document tracks the current testing status of the MCP Go implementation aft
 
 **Last Updated**: August 31, 2025
 
-## Current Status: ✅ SIGNIFICANTLY IMPROVED
+## Current Status: ⚠️ NEEDS ATTENTION
 
 ### Build Status
 - ✅ `go build ./...` - All packages build successfully
 - ✅ Core functionality is stable
-- ✅ All critical tests passing
+- ✅ Critical tests passing after race condition fix in `auth_security_test.go`
 
 ### Test Coverage
-- **Overall Coverage**: ~49.4% with comprehensive test suites
-- **New Test Coverage**: Added 807 lines of tests for `cmd/mcp-connect`
-- **Protocol Tests**: ✅ Fully implemented compliance tests
-- **Integration Tests**: ✅ Cross-implementation validation working
+- **Overall Coverage**: ~31.3% (Verified)
+- **New Test Coverage**: `cmd/mcp-connect` is at 49%
+- **Protocol Tests**: ✅ Compliance tests active
+- **Integration Tests**: ✅ Protocol interop tests passing
+- **Missing Coverage**: `mcp-proxy`, `mcp-send`, `mcp-serve` are at 0%
 
 ## Recent Improvements (August 2025)
 

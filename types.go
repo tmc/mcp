@@ -17,9 +17,12 @@ const (
 
 // Common error values
 var (
-	ErrInvalidParams   = errors.New("mcp: invalid parameters")
-	ErrNotFound        = errors.New("mcp: not found")
-	ErrUnsupported     = errors.New("mcp: operation or capability not supported")
+	ErrInvalidParams = errors.New("mcp: invalid parameters")
+	ErrNotFound      = errors.New("mcp: not found")
+	ErrUnsupported   = errors.New("mcp: operation or capability not supported")
+	// ErrTransportClosed reports that an established transport can no longer be used.
+	// Transport operations wrap this sentinel so callers can detect disconnects with
+	// errors.Is without conflating them with protocol errors.
 	ErrTransportClosed = errors.New("mcp: transport closed")
 	ErrAlreadyExists   = errors.New("mcp: resource already exists")
 	ErrMethodNotFound  = errors.New("mcp: method not found")

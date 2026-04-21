@@ -5,12 +5,17 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // Comprehensive transport testing to achieve near 100% coverage
@@ -581,5 +586,76 @@ func BenchmarkStdioTransportDial(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
+	}
+}
+
+func TestSSEAdapterContextCancellationReturnsErrTransportClosed(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	adapter := &sseRWCAdapter{
+		ctx:         ctx,
+		sseBody:     io.NopCloser(strings.NewReader("")),
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		readBuf:     new(bytes.Buffer),
+		readChan:    make(chan []byte),
+		readErrChan: make(chan error, 1),
+		closed:      make(chan struct{}),
+	}
+
+	_, err := adapter.Read(make([]byte, 1))
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Fatalf("Read() error = %v, want errors.Is(..., ErrTransportClosed)", err)
+	}
+
+	_, err = adapter.Write([]byte("{}"))
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Fatalf("Write() error = %v, want errors.Is(..., ErrTransportClosed)", err)
+	}
+}
+
+func TestStreamableTransportClosureReturnsErrTransportClosed(t *testing.T) {
+	transport := newStreamableServerTransport("test", slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err := transport.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	_, err := transport.Read(context.Background())
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Fatalf("Read() error = %v, want errors.Is(..., ErrTransportClosed)", err)
+	}
+
+	err = transport.Write(context.Background(), JSONRPCMessage{JSONRPC: "2.0"})
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Fatalf("Write() error = %v, want errors.Is(..., ErrTransportClosed)", err)
+	}
+}
+
+func TestWebSocketReadClosureReturnsErrTransportClosed(t *testing.T) {
+	upgrader := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			t.Errorf("Upgrade() error = %v", err)
+			return
+		}
+		_ = conn.Close()
+	}))
+	defer server.Close()
+
+	transport, err := NewWebSocketTransport("ws" + strings.TrimPrefix(server.URL, "http"))
+	if err != nil {
+		t.Fatalf("NewWebSocketTransport() error = %v", err)
+	}
+
+	rwc, err := transport.Dial(context.Background())
+	if err != nil {
+		t.Fatalf("Dial() error = %v", err)
+	}
+	defer rwc.Close()
+
+	_, err = rwc.Read(make([]byte, 1))
+	if !errors.Is(err, ErrTransportClosed) {
+		t.Fatalf("Read() error = %v, want errors.Is(..., ErrTransportClosed)", err)
 	}
 }

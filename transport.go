@@ -2,7 +2,11 @@ package mcp
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"net"
+	"strings"
 )
 
 // Transport accepts a context and returns a ReadWriteCloser.
@@ -27,7 +31,27 @@ type ReadWriteCloserTransport struct {
 
 func (t *ReadWriteCloserTransport) Dial(ctx context.Context) (io.ReadWriteCloser, error) {
 	if t.ReadWriteCloser == nil {
-		return nil, ErrTransportClosed
+		return nil, transportClosedError("transport dial")
 	}
 	return t.ReadWriteCloser, nil
+}
+
+func transportClosedError(op string) error {
+	return fmt.Errorf("%s: %w", op, ErrTransportClosed)
+}
+
+func wrapTransportClosed(op string, err error) error {
+	if errors.Is(err, ErrTransportClosed) {
+		return err
+	}
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) || errors.Is(err, net.ErrClosed) {
+		return transportClosedError(op)
+	}
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return transportClosedError(op)
+	}
+	return err
 }

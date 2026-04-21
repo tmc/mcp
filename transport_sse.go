@@ -145,10 +145,10 @@ func (s *sseRWCAdapter) readLoop() {
 	for {
 		select {
 		case <-s.closed:
-			s.readErrChan <- io.ErrClosedPipe
+			s.readErrChan <- transportClosedError("sse read")
 			return
 		case <-s.ctx.Done():
-			s.readErrChan <- s.ctx.Err()
+			s.readErrChan <- transportClosedError("sse read")
 			return
 		default:
 		}
@@ -166,6 +166,7 @@ func (s *sseRWCAdapter) readLoop() {
 			if err == nil {
 				err = io.EOF
 			}
+			err = wrapTransportClosed("sse read", err)
 			s.logger.ErrorContext(s.ctx, "sseRWCAdapter: readLoop scanner error", "error", err)
 			s.readErrChan <- err
 			return
@@ -183,10 +184,10 @@ func (s *sseRWCAdapter) readLoop() {
 				case s.readChan <- []byte(fullMessage + "\n"):
 					s.logger.DebugContext(s.ctx, "sseRWCAdapter: readLoop sent message to readChan", "data_len", len(fullMessage))
 				case <-s.closed:
-					s.readErrChan <- io.ErrClosedPipe
+					s.readErrChan <- transportClosedError("sse read")
 					return
 				case <-s.ctx.Done():
-					s.readErrChan <- s.ctx.Err()
+					s.readErrChan <- transportClosedError("sse read")
 					return
 				}
 			}
@@ -200,10 +201,10 @@ func (s *sseRWCAdapter) readLoop() {
 				select {
 				case s.readChan <- []byte(fullMessage + "\n"):
 				case <-s.closed:
-					s.readErrChan <- io.ErrClosedPipe
+					s.readErrChan <- transportClosedError("sse read")
 					return
 				case <-s.ctx.Done():
-					s.readErrChan <- s.ctx.Err()
+					s.readErrChan <- transportClosedError("sse read")
 					return
 				default:
 					s.logger.WarnContext(s.ctx, "sseRWCAdapter: readChan full, dropping message before non-message event")
@@ -229,18 +230,16 @@ func (s *sseRWCAdapter) Read(p []byte) (n int, err error) {
 
 	select {
 	case <-s.closed:
-		return 0, io.ErrClosedPipe
+		return 0, transportClosedError("sse read")
 	case <-s.ctx.Done():
-		return 0, s.ctx.Err()
+		return 0, transportClosedError("sse read")
 	case data, ok := <-s.readChan:
 		if !ok {
 			select {
 			case err = <-s.readErrChan:
-				if err == nil {
-					err = io.EOF
-				}
+				err = wrapTransportClosed("sse read", err)
 			default:
-				err = io.EOF
+				err = transportClosedError("sse read")
 			}
 			s.logger.DebugContext(s.ctx, "sseRWCAdapter: Read returning", "error", err, "readChan_closed", true)
 			return 0, err
@@ -260,9 +259,9 @@ func (s *sseRWCAdapter) Read(p []byte) (n int, err error) {
 func (s *sseRWCAdapter) Write(p []byte) (n int, err error) {
 	select {
 	case <-s.closed:
-		return 0, io.ErrClosedPipe
+		return 0, transportClosedError("sse write")
 	case <-s.ctx.Done():
-		return 0, s.ctx.Err()
+		return 0, transportClosedError("sse write")
 	default:
 	}
 
@@ -278,6 +277,10 @@ func (s *sseRWCAdapter) Write(p []byte) (n int, err error) {
 
 	resp, err := s.httpClient.Do(postReq)
 	if err != nil {
+		if closedErr := wrapTransportClosed("sse write", err); closedErr != err {
+			s.logger.ErrorContext(s.ctx, "sseRWCAdapter: POST request failed", "error", closedErr)
+			return 0, closedErr
+		}
 		s.logger.ErrorContext(s.ctx, "sseRWCAdapter: POST request failed", "error", err)
 		return 0, fmt.Errorf("sse client: POST failed: %w", err)
 	}

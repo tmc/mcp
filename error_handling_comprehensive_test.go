@@ -273,7 +273,7 @@ func TestTransportErrorRecovery(t *testing.T) {
 					t.Error("Expected error but got none")
 					return
 				}
-				if scenario.errorType == "closed pipe" && err == ErrTransportClosed {
+				if scenario.errorType == "closed pipe" && errors.Is(err, ErrTransportClosed) {
 					// This is acceptable - transport closed is the proper error
 				} else if !strings.Contains(err.Error(), scenario.errorType) {
 					t.Errorf("Expected error containing %q, got %q", scenario.errorType, err.Error())

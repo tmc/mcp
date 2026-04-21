@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -84,12 +85,12 @@ func (c *WebSocketConn) Read(p []byte) (n int, err error) {
 	// Read the next message
 	messageType, message, err := c.conn.ReadMessage()
 	if err != nil {
-		return 0, err
+		return 0, wrapWebSocketTransportClosed("websocket read", err)
 	}
 
 	// Only handle text messages for JSON-RPC
 	if messageType != websocket.TextMessage {
-		return 0, io.EOF
+		return 0, fmt.Errorf("websocket: unexpected message type %d", messageType)
 	}
 
 	// Copy what we can to the output buffer
@@ -111,12 +112,12 @@ func (c *WebSocketConn) Write(p []byte) (n int, err error) {
 	defer c.mu.Unlock()
 
 	if c.closed {
-		return 0, io.ErrClosedPipe
+		return 0, transportClosedError("websocket write")
 	}
 
 	err = c.conn.WriteMessage(websocket.TextMessage, p)
 	if err != nil {
-		return 0, err
+		return 0, wrapWebSocketTransportClosed("websocket write", err)
 	}
 
 	return len(p), nil
@@ -128,10 +129,17 @@ func (c *WebSocketConn) Close() error {
 	defer c.mu.Unlock()
 
 	c.closed = true
-	return c.conn.Close()
+	return wrapWebSocketTransportClosed("websocket close", c.conn.Close())
 }
 
 // String provides a string representation
 func (t *WebSocketTransport) String() string {
 	return "WebSocketTransport(" + t.url + ")"
+}
+
+func wrapWebSocketTransportClosed(op string, err error) error {
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived, websocket.CloseAbnormalClosure) {
+		return transportClosedError(op)
+	}
+	return wrapTransportClosed(op, err)
 }

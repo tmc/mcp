@@ -266,7 +266,7 @@ func (t *StreamableServerTransport) Read(ctx context.Context) (JSONRPCMessage, e
 	case <-ctx.Done():
 		return JSONRPCMessage{}, ctx.Err()
 	case <-t.done:
-		return JSONRPCMessage{}, io.EOF
+		return JSONRPCMessage{}, transportClosedError("streamable read")
 	case msg := <-t.incoming:
 		return msg, nil
 	}
@@ -278,7 +278,7 @@ func (t *StreamableServerTransport) Write(ctx context.Context, msg JSONRPCMessag
 	defer t.mu.Unlock()
 
 	if t.isDone {
-		return io.ErrClosedPipe
+		return transportClosedError("streamable write")
 	}
 
 	// Determine stream ID based on message type

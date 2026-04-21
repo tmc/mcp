@@ -1,2 +1,0 @@
-Testing HTTP transport at http://localhost:3001
-2025/05/16 01:03:18 Failed to marshal request: json: error calling MarshalJSON for type json.RawMessage: invalid character '\\' looking for beginning of object key string

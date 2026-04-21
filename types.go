@@ -196,15 +196,14 @@ type ClientCapabilities struct {
 		URL  bool `json:"url,omitempty"`
 	} `json:"elicitation,omitempty"`
 	Tasks *struct {
-		List     bool `json:"list,omitempty"`
-		Cancel   bool `json:"cancel,omitempty"`
-		Results  bool `json:"results,omitempty"`
+		List     *struct{} `json:"list,omitempty"`
+		Cancel   *struct{} `json:"cancel,omitempty"`
 		Requests *struct {
 			Sampling *struct {
-				CreateMessage bool `json:"createMessage,omitempty"`
+				CreateMessage *struct{} `json:"createMessage,omitempty"`
 			} `json:"sampling,omitempty"`
 			Elicitation *struct {
-				Create bool `json:"create,omitempty"`
+				Create *struct{} `json:"create,omitempty"`
 			} `json:"elicitation,omitempty"`
 		} `json:"requests,omitempty"`
 	} `json:"tasks,omitempty"`
@@ -228,12 +227,11 @@ type ServerCapabilities struct {
 		ListChanged bool `json:"listChanged,omitempty"`
 	} `json:"prompts,omitempty"`
 	Tasks *struct {
-		List     bool `json:"list,omitempty"`
-		Cancel   bool `json:"cancel,omitempty"`
-		Results  bool `json:"results,omitempty"`
+		List     *struct{} `json:"list,omitempty"`
+		Cancel   *struct{} `json:"cancel,omitempty"`
 		Requests *struct {
 			Tools *struct {
-				Call bool `json:"call,omitempty"`
+				Call *struct{} `json:"call,omitempty"`
 			} `json:"tools,omitempty"`
 		} `json:"requests,omitempty"`
 	} `json:"tasks,omitempty"`

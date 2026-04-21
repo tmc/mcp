@@ -440,11 +440,15 @@ func (s *shadowServer) processOutputLine(line []byte, source string, isStderr bo
 		}
 
 		if isShadow {
+			baggage := s.traceBaggage
+			if baggage != "" {
+				baggage += ","
+			}
 			if *compareMode {
 				// In compare mode, add additional metadata
-				msg.baggage = fmt.Sprintf("%s,shadow=true,compare=true", s.traceBaggage)
+				msg.baggage = fmt.Sprintf("%sshadow=true,compare=true", baggage)
 			} else {
-				msg.baggage = fmt.Sprintf("%s,shadow=true", s.traceBaggage)
+				msg.baggage = fmt.Sprintf("%sshadow=true", baggage)
 			}
 		}
 

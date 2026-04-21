@@ -394,7 +394,9 @@ func TestConcurrentTokenOperations(t *testing.T) {
 				Code:     fmt.Sprintf("code-%d", idx),
 				ClientID: "concurrent-test",
 			}
+			baseProvider.mu.Lock()
 			baseProvider.authCodes[authCode.Code] = authCode
+			baseProvider.mu.Unlock()
 
 			token, err := secureProvider.CreateAccessToken(context.Background(), authCode)
 			if err != nil {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -320,9 +321,9 @@ func TestClientConcurrentOperations(t *testing.T) {
 	defer client.Close()
 
 	// Test concurrent notification handler calls
-	handlerCalls := 0
+	var handlerCalls atomic.Int32
 	handler := func(n JSONRPCNotification) {
-		handlerCalls++
+		handlerCalls.Add(1)
 	}
 
 	opt := WithNotificationHandler(handler)
@@ -350,8 +351,8 @@ func TestClientConcurrentOperations(t *testing.T) {
 		<-done
 	}
 
-	if handlerCalls != 10 {
-		t.Errorf("Expected 10 handler calls, got %d", handlerCalls)
+	if got := handlerCalls.Load(); got != 10 {
+		t.Errorf("Expected 10 handler calls, got %d", got)
 	}
 }
 

@@ -15,6 +15,10 @@ permissions:
   contents: write
   packages: write
 
+env:
+  GO_VERSION_FILE: go.mod
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
 jobs:
   build:
     name: Build and Release
@@ -29,7 +33,8 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: "1.23"
+        go-version-file: go.mod
+        cache: true
         
     - name: Cache Go modules
       uses: actions/cache@v4
@@ -37,12 +42,14 @@ jobs:
         path: |
           ~/.cache/go-build
           ~/go/pkg/mod
-        key: ${{ runner.os }}-go-1.23-${{ hashFiles('**/go.sum') }}
+        key: ${{ runner.os }}-go-release-${{ hashFiles('**/go.sum', '**/go.work.sum') }}
         restore-keys: |
-          ${{ runner.os }}-go-1.23-
+          ${{ runner.os }}-go-release-
           
     - name: Run tests
-      run: go test -race ./...
+      run: |
+        go test -race \
+          $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
       
     - name: Build binaries
       run: |
@@ -61,6 +68,10 @@ jobs:
           # Build each core tool
           for tool in cmd/*; do
             if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
+              if [ -f "$tool/go.mod" ]; then
+                echo "  Skipping $(basename "$tool") (nested module)"
+                continue
+              fi
               tool_name=$(basename "$tool")
               output_name="$tool_name-$GOOS-$GOARCH"
               
@@ -81,24 +92,35 @@ jobs:
         
     - name: Generate changelog
       run: |
+        version="${RELEASE_TAG#v}"
         if [ -f CHANGELOG.md ]; then
-          # Extract changelog for this version if it exists
-          awk '/^## / { if (p) exit; if (/^## '"${GITHUB_REF#refs/tags/}"'/) p=1; next } p' CHANGELOG.md > /tmp/changelog.txt
-        else
-          # Generate basic changelog from git
-          git log --pretty=format:"* %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD > /tmp/changelog.txt
+          # Extract changelog for this version if it exists.
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" || $0 ~ "^## " version "([[:space:]]|$)" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > /tmp/changelog.txt
+        fi
+        if [ ! -s /tmp/changelog.txt ]; then
+          # Fall back to git history when a matching changelog entry is not present.
+          previous_tag=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$previous_tag" ]; then
+            git log --pretty=format:"* %s" "$previous_tag"..HEAD > /tmp/changelog.txt
+          else
+            git log --pretty=format:"* %s" > /tmp/changelog.txt
+          fi
         fi
         
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref_name }}
-        name: Release ${{ github.ref_name }}
+        tag_name: ${{ env.RELEASE_TAG }}
+        name: Release ${{ env.RELEASE_TAG }}
         body_path: /tmp/changelog.txt
         files: |
           dist/*
         draft: false
-        prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+        prerelease: ${{ contains(env.RELEASE_TAG, 'rc') || contains(env.RELEASE_TAG, 'beta') || contains(env.RELEASE_TAG, 'alpha') }}
         
   docker:
     name: Build and Push Docker Images
@@ -125,10 +147,10 @@ jobs:
       with:
         images: ghcr.io/${{ github.repository }}
         tags: |
-          type=ref,event=tag
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=semver,pattern={{major}}
+          type=raw,value=${{ env.RELEASE_TAG }}
+          type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
+          type=semver,pattern={{major}},value=${{ env.RELEASE_TAG }}
           
     - name: Build and push Docker image
       uses: docker/build-push-action@v6

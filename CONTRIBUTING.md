@@ -369,7 +369,7 @@ We use [Semantic Versioning](https://semver.org/):
 
 - **Questions**: Use GitHub Discussions
 - **Bugs**: Open an issue
-- **Security**: Email security@example.com
+- **Security**: Use GitHub Security Advisories (see `SECURITY.md`)
 - **Features**: Start a discussion first
 
 ## Recognition

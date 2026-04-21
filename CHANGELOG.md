@@ -158,12 +158,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Release Process
 
-1. Update version in `version.go`
-2. Update CHANGELOG.md with release notes
+1. Update `CHANGELOG.md` with release notes
+2. Run release checks (`go test ./...`, `go test -race ./...`, core tool builds)
 3. Create git tag: `git tag -a v0.x.x -m "Release v0.x.x"`
 4. Push tag: `git push origin v0.x.x`
-5. Create GitHub release with changelog excerpt
-6. Announce in discussions/Discord
+5. Let `.github/workflows/release.yml` publish artifacts and the GitHub release
+6. Announce the release in project channels
 
 ## Support Policy
 

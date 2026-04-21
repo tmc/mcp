@@ -5,7 +5,7 @@
 If you discover a security vulnerability in this project, please report it responsibly:
 
 1. **DO NOT** open a public issue
-2. Email security details to: security@example.com
+2. Open a private report at: https://github.com/tmc/mcp/security/advisories/new
 3. Include: description, steps to reproduce, potential impact
 4. We aim to respond within 48 hours
 
@@ -251,9 +251,8 @@ go mod tidy
 
 ## Security Contacts
 
-- **Security Team**: security@example.com
-- **Bug Bounty Program**: https://example.com/security/bounty
-- **Security Updates**: https://example.com/security/advisories
+- **Private Reports**: https://github.com/tmc/mcp/security/advisories/new
+- **Security Updates**: https://github.com/tmc/mcp/security
 
 ## Acknowledgments
 

@@ -85,10 +85,15 @@ jobs:
 
     - name: Check for binary files
       run: |
-        # Ensure no binary files are committed (per CLAUDE.md)
-        if git ls-files | xargs -I {} file {} 2>/dev/null | grep -q "executable\|binary"; then
-          echo "Binary files detected in repository:"
-          git ls-files | xargs -I {} file {} | grep "executable\|binary" || true
+        # Ensure no compiled binaries are committed (text executables like shell scripts are fine)
+        binary_files=$(
+          git ls-files -z | \
+            xargs -0 file --mime-type 2>/dev/null | \
+            awk -F': ' '$2 ~ /^application\/(octet-stream|x-archive|x-executable|x-mach-binary|x-object|x-pie-executable|x-sharedlib|vnd\.microsoft\.portable-executable)$/ {print $1}'
+        )
+        if [ -n "$binary_files" ]; then
+          echo "Compiled binary files detected in repository:"
+          printf '%s\n' "$binary_files"
           echo "Remove binary files as per CLAUDE.md guidelines"
           exit 1
         fi
@@ -191,12 +196,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test across multiple Go versions and platforms
-        go-version: ['1.20', '1.21', '1.22', '1.23']
+        # Test the supported Go range declared by go.mod and the current toolchain.
+        go-version: ['1.23.0', '1.24.2']
         os: [ubuntu-latest, macos-latest]
         include:
           # Add race detector tests for latest Go on Linux
-          - go-version: '1.23'
+          - go-version: '1.24.2'
             os: ubuntu-latest
             race: true
 
@@ -234,7 +239,7 @@ jobs:
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
     - name: Run synctest validation
-      if: matrix.go-version == '1.23' && matrix.os == 'ubuntu-latest'
+      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
       run: |
         echo "Running synctest validation..."
         GOEXPERIMENT=synctest gotestsum --junitfile test-results/synctest.xml --format ${{ env.GOTESTSUM_FORMAT }} -- \

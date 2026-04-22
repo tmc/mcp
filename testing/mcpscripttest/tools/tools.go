@@ -5,12 +5,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 )
 
 var toolsPathMu sync.Mutex
+
+type toolInstallSpec struct {
+	dir string
+	pkg string
+}
 
 type ToolCoverMode string
 
@@ -137,14 +143,17 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 		// Clean the tool name (in case it has path separators)
 		toolName := filepath.Base(tool)
 
-		// Build the full import path based on tool location
-		importPath := getToolImportPath(toolName)
+		spec := getToolInstallSpec(toolName)
 
 		// Execute the install command
-		cmd := exec.Command(installCmd[0], append(installCmd[1:], importPath)...)
+		cmd := exec.Command(installCmd[0], append(installCmd[1:], spec.pkg)...)
+		cmd.Dir = spec.dir
 
 		// Set the binary output directory
 		cmd.Env = append(os.Environ(), fmt.Sprintf("GOBIN=%s", toolsDir))
+		if spec.dir != "" {
+			cmd.Env = append(cmd.Env, "GOWORK=off")
+		}
 
 		if opts.VerboseOutput {
 			t.Logf("Installing %s with coverage: %v", toolName, coverageEnabled)
@@ -178,49 +187,59 @@ func InstallMCPTools(t *testing.T, opts *ToolsOptions) func() {
 	}
 }
 
-// getToolImportPath returns the import path for a given tool name
-func getToolImportPath(toolName string) string {
-	// Map tool names to their import paths
-	toolPaths := map[string]string{
+func getToolInstallSpec(toolName string) toolInstallSpec {
+	repoRoot := repoRoot()
+	expRoot := filepath.Join(repoRoot, "exp")
+
+	toolSpecs := map[string]toolInstallSpec{
 		// Main MCP tools
-		"mcp-replay":  "github.com/tmc/mcp/cmd/mcp-replay",
-		"mcp-send":    "github.com/tmc/mcp/cmd/mcp-send",
-		"mcpdiff":     "github.com/tmc/mcp/cmd/mcpdiff",
-		"mcp-probe":   "github.com/tmc/mcp/cmd/mcp-probe",
-		"mcpcat":      "github.com/tmc/mcp/cmd/mcpcat",
-		"mcpspy":      "github.com/tmc/mcp/cmd/mcpspy",
-		"mcp-shadow":  "github.com/tmc/mcp/cmd/mcp-shadow",
-		"mcp-sort":    "github.com/tmc/mcp/cmd/mcp-sort",
-		"mcp-connect": "github.com/tmc/mcp/cmd/mcp-connect",
-		"mcp-proxy":   "github.com/tmc/mcp/cmd/mcp-proxy",
-		"mcp-serve":   "github.com/tmc/mcp/cmd/mcp-serve",
-		"mcp-debug":   "github.com/tmc/mcp/cmd/mcp-debug",
+		"mcp-replay":  {dir: repoRoot, pkg: "./cmd/mcp-replay"},
+		"mcp-send":    {dir: repoRoot, pkg: "./cmd/mcp-send"},
+		"mcpdiff":     {dir: repoRoot, pkg: "./cmd/mcpdiff"},
+		"mcp-probe":   {dir: repoRoot, pkg: "./cmd/mcp-probe"},
+		"mcpcat":      {dir: repoRoot, pkg: "./cmd/mcpcat"},
+		"mcpspy":      {dir: repoRoot, pkg: "./cmd/mcpspy"},
+		"mcp-shadow":  {dir: repoRoot, pkg: "./cmd/mcp-shadow"},
+		"mcp-sort":    {dir: repoRoot, pkg: "./cmd/mcp-sort"},
+		"mcp-connect": {dir: repoRoot, pkg: "./cmd/mcp-connect"},
+		"mcp-proxy":   {dir: repoRoot, pkg: "./cmd/mcp-proxy"},
+		"mcp-serve":   {dir: repoRoot, pkg: "./cmd/mcp-serve"},
+		"mcp-debug":   {dir: repoRoot, pkg: "./cmd/mcp-debug"},
 
 		// Experimental mcpscripttest tools
-		"apply-edits":            "github.com/tmc/mcp/testing/mcpscripttest/cmd/apply-edits",
-		"coverage-by-program":    "github.com/tmc/mcp/testing/mcpscripttest/cmd/coverage-by-program",
-		"coverage-hotspots":      "github.com/tmc/mcp/testing/mcpscripttest/cmd/coverage-hotspots",
-		"depgraph":               "github.com/tmc/mcp/testing/mcpscripttest/cmd/depgraph",
-		"digraph-compat":         "github.com/tmc/mcp/testing/mcpscripttest/cmd/digraph-compat",
-		"testgraph":              "github.com/tmc/mcp/testing/mcpscripttest/cmd/testgraph",
-		"testcallgraph":          "github.com/tmc/mcp/testing/mcpscripttest/cmd/testcallgraph",
-		"testcallgraph-coverage": "github.com/tmc/mcp/testing/mcpscripttest/cmd/testcallgraph-coverage",
-		"stitch-demo":            "github.com/tmc/mcp/testing/mcpscripttest/cmd/stitch-demo",
-		"cmd-docs":               "github.com/tmc/mcp/testing/mcpscripttest/cmd/cmd-docs",
-		"mcpscripttest":          "github.com/tmc/mcp/exp/cmd/mcpscripttest",
-		"callgraph":              "golang.org/x/tools/cmd/callgraph",
-		"mcp-spy":                "github.com/tmc/mcp/exp/cmd/mcp-spy",
-
-		"mcp-start": "github.com/tmc/mcp/exp/cmd/mcp-start",
-		"mcp-test":  "github.com/tmc/mcp/exp/cmd/mcp-test",
+		"apply-edits":            {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/apply-edits"},
+		"coverage-by-program":    {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/coverage-by-program"},
+		"coverage-hotspots":      {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/coverage-hotspots"},
+		"depgraph":               {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/depgraph"},
+		"digraph-compat":         {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/digraph-compat"},
+		"testgraph":              {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/testgraph"},
+		"testcallgraph":          {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/testcallgraph"},
+		"testcallgraph-coverage": {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/testcallgraph-coverage"},
+		"stitch-demo":            {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/stitch-demo"},
+		"cmd-docs":               {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/cmd-docs"},
+		"mcpscripttest":          {dir: expRoot, pkg: "./cmd/mcpscripttest"},
+		"callgraph":              {pkg: "golang.org/x/tools/cmd/callgraph"},
+		"mcp-spy":                {dir: expRoot, pkg: "./cmd/mcp-spy"},
+		"mcp-start":              {dir: expRoot, pkg: "./cmd/mcp-start"},
+		"mcp-test":               {dir: expRoot, pkg: "./cmd/mcp-test"},
 	}
 
-	if path, exists := toolPaths[toolName]; exists {
-		return path
+	if spec, exists := toolSpecs[toolName]; exists {
+		return spec
 	}
 
-	// Fallback: assume it's in the main cmd directory
-	return fmt.Sprintf("github.com/tmc/mcp/cmd/%s", toolName)
+	return toolInstallSpec{
+		dir: repoRoot,
+		pkg: fmt.Sprintf("./cmd/%s", toolName),
+	}
+}
+
+func repoRoot() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return ""
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", "..", ".."))
 }
 
 // SetupMCPToolsPath sets up the PATH to include MCP tools without installing them

@@ -20,15 +20,15 @@ var (
 )
 
 type Document struct {
-	Identifier    map[string]interface{}   `json:"identifier"`
-	Kind          string                   `json:"kind"`
-	Metadata      map[string]interface{}   `json:"metadata"`
-	LegalNotices  map[string]interface{}   `json:"legalNotices"`
-	References    map[string]Reference     `json:"references"`
-	Abstract      []interface{}            `json:"abstract"`
-	Hierarchy     map[string]interface{}   `json:"hierarchy"`
-	Variants      []interface{}            `json:"variants"`
-	SchemaVersion map[string]interface{}   `json:"schemaVersion"`
+	Identifier    map[string]interface{} `json:"identifier"`
+	Kind          string                 `json:"kind"`
+	Metadata      map[string]interface{} `json:"metadata"`
+	LegalNotices  map[string]interface{} `json:"legalNotices"`
+	References    map[string]Reference   `json:"references"`
+	Abstract      []interface{}          `json:"abstract"`
+	Hierarchy     map[string]interface{} `json:"hierarchy"`
+	Variants      []interface{}          `json:"variants"`
+	SchemaVersion map[string]interface{} `json:"schemaVersion"`
 }
 
 type Reference struct {
@@ -50,27 +50,27 @@ type Stats struct {
 	UniqueReferences map[string]int // reference identifier -> count
 
 	// Duplicate tracking
-	LegalNoticesHashes    map[string]int                 // hash -> count
-	PlatformHashes        map[string]int                 // hash -> count
-	ModuleHashes          map[string]int                 // hash -> count
-	ReferenceHashes       map[string]int                 // hash -> count
-	FragmentHashes        map[string]int                 // hash -> count
-	SchemaVersionHashes   map[string]int                 // hash -> count
-	HierarchyPaths        map[string]int                 // path -> count
+	LegalNoticesHashes  map[string]int // hash -> count
+	PlatformHashes      map[string]int // hash -> count
+	ModuleHashes        map[string]int // hash -> count
+	ReferenceHashes     map[string]int // hash -> count
+	FragmentHashes      map[string]int // hash -> count
+	SchemaVersionHashes map[string]int // hash -> count
+	HierarchyPaths      map[string]int // path -> count
 
 	// Size tracking
-	LegalNoticesBytes     int64
-	PlatformBytes         int64
-	ReferenceBytes        int64
-	MetadataBytes         int64
+	LegalNoticesBytes int64
+	PlatformBytes     int64
+	ReferenceBytes    int64
+	MetadataBytes     int64
 
 	// Actual unique data
-	UniqueLegalNotices    map[string]interface{}
-	UniquePlatforms       map[string]interface{}
-	UniqueModules         map[string]interface{}
-	UniqueReferencesData  map[string]Reference
-	UniqueFragments       map[string]interface{}
-	UniqueSchemaVersions  map[string]interface{}
+	UniqueLegalNotices   map[string]interface{}
+	UniquePlatforms      map[string]interface{}
+	UniqueModules        map[string]interface{}
+	UniqueReferencesData map[string]Reference
+	UniqueFragments      map[string]interface{}
+	UniqueSchemaVersions map[string]interface{}
 }
 
 func main() {
@@ -356,9 +356,9 @@ func printReport(stats *Stats) {
 	}
 
 	// Overall deduplication potential
-	fmt.Printf("\n" + strings.Repeat("=", 80))
-	fmt.Printf("\nDEDUPLICATION POTENTIAL SUMMARY:\n")
-	fmt.Printf(strings.Repeat("=", 80) + "\n")
+	fmt.Print("\n" + strings.Repeat("=", 80))
+	fmt.Print("\nDEDUPLICATION POTENTIAL SUMMARY:\n")
+	fmt.Print(strings.Repeat("=", 80) + "\n")
 
 	totalDedup := int64(0)
 
@@ -397,7 +397,7 @@ func printReport(stats *Stats) {
 	fmt.Printf("  Deduplicated Size: %s\n", formatBytes(stats.TotalBytes-totalDedup))
 	fmt.Printf("  Compression Ratio: %.2fx\n", float64(stats.TotalBytes)/float64(stats.TotalBytes-totalDedup))
 
-	fmt.Printf("\n" + strings.Repeat("=", 80) + "\n")
+	fmt.Print("\n" + strings.Repeat("=", 80) + "\n")
 }
 
 func formatBytes(bytes int64) string {

@@ -870,11 +870,11 @@ func createWordDiff(removeLine, addLine string) string {
 	var removeJSON, addJSON map[string]interface{}
 	if err := json.Unmarshal([]byte(removeContent), &removeJSON); err != nil {
 		// Fallback to simple text diff if we can't parse JSON
-		return fmt.Sprintf("-" + removeLine + "\n+" + addLine)
+		return "-" + removeLine + "\n+" + addLine
 	}
 
 	if err := json.Unmarshal([]byte(addContent), &addJSON); err != nil {
-		return fmt.Sprintf("-" + removeLine + "\n+" + addLine)
+		return "-" + removeLine + "\n+" + addLine
 	}
 
 	// Find common fields and differences

@@ -350,8 +350,8 @@ func TestServerHandleInitialize(t *testing.T) {
 				return
 			}
 
-			if initResult.ProtocolVersion != "2025-03-26" {
-				t.Errorf("Expected protocol version %s, got %s", "2025-03-26", initResult.ProtocolVersion)
+			if initResult.ProtocolVersion != LATEST_PROTOCOL_VERSION {
+				t.Errorf("Expected protocol version %s, got %s", LATEST_PROTOCOL_VERSION, initResult.ProtocolVersion)
 			}
 
 			if initResult.ServerInfo.Name != server.name {

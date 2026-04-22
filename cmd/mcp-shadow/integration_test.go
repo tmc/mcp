@@ -52,7 +52,7 @@ func TestProbeShadowDiffIntegration(t *testing.T) {
 
 	// Test 1: Run mcp-probe to get sample requests
 	t.Run("GetSampleRequests", func(t *testing.T) {
-		probeCmd := exec.CommandContext(ctx, filepath.Join(tmpDir, "mcp-probe"))
+		probeCmd := exec.CommandContext(ctx, filepath.Join(tmpDir, "mcp-probe"), "-tool", "echo")
 		output, err := probeCmd.Output()
 
 		if err != nil {

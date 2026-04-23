@@ -14,8 +14,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -397,16 +399,25 @@ func (p *SecureOAuthProvider) extractClientInfo(ctx context.Context) map[string]
 
 	// Extract from context values
 	if userAgent, ok := ctx.Value("User-Agent").(string); ok {
-		info["userAgent"] = userAgent
+		info["userAgent"] = sanitizeClientMetadataValue(userAgent)
 	}
 	if remoteAddr, ok := ctx.Value("RemoteAddr").(string); ok {
-		info["remoteAddr"] = remoteAddr
+		info["remoteAddr"] = sanitizeClientMetadataValue(remoteAddr)
 	}
 	if clientID, ok := ctx.Value("ClientID").(string); ok {
-		info["clientId"] = clientID
+		info["clientId"] = sanitizeClientMetadataValue(clientID)
 	}
 
 	return info
+}
+
+func sanitizeClientMetadataValue(s string) string {
+	s = strings.ReplaceAll(s, "\x00", "")
+	s = html.EscapeString(s)
+	if len(s) > 1024 {
+		s = s[:1024]
+	}
+	return s
 }
 
 // signToken creates a signature for the token

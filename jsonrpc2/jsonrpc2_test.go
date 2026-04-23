@@ -97,6 +97,65 @@ func (rw *testReadWriteCloser) Write(p []byte) (n int, err error) {
 	return rw.Buffer.Write(p)
 }
 
+type connCaptureReadWriteCloser struct {
+	mu       sync.Mutex
+	readBuf  *bytes.Buffer
+	writeBuf bytes.Buffer
+	closed   bool
+}
+
+func newConnCaptureReadWriteCloser(data []byte) *connCaptureReadWriteCloser {
+	return &connCaptureReadWriteCloser{
+		readBuf: bytes.NewBuffer(data),
+	}
+}
+
+func (rw *connCaptureReadWriteCloser) Read(p []byte) (n int, err error) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	if rw.closed {
+		return 0, io.EOF
+	}
+	return rw.readBuf.Read(p)
+}
+
+func (rw *connCaptureReadWriteCloser) Write(p []byte) (n int, err error) {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	if rw.closed {
+		return 0, io.ErrClosedPipe
+	}
+	return rw.writeBuf.Write(p)
+}
+
+func (rw *connCaptureReadWriteCloser) Close() error {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	rw.closed = true
+	return nil
+}
+
+func (rw *connCaptureReadWriteCloser) WrittenBytes() []byte {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+	return append([]byte(nil), rw.writeBuf.Bytes()...)
+}
+
+func decodeWrittenMessage(t *testing.T, rw *connCaptureReadWriteCloser) Message {
+	t.Helper()
+
+	data := bytes.TrimSpace(rw.WrittenBytes())
+	if len(data) == 0 {
+		t.Fatal("no written message captured")
+	}
+
+	var msg Message
+	if err := json.Unmarshal(data, &msg); err != nil {
+		t.Fatalf("unmarshal captured message: %v", err)
+	}
+	return msg
+}
+
 func TestNewBufferedStream(t *testing.T) {
 	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
@@ -224,7 +283,7 @@ func (h *testHandler) getRequests() []*Request {
 }
 
 func TestConn_NewConn(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -245,7 +304,7 @@ func TestConn_NewConn(t *testing.T) {
 }
 
 func TestConn_Reply(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -262,10 +321,7 @@ func TestConn_Reply(t *testing.T) {
 	}
 
 	// Read back the response
-	response, err := stream.Read(ctx)
-	if err != nil {
-		t.Fatalf("Read response failed: %v", err)
-	}
+	response := decodeWrittenMessage(t, rw)
 
 	if response.Version != Version {
 		t.Errorf("Response version = %q, want %q", response.Version, Version)
@@ -283,7 +339,7 @@ func TestConn_Reply(t *testing.T) {
 }
 
 func TestConn_ReplyWithData(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -300,10 +356,7 @@ func TestConn_ReplyWithData(t *testing.T) {
 	}
 
 	// Read back the response
-	response, err := stream.Read(ctx)
-	if err != nil {
-		t.Fatalf("Read response failed: %v", err)
-	}
+	response := decodeWrittenMessage(t, rw)
 
 	if !bytes.Equal(response.Result, result) {
 		t.Errorf("Response result = %q, want %q", response.Result, result)
@@ -321,7 +374,7 @@ func TestConn_ReplyWithData(t *testing.T) {
 }
 
 func TestConn_ReplyWithError(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -341,10 +394,7 @@ func TestConn_ReplyWithError(t *testing.T) {
 	}
 
 	// Read back the response
-	response, err := stream.Read(ctx)
-	if err != nil {
-		t.Fatalf("Read response failed: %v", err)
-	}
+	response := decodeWrittenMessage(t, rw)
 
 	if response.Error == nil {
 		t.Fatal("Response error is nil")
@@ -360,7 +410,7 @@ func TestConn_ReplyWithError(t *testing.T) {
 }
 
 func TestConn_Notify(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -375,10 +425,7 @@ func TestConn_Notify(t *testing.T) {
 	}
 
 	// Read back the notification
-	notification, err := stream.Read(ctx)
-	if err != nil {
-		t.Fatalf("Read notification failed: %v", err)
-	}
+	notification := decodeWrittenMessage(t, rw)
 
 	if notification.Method != "test/notification" {
 		t.Errorf("Notification method = %q, want %q", notification.Method, "test/notification")
@@ -401,7 +448,7 @@ func TestConn_Notify(t *testing.T) {
 }
 
 func TestConn_NotifyWithData(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -416,10 +463,7 @@ func TestConn_NotifyWithData(t *testing.T) {
 	}
 
 	// Read back the notification
-	notification, err := stream.Read(ctx)
-	if err != nil {
-		t.Fatalf("Read notification failed: %v", err)
-	}
+	notification := decodeWrittenMessage(t, rw)
 
 	if !bytes.Equal(notification.Params, params) {
 		t.Errorf("Notification params = %q, want %q", notification.Params, params)
@@ -427,7 +471,7 @@ func TestConn_NotifyWithData(t *testing.T) {
 }
 
 func TestConn_DisconnectNotify(t *testing.T) {
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	handler := &testHandler{}
 
@@ -561,7 +605,7 @@ func TestConn_Integration(t *testing.T) {
 
 func TestDial(t *testing.T) {
 	// Create a simple in-memory connection for testing
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	handler := &testHandler{}
 
 	ctx := context.Background()
@@ -588,7 +632,7 @@ func TestHandlerFunc(t *testing.T) {
 		receivedReq = req
 	})
 
-	rw := &testReadWriteCloser{Buffer: bytes.NewBuffer(nil)}
+	rw := newConnCaptureReadWriteCloser(nil)
 	stream := NewBufferedStream(rw, VSCodeObjectCodec{})
 	conn := NewConn(context.Background(), stream, &testHandler{})
 

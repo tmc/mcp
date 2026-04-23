@@ -361,6 +361,9 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 
 		// Get rate limit key
 		key := m.config.KeyExtractor(ctx, req)
+		if m.config.PerEndpointLimiting {
+			key = fmt.Sprintf("%s:%s", key, req.GetMethod())
+		}
 
 		// Get or create limiter
 		limiterInterface, _ := m.limiters.LoadOrStore(key, &rateLimiterEntry{
@@ -369,7 +372,9 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 		})
 
 		entry := limiterInterface.(*rateLimiterEntry)
+		entry.mu.Lock()
 		entry.lastUsed = time.Now()
+		entry.mu.Unlock()
 
 		// Check rate limit
 		if !entry.limiter.Allow() {
@@ -386,7 +391,10 @@ func (m *RateLimitMiddleware) cleanup() {
 
 	m.limiters.Range(func(key, value interface{}) bool {
 		if entry, ok := value.(*rateLimiterEntry); ok {
-			if entry.lastUsed.Before(cutoff) {
+			entry.mu.Lock()
+			expired := entry.lastUsed.Before(cutoff)
+			entry.mu.Unlock()
+			if expired {
 				m.limiters.Delete(key)
 			}
 		}
@@ -621,6 +629,7 @@ type cachedToken struct {
 // rateLimiterEntry represents a rate limiter with usage tracking
 type rateLimiterEntry struct {
 	limiter  *rate.Limiter
+	mu       sync.Mutex
 	lastUsed time.Time
 }
 

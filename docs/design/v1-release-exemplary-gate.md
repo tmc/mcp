@@ -31,8 +31,10 @@ Current state:
 - `SECURITY.md` is narrative, not gate evidence.
 - Security claims touch `auth.go`, `auth_security.go`, `security.go`,
   and `middleware.go`.
-- The auth path now needs the rest of the security claims reconciled to
-  code and tests, not just asserted in markdown.
+- The auth path now has direct tests for entropy failure handling,
+  constant-time secret validation, token-race behavior, context-value
+  sanitization, rate-limit granularity, key derivation, production
+  error sanitization, and CORS defaults.
 
 Acceptance criteria:
 
@@ -48,6 +50,32 @@ Acceptance criteria:
    - targeted auth tests, including random-generation failure handling
    - token-integrity and concurrent-token validation tests
    - `go test -race ./...`
+
+Claim-to-evidence map:
+
+1. Weak random generation fallback
+   Evidence: `TestGenerateRandomString_ReadError`, `TestMemoryOAuthProvider_RegisterClient_ReadError`, `TestMemoryOAuthProvider_CreateAccessToken_ReadError`
+2. Client-secret timing attack
+   Evidence: `TestMemoryOAuthProvider_ValidateClient`
+3. Token validation race condition
+   Evidence: `TestConcurrentTokenOperations`, `go test -race ./...`
+4. Context value injection into token metadata
+   Evidence: `TestSecureOAuthProvider_ExtractClientInfoSanitizesContextValues`
+5. Per-endpoint rate-limit granularity
+   Evidence: `TestRateLimitMiddleware_PerEndpointLimiting`, `TestEnhancedRateLimitMiddleware`
+6. Key derivation hardening
+   Evidence: `TestDeriveKeyMethods`
+7. Production error sanitization
+   Evidence: `TestSanitizeErrorModes`
+8. Secure CORS defaults
+   Evidence: `TestNewCORSMiddlewareDefaults`
+
+Minimum recorded verification:
+
+```bash
+go test -run 'TestGenerateRandomString_ReadError|TestMemoryOAuthProvider_RegisterClient_ReadError|TestMemoryOAuthProvider_CreateAccessToken_ReadError|TestMemoryOAuthProvider_ValidateClient|TestSecureOAuthProvider_ExtractClientInfoSanitizesContextValues|TestRateLimitMiddleware_PerEndpointLimiting|TestDeriveKeyMethods|TestSanitizeErrorModes|TestNewCORSMiddlewareDefaults|TestConcurrentTokenOperations' ./
+go test -race ./...
+```
 
 Evidence anchors:
 

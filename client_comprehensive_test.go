@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -359,11 +360,14 @@ func TestClientConcurrentOperations(t *testing.T) {
 // Mock types for testing
 
 type mockClientReadWriteCloser struct {
+	mu     sync.Mutex
 	data   bytes.Buffer
 	closed bool
 }
 
 func (m *mockClientReadWriteCloser) Read(p []byte) (n int, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.closed {
 		return 0, io.EOF
 	}
@@ -371,6 +375,8 @@ func (m *mockClientReadWriteCloser) Read(p []byte) (n int, err error) {
 }
 
 func (m *mockClientReadWriteCloser) Write(p []byte) (n int, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.closed {
 		return 0, io.ErrClosedPipe
 	}
@@ -378,6 +384,8 @@ func (m *mockClientReadWriteCloser) Write(p []byte) (n int, err error) {
 }
 
 func (m *mockClientReadWriteCloser) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.closed = true
 	return nil
 }

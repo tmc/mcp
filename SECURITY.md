@@ -21,8 +21,9 @@ If you discover a security vulnerability in this project, please report it respo
 - **Location**: `auth.go:478-484`
 - **Issue**: Fallback to timestamp-based generation if crypto/rand fails
 - **Impact**: Predictable tokens vulnerable to timing attacks
-- **Status**: ✅ Fixed - removed fallback, now panics on crypto failure
+- **Status**: ✅ Fixed - removed fallback; entropy failures now return errors
 - **Severity**: CRITICAL
+- **Gate evidence**: `TestGenerateRandomString_ReadError`, `TestMemoryOAuthProvider_RegisterClient_ReadError`, `TestMemoryOAuthProvider_CreateAccessToken_ReadError`
 
 #### 2. Timing Attack on Secret Comparison
 - **Location**: `auth.go:198-213`
@@ -30,6 +31,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Client secrets could be revealed through response timing
 - **Status**: ✅ Fixed - using `subtle.ConstantTimeCompare`
 - **Severity**: HIGH
+- **Gate evidence**: `TestMemoryOAuthProvider_ValidateClient`
 
 #### 3. Token Validation Race Condition
 - **Location**: `auth_security.go:160-221`
@@ -37,6 +39,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Revoked tokens could be validated in race window
 - **Status**: ✅ Fixed - added atomic operations
 - **Severity**: HIGH
+- **Gate evidence**: `TestConcurrentTokenOperations`, `go test -race ./...`
 
 #### 4. Context Value Injection
 - **Location**: `auth_security.go:360-373`
@@ -44,6 +47,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Log poisoning, potential code execution
 - **Status**: ✅ Fixed - added input sanitization
 - **Severity**: MEDIUM
+- **Gate evidence**: `TestSecureOAuthProvider_ExtractClientInfoSanitizesContextValues`
 
 ### Medium-Risk Issues (All Resolved)
 
@@ -60,6 +64,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Unable to apply different limits to different endpoints
 - **Fix**: Added `PerEndpointLimiting` configuration option
 - **Status**: ✅ Fixed - supports per-endpoint (client:method) granularity
+- **Gate evidence**: `TestRateLimitMiddleware_PerEndpointLimiting`, `TestEnhancedRateLimitMiddleware`
 
 #### 6. Key Derivation (FIXED)
 - **Location**: `auth_security.go:87-145`
@@ -67,6 +72,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Weaker key derivation than recommended standards
 - **Fix**: Implemented Argon2id and PBKDF2 with proper parameters
 - **Status**: ✅ Fixed - uses Argon2id (64MB memory, 3 iterations)
+- **Gate evidence**: `TestDeriveKeyMethods`
 
 #### 7. Production Error Verbosity (FIXED)
 - **Location**: `errors.go:1-145`, `middleware.go:690-695`
@@ -74,6 +80,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Information disclosure through error messages
 - **Fix**: Created comprehensive error sanitization system
 - **Status**: ✅ Fixed - environment-aware error sanitization
+- **Gate evidence**: `TestSanitizeErrorModes`
 
 #### 8. CORS Policy (FIXED)
 - **Location**: `middleware_advanced.go:471-497`
@@ -81,6 +88,7 @@ If you discover a security vulnerability in this project, please report it respo
 - **Impact**: Overly permissive CORS in production
 - **Fix**: Secure defaults (no origins in prod, localhost in dev)
 - **Status**: ✅ Fixed - strict defaults, environment-aware
+- **Gate evidence**: `TestNewCORSMiddlewareDefaults`
 
 ### Security Features
 

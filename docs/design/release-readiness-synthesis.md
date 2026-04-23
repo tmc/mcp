@@ -1,17 +1,19 @@
 # Release Readiness Synthesis: API, Package Design, and Release Pathway
 
-Status: initial draft after notebook panel kickoff (session 1)
-Date: 2026-04-21
+Status: updated after cleanup sweep and cmd/ trim (session 2)
+Date: 2026-04-22
 
 ## Why this doc exists
 
-tmc/mcp has ~199 commits on `next` since `origin/main`, no releasable tag
-that refers to this codebase (48 orphan `v0.*` tags exist but none are
-ancestors of `main` or `next`), and a working tree that carries committed
-binaries, trace dumps, logs, duplicate `exp/` subtrees, and 12+ ALL-CAPS
-status docs at the root. Single-gatekeeper review has been the only
-mechanism keeping it coherent; that's the bottleneck a stable tag would
-lift.
+tmc/mcp has no releasable v1 tag yet, and the session-1 kickoff found a
+tree that still needed hygiene cleanup before API review could mean
+anything: duplicate `exp/` subtrees, a root test package hidden behind a
+nested module boundary, inconsistent transport-close errors, and a `cmd/`
+tree that mixed core protocol tooling with experimental utilities. As of
+2026-04-22, H2/H3/H5, B1/B2/B3/B4, and the `cmd/` trim are closed locally.
+H1 is a no-op locally: `origin` has zero tags and the local clone has no
+tracked tags to purge. H4 is effectively closed: no tracked ALL_CAPS status
+docs remain at the repo root.
 
 This doc is the single source of truth for:
 
@@ -73,8 +75,8 @@ isolated servers in parallel without cross-contamination.
 Handler surfaces (`CallToolHandlerFunc`, `ReadResourceHandlerFunc`,
 `GetPromptHandlerFunc`) return errors. The server's panic-recovery
 middleware (`middleware.go`) converts any handler panic into a
-JSON-RPC error response. Transport framing (`framer.go` — currently
-untracked, see B3) is allowed to panic on programmer misuse because a
+JSON-RPC error response. Transport framing (`framer.go`; see B3) is
+allowed to panic on programmer misuse because a
 misframed message is a bug, not a runtime condition.
 
 Zero manual `IsNil` panic wrappers in the public surface.
@@ -172,45 +174,37 @@ Why: "hardcoded wire-in" is where API contracts die.
 
 Executed in the order below. Each is a single-concern commit.
 
-1. **H1** Delete 48 orphan `v*` tags (local + origin). They are not
-   ancestors of `main` or `next` and currently poison `go get` via the
-   Go module proxy, which serves `v0.31.0` as the latest module
-   version. Dry-run list: `/tmp/7e91-tag-purge-dryrun.txt`. User
-   approval required before destructive push.
-2. **H2** `git rm --cached` committed binaries, logs, trace dumps,
-   screenshots, `node_modules/`, and `.beads/`. Update `.gitignore`.
-   Zero-risk: these never belonged in VCS.
-3. **H3** `git rm --cached go.work go.work.sum`. Workspace files are
-   local to the developer. Add to `.gitignore`. Minor dev disruption.
-4. **H4** Move 12+ ALL_CAPS.md status docs to `docs/archive/`. Keep
-   only `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md`,
-   `CLAUDE.md` at the root.
-5. **H5** Delete `exp/changeman` and `exp/coverage_viz` (the older
-   duplicates). Keep `exp/changemanagement` and `exp/coverage-viz`.
+1. **H1** Tag purge is a no-op locally. `origin` has zero tags and the
+   local clone has no tags to delete, so there is no destructive cleanup
+   to perform.
+2. **H2** Committed binaries, logs, trace dumps, screenshots,
+   `node_modules/`, and similar artifacts have been purged from VCS.
+3. **H3** `go.work` and `go.work.sum` are no longer tracked. Workspace
+   files remain local-only.
+4. **H4** The ALL_CAPS root-status-doc sweep is effectively closed. No
+   tracked ALL_CAPS status docs remain at the repo root; `AGENTS.md` is
+   a repository instruction file, not a status report.
+5. **H5** Duplicate `exp/` subtrees are gone. Keep
+   `exp/changemanagement` and `exp/coverage_viz`.
 
 Then, code-side:
 
-6. **B1** Delete nested `go.mod` files at `exp/cmd/mcp2go/go.mod` and
-   `testing/mcpscripttest/go.mod`. Single root module. See Part 3
-   §Module strategy.
-7. **B3** Commit the untracked `framer.go` + `framer_test.go` pair at
-   repo root. Framer must handle partial reads and context cancel
-   without goroutine leaks on transport shutdown. If the change is
-   incomplete or regresses, revert entirely and reopen.
-8. **B4** Review, then stash or commit the in-flight diffs in
-   `client.go`, `server.go`, `internal/mcpcli/session.go`. Working
-   tree must be clean before API review can proceed.
-9. **B2** Audit `ErrTransportClosed` mapping in stdio, SSE, WebSocket,
-   and streamable transports. `io.EOF` and `io.ErrClosedPipe` must
-   map consistently so callers can distinguish transport disconnect
-   from protocol error.
-10. **cmd/ trim** — move 17 of 19 `cmd/*` tools to `exp/cmd/`, keeping
-    only `cmd/mcp` (and possibly `cmd/mcp-probe` pending a named
-    decision). User sign-off required before the move (Part 6 §Q3).
+6. **B1** `testing/mcpscripttest` is now a plain subpackage in the root
+   module. That was the release blocker. Other intentionally-separate
+   modules (`exp/`, `testing/mcptestutil`, `testing/mcpscripttest/fuzzing`,
+   selected examples, and tool-specific nested modules) remain.
+7. **B3** `framer.go` and `framer_test.go` are committed at the repo root.
+8. **B4** The in-flight diffs in `client.go`, `server.go`, and
+   `internal/mcpcli/session.go` are no longer an outstanding gate.
+9. **B2** `ErrTransportClosed` is standardized across transports via
+   `errors.Is`.
+10. **cmd/ trim** is closed. Keep `cmd/mcp` and `cmd/mcp-probe`; move the
+    remaining non-core tools under `exp/cmd/`.
 
 ### Phase 2 deferred to v1.x (stabilize-then-extract)
 
-- **exp/** stays in the root module through v1. Consumers importing
+- **exp/** stays in-repo through v1 under the `github.com/tmc/mcp/exp`
+  module. Consumers importing
   `github.com/tmc/mcp/exp/...` accept the "no compatibility promise"
   that the path implies — same convention as `golang.org/x/exp/`.
   Re-evaluate extraction to `github.com/tmc/mcp-exp` once any exp/
@@ -247,23 +241,28 @@ Then, code-side:
 
 ## Part 3 — Release pathway
 
-### Module strategy — DECIDED 2026-04-21
+### Module strategy — corrected 2026-04-22
 
-**Single root module.** No nested `go.mod` files.
+**Root module plus explicit submodules.** The repository is not a single
+module, and the synthesis should stop pretending otherwise.
 
-Currently nested: `exp/cmd/mcp2go/go.mod`, `testing/mcpscripttest/go.mod`.
-Both deleted in Phase 1 §B1. If `exp/` or `testing/` ever needs
-independent evolution, they extract to separate repositories
-(`tmc/mcp-exp`, `tmc/mcp-test`) — same stabilize-then-extract pattern
-mlx-go used for `examples/mlx-go-lm/`.
+Current state:
 
-Rationale: every nested `go.mod` is a tagging dance paid for the life
-of the project. mlx-go learned this by deferring an in-repo
-`examples/mlx-go-lm/` module promotion and keeping `examples/` inside
-the main repo through v1.
+- Root module: `github.com/tmc/mcp`
+- `exp/` module: `github.com/tmc/mcp/exp`
+- `testing/mcpscripttest` is now part of the root module
+- Separate modules still present by design: `exp/cmd/mcp2go`,
+  `exp/cmd/mcptrace-to-otel`, `testing/mcpscripttest/fuzzing`,
+  `testing/mcptestutil`, and several example-server directories
+
+The release blocker was not "delete every nested `go.mod`". The blocker
+was that root tests imported `testing/mcpscripttest` across a module
+boundary and therefore failed on a fresh clone unless the developer had a
+workspace. Closing B1 required absorbing that package into the root
+module. It did not require flattening the entire repo.
 
 The Amsterdam concern ("exp/ breakage forces a major bump of the
-entire module") is handled by convention, not by module boundary:
+entire module") is still handled by convention as much as by layout:
 `github.com/tmc/mcp/exp/...` import paths signal "no compatibility
 promise" to consumers — same contract as `golang.org/x/exp/`. v1 does
 not ship breaking changes *from exp/* under the stable surface; if a
@@ -274,18 +273,19 @@ within the no-compat-promise zone.
 
 **Hygiene gates** (H1..H5 — from Part 2 Phase 1):
 
-- H1: orphan tag purge → PENDING (dry-run done, awaiting approval)
-- H2: binary/log/trace/node_modules purge → PENDING
-- H3: go.work de-track → PENDING
-- H4: ALL_CAPS.md → docs/archive/ move → PENDING
-- H5: exp/ duplicate-subtree delete → PENDING
+- H1: tag purge → NO-OP locally (`origin` has zero tags; local clone has none)
+- H2: binary/log/trace/node_modules purge → CLOSED
+- H3: go.work de-track → CLOSED
+- H4: ALL_CAPS.md → docs/archive/ move → EFFECTIVELY CLOSED
+- H5: exp/ duplicate-subtree delete → CLOSED
 
 **Code gates** (B1..B4 — from Part 2 Phase 1):
 
-- B1: delete nested go.mod files → PENDING (unblocked by module decision)
-- B2: ErrTransportClosed standardization → PENDING
-- B3: commit/revert framer.go pair → PENDING
-- B4: stash/commit dirty core .go files → PENDING
+- B1: absorb `testing/mcpscripttest` into the root module → CLOSED
+- B2: ErrTransportClosed standardization → CLOSED
+- B3: framer.go/framer_test.go committed at root → CLOSED
+- B4: dirty core .go files resolved → CLOSED
+- cmd/ trim: keep `cmd/mcp` + `cmd/mcp-probe`, move the rest to `exp/cmd/` → CLOSED
 
 **Second-round gates** — defined after H1..H5 land and the panel
 re-consults against a clean tree. Expected to include: v1 API freeze,
@@ -409,17 +409,14 @@ with a minimal working example and a scripttest conformance fixture.
 
 ## Part 5 — Resolved questions (from panel session 1)
 
-1. **Module strategy?** Single root module; delete nested `go.mod`s.
-   `exp/` stays in root, uses the "no compat promise" path
-   convention per `golang.org/x/exp/`. Extraction (`tmc/mcp-exp`,
-   `tmc/mcp-test`) happens post-v1 only if specific subpackages
-   stabilize enough to need semver. (Decided 2026-04-21.)
+1. **Module strategy?** Root module plus explicit submodules. The
+   blocker was the `testing/mcpscripttest` boundary, which is now
+   gone; `exp/` remains a separate in-repo module with the usual
+   `golang.org/x/exp`-style no-compat-promise convention.
 
-2. **48 orphan v* tags?** All confirmed non-ancestors of main or
-   next. Destructive purge (local + origin) is the right move,
-   awaiting final user sign-off on the dry-run list. Russ Cox: "The
-   Go module mirror currently thinks `v0.31.0` is the latest version
-   of this module. This is poisoning `go get` right now."
+2. **Tag purge?** No-op locally. `origin` has zero tags and the local
+   clone has no tags to delete, so there is no release-hygiene work
+   left here unless a future remote state changes.
 
 3. **auth_security_test.go diff?** Verified 2026-04-21. The
    modification is a 2-line addition of `baseProvider.mu.Lock()` /
@@ -427,20 +424,16 @@ with a minimal working example and a scripttest conformance fixture.
    at line 397. Matches the TESTING_STATUS claim of a mutex-lock race
    fix precisely. Not a new blocker — stash or commit as-is.
 
-4. **cmd/ trim strategy?** Keep `cmd/mcp` (the umbrella CLI). Move
-   the other 17 to `exp/cmd/`. `cmd/mcp-probe` is on the bubble;
-   user decides case-by-case. Awaiting the explicit list sign-off
-   before the move lands (Part 6 §Q3).
+4. **cmd/ trim strategy — resolved 2026-04-22.** Keep `cmd/mcp` (the
+   umbrella CLI) and `cmd/mcp-probe`. Move the remaining non-core
+   commands to `exp/cmd/`.
 
 ## Part 6 — Remaining gaps and open questions
 
-1. **Q3 — cmd/mcp-probe keep or move?** The panel defaulted to
-   "keep cmd/mcp + maybe mcp-probe." A case can be made for keeping
-   `mcp-probe` as a diagnostic tool shipped with v1 (the
-   `mcp-probe --server-cmd=... --list-tools` invocation is a
-   standard first-contact debugging flow). A case can be made for
-   moving it: consumers can install from `exp/cmd/mcp-probe` if they
-   need it. Needs user decision.
+1. **Q3 — resolved.** Keep `cmd/mcp-probe` at the repo root alongside
+   `cmd/mcp`. It remains a standard first-contact diagnostic flow and
+   is still close enough to core protocol interaction to justify
+   staying out of `exp/cmd/`.
 
 2. **Q4 — `jsonrpc2/` public or internal?** Pike said: "make it an
    internal package if it isn't part of the public API contract."
@@ -479,19 +472,25 @@ with a minimal working example and a scripttest conformance fixture.
   (adding the 7th voice for repo hygiene vs mlx-go's six was the
   right call — tree state is half the problem here).
 
-- **2026-04-21 module-strategy decision.** Single root module;
-  delete nested `go.mod`s at `exp/cmd/mcp2go/` and
-  `testing/mcpscripttest/`. `exp/` stays in root under the
-  `golang.org/x/exp/`-style no-compat-promise convention.
-  Extraction deferred (stabilize-then-extract, S1/S2).
-  Rationale: every nested `go.mod` is a tagging dance paid for the
-  life of the project; mlx-go's comparable call was to keep
-  `examples/mlx-go-lm/` in-repo through v1 and extract post-tag.
+- **2026-04-21 module-strategy draft.** Session 1 proposed a single
+  root module. Session 2 corrected this: the repo still has explicit
+  submodules, but `testing/mcpscripttest` no longer crosses a module
+  boundary from root tests.
 
-- **2026-04-21 tag-purge dry-run completed.** 48 orphan `v0.*` tags
-  confirmed as non-ancestors of both `origin/main` and `HEAD`
-  (`next`). List at `/tmp/7e91-tag-purge-dryrun.txt`. Destructive
-  push awaiting user approval.
+- **2026-04-21 tag-purge dry-run completed.** Session 1 treated orphan
+  local tags as a possible release gate. Session 2 corrected the
+  ground truth: `origin` has zero tags and the local clone has no tags,
+  so H1 is a no-op in the current tree.
+
+- **2026-04-22 cleanup sweep.** Corrected the synthesis to match the
+  tree instead of the session-1 assumptions. `testing/mcpscripttest`
+  was absorbed into the root module, `ErrTransportClosed` was
+  standardized, the framer pair and dirty core files were resolved,
+  duplicate `exp/` subtrees were deleted, and the non-core `cmd/*`
+  tools moved to `exp/cmd/` while `cmd/mcp` and `cmd/mcp-probe`
+  stayed at the repo root. The repo still contains explicit submodules;
+  the blocker was the `testing/mcpscripttest` boundary, not the mere
+  existence of nested `go.mod` files.
 
 - **2026-04-21 auth_security_test.go diff reviewed.** 2-line mutex
   addition around a map write. Matches TESTING_STATUS claim; not a

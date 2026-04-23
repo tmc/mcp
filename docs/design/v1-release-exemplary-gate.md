@@ -191,7 +191,7 @@ Current state:
   `BenchmarkServer_HandleRequest/PayloadSize_1024` and
   `BenchmarkTokenValidation`.
 - The bootstrap baseline lives at `testdata/benchmarks/b9-baseline.txt`.
-- CI runs `scripts/bench-gate.sh` on `ubuntu-latest` with Go 1.24.2.
+- CI runs `scripts/bench-gate.sh` on `ubuntu-latest` with Go 1.25.9.
 
 Acceptance criteria:
 

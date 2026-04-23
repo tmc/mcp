@@ -263,12 +263,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Test the supported Go range declared by go.mod and the current toolchain.
-        go-version: ['1.23.0', '1.24.2']
+        # Test the supported Go floor declared by go.mod and the current toolchain.
+        go-version: ['1.25.0', '1.25.9']
         os: [ubuntu-latest, macos-latest]
         include:
           # Add race detector tests for latest Go on Linux
-          - go-version: '1.24.2'
+          - go-version: '1.25.9'
             os: ubuntu-latest
             race: true
 
@@ -346,7 +346,7 @@ jobs:
           -race -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Run synctest validation
-      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
+      if: matrix.go-version == '1.25.9' && matrix.os == 'ubuntu-latest'
       run: |
         echo "Running synctest validation..."
         GOEXPERIMENT=synctest gotestsum --junitfile test-results/synctest.xml --format ${{ env.GOTESTSUM_FORMAT }} -- \
@@ -354,7 +354,7 @@ jobs:
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
     - name: Run synctest validation for cmd/mcp
-      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
+      if: matrix.go-version == '1.25.9' && matrix.os == 'ubuntu-latest'
       run: |
         mkdir -p test-results
         cd cmd/mcp
@@ -362,7 +362,7 @@ jobs:
           -tags=synctest -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Run synctest validation for cmd/mcp-probe
-      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
+      if: matrix.go-version == '1.25.9' && matrix.os == 'ubuntu-latest'
       run: |
         mkdir -p test-results
         cd cmd/mcp-probe
@@ -457,7 +457,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.24.2'
+        go-version: '1.25.9'
         cache: true
 
     - name: Run benchmark regression gate

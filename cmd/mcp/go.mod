@@ -1,6 +1,8 @@
 module github.com/tmc/mcp/cmd/mcp
 
-go 1.24.3
+go 1.25.0
+
+toolchain go1.25.9
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10

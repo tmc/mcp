@@ -4,7 +4,7 @@ This guide walks you through installing the MCP tools and setting up your develo
 
 ## Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later
 - Git
 - Make (optional, for using Makefiles)
 
@@ -136,7 +136,7 @@ If you encounter build errors:
 1. Verify Go version:
 ```bash
 go version
-# Should be 1.24 or later
+# Should be 1.25 or later
 ```
 
 2. Update dependencies:

@@ -39,11 +39,11 @@ The CI pipeline runs on:
   - Verify tool functionality with `--help` tests
 
 #### 3. Test Matrix (`test`)
-- **Go Versions**: 1.20, 1.21, 1.22, 1.23
+- **Go Versions**: 1.25.0 and 1.25.9
 - **Platforms**: ubuntu-latest, macos-latest
 - **Features**:
-  - Race detection tests (Go 1.23 on Linux)
-  - Synctest validation (Go 1.23 on Linux with `GOEXPERIMENT=synctest`)
+  - Race detection tests (Go 1.25.9 on Linux)
+  - Synctest validation (Go 1.25.9 on Linux with `GOEXPERIMENT=synctest`)
   - JUnit XML test result artifacts
   - Test timeout: 10 minutes
 

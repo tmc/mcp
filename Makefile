@@ -8,26 +8,39 @@ all: test
 # Test targets
 test:
 	go test ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go test ./...; fi
 
 test-synctest:
 	GOEXPERIMENT=synctest go test -tags=synctest ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off GOEXPERIMENT=synctest go test -tags=synctest ./...; fi
 
 test-race:
 	go test -race -timeout=10m ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go test -race -timeout=10m ./...; fi
 
 test-coverage:
 	mkdir -p coverage
-	go test -coverprofile=coverage/coverage.out -covermode=atomic ./...
+	go test -coverprofile=coverage/root.out -covermode=atomic ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go test -coverprofile=../../coverage/cmd-mcp.out -covermode=atomic ./...; fi
+	@{ head -n1 coverage/root.out; tail -n +2 coverage/root.out; if [ -f coverage/cmd-mcp.out ]; then tail -n +2 coverage/cmd-mcp.out; fi; } > coverage/coverage.out
 	go tool cover -html=coverage/coverage.out -o coverage/coverage.html
 
 # Build targets
 build:
 	go build ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go build ./...; fi
 
 build-tools:
 	@echo "Building core tools..."
+	@if [ -d "cmd/mcp" ]; then \
+		echo "Building mcp..."; \
+		(cd cmd/mcp && GOWORK=off go build ./...); \
+	fi
 	@for tool in cmd/*; do \
 		if [ -d "$$tool" ] && [ -f "$$tool/main.go" ]; then \
+			if [ -f "$$tool/go.mod" ]; then \
+				continue; \
+			fi; \
 			echo "Building $$(basename $$tool)..."; \
 			go build "$$tool"; \
 		fi \
@@ -39,13 +52,17 @@ build-tools:
 
 # Quality targets
 fmt:
-	gofmt -s -w .
+	@excluded_patterns='temp/example_server_design_exploration|temp/mock_client_fix.go|exp/schema2go/generator.go|exp/cmd/mcp-tool-graph/main.go'; \
+	files=$$(git ls-files '*.go' | grep -v -E "$$excluded_patterns" || true); \
+	if [ -n "$$files" ]; then printf '%s\n' "$$files" | xargs gofmt -s -w; fi
 
 vet:
 	go vet ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go vet ./...; fi
 
 lint:
 	golangci-lint run
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off golangci-lint run; fi
 
 # Security targets
 security-scan:
@@ -55,6 +72,7 @@ security-scan:
 security-quick:
 	@echo "Running quick security scan (gosec only)..."
 	@gosec -severity medium -confidence medium -exclude-generated ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off gosec -severity medium -confidence medium -exclude-generated ./...; fi
 
 security-baseline:
 	@echo "Establishing security baseline..."
@@ -68,6 +86,7 @@ pre-commit:
 
 tidy:
 	go mod tidy
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go mod tidy; fi
 	@if [ -d "exp" ]; then cd exp && go mod tidy; fi
 
 # CI/CD simulation
@@ -84,6 +103,7 @@ docker-run:
 # Cleanup
 clean:
 	go clean ./...
+	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go clean ./...; fi
 	rm -rf coverage/
 	rm -rf security-reports/
 	rm -f mcp-*

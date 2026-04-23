@@ -23,12 +23,18 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: "1.23"
+        go-version-file: go.mod
+        cache: true
         
     - name: Update dependencies
       run: |
         go get -u ./...
         go mod tidy
+        (
+          cd cmd/mcp
+          GOWORK=off go get -u ./...
+          GOWORK=off go mod tidy
+        )
         
     - name: Update experimental dependencies
       run: |
@@ -42,6 +48,10 @@ jobs:
     - name: Run tests
       run: |
         go test ./...
+        (
+          cd cmd/mcp
+          GOWORK=off go test ./...
+        )
         if [ -d "exp" ]; then
           (cd exp && go test ./... || echo "Some experimental tests failed after update")
         fi

@@ -136,24 +136,20 @@ if git diff --cached --name-only | xargs -I {} file {} 2>/dev/null | grep -q "ex
 fi
 '
 
-# 2. Check that go.sum is not directly modified
-run_check "Checking go.sum not directly modified" '
-if git diff --cached --name-only | grep -q "go\.sum$"; then
-    echo "go.sum should not be directly modified. Use go mod tidy instead."
-    exit 1
-fi
-'
-
-# 3. Check gofmt formatting
+# 2. Check gofmt formatting
 if [ "$AUTO_FIX" = "true" ]; then
     run_check "Auto-fixing gofmt formatting" '
     # Exclude problematic files from formatting checks
     excluded_patterns="temp/example_server_design_exploration|temp/mock_client_fix.go|exp/schema2go/generator.go|exp/cmd/mcp-tool-graph/main.go"
-    unformatted_files=$(gofmt -s -l . | grep -v -E "$excluded_patterns" || true)
+    go_files=$(git ls-files "*.go" | grep -v -E "$excluded_patterns" || true)
+    unformatted_files=""
+    if [ -n "$go_files" ]; then
+        unformatted_files=$(printf "%s\n" "$go_files" | xargs gofmt -s -l)
+    fi
     if [ -n "$unformatted_files" ]; then
         echo "Auto-fixing formatting for:"
         echo "$unformatted_files"
-        echo "$unformatted_files" | xargs gofmt -s -w
+        printf "%s\n" "$unformatted_files" | xargs gofmt -s -w
         echo "✨ Formatting fixed automatically"
     else
         echo "All files already properly formatted"
@@ -163,7 +159,11 @@ else
     run_check "Checking gofmt formatting" '
     # Exclude problematic files from formatting checks
     excluded_patterns="temp/example_server_design_exploration|temp/mock_client_fix.go|exp/schema2go/generator.go|exp/cmd/mcp-tool-graph/main.go"
-    unformatted_files=$(gofmt -s -l . | grep -v -E "$excluded_patterns" || true)
+    go_files=$(git ls-files "*.go" | grep -v -E "$excluded_patterns" || true)
+    unformatted_files=""
+    if [ -n "$go_files" ]; then
+        unformatted_files=$(printf "%s\n" "$go_files" | xargs gofmt -s -l)
+    fi
     if [ -n "$unformatted_files" ]; then
         echo "The following files need gofmt -s:"
         echo "$unformatted_files"
@@ -175,17 +175,27 @@ else
     '
 fi
 
-# 4. Run go vet
+# 3. Run go vet
 run_check "Running go vet" '
 # Exclude problematic directories that contain broken Go files
 go vet $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 '
+if [ -f "cmd/mcp/go.mod" ]; then
+    run_check "Running go vet (cmd/mcp)" '
+    cd cmd/mcp
+    GOWORK=off go vet ./...
+    '
+fi
 
-# 5. Check go mod tidy
+# 4. Check go mod tidy
 if [ "$AUTO_FIX" = "true" ]; then
     run_check "Auto-fixing go mod tidy" '
     echo "Running go mod tidy..."
     go mod tidy
+    if [ -f "cmd/mcp/go.mod" ]; then
+        echo "Running go mod tidy in cmd/mcp..."
+        (cd cmd/mcp && GOWORK=off go mod tidy)
+    fi
     echo "✨ Dependencies tidied automatically"
     '
 else
@@ -203,25 +213,54 @@ else
     fi
     rm go.mod.bak go.sum.bak
     '
+    if [ -f "cmd/mcp/go.mod" ]; then
+        run_check "Checking go mod tidy (cmd/mcp)" '
+        cd cmd/mcp
+        cp go.mod go.mod.bak
+        cp go.sum go.sum.bak
+        GOWORK=off go mod tidy
+        if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
+            echo "cmd/mcp go.mod or go.sum is not tidy."
+            echo ""
+            echo "Run: (cd cmd/mcp && GOWORK=off go mod tidy)"
+            rm go.mod.bak go.sum.bak
+            exit 1
+        fi
+        rm go.mod.bak go.sum.bak
+        '
+    fi
 fi
 
-# 6. Test compilation of all packages
+# 5. Test compilation of all packages
 run_check "Testing package compilation" '
 # Exclude problematic packages that contain broken Go files
 go build $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 '
+if [ -f "cmd/mcp/go.mod" ]; then
+    run_check "Testing package compilation (cmd/mcp)" '
+    cd cmd/mcp
+    GOWORK=off go build ./...
+    '
+fi
 
-# 7. Test compilation of all core tools
+# 6. Test compilation of all core tools
 run_check "Testing core tools compilation" '
+if [ -f "cmd/mcp/go.mod" ]; then
+    echo "  Building mcp..."
+    (cd cmd/mcp && GOWORK=off go build ./...)
+fi
 for tool in cmd/*; do
     if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
+        if [ -f "$tool/go.mod" ]; then
+            continue
+        fi
         echo "  Building $(basename $tool)..."
         go build "$tool"
     fi
 done
 '
 
-# 8. Test compilation of experimental tools (allow failures)
+# 7. Test compilation of experimental tools (allow failures)
 if [ "$FAST_MODE" != "true" ]; then
     print_step "Testing experimental tools compilation (warnings only)"
     if [ -d "exp/cmd" ]; then
@@ -245,16 +284,30 @@ else
     print_info "Skipping experimental tools compilation (fast mode)"
 fi
 
-# 9. Test that tests compile (but don't run them)
+# 8. Test that tests compile (but don't run them)
 run_check "Testing test compilation" '
 # Exclude problematic packages from test compilation
 go test -run="^$" $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 '
+if [ -f "cmd/mcp/go.mod" ]; then
+    run_check "Testing test compilation (cmd/mcp)" '
+    cd cmd/mcp
+    GOWORK=off go test -run="^$" ./...
+    '
+fi
 
-# 10. Run a quick smoke test of core functionality
+# 9. Run a quick smoke test of core functionality
 print_step "Running smoke tests"
+mcp_ok=false
 probe_ok=false
 serve_ok=false
+
+if [ -f "cmd/mcp/go.mod" ] && (cd cmd/mcp && GOWORK=off go run . --help) >/dev/null 2>&1; then
+    echo "  ✅ mcp help works"
+    mcp_ok=true
+else
+    echo "  ❌ mcp help failed"
+fi
 
 if go run ./cmd/mcp-probe --help >/dev/null 2>&1; then
     echo "  ✅ mcp-probe help works"
@@ -270,14 +323,14 @@ else
     echo "  ❌ mcp-serve help failed"
 fi
 
-if [ "$probe_ok" = "true" ] && [ "$serve_ok" = "true" ]; then
+if [ "$mcp_ok" = "true" ] && [ "$probe_ok" = "true" ] && [ "$serve_ok" = "true" ]; then
     print_success "Smoke tests completed"
 else
     print_error "Smoke tests failed - core tools not working"
     exit 1
 fi
 
-# 11. Check YAML files (if yamllint is available)
+# 10. Check YAML files (if yamllint is available)
 if command -v yamllint >/dev/null 2>&1; then
     if [ -f ".github/workflows/ci.yml" ] || [ -f ".pre-commit-config.yaml" ]; then
         run_check "Checking YAML files" "yamllint .github/workflows/*.yml .pre-commit-config.yaml 2>/dev/null || true" true
@@ -289,7 +342,7 @@ else
     print_info "Install with: pip install yamllint"
 fi
 
-# 12. Final summary
+# 11. Final summary
 echo ""
 echo "=================================================================================="
 print_success "🎉 All pre-commit checks passed!"

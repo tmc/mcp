@@ -63,14 +63,13 @@ Current state:
 
 - The root `go.mod` still carries non-stdlib, non-`golang.org/x/*`
   dependencies.
+- `cmd/mcp` is now an explicit submodule, so the Cobra/TUI dependency
+  tree no longer pollutes the root module.
 - The root library surface currently brings in
   `github.com/gorilla/websocket` via `transport_websocket.go` and
   `github.com/santhosh-tekuri/jsonschema/v5` via `security.go`.
-- The root module also carries `cmd/mcp` dependencies like
-  `github.com/spf13/cobra` and `github.com/charmbracelet/bubbletea`.
-- The least disruptive first step is to split `cmd/mcp` into its own
-  module so the Cobra/TUI tree stops polluting the root module before
-  the root-library dependencies are addressed.
+- The remaining dependency question is now limited to the true
+  root-library third-party dependencies.
 
 Acceptance criteria:
 
@@ -195,6 +194,12 @@ go build ./...
 go vet ./...
 go test ./...
 go test -race ./...
+(
+  cd cmd/mcp &&
+  GOWORK=off go build ./... &&
+  GOWORK=off go vet ./... &&
+  GOWORK=off go test ./...
+)
 git status --short
 ```
 

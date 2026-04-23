@@ -520,9 +520,11 @@ GOEXPERIMENT=synctest go test -tags=synctest -run=TestSync$
 ```bash
 # Build all packages
 go build ./...
+(cd cmd/mcp && GOWORK=off go build ./...)
 
 # Run all tests
 go test ./...
+(cd cmd/mcp && GOWORK=off go test ./...)
 make test
 
 # Run tests with synctest (deterministic concurrency)
@@ -546,7 +548,7 @@ go vet ./...
 ```bash
 # Build specific tools
 go build ./cmd/mcp-probe
-go build ./cmd/mcp-serve
+(cd exp && GOWORK=off go build ./cmd/mcp-serve)
 
 # Run example servers
 go run ./examples/servers/mcp-time-server
@@ -644,9 +646,9 @@ go.mod: add dependencies for experimental tools
 - Include session information in git notes
 
 ### Build Requirements
-- All commits must pass `go build ./...`
-- Run `go vet ./...` and `gofmt -s -w .` before committing
-- Test with `go test ./...` when possible
+- All commits must pass `go build ./...` and `(cd cmd/mcp && GOWORK=off go build ./...)`
+- Run `go vet ./...` and `(cd cmd/mcp && GOWORK=off go vet ./...)` plus `gofmt -s -w .` before committing
+- Test with `go test ./...` and `(cd cmd/mcp && GOWORK=off go test ./...)` when possible
 - Use build tags (e.g., `//go:build k8s`) for conditional dependencies
 
 ## Dependency Management

@@ -56,7 +56,11 @@ jobs:
         # Check that code is properly formatted
         # Exclude problematic files as per existing pre-commit script
         excluded_patterns="temp/example_server_design_exploration|temp/mock_client_fix.go|exp/schema2go/generator.go|exp/cmd/mcp-tool-graph/main.go"
-        unformatted_files=$(gofmt -s -l . | grep -v -E "$excluded_patterns" || true)
+        go_files=$(git ls-files '*.go' | grep -v -E "$excluded_patterns" || true)
+        unformatted_files=""
+        if [ -n "$go_files" ]; then
+          unformatted_files=$(printf '%s\n' "$go_files" | xargs gofmt -s -l)
+        fi
         if [ -n "$unformatted_files" ]; then
           echo "The following files need gofmt -s:"
           echo "$unformatted_files"
@@ -70,6 +74,11 @@ jobs:
         # Run go vet excluding problematic directories
         go vet $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
+    - name: Run go vet for cmd/mcp
+      run: |
+        cd cmd/mcp
+        GOWORK=off go vet ./...
+
     - name: Check go mod tidy
       run: |
         # Verify that go.mod and go.sum are tidy
@@ -78,6 +87,19 @@ jobs:
         go mod tidy
         if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
           echo "go.mod or go.sum is not tidy. Run: go mod tidy"
+          rm go.mod.bak go.sum.bak
+          exit 1
+        fi
+        rm go.mod.bak go.sum.bak
+
+    - name: Check go mod tidy for cmd/mcp
+      run: |
+        cd cmd/mcp
+        cp go.mod go.mod.bak
+        cp go.sum go.sum.bak
+        GOWORK=off go mod tidy
+        if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
+          echo "cmd/mcp go.mod or go.sum is not tidy. Run: (cd cmd/mcp && GOWORK=off go mod tidy)"
           rm go.mod.bak go.sum.bak
           exit 1
         fi
@@ -102,6 +124,13 @@ jobs:
       uses: golangci/golangci-lint-action@v6
       with:
         version: latest
+        args: --timeout=5m --exclude-dirs=temp
+
+    - name: Run golangci-lint for cmd/mcp
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: latest
+        working-directory: cmd/mcp
         args: --timeout=5m --exclude-dirs=temp
 
   # ============================================================================
@@ -130,9 +159,16 @@ jobs:
         # Build all packages excluding problematic ones
         go build $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
+    - name: Build cmd/mcp module
+      run: |
+        cd cmd/mcp
+        GOWORK=off go build ./...
+
     - name: Build core tools
       run: |
         echo "Building core tools..."
+        echo "Building mcp..."
+        (cd cmd/mcp && GOWORK=off go build ./...)
         for tool in cmd/*; do
           if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
             # Skip tools with their own go.mod (they need separate handling)
@@ -170,6 +206,14 @@ jobs:
     - name: Verify tool functionality
       run: |
         echo "Testing core tool functionality..."
+
+        # Test mcp
+        if (cd cmd/mcp && GOWORK=off go run . --help) >/dev/null 2>&1; then
+          echo "✅ mcp help works"
+        else
+          echo "❌ mcp help failed"
+          exit 1
+        fi
         
         # Test mcp-probe
         if go run ./cmd/mcp-probe --help >/dev/null 2>&1; then
@@ -180,7 +224,7 @@ jobs:
         fi
         
         # Test mcp-serve
-        if go run ./cmd/mcp-serve --help >/dev/null 2>&1; then
+        if (cd exp && GOWORK=off go run ./cmd/mcp-serve --help) >/dev/null 2>&1; then
           echo "✅ mcp-serve help works"
         else
           echo "❌ mcp-serve help failed"
@@ -223,12 +267,24 @@ jobs:
         # Ensure tests compile
         go test -run="^$" $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
+    - name: Test compilation for cmd/mcp
+      run: |
+        cd cmd/mcp
+        GOWORK=off go test -run="^$" ./...
+
     - name: Run tests
       run: |
         mkdir -p test-results
         gotestsum --junitfile test-results/unit-tests.xml --format ${{ env.GOTESTSUM_FORMAT }} -- \
           -timeout=${{ env.TEST_TIMEOUT }} \
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
+
+    - name: Run tests for cmd/mcp
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp
+        GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-unit-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Run race detector tests
       if: matrix.race
@@ -238,6 +294,14 @@ jobs:
           -race -timeout=${{ env.TEST_TIMEOUT }} \
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
 
+    - name: Run race detector tests for cmd/mcp
+      if: matrix.race
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp
+        GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-race-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -race -timeout=${{ env.TEST_TIMEOUT }} ./...
+
     - name: Run synctest validation
       if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
       run: |
@@ -245,6 +309,14 @@ jobs:
         GOEXPERIMENT=synctest gotestsum --junitfile test-results/synctest.xml --format ${{ env.GOTESTSUM_FORMAT }} -- \
           -tags=synctest -timeout=${{ env.TEST_TIMEOUT }} \
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
+
+    - name: Run synctest validation for cmd/mcp
+      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp
+        GOWORK=off env GOEXPERIMENT=synctest gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-synctest.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -tags=synctest -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Upload test results
       if: always()
@@ -275,8 +347,17 @@ jobs:
     - name: Generate coverage report
       run: |
         mkdir -p coverage
-        go test -coverprofile=coverage/coverage.out -covermode=atomic \
+        go test -coverprofile=coverage/root.out -covermode=atomic \
           $(go list ./... | grep -v "temp/example_server_design_exploration" | grep -v "temp/mock_client_fix")
+        (
+          cd cmd/mcp
+          GOWORK=off go test -coverprofile="$GITHUB_WORKSPACE/coverage/cmd-mcp.out" -covermode=atomic ./...
+        )
+        {
+          head -n1 coverage/root.out
+          tail -n +2 coverage/root.out
+          tail -n +2 coverage/cmd-mcp.out
+        } > coverage/coverage.out
 
     - name: Generate coverage HTML report
       run: |
@@ -333,17 +414,23 @@ jobs:
       run: |
         # Build required tools
         go build ./cmd/mcp-probe
-        go build ./cmd/mcp-serve
-        go build ./cmd/mcp-shadow
-        go build ./cmd/mcp-replay
-        go build ./cmd/mcpdiff
+        (
+          cd exp
+          GOWORK=off go build ./cmd/mcp-serve
+          GOWORK=off go build ./cmd/mcp-shadow
+          GOWORK=off go build ./cmd/mcp-replay
+          GOWORK=off go build ./cmd/mcpdiff
+        )
 
     - name: Run integration tests
       run: |
         echo "Running integration tests..."
         
         # Test basic server functionality
-        timeout 10s go run ./cmd/mcp-serve --stdio-timeout=5s &
+        (
+          cd exp
+          env GOWORK=off timeout 10s go run ./cmd/mcp-serve --stdio-timeout=5s
+        ) &
         sleep 2
         pkill -f "go run ./cmd/mcp-serve" || true
         
@@ -399,12 +486,31 @@ jobs:
           echo "⚠️  gosec found security issues (non-blocking)"
         }
 
+        (
+          cd cmd/mcp
+          GOWORK=off gosec -severity medium -confidence medium -exclude-generated \
+            -fmt sarif -out "$GITHUB_WORKSPACE/security-reports/cmd-mcp-gosec.sarif" ./... || {
+            echo "⚠️  cmd/mcp gosec found security issues (non-blocking)"
+          }
+          GOWORK=off gosec -severity medium -confidence medium -exclude-generated \
+            -fmt text ./... || {
+            echo "⚠️  cmd/mcp gosec found security issues (non-blocking)"
+          }
+        )
+
     - name: Upload gosec SARIF report
       if: always()
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: security-reports/gosec.sarif
         category: gosec
+
+    - name: Upload cmd/mcp gosec SARIF report
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: security-reports/cmd-mcp-gosec.sarif
+        category: gosec-cmd-mcp
 
     - name: Run Go vulnerability check
       run: |
@@ -420,6 +526,16 @@ jobs:
         govulncheck ./... || {
           echo "⚠️  govulncheck found vulnerabilities (non-blocking)"
         }
+
+        (
+          cd cmd/mcp
+          GOWORK=off govulncheck -json ./... > "$GITHUB_WORKSPACE/security-reports/cmd-mcp-govulncheck.json" || {
+            echo "⚠️  cmd/mcp govulncheck found vulnerabilities (non-blocking)"
+          }
+          GOWORK=off govulncheck ./... || {
+            echo "⚠️  cmd/mcp govulncheck found vulnerabilities (non-blocking)"
+          }
+        )
 
     - name: Upload security scan results
       if: always()

@@ -4,7 +4,7 @@ This guide walks you through installing the MCP tools and setting up your develo
 
 ## Prerequisites
 
-- Go 1.21 or later
+- Go 1.24 or later
 - Git
 - Make (optional, for using Makefiles)
 
@@ -21,6 +21,7 @@ cd mcp
 2. Build all tools:
 ```bash
 go build ./...
+(cd cmd/mcp && GOWORK=off go build ./...)
 ```
 
 3. Install tools to your PATH:
@@ -37,7 +38,8 @@ go install ./cmd/mcp-probe
 (cd exp && GOWORK=off go install ./cmd/mcp-shadow)
 
 # Or install all at once
-go install ./cmd/mcp ./cmd/mcp-probe
+go install ./cmd/mcp-probe
+(cd cmd/mcp && GOWORK=off go install .)
 (cd exp && GOWORK=off go install ./cmd/...)
 ```
 
@@ -133,7 +135,7 @@ If you encounter build errors:
 1. Verify Go version:
 ```bash
 go version
-# Should be 1.21 or later
+# Should be 1.24 or later
 ```
 
 2. Update dependencies:

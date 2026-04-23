@@ -163,8 +163,6 @@ func (a *app) close() {
 	}
 }
 
-
-
 func main() {
 	if err := run(context.Background(), os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -694,8 +692,8 @@ func shellQuote(s string) string {
 }
 
 func spyCommandParts() []string {
-	if _, err := os.Stat(filepath.Join("cmd", "mcpspy", "main.go")); err == nil {
-		return []string{"go", "run", "./cmd/mcpspy"}
+	if _, err := os.Stat(filepath.Join("exp", "cmd", "mcpspy", "main.go")); err == nil {
+		return []string{"go", "run", "./exp/cmd/mcpspy"}
 	}
 	if exe, err := os.Executable(); err == nil {
 		sibling := filepath.Join(filepath.Dir(exe), "mcpspy")
@@ -708,7 +706,6 @@ func spyCommandParts() []string {
 	}
 	return []string{"mcpspy"}
 }
-
 
 func listAllTools(ctx context.Context, backend backend) ([]mcp.Tool, error) {
 	cursor := ""

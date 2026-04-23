@@ -20,7 +20,7 @@ The mcpscripttest package provides a scripttest-based framework for writing decl
 ### Basic Test Organization
 
 ```
-/cmd/mcpdiff/
+/exp/cmd/mcpdiff/
   main.go             # Tool implementation
   main_test.go        # Test runner for scripttest files
   testdata/           # Test scripts and sample files
@@ -301,9 +301,9 @@ mcpscripttest.SetupCoverageEnvironment(t)
 Run tests with coverage:
 
 ```bash
-go test -cover ./cmd/mcpdiff/...
+cd exp && GOWORK=off go test -cover ./cmd/mcpdiff/...
 # or for more detailed coverage
-go test -coverprofile=cover.out ./cmd/mcpdiff/...
+cd exp && GOWORK=off go test -coverprofile=cover.out ./cmd/mcpdiff/...
 go tool cover -html=cover.out
 ```
 

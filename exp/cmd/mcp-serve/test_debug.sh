@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Basic test script for mcp-serve with the everything server
+# Debug test script for mcp-serve with the everything server
 
 set -e
 
@@ -10,7 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo "Building mcp-serve..."
-cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-serve
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/exp/cmd/mcp-serve
 go build -o mcp-serve
 
 echo -e "${GREEN}Built mcp-serve successfully${NC}"
@@ -21,9 +21,10 @@ mkdir -p "$TEST_WS"
 
 echo "Starting MCP server in workspace: $TEST_WS"
 ./mcp-serve --workspace="$TEST_WS" -v -- npx @modelcontextprotocol/server-everything stdio &
+MCP_PID=$!
 
-# Give the server time to start
-sleep 2
+# Give the server time to start fully
+sleep 3
 
 echo "Checking server status..."
 if ./mcp-serve --workspace="$TEST_WS" --status; then
@@ -33,18 +34,41 @@ else
     exit 1
 fi
 
+echo "Listing workspace contents..."
+ls -la "$TEST_WS"
+
 echo "Sending initialize request..."
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}' | ./mcp-serve --workspace="$TEST_WS" -v --send > "$TEST_WS/response.json"
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}' | ./mcp-serve --workspace="$TEST_WS" -v --send > "$TEST_WS/response.json" 2>"$TEST_WS/send_debug.log"
+
+# Check the send debug log
+echo "Send debug log:"
+cat "$TEST_WS/send_debug.log" 
+
+# Give the server time to process and respond
+sleep 2
+
+echo "Response file size:"
+ls -la "$TEST_WS/response.json"
 
 echo "Response from server:"
 cat "$TEST_WS/response.json"
 
+# Also check stdout file directly
+echo ""
+echo "Checking stdout file:"
+cat "$TEST_WS/.mcp-server.stdout"
+
+# Check stderr for errors
+echo ""
+echo "Checking stderr file:"
+cat "$TEST_WS/.mcp-server.stderr"
+
 echo ""
 echo "Checking response validity..."
-if grep -q '"jsonrpc":"2.0"' "$TEST_WS/response.json" && grep -q '"id":1' "$TEST_WS/response.json"; then
+if [ -s "$TEST_WS/response.json" ] && grep -q '"jsonrpc":"2.0"' "$TEST_WS/response.json" && grep -q '"id":1' "$TEST_WS/response.json"; then
     echo -e "${GREEN}Response is valid JSON-RPC${NC}"
 else
-    echo -e "${RED}Invalid response received${NC}"
+    echo -e "${RED}Invalid or empty response received${NC}"
 fi
 
 echo "Stopping server..."
@@ -62,4 +86,4 @@ fi
 echo "Cleaning up..."
 rm -rf "$TEST_WS"
 
-echo -e "${GREEN}Test completed successfully!${NC}"
+echo -e "${GREEN}Test completed!${NC}"

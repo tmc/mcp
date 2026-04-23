@@ -47,6 +47,5 @@ require (
 )
 
 tool (
-	github.com/tmc/mcp/cmd/mcpdiff
 	rsc.io/uncover
 )

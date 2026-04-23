@@ -39,7 +39,7 @@ make test-coverage  # With coverage
 go build ./cmd/...
 
 # Build specific tools with coverage support
-go build -cover -o mcpdiff ./cmd/mcpdiff
+cd exp && GOWORK=off go build -cover -o mcpdiff ./cmd/mcpdiff
 ```
 
 ## Testing Strategy

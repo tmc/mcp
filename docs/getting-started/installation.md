@@ -26,25 +26,28 @@ go build ./...
 3. Install tools to your PATH:
 ```bash
 # Install specific tools
-go install ./cmd/mcp-spy
-go install ./cmd/mcp-replay
-go install ./cmd/mcpdiff
-go install ./cmd/mcp-sort
-go install ./cmd/mcp-connect
-go install ./cmd/mcp-proxy
-go install ./cmd/mcp-serve
-go install ./cmd/mcp-shadow
+go install ./cmd/mcp-probe
+(cd exp && GOWORK=off go install ./cmd/mcpspy)
+(cd exp && GOWORK=off go install ./cmd/mcp-replay)
+(cd exp && GOWORK=off go install ./cmd/mcpdiff)
+(cd exp && GOWORK=off go install ./cmd/mcp-sort)
+(cd exp && GOWORK=off go install ./cmd/mcp-connect)
+(cd exp && GOWORK=off go install ./cmd/mcp-proxy)
+(cd exp && GOWORK=off go install ./cmd/mcp-serve)
+(cd exp && GOWORK=off go install ./cmd/mcp-shadow)
 
 # Or install all at once
-go install ./cmd/...
+go install ./cmd/mcp ./cmd/mcp-probe
+(cd exp && GOWORK=off go install ./cmd/...)
 ```
 
 ### Using Go Get
 
 For individual tools:
 ```bash
-go get -u github.com/tmc/mcp/cmd/mcp-spy@latest
-go get -u github.com/tmc/mcp/cmd/mcp-replay@latest
+go get -u github.com/tmc/mcp/cmd/mcp-probe@latest
+go get -u github.com/tmc/mcp/exp/cmd/mcpspy@latest
+go get -u github.com/tmc/mcp/exp/cmd/mcp-replay@latest
 # ... etc
 ```
 

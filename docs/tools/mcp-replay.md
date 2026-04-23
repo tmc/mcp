@@ -286,6 +286,6 @@ tail -f large-trace.mcp | mcp-replay
 ## See Also
 
 - [mcp-spy](./mcp-spy.md) - Record MCP traces
-- [mcp-shadow](../../cmd/mcp-shadow/README.md) - Create traces with shadow responses
+- [mcp-shadow](../../exp/cmd/mcp-shadow/README.md) - Create traces with shadow responses
 - [mcpdiff](./mcpdiff.md) - Compare traces
 - [Testing Guide](../testing/README.md) - Testing strategies

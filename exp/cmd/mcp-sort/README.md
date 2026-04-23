@@ -13,7 +13,7 @@ It provides two primary functions:
 ## Installation
 
 ```bash
-go install github.com/tmc/mcp/cmd/mcp-sort@latest
+go install github.com/tmc/mcp/exp/cmd/mcp-sort@latest
 ```
 
 Or build from source:

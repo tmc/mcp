@@ -263,7 +263,7 @@ else
     echo "  ❌ mcp-probe help failed"
 fi
 
-if go run ./cmd/mcp-serve --help >/dev/null 2>&1; then
+if (cd exp && GOWORK=off go run ./cmd/mcp-serve --help) >/dev/null 2>&1; then
     echo "  ✅ mcp-serve help works"
     serve_ok=true
 else

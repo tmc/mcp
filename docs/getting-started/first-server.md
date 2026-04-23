@@ -765,7 +765,7 @@ curl -X POST http://localhost:8080/request \
 ### 3. Test with mcp-connect
 
 ```bash
-go run ./cmd/mcp-connect -cmd="./my-mcp-server"
+go run ./exp/cmd/mcp-connect -cmd="./my-mcp-server"
 ```
 
 ## Next Steps

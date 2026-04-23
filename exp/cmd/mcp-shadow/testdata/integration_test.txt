@@ -3,7 +3,8 @@
 [short] skip
 
 # Build mcp-shadow in current directory
-cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-shadow
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/exp/cmd/mcp-shadow
+env GOWORK=off
 exec go build
 exists mcp-shadow
 
@@ -28,7 +29,7 @@ exec sh -c 'echo "done" >> echo_server.sh'
 exec chmod +x echo_server.sh
 
 # Test basic shadow mode without files (just build test)
-exec /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-shadow/mcp-shadow -h
+exec /Volumes/tmc/go/src/github.com/tmc/mcp/exp/cmd/mcp-shadow/mcp-shadow -h
 stderr 'Usage'
 stderr 'primary server command to execute'
 stderr 'shadow server command to execute'

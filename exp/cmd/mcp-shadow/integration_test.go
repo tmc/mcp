@@ -26,10 +26,10 @@ func TestProbeShadowDiffIntegration(t *testing.T) {
 
 	// Build the required tools
 	tools := map[string]string{
-		"mcp-probe":      "../mcp-probe",
+		"mcp-probe":      "../../../cmd/mcp-probe",
 		"mcp-shadow":     ".",
 		"mcpdiff":        "../mcpdiff",
-		"minimal_server": "../mcp-probe/minimal_server.go",
+		"minimal_server": "../../../cmd/mcp-probe/minimal_server.go",
 	}
 
 	for name, path := range tools {

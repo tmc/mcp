@@ -18,7 +18,7 @@ Converts MCPTrace files to OpenTelemetry format for visualization in distributed
 ## Installation
 
 ```bash
-cd cmd/mcptrace-to-otel
+cd exp/cmd/mcptrace-to-otel
 go install .
 ```
 

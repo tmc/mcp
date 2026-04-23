@@ -13,7 +13,7 @@ A unified client for all MCP transport types (stdio, SSE, streamableHttp).
 ## Installation
 
 ```bash
-cd /path/to/mcp/cmd/mcp-connect
+cd /path/to/mcp/exp/cmd/mcp-connect
 go build -o mcp-connect main.go
 ```
 

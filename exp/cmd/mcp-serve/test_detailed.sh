@@ -68,7 +68,7 @@ send_request() {
 }
 
 echo "Building mcp-serve..."
-cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-serve
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/exp/cmd/mcp-serve
 go build -o mcp-serve
 
 echo -e "${GREEN}Built mcp-serve successfully${NC}"

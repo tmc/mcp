@@ -1,7 +1,7 @@
 # Minimal tools test with proper PATH setup and conservative timeouts
 
 # Set environment variables for tool paths
-env PATH=$PATH:$PWD/cmd/mcpspy:$PWD/cmd/mcpcat:$PWD/cmd/mcpdiff
+env PATH=$PATH:$PWD/exp/cmd/mcpspy:$PWD/exp/cmd/mcpcat:$PWD/exp/cmd/mcpdiff
 
 # Use conservative timeouts to ensure tests pass
 env MCP_TOOL_TIMEOUT=10s
@@ -22,11 +22,11 @@ stdout '"test": "minimal"'
 stdout '"status": "ok"'
 
 # Test 5: Test mcpspy if available (with fallback)
-bash 'if command -v ./cmd/mcpspy/mcpspy >/dev/null 2>&1; then echo "mcpspy available"; ./cmd/mcpspy/mcpspy --help 2>&1 | head -1; else echo "mcpspy not found, skipping"; fi'
+bash 'if command -v ./exp/cmd/mcpspy/mcpspy >/dev/null 2>&1; then echo "mcpspy available"; ./exp/cmd/mcpspy/mcpspy --help 2>&1 | head -1; else echo "mcpspy not found, skipping"; fi'
 stdout 'mcpspy'
 
 # Test 6: Test mcpcat if available (with fallback)
-bash 'if command -v ./cmd/mcpcat/mcpcat >/dev/null 2>&1; then echo "mcpcat available"; ./cmd/mcpcat/mcpcat --help 2>&1 | head -1; else echo "mcpcat not found, skipping"; fi'
+bash 'if command -v ./exp/cmd/mcpcat/mcpcat >/dev/null 2>&1; then echo "mcpcat available"; ./exp/cmd/mcpcat/mcpcat --help 2>&1 | head -1; else echo "mcpcat not found, skipping"; fi'
 
 # Test 7: Simple JSON processing without external tools
 bash 'echo "{\"fast_test\": true}" | head -1'

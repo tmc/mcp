@@ -19,11 +19,15 @@ func TestShadowProbeIntegration(t *testing.T) {
 	traceFile := filepath.Join(tmpDir, "shadow-test.mcp")
 
 	// Build the tools if not already built
-	tools := []string{"mcp-probe", "mcp-shadow", "mcpdiff"}
-	for _, tool := range tools {
-		toolPath := filepath.Join("..", tool)
+	toolPaths := map[string]string{
+		"mcp-probe":  "../../../cmd/mcp-probe",
+		"mcp-shadow": ".",
+		"mcpdiff":    "../mcpdiff",
+	}
+	for tool, toolPath := range toolPaths {
 		cmd := exec.CommandContext(ctx, "go", "build", "-o", tool, ".")
 		cmd.Dir = toolPath
+		cmd.Env = append(os.Environ(), "GOWORK=off")
 		if err := cmd.Run(); err != nil {
 			t.Fatalf("Failed to build %s: %v", tool, err)
 		}
@@ -34,14 +38,14 @@ func TestShadowProbeIntegration(t *testing.T) {
 set -e
 
 # Get directory paths
-PROBE_DIR="../mcp-probe"
-SHADOW_DIR="."
-DIFF_DIR="../mcpdiff"
+PROBE_DIR="../../../cmd/mcp-probe"
+SHADOW_BIN="../../exp/cmd/mcp-shadow/mcp-shadow"
+DIFF_DIR="../../exp/cmd/mcpdiff"
 
 # Run mcp-probe through mcp-shadow with two copies of minimal_server
 echo "Running mcp-probe through mcp-shadow..."
 cd $PROBE_DIR
-./mcp-probe -timeout=3s | ../mcp-shadow/mcp-shadow \
+./mcp-probe -timeout=3s | $SHADOW_BIN \
     -primary "./minimal_server" \
     -shadow "./minimal_server" \
     -compare \
@@ -105,9 +109,14 @@ func TestShadowWithToolCall(t *testing.T) {
 	traceFile := filepath.Join(tmpDir, "tool-test.mcp")
 
 	// Build required tools
-	for _, tool := range []string{"mcp-probe", "mcp-shadow", "mcpdiff"} {
+	for tool, toolPath := range map[string]string{
+		"mcp-probe":  "../../../cmd/mcp-probe",
+		"mcp-shadow": ".",
+		"mcpdiff":    "../mcpdiff",
+	} {
 		cmd := exec.CommandContext(ctx, "go", "build", "-o", tool, ".")
-		cmd.Dir = filepath.Join("..", tool)
+		cmd.Dir = toolPath
+		cmd.Env = append(os.Environ(), "GOWORK=off")
 		if err := cmd.Run(); err != nil {
 			t.Skipf("Failed to build %s: %v", tool, err)
 		}
@@ -117,11 +126,11 @@ func TestShadowWithToolCall(t *testing.T) {
 	script := `#!/bin/bash
 set -e
 
-cd ../mcp-probe
+cd ../../../cmd/mcp-probe
 
 # Run probe without arguments to get sample requests, then send through shadow
 echo '{"ID":{},"Method":"initialize","Params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"mcp-probe","version":"0.1.0"},"capabilities":{}}}' | \
-../mcp-shadow/mcp-shadow \
+../../exp/cmd/mcp-shadow/mcp-shadow \
     -primary "./minimal_server" \
     -shadow "./minimal_server" \
     -compare \
@@ -129,7 +138,7 @@ echo '{"ID":{},"Method":"initialize","Params":{"protocolVersion":"2025-03-26","c
     -o ` + traceFile + `
 
 # Show the diff
-cd ../mcpdiff
+cd ../../exp/cmd/mcpdiff
 # mcpdiff needs two files, so duplicate the trace
 cp ` + traceFile + ` ` + traceFile + `.copy
 ./mcpdiff -v ` + traceFile + ` ` + traceFile + `.copy

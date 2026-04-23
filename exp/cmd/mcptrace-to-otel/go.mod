@@ -1,4 +1,4 @@
-module github.com/tmc/mcp/cmd/mcptrace-to-otel
+module github.com/tmc/mcp/exp/cmd/mcptrace-to-otel
 
 go 1.21
 

@@ -123,7 +123,7 @@ EOF
 
 # Main test loop
 echo "Building mcp-serve..."
-cd /Volumes/tmc/go/src/github.com/tmc/mcp/cmd/mcp-serve
+cd /Volumes/tmc/go/src/github.com/tmc/mcp/exp/cmd/mcp-serve
 go build -o mcp-serve
 
 echo -e "${GREEN}Starting automated test suite${NC}"

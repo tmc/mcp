@@ -116,7 +116,7 @@ go build -o echo-server
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}}}' | ./echo-server
 
 # Or test with the included tools
-go run ./cmd/mcp-connect -cmd="./echo-server"
+go run ./exp/cmd/mcp-connect -cmd="./echo-server"
 ```
 
 ## Quick Example: Using a Client
@@ -211,7 +211,7 @@ If you have the MCP Go tools installed:
 
 ```bash
 # Test server with mcp-connect
-go run ./cmd/mcp-connect -cmd="./echo-server"
+go run ./exp/cmd/mcp-connect -cmd="./echo-server"
 
 # Test server with mcp-probe
 echo '{"name":"echo","arguments":{"text":"Hello World"}}' | go run ./cmd/mcp-probe -cmd="./echo-server" -method="tools/call"

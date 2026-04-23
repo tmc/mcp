@@ -2,10 +2,10 @@
 # This integration test verifies the tools work together correctly
 
 # Build all the required tools
-exec go build -o probe ../../../../cmd/mcp-probe/main.go
+exec go build -o probe ../../../../../cmd/mcp-probe/main.go
 exec go build -o shadow ../../../../cmd/mcp-shadow
 exec go build -o diff ../../../../cmd/mcpdiff
-exec go build -o server ../../../../cmd/mcp-probe/minimal_server.go
+exec go build -o server ../../../../../cmd/mcp-probe/minimal_server.go
 
 # Test 1: Get sample requests from mcp-probe
 exec ./probe

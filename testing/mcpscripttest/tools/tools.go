@@ -193,18 +193,18 @@ func getToolInstallSpec(toolName string) toolInstallSpec {
 
 	toolSpecs := map[string]toolInstallSpec{
 		// Main MCP tools
-		"mcp-replay":  {dir: repoRoot, pkg: "./cmd/mcp-replay"},
-		"mcp-send":    {dir: repoRoot, pkg: "./cmd/mcp-send"},
-		"mcpdiff":     {dir: repoRoot, pkg: "./cmd/mcpdiff"},
+		"mcp-replay":  {dir: expRoot, pkg: "./cmd/mcp-replay"},
+		"mcp-send":    {dir: expRoot, pkg: "./cmd/mcp-send"},
+		"mcpdiff":     {dir: expRoot, pkg: "./cmd/mcpdiff"},
 		"mcp-probe":   {dir: repoRoot, pkg: "./cmd/mcp-probe"},
-		"mcpcat":      {dir: repoRoot, pkg: "./cmd/mcpcat"},
-		"mcpspy":      {dir: repoRoot, pkg: "./cmd/mcpspy"},
-		"mcp-shadow":  {dir: repoRoot, pkg: "./cmd/mcp-shadow"},
-		"mcp-sort":    {dir: repoRoot, pkg: "./cmd/mcp-sort"},
-		"mcp-connect": {dir: repoRoot, pkg: "./cmd/mcp-connect"},
-		"mcp-proxy":   {dir: repoRoot, pkg: "./cmd/mcp-proxy"},
-		"mcp-serve":   {dir: repoRoot, pkg: "./cmd/mcp-serve"},
-		"mcp-debug":   {dir: repoRoot, pkg: "./cmd/mcp-debug"},
+		"mcpcat":      {dir: expRoot, pkg: "./cmd/mcpcat"},
+		"mcpspy":      {dir: expRoot, pkg: "./cmd/mcpspy"},
+		"mcp-shadow":  {dir: expRoot, pkg: "./cmd/mcp-shadow"},
+		"mcp-sort":    {dir: expRoot, pkg: "./cmd/mcp-sort"},
+		"mcp-connect": {dir: expRoot, pkg: "./cmd/mcp-connect"},
+		"mcp-proxy":   {dir: expRoot, pkg: "./cmd/mcp-proxy"},
+		"mcp-serve":   {dir: expRoot, pkg: "./cmd/mcp-serve"},
+		"mcp-debug":   {dir: expRoot, pkg: "./cmd/mcp-debug"},
 
 		// Experimental mcpscripttest tools
 		"apply-edits":            {dir: repoRoot, pkg: "./testing/mcpscripttest/cmd/apply-edits"},

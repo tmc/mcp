@@ -4,8 +4,8 @@
 
 # Build required tools
 exec go build -o mcp-probe ../../../cmd/mcp-probe
-exec go build -o mcp-shadow ../../../cmd/mcp-shadow  
-exec go build -o mcpdiff ../../../cmd/mcpdiff
+exec go build -o mcp-shadow ../mcp-shadow
+exec go build -o mcpdiff ../mcpdiff
 exec go build -o minimal_server ../../../cmd/mcp-probe/minimal_server.go
 
 # Create a temporary trace file

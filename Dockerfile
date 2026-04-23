@@ -9,19 +9,21 @@ WORKDIR /src
 
 # Copy go mod files first for better caching
 COPY go.mod go.sum ./
+COPY exp/go.mod exp/go.sum ./exp/
 RUN go mod download
+RUN cd exp && GOWORK=off go mod download
 
 # Copy source code
 COPY . .
 
 # Build all core tools
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-probe ./cmd/mcp-probe
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-serve ./cmd/mcp-serve
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-proxy ./cmd/mcp-proxy
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-shadow ./cmd/mcp-shadow
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-replay ./cmd/mcp-replay
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcpdiff ./cmd/mcpdiff
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcpspy ./cmd/mcpspy
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-serve ./cmd/mcp-serve
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-proxy ./cmd/mcp-proxy
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-shadow ./cmd/mcp-shadow
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcp-replay ./cmd/mcp-replay
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcpdiff ./cmd/mcpdiff
+RUN cd exp && GOWORK=off CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /bin/mcpspy ./cmd/mcpspy
 
 # Final stage - minimal runtime image
 FROM alpine:latest

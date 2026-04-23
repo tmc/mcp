@@ -83,18 +83,30 @@ Zero manual `IsNil` panic wrappers in the public surface.
 
 ### R4. Dependency hygiene: stdlib + golang.org/x/* only at runtime
 
-Runtime dependencies stay limited to the stdlib plus `golang.org/x/*`.
-Test dependencies (`rsc.io/script` for mcpscripttest, `google/go-cmp`
-for diffs) are acceptable and do not propagate to consumers. No
-`replace` directives in the root `go.mod` at tag time.
+Runtime dependencies stay limited to the stdlib plus `golang.org/x/*`,
+except for explicitly approved v1 exceptions. Test dependencies
+(`rsc.io/script` for mcpscripttest, `google/go-cmp` for diffs) are
+acceptable and do not propagate to consumers. No `replace` directives
+in the root `go.mod` at tag time.
 
 Why: MCP is a protocol library. The moment it pulls in Prometheus,
 OTel exporters, or Redis adapters at runtime, it becomes a framework.
 Those integrations live in `ext/` or `exp/` subpackages that consumers
 opt into.
 
-Current state to verify: `go.mod` has accumulated dependencies during
-the middleware-expansion work. Pre-tag audit will prune.
+Current state: `cmd/mcp` has been split into its own module, so the
+root no longer carries Cobra or Bubble Tea. Two named runtime
+exceptions remain at v1:
+
+- `github.com/gorilla/websocket`, because `transport_websocket.go`
+  exports `WebSocketTransport` from the root package and exposes
+  `*websocket.Dialer` in the public API.
+- `github.com/santhosh-tekuri/jsonschema/v5`, because `security.go`
+  exports `JSONSchemaValidator` and the validation middleware helpers
+  that construct it from the root package.
+
+Those two deps are not honest-to-remove as a last-minute prune; doing
+so would be an API decision rather than dependency hygiene.
 
 ### R5. Internal is actually internal
 
@@ -452,8 +464,9 @@ with a minimal working example and a scripttest conformance fixture.
    do we pick (Python SDK, TypeScript SDK, Anthropic's reference)?
    Needs a call.
 
-5. **go.mod runtime-dep audit.** R4 says stdlib + `golang.org/x/*`
-   only. Run `go mod graph` post-cleanup and produce the prune list.
+5. **go.mod runtime-dep audit.** `cmd/mcp` is out of the root module.
+   Confirm the remaining named `R4` exceptions still match the public
+   root API, and avoid adding new ones.
 
 6. **Auth/security broader audit.** The 2-line race fix is done, but
    an earlier audit identified 4 critical issues (RNG fallback,

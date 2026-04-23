@@ -61,23 +61,43 @@ Evidence anchors:
 
 Current state:
 
-- The root `go.mod` still carries non-stdlib, non-`golang.org/x/*`
-  dependencies.
 - `cmd/mcp` is now an explicit submodule, so the Cobra/TUI dependency
   tree no longer pollutes the root module.
-- The root library surface currently brings in
-  `github.com/gorilla/websocket` via `transport_websocket.go` and
-  `github.com/santhosh-tekuri/jsonschema/v5` via `security.go`.
-- The remaining dependency question is now limited to the true
-  root-library third-party dependencies.
+- The root `go.mod` still carries two non-stdlib, non-`golang.org/x/*`
+  dependencies, and both are part of the root package surface today.
+- `github.com/gorilla/websocket` is required by the exported
+  `WebSocketTransport` in `transport_websocket.go`, including the
+  `WithDialer(*websocket.Dialer)` method that exposes the gorilla type
+  directly in the root API.
+- `github.com/santhosh-tekuri/jsonschema/v5` is required by the
+  exported `JSONSchemaValidator` in `security.go` and by the
+  validation-middleware helpers that construct it.
+- Neither dependency is honest-to-remove as a hygiene-only cleanup.
+  Removing either one is an API decision, not a pre-tag prune.
+
+Approved v1 exceptions to `R4`:
+
+1. `github.com/gorilla/websocket`
+   Rationale: root WebSocket transport support is still part of the
+   public `mcp` package.
+   `go mod why -m`:
+   `# github.com/gorilla/websocket`
+   `github.com/tmc/mcp`
+   `github.com/gorilla/websocket`
+2. `github.com/santhosh-tekuri/jsonschema/v5`
+   Rationale: JSON schema validation is optional in practice, but the
+   validator type and middleware entry points are exported from the
+   root package today.
+   `go mod why -m`:
+   `# github.com/santhosh-tekuri/jsonschema/v5`
+   `github.com/tmc/mcp`
+   `github.com/santhosh-tekuri/jsonschema/v5`
 
 Acceptance criteria:
 
-1. The project either:
-   - reduces root runtime dependencies to the stdlib plus
-     `golang.org/x/*`, or
-   - checks in a decision note that revises rule `R4` with named
-     exceptions and rationale.
+1. Root runtime dependencies are limited to the stdlib plus
+   `golang.org/x/*`, except for the named `R4` exceptions recorded
+   above.
 2. `go mod why -m` output is captured for every approved exception.
 3. Test-only and `exp/`-only dependencies are not justified as root
    runtime requirements.

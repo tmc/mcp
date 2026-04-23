@@ -230,24 +230,23 @@ Evidence anchors:
 
 Current state:
 
-- `jsonrpc2/` moved to `internal/jsonrpc2/` after auditing direct
+- The repo-local `jsonrpc2/` package was removed after auditing direct
   consumers.
-- The only in-repo direct imports were `cmd/mcp-probe/main.go` and
-  `cmd/mcp-probe/debug_test.go`, both of which now import the
-  internal path.
+- `cmd/mcp-probe` now uses the official SDK public package
+  `github.com/modelcontextprotocol/go-sdk/jsonrpc` from its own nested
+  module.
 - No root-package public API depends on `github.com/tmc/mcp/jsonrpc2`.
 
 Acceptance criteria:
 
 1. Consumer usage is audited.
-2. If there are no external consumers, `jsonrpc2/` moves under
-   `internal/`.
-3. The remaining direct consumers build and test against the internal
-   path.
+2. If there are no external consumers, the repo-local `jsonrpc2/`
+   package is removed or made private.
+3. The remaining direct consumers build and test against the upstream
+   public package.
 
 Evidence anchors:
 
-- `internal/jsonrpc2/`
 - `cmd/mcp-probe/`
 - `docs/design/release-readiness-synthesis.md`
 

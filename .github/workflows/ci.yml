@@ -79,6 +79,11 @@ jobs:
         cd cmd/mcp
         GOWORK=off go vet ./...
 
+    - name: Run go vet for cmd/mcp-probe
+      run: |
+        cd cmd/mcp-probe
+        GOWORK=off go vet ./...
+
     - name: Check go mod tidy
       run: |
         # Verify that go.mod and go.sum are tidy
@@ -100,6 +105,19 @@ jobs:
         GOWORK=off go mod tidy
         if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
           echo "cmd/mcp go.mod or go.sum is not tidy. Run: (cd cmd/mcp && GOWORK=off go mod tidy)"
+          rm go.mod.bak go.sum.bak
+          exit 1
+        fi
+        rm go.mod.bak go.sum.bak
+
+    - name: Check go mod tidy for cmd/mcp-probe
+      run: |
+        cd cmd/mcp-probe
+        cp go.mod go.mod.bak
+        cp go.sum go.sum.bak
+        GOWORK=off go mod tidy
+        if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
+          echo "cmd/mcp-probe go.mod or go.sum is not tidy. Run: (cd cmd/mcp-probe && GOWORK=off go mod tidy)"
           rm go.mod.bak go.sum.bak
           exit 1
         fi
@@ -164,6 +182,11 @@ jobs:
         cd cmd/mcp
         GOWORK=off go build ./...
 
+    - name: Build cmd/mcp-probe module
+      run: |
+        cd cmd/mcp-probe
+        GOWORK=off go build ./...
+
     - name: Build core tools
       run: |
         echo "Building core tools..."
@@ -216,7 +239,7 @@ jobs:
         fi
         
         # Test mcp-probe
-        if go run ./cmd/mcp-probe --help >/dev/null 2>&1; then
+        if (cd cmd/mcp-probe && GOWORK=off go run . --help) >/dev/null 2>&1; then
           echo "✅ mcp-probe help works"
         else
           echo "❌ mcp-probe help failed"
@@ -272,6 +295,11 @@ jobs:
         cd cmd/mcp
         GOWORK=off go test -run="^$" ./...
 
+    - name: Test compilation for cmd/mcp-probe
+      run: |
+        cd cmd/mcp-probe
+        GOWORK=off go test -run="^$" ./...
+
     - name: Run tests
       run: |
         mkdir -p test-results
@@ -284,6 +312,13 @@ jobs:
         mkdir -p test-results
         cd cmd/mcp
         GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-unit-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -timeout=${{ env.TEST_TIMEOUT }} ./...
+
+    - name: Run tests for cmd/mcp-probe
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp-probe
+        GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-probe-unit-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
           -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Run race detector tests
@@ -302,6 +337,14 @@ jobs:
         GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-race-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
           -race -timeout=${{ env.TEST_TIMEOUT }} ./...
 
+    - name: Run race detector tests for cmd/mcp-probe
+      if: matrix.race
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp-probe
+        GOWORK=off gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-probe-race-tests.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -race -timeout=${{ env.TEST_TIMEOUT }} ./...
+
     - name: Run synctest validation
       if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
       run: |
@@ -316,6 +359,14 @@ jobs:
         mkdir -p test-results
         cd cmd/mcp
         GOWORK=off env GOEXPERIMENT=synctest gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-synctest.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
+          -tags=synctest -timeout=${{ env.TEST_TIMEOUT }} ./...
+
+    - name: Run synctest validation for cmd/mcp-probe
+      if: matrix.go-version == '1.24.2' && matrix.os == 'ubuntu-latest'
+      run: |
+        mkdir -p test-results
+        cd cmd/mcp-probe
+        GOWORK=off env GOEXPERIMENT=synctest gotestsum --junitfile "$GITHUB_WORKSPACE/test-results/cmd-mcp-probe-synctest.xml" --format ${{ env.GOTESTSUM_FORMAT }} -- \
           -tags=synctest -timeout=${{ env.TEST_TIMEOUT }} ./...
 
     - name: Upload test results
@@ -435,7 +486,7 @@ jobs:
     - name: Build tools for integration testing
       run: |
         # Build required tools
-        go build ./cmd/mcp-probe
+        (cd cmd/mcp-probe && GOWORK=off go build ./...)
         (
           cd exp
           GOWORK=off go build ./cmd/mcp-serve

@@ -15,7 +15,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/tmc/mcp/internal/jsonrpc2"
+	jsonrpc2 "github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
 var (
@@ -76,20 +76,7 @@ func NewStdioTransport(args []string) (*StdioTransport, error) {
 }
 
 func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
-	// Create a proper JSON-RPC 2.0 message
-	msg := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      req.ID,
-		"method":  req.Method,
-		"params":  req.Params,
-	}
-
-	// Omit ID for notifications
-	if !req.ID.IsValid() {
-		delete(msg, "id")
-	}
-
-	data, err := json.Marshal(msg)
+	data, err := jsonrpc2.EncodeMessage(req)
 	if err != nil {
 		return err
 	}
@@ -104,18 +91,25 @@ func (t *StdioTransport) Send(ctx context.Context, req *jsonrpc2.Request) error 
 
 func (t *StdioTransport) Receive(ctx context.Context) (*jsonrpc2.Response, error) {
 	// Read the JSON message directly (assuming LDJSON/headerless)
-	var resp jsonrpc2.Response
-	decoder := json.NewDecoder(t.reader)
-	if err := decoder.Decode(&resp); err != nil {
+	line, err := t.reader.ReadBytes('\n')
+	if err != nil {
 		return nil, err
 	}
 
 	if *verbose {
-		data, _ := json.Marshal(resp)
-		log.Printf("Received: %s", data)
+		log.Printf("Received: %s", bytes.TrimSpace(line))
 	}
 
-	return &resp, nil
+	msg, err := jsonrpc2.DecodeMessage(bytes.TrimSpace(line))
+	if err != nil {
+		return nil, err
+	}
+	resp, ok := msg.(*jsonrpc2.Response)
+	if !ok {
+		return nil, fmt.Errorf("received %T, want *jsonrpc.Response", msg)
+	}
+
+	return resp, nil
 }
 
 func (t *StdioTransport) Close() error {
@@ -126,8 +120,9 @@ func (t *StdioTransport) Close() error {
 }
 
 type HTTPTransport struct {
-	url    string
-	client *http.Client
+	url      string
+	client   *http.Client
+	response *jsonrpc2.Response
 }
 
 func NewHTTPTransport(url string) *HTTPTransport {
@@ -138,20 +133,7 @@ func NewHTTPTransport(url string) *HTTPTransport {
 }
 
 func (t *HTTPTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
-	// Create a proper JSON-RPC 2.0 message
-	msg := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"id":      req.ID,
-		"method":  req.Method,
-		"params":  req.Params,
-	}
-
-	// Omit ID for notifications
-	if !req.ID.IsValid() {
-		delete(msg, "id")
-	}
-
-	data, err := json.Marshal(msg)
+	data, err := jsonrpc2.EncodeMessage(req)
 	if err != nil {
 		return err
 	}
@@ -177,23 +159,30 @@ func (t *HTTPTransport) Send(ctx context.Context, req *jsonrpc2.Request) error {
 		return err
 	}
 
-	var rpcResp jsonrpc2.Response
-	if err := json.Unmarshal(body, &rpcResp); err != nil {
+	msg, err := jsonrpc2.DecodeMessage(body)
+	if err != nil {
 		return err
 	}
+	rpcResp, ok := msg.(*jsonrpc2.Response)
+	if !ok {
+		return fmt.Errorf("received %T, want *jsonrpc.Response", msg)
+	}
+	t.response = rpcResp
 
 	if *verbose {
 		log.Printf("Received: %s", body)
 	}
 
-	// Store response for Receive()
-	// This is a simplified implementation
 	return nil
 }
 
 func (t *HTTPTransport) Receive(ctx context.Context) (*jsonrpc2.Response, error) {
-	// In a real implementation, we'd need to queue responses
-	return nil, nil
+	resp := t.response
+	t.response = nil
+	if resp == nil {
+		return nil, io.EOF
+	}
+	return resp, nil
 }
 
 func (t *HTTPTransport) Close() error {
@@ -245,7 +234,7 @@ func main() {
 	}`, *protocolVersion)
 
 	initReq := &jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(1),
+		ID:     rpcID(1),
 		Method: "initialize",
 		Params: json.RawMessage(initParams),
 	}
@@ -281,7 +270,7 @@ func main() {
 
 	if *listTools {
 		listReq := &jsonrpc2.Request{
-			ID:     jsonrpc2.Int64ID(2),
+			ID:     rpcID(2),
 			Method: "tools/list",
 			Params: json.RawMessage(`{}`),
 		}
@@ -337,7 +326,7 @@ func main() {
 	// If a tool was specified, test it
 	if *testTool != "" {
 		toolReq := &jsonrpc2.Request{
-			ID:     jsonrpc2.Int64ID(3),
+			ID:     rpcID(3),
 			Method: "tools/call",
 			Params: json.RawMessage(fmt.Sprintf(`{
 				"name": "%s",
@@ -386,15 +375,7 @@ func main() {
 func printSampleRequests() {
 	// Helper function to print a properly framed JSON-RPC message
 	printFramedMessage := func(req *jsonrpc2.Request) {
-		// Create a JSON-RPC 2.0 message with the jsonrpc field
-		msg := map[string]interface{}{
-			"jsonrpc": "2.0",
-			"id":      req.ID,
-			"method":  req.Method,
-			"params":  req.Params,
-		}
-
-		data, err := json.Marshal(msg)
+		data, err := jsonrpc2.EncodeMessage(req)
 		if err != nil {
 			return
 		}
@@ -413,7 +394,7 @@ func printSampleRequests() {
 	}`, *protocolVersion)
 
 	initReq := &jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(1),
+		ID:     rpcID(1),
 		Method: "initialize",
 		Params: json.RawMessage(initParams),
 	}
@@ -422,7 +403,7 @@ func printSampleRequests() {
 
 	if *listTools {
 		listReq := &jsonrpc2.Request{
-			ID:     jsonrpc2.Int64ID(2),
+			ID:     rpcID(2),
 			Method: "tools/list",
 			Params: json.RawMessage(`{}`),
 		}
@@ -431,7 +412,7 @@ func printSampleRequests() {
 
 	if *testTool != "" {
 		toolReq := &jsonrpc2.Request{
-			ID:     jsonrpc2.Int64ID(3),
+			ID:     rpcID(3),
 			Method: "tools/call",
 			Params: json.RawMessage(fmt.Sprintf(`{
 				"name": "%s",
@@ -440,4 +421,9 @@ func printSampleRequests() {
 		}
 		printFramedMessage(toolReq)
 	}
+}
+
+func rpcID(n int64) jsonrpc2.ID {
+	id, _ := jsonrpc2.MakeID(float64(n))
+	return id
 }

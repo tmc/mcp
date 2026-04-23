@@ -2,67 +2,50 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
-	"github.com/tmc/mcp/internal/jsonrpc2"
+	jsonrpc2 "github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
 func TestJSONRPC2MessageTypes(t *testing.T) {
-	// Test how Request is marshaled
 	req := jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(1),
+		ID:     rpcID(1),
 		Method: "test",
 		Params: json.RawMessage(`{}`),
 	}
 
-	data, err := json.Marshal(req)
+	data, err := jsonrpc2.EncodeMessage(&req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("Request: %s\n", data)
+	if got, want := string(data), `{"jsonrpc":"2.0","id":1,"method":"test","params":{}}`; got != want {
+		t.Fatalf("request = %s, want %s", got, want)
+	}
 
-	// Test how Response is marshaled
 	resp := jsonrpc2.Response{
-		ID:     jsonrpc2.Int64ID(1),
+		ID:     rpcID(1),
 		Result: json.RawMessage(`{}`),
 	}
 
-	data, err = json.Marshal(resp)
+	data, err = jsonrpc2.EncodeMessage(&resp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("Response: %s\n", data)
-
-	// Test message types
-	var msg jsonrpc2.Message
-	msg.Version = "2.0"
-	idData, _ := req.ID.MarshalJSON()
-	msg.ID = idData
-	msg.Method = req.Method
-	msg.Params = req.Params
-	fmt.Printf("Message type: %T\n", msg)
+	if got, want := string(data), `{"jsonrpc":"2.0","id":1,"result":{}}`; got != want {
+		t.Fatalf("response = %s, want %s", got, want)
+	}
 }
 
 func TestLineReaderParsing(t *testing.T) {
-	// Test parsing a response with empty ID
-	response := `{"jsonrpc":"2.0","id":{},"result":{}}`
-
-	var resp jsonrpc2.Response
-	if err := json.Unmarshal([]byte(response), &resp); err != nil {
-		fmt.Printf("Error parsing response: %v\n", err)
-	} else {
-		fmt.Printf("Parsed response: %+v\n", resp)
-		fmt.Printf("ID: %v\n", resp.ID)
+	msg, err := jsonrpc2.DecodeMessage([]byte(`{"jsonrpc":"2.0","id":1,"result":{}}`))
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	// Test parsing a response with numeric ID
-	response2 := `{"jsonrpc":"2.0","id":1,"result":{}}`
-	var resp2 jsonrpc2.Response
-	if err := json.Unmarshal([]byte(response2), &resp2); err != nil {
-		fmt.Printf("Error parsing response2: %v\n", err)
-	} else {
-		fmt.Printf("Parsed response2: %+v\n", resp2)
-		fmt.Printf("ID2: %v\n", resp2.ID)
+	resp, ok := msg.(*jsonrpc2.Response)
+	if !ok {
+		t.Fatalf("DecodeMessage returned %T, want *jsonrpc.Response", msg)
+	}
+	if !resp.ID.IsValid() {
+		t.Fatal("response ID is invalid")
 	}
 }

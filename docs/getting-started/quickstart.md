@@ -214,7 +214,7 @@ If you have the MCP Go tools installed:
 go run ./exp/cmd/mcp-connect -cmd="./echo-server"
 
 # Test server with mcp-probe
-echo '{"name":"echo","arguments":{"text":"Hello World"}}' | go run ./cmd/mcp-probe -cmd="./echo-server" -method="tools/call"
+(cd cmd/mcp-probe && GOWORK=off go run . ../../echo-server)
 ```
 
 ### Option 2: Manual Testing

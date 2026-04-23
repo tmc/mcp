@@ -547,7 +547,7 @@ go vet ./...
 ### Development Workflow
 ```bash
 # Build specific tools
-go build ./cmd/mcp-probe
+(cd cmd/mcp-probe && GOWORK=off go build ./...)
 (cd exp && GOWORK=off go build ./cmd/mcp-serve)
 
 # Run example servers

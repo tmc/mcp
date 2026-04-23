@@ -170,7 +170,7 @@ Why: "hardcoded wire-in" is where API contracts die.
   modelcontextprotocol/                                    Stable protocol types
     (no draft/)                                            Draft types excluded from v1
   internal/                                                Private helpers
-    jsonrpc2/ jsonrpc2shim/ jsonrpc2util/ mcpcli/ mcpspy/ ...
+    jsonrpc2shim/ jsonrpc2util/ mcpcli/ mcpspy/ ...
   cmd/
     mcp/                                                   The umbrella CLI (v1 in-scope)
     (optionally) mcp-probe/                                Diagnostic tool if kept
@@ -445,10 +445,11 @@ with a minimal working example and a scripttest conformance fixture.
    is still close enough to core protocol interaction to justify
    staying out of `exp/cmd/`.
 
-2. **Q4 — resolved.** `jsonrpc2/` moved to `internal/jsonrpc2` after
-   auditing direct consumers. The only in-repo imports were
-   `cmd/mcp-probe/main.go` and `cmd/mcp-probe/debug_test.go`, and no
-   root-package public API depended on the old path.
+2. **Q4 — resolved.** The repo-local `jsonrpc2/` package was removed
+   after auditing direct consumers. `cmd/mcp-probe` now uses the
+   official SDK public `github.com/modelcontextprotocol/go-sdk/jsonrpc`
+   package from its own nested module, and no root-package public API
+   depended on the old path.
 
 3. **Conformance harness against upstream spec.** mcpscripttest is
    powerful but it's a tmc/mcp dialect. A v1 library needs a

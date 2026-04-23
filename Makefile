@@ -9,14 +9,17 @@ all: test
 test:
 	go test ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go test ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go test ./...; fi
 
 test-synctest:
 	GOEXPERIMENT=synctest go test -tags=synctest ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off GOEXPERIMENT=synctest go test -tags=synctest ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off GOEXPERIMENT=synctest go test -tags=synctest ./...; fi
 
 test-race:
 	go test -race -timeout=10m ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go test -race -timeout=10m ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go test -race -timeout=10m ./...; fi
 
 test-coverage:
 	mkdir -p coverage
@@ -29,12 +32,17 @@ test-coverage:
 build:
 	go build ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go build ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go build ./...; fi
 
 build-tools:
 	@echo "Building core tools..."
 	@if [ -d "cmd/mcp" ]; then \
 		echo "Building mcp..."; \
 		(cd cmd/mcp && GOWORK=off go build ./...); \
+	fi
+	@if [ -d "cmd/mcp-probe" ]; then \
+		echo "Building mcp-probe..."; \
+		(cd cmd/mcp-probe && GOWORK=off go build ./...); \
 	fi
 	@for tool in cmd/*; do \
 		if [ -d "$$tool" ] && [ -f "$$tool/main.go" ]; then \
@@ -59,10 +67,12 @@ fmt:
 vet:
 	go vet ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go vet ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go vet ./...; fi
 
 lint:
 	golangci-lint run
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off golangci-lint run; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off golangci-lint run; fi
 
 # Security targets
 security-scan:
@@ -87,6 +97,7 @@ pre-commit:
 tidy:
 	go mod tidy
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go mod tidy; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go mod tidy; fi
 	@if [ -d "exp" ]; then cd exp && go mod tidy; fi
 
 # CI/CD simulation
@@ -104,6 +115,7 @@ docker-run:
 clean:
 	go clean ./...
 	@if [ -d "cmd/mcp" ]; then cd cmd/mcp && GOWORK=off go clean ./...; fi
+	@if [ -d "cmd/mcp-probe" ]; then cd cmd/mcp-probe && GOWORK=off go clean ./...; fi
 	rm -rf coverage/
 	rm -rf security-reports/
 	rm -f mcp-*

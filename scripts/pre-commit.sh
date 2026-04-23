@@ -186,6 +186,12 @@ if [ -f "cmd/mcp/go.mod" ]; then
     GOWORK=off go vet ./...
     '
 fi
+if [ -f "cmd/mcp-probe/go.mod" ]; then
+    run_check "Running go vet (cmd/mcp-probe)" '
+    cd cmd/mcp-probe
+    GOWORK=off go vet ./...
+    '
+fi
 
 # 4. Check go mod tidy
 if [ "$AUTO_FIX" = "true" ]; then
@@ -195,6 +201,10 @@ if [ "$AUTO_FIX" = "true" ]; then
     if [ -f "cmd/mcp/go.mod" ]; then
         echo "Running go mod tidy in cmd/mcp..."
         (cd cmd/mcp && GOWORK=off go mod tidy)
+    fi
+    if [ -f "cmd/mcp-probe/go.mod" ]; then
+        echo "Running go mod tidy in cmd/mcp-probe..."
+        (cd cmd/mcp-probe && GOWORK=off go mod tidy)
     fi
     echo "✨ Dependencies tidied automatically"
     '
@@ -229,6 +239,22 @@ else
         rm go.mod.bak go.sum.bak
         '
     fi
+    if [ -f "cmd/mcp-probe/go.mod" ]; then
+        run_check "Checking go mod tidy (cmd/mcp-probe)" '
+        cd cmd/mcp-probe
+        cp go.mod go.mod.bak
+        cp go.sum go.sum.bak
+        GOWORK=off go mod tidy
+        if ! diff -q go.mod go.mod.bak >/dev/null 2>&1 || ! diff -q go.sum go.sum.bak >/dev/null 2>&1; then
+            echo "cmd/mcp-probe go.mod or go.sum is not tidy."
+            echo ""
+            echo "Run: (cd cmd/mcp-probe && GOWORK=off go mod tidy)"
+            rm go.mod.bak go.sum.bak
+            exit 1
+        fi
+        rm go.mod.bak go.sum.bak
+        '
+    fi
 fi
 
 # 5. Test compilation of all packages
@@ -242,12 +268,22 @@ if [ -f "cmd/mcp/go.mod" ]; then
     GOWORK=off go build ./...
     '
 fi
+if [ -f "cmd/mcp-probe/go.mod" ]; then
+    run_check "Testing package compilation (cmd/mcp-probe)" '
+    cd cmd/mcp-probe
+    GOWORK=off go build ./...
+    '
+fi
 
 # 6. Test compilation of all core tools
 run_check "Testing core tools compilation" '
 if [ -f "cmd/mcp/go.mod" ]; then
     echo "  Building mcp..."
     (cd cmd/mcp && GOWORK=off go build ./...)
+fi
+if [ -f "cmd/mcp-probe/go.mod" ]; then
+    echo "  Building mcp-probe..."
+    (cd cmd/mcp-probe && GOWORK=off go build ./...)
 fi
 for tool in cmd/*; do
     if [ -d "$tool" ] && [ -f "$tool/main.go" ]; then
@@ -295,6 +331,12 @@ if [ -f "cmd/mcp/go.mod" ]; then
     GOWORK=off go test -run="^$" ./...
     '
 fi
+if [ -f "cmd/mcp-probe/go.mod" ]; then
+    run_check "Testing test compilation (cmd/mcp-probe)" '
+    cd cmd/mcp-probe
+    GOWORK=off go test -run="^$" ./...
+    '
+fi
 
 # 9. Run a quick smoke test of core functionality
 print_step "Running smoke tests"
@@ -309,7 +351,7 @@ else
     echo "  ❌ mcp help failed"
 fi
 
-if go run ./cmd/mcp-probe --help >/dev/null 2>&1; then
+if [ -f "cmd/mcp-probe/go.mod" ] && (cd cmd/mcp-probe && GOWORK=off go run . --help) >/dev/null 2>&1; then
     echo "  ✅ mcp-probe help works"
     probe_ok=true
 else

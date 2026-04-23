@@ -196,7 +196,7 @@ func getToolInstallSpec(toolName string) toolInstallSpec {
 		"mcp-replay":  {dir: expRoot, pkg: "./cmd/mcp-replay"},
 		"mcp-send":    {dir: expRoot, pkg: "./cmd/mcp-send"},
 		"mcpdiff":     {dir: expRoot, pkg: "./cmd/mcpdiff"},
-		"mcp-probe":   {dir: repoRoot, pkg: "./cmd/mcp-probe"},
+		"mcp-probe":   {dir: filepath.Join(repoRoot, "cmd/mcp-probe"), pkg: "."},
 		"mcpcat":      {dir: expRoot, pkg: "./cmd/mcpcat"},
 		"mcpspy":      {dir: expRoot, pkg: "./cmd/mcpspy"},
 		"mcp-shadow":  {dir: expRoot, pkg: "./cmd/mcp-shadow"},

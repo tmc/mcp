@@ -134,7 +134,7 @@ import (
     "golang.org/x/sync/errgroup"
     
     // Internal packages
-    "github.com/tmc/mcp/internal/jsonrpc2"
+    "github.com/tmc/mcp/internal/jsonrpc2util"
     "github.com/tmc/mcp/modelcontextprotocol"
 )
 ```

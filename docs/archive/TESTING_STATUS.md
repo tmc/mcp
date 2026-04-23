@@ -65,7 +65,6 @@ BenchmarkTransport_ReadWrite/PayloadSize_102400: 10.9 GB/s (3 allocs/op)
 - `github.com/tmc/mcp/cmd/mcpdiff` - Comparison tests
 - `github.com/tmc/mcp/cmd/mcp-replay` - Replay functionality
 - `github.com/tmc/mcp/internal/integration_testing/protocol-interop` - **NEW**: Protocol tests
-- `github.com/tmc/mcp/internal/jsonrpc2` - JSON-RPC implementation
 - `github.com/tmc/mcp/modelcontextprotocol` - Core protocol types
 - `github.com/tmc/mcp/protocol` - Protocol utilities
 
@@ -85,7 +84,6 @@ ok  github.com/tmc/mcp/cmd/mcpspy          0.948s
 ok  github.com/tmc/mcp/internal/jsonrpc2gostruct     2.130s
 ok  github.com/tmc/mcp/internal/jsonrpc2shim         2.280s
 ok  github.com/tmc/mcp/internal/jsonrpc2util         2.824s
-ok  github.com/tmc/mcp/internal/jsonrpc2   2.801s
 ok  github.com/tmc/mcp/modelcontextprotocol          2.952s
 ok  github.com/tmc/mcp/modelcontextprotocol/draft    3.213s
 ok  github.com/tmc/mcp/protocol            3.400s

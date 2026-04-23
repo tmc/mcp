@@ -22,12 +22,13 @@ cd mcp
 ```bash
 go build ./...
 (cd cmd/mcp && GOWORK=off go build ./...)
+(cd cmd/mcp-probe && GOWORK=off go build ./...)
 ```
 
 3. Install tools to your PATH:
 ```bash
 # Install specific tools
-go install ./cmd/mcp-probe
+(cd cmd/mcp-probe && GOWORK=off go install .)
 (cd exp && GOWORK=off go install ./cmd/mcpspy)
 (cd exp && GOWORK=off go install ./cmd/mcp-replay)
 (cd exp && GOWORK=off go install ./cmd/mcpdiff)
@@ -38,18 +39,18 @@ go install ./cmd/mcp-probe
 (cd exp && GOWORK=off go install ./cmd/mcp-shadow)
 
 # Or install all at once
-go install ./cmd/mcp-probe
+(cd cmd/mcp-probe && GOWORK=off go install .)
 (cd cmd/mcp && GOWORK=off go install .)
 (cd exp && GOWORK=off go install ./cmd/...)
 ```
 
-### Using Go Get
+### Installing by Module Path
 
 For individual tools:
 ```bash
-go get -u github.com/tmc/mcp/cmd/mcp-probe@latest
-go get -u github.com/tmc/mcp/exp/cmd/mcpspy@latest
-go get -u github.com/tmc/mcp/exp/cmd/mcp-replay@latest
+go install github.com/tmc/mcp/cmd/mcp-probe@latest
+go install github.com/tmc/mcp/exp/cmd/mcpspy@latest
+go install github.com/tmc/mcp/exp/cmd/mcp-replay@latest
 # ... etc
 ```
 

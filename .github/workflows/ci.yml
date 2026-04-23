@@ -392,6 +392,28 @@ jobs:
         retention-days: 30
 
   # ============================================================================
+  # PERFORMANCE GATE
+  # ============================================================================
+  perf-gate:
+    name: Performance Gate
+    runs-on: ubuntu-latest
+    needs: [quality, build, test]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24.2'
+        cache: true
+
+    - name: Run benchmark regression gate
+      run: |
+        bash ./scripts/bench-gate.sh
+
+  # ============================================================================
   # INTEGRATION TESTS
   # ============================================================================
   integration:

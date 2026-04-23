@@ -185,8 +185,13 @@ Evidence anchors:
 
 Current state:
 
-- Benchmarks exist, but the repo does not yet treat performance
-  regression as a release gate.
+- Benchmarks exist, and the repo now has a narrow regression gate for
+  the v1-critical request and auth paths.
+- The v1 gate now uses two stable root benchmarks:
+  `BenchmarkServer_HandleRequest/PayloadSize_1024` and
+  `BenchmarkTokenValidation`.
+- The bootstrap baseline lives at `testdata/benchmarks/b9-baseline.txt`.
+- CI runs `scripts/bench-gate.sh` on `ubuntu-latest` with Go 1.24.2.
 
 Acceptance criteria:
 
@@ -194,6 +199,27 @@ Acceptance criteria:
 2. Baselines and tolerances are recorded in-tree.
 3. CI or a release script fails when those baselines regress beyond
    tolerance.
+
+Recorded subset and tolerance:
+
+1. `BenchmarkServer_HandleRequest/PayloadSize_1024`
+   Baseline medians: `232719.5 ns/op`, `27077 B/op`, `6162 allocs/op`
+   Tolerance: `ns/op <= 5.0x baseline`, `B/op <= 1.10x baseline`,
+   `allocs/op <= 1.10x baseline`
+2. `BenchmarkTokenValidation`
+   Baseline medians: `44.22 ns/op`, `0 B/op`, `0 allocs/op`
+   Tolerance: `ns/op <= 5.0x baseline`, `B/op == 0`,
+   `allocs/op == 0`
+
+Recorded gate command:
+
+```bash
+bash ./scripts/bench-gate.sh
+```
+
+The committed baseline is a bootstrap capture from `darwin/arm64`.
+The tolerances are intentionally conservative so CI can gate on large
+regressions before a dedicated Linux refresh is recorded.
 
 Evidence anchors:
 

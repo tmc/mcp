@@ -533,7 +533,7 @@ func BenchmarkAuthBottleneckAnalysis(b *testing.B) {
 			name: "RandomGeneration",
 			fn: func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
-					_ = generateRandomString(64)
+					_, _ = generateRandomString(64)
 				}
 			},
 		},

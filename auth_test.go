@@ -2,6 +2,8 @@ package mcp
 
 import (
 	"context"
+	"crypto/rand"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -195,6 +197,24 @@ func TestMemoryOAuthProvider_ValidateClient(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGenerateRandomString_ReadError(t *testing.T) {
+	oldReader := rand.Reader
+	rand.Reader = failingReader{}
+	defer func() {
+		rand.Reader = oldReader
+	}()
+
+	if _, err := generateRandomString(64); err == nil {
+		t.Fatal("expected random generation error")
+	}
+}
+
+type failingReader struct{}
+
+func (failingReader) Read(p []byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
 }
 
 func TestMemoryOAuthProvider_AuthorizationFlow(t *testing.T) {

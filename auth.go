@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -168,11 +170,19 @@ func NewMemoryOAuthProvider() *MemoryOAuthProvider {
 // RegisterClient implements OAuthProvider
 func (p *MemoryOAuthProvider) RegisterClient(ctx context.Context, req *OAuthClientInfo) (*OAuthClientInfo, error) {
 	if req.ClientID == "" {
-		req.ClientID = generateRandomString(32)
+		clientID, err := generateRandomString(32)
+		if err != nil {
+			return nil, fmt.Errorf("generate client ID: %w", err)
+		}
+		req.ClientID = clientID
 	}
 
 	if req.ClientSecret == "" {
-		req.ClientSecret = generateRandomString(64)
+		clientSecret, err := generateRandomString(64)
+		if err != nil {
+			return nil, fmt.Errorf("generate client secret: %w", err)
+		}
+		req.ClientSecret = clientSecret
 	}
 
 	p.mu.Lock()
@@ -202,7 +212,7 @@ func (p *MemoryOAuthProvider) ValidateClient(ctx context.Context, clientID, clie
 		return err
 	}
 
-	if client.ClientSecret != clientSecret {
+	if subtle.ConstantTimeCompare([]byte(client.ClientSecret), []byte(clientSecret)) != 1 {
 		return &OAuthError{
 			Code:        ErrorInvalidClient,
 			Description: "Invalid client credentials",
@@ -248,9 +258,14 @@ func (p *MemoryOAuthProvider) CreateAuthorizationCode(ctx context.Context, req *
 		return nil, err
 	}
 
+	codeString, err := generateRandomString(32)
+	if err != nil {
+		return nil, fmt.Errorf("generate authorization code: %w", err)
+	}
+
 	// Create authorization code
 	code := &AuthorizationCode{
-		Code:                generateRandomString(32),
+		Code:                codeString,
 		ClientID:            req.ClientID,
 		RedirectURI:         req.RedirectURI,
 		Scopes:              scopes,
@@ -298,8 +313,15 @@ func (p *MemoryOAuthProvider) RevokeAuthorizationCode(ctx context.Context, code 
 
 // CreateAccessToken implements OAuthProvider
 func (p *MemoryOAuthProvider) CreateAccessToken(ctx context.Context, authCode *AuthorizationCode) (*AccessToken, error) {
-	accessToken := generateRandomString(64)
-	refreshToken := generateRandomString(64)
+	accessToken, err := generateRandomString(64)
+	if err != nil {
+		return nil, fmt.Errorf("generate access token: %w", err)
+	}
+
+	refreshToken, err := generateRandomString(64)
+	if err != nil {
+		return nil, fmt.Errorf("generate refresh token: %w", err)
+	}
 
 	expiresAt := time.Now().Add(time.Duration(DefaultAccessTokenExpirationSeconds) * time.Second)
 	refreshExpiresAt := time.Now().Add(time.Duration(DefaultRefreshTokenExpirationSeconds) * time.Second)
@@ -353,7 +375,10 @@ func (p *MemoryOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 	}
 
 	// Create new access token
-	accessToken := generateRandomString(64)
+	accessToken, err := generateRandomString(64)
+	if err != nil {
+		return nil, fmt.Errorf("generate access token: %w", err)
+	}
 	expiresAt := time.Now().Add(time.Duration(DefaultAccessTokenExpirationSeconds) * time.Second)
 
 	token := &AccessToken{
@@ -475,13 +500,12 @@ func ValidatePKCEChallenge(verifier, challenge string) bool {
 
 // Utility functions
 
-func generateRandomString(length int) string {
+func generateRandomString(length int) (string, error) {
 	bytes := make([]byte, length/2)
-	if _, err := rand.Read(bytes); err != nil {
-		// Fallback to timestamp-based generation
-		return fmt.Sprintf("%x", time.Now().UnixNano())
+	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
+		return "", fmt.Errorf("read random bytes: %w", err)
 	}
-	return hex.EncodeToString(bytes)
+	return hex.EncodeToString(bytes), nil
 }
 
 // ParseAuthorizationHeader parses an Authorization header for Bearer tokens

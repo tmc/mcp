@@ -15,7 +15,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/tmc/mcp/jsonrpc2"
+	"github.com/tmc/mcp/internal/jsonrpc2"
 )
 
 var (

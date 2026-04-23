@@ -230,22 +230,25 @@ Evidence anchors:
 
 Current state:
 
-- `jsonrpc2/` is still public in the repo layout.
-- The release pathway still needs a final decision on whether this
-  package is part of the stable v1 contract or an implementation
-  detail that should move under `internal/`.
+- `jsonrpc2/` moved to `internal/jsonrpc2/` after auditing direct
+  consumers.
+- The only in-repo direct imports were `cmd/mcp-probe/main.go` and
+  `cmd/mcp-probe/debug_test.go`, both of which now import the
+  internal path.
+- No root-package public API depends on `github.com/tmc/mcp/jsonrpc2`.
 
 Acceptance criteria:
 
 1. Consumer usage is audited.
 2. If there are no external consumers, `jsonrpc2/` moves under
    `internal/`.
-3. If it stays public, package documentation states its stability
-   contract and intended use.
+3. The remaining direct consumers build and test against the internal
+   path.
 
 Evidence anchors:
 
-- `jsonrpc2/`
+- `internal/jsonrpc2/`
+- `cmd/mcp-probe/`
 - `docs/design/release-readiness-synthesis.md`
 
 ## Stale items that should stay closed

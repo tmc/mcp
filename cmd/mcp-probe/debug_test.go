@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tmc/mcp/jsonrpc2"
+	"github.com/tmc/mcp/internal/jsonrpc2"
 )
 
 func TestJSONRPC2MessageTypes(t *testing.T) {

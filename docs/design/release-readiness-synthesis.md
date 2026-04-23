@@ -169,10 +169,8 @@ Why: "hardcoded wire-in" is where API contracts die.
   typed.go                                                 Generic helpers
   modelcontextprotocol/                                    Stable protocol types
     (no draft/)                                            Draft types excluded from v1
-  jsonrpc2/                                                Public JSON-RPC plumbing
-                                                           (evaluate: move to internal/?)
   internal/                                                Private helpers
-    jsonrpc2shim/ jsonrpc2util/ mcpcli/ mcpspy/ ...
+    jsonrpc2/ jsonrpc2shim/ jsonrpc2util/ mcpcli/ mcpspy/ ...
   cmd/
     mcp/                                                   The umbrella CLI (v1 in-scope)
     (optionally) mcp-probe/                                Diagnostic tool if kept
@@ -366,8 +364,8 @@ one unreviewable diff.
 Three tiers:
 
 - **Core tier**: root `mcp` package, `modelcontextprotocol/`,
-  `jsonrpc2/` (pending R5 internal decision), `internal/*` (private
-  but in-scope for issue reports), `cmd/mcp`. Changes require
+  `internal/*` (private but in-scope for issue reports), `cmd/mcp`.
+  Changes require
   design-doc justification for any API surface change. New transport
   implementations are in scope via the `Transport` /
   `StreamableTransport` interfaces.
@@ -447,11 +445,10 @@ with a minimal working example and a scripttest conformance fixture.
    is still close enough to core protocol interaction to justify
    staying out of `exp/cmd/`.
 
-2. **Q4 — `jsonrpc2/` public or internal?** Pike said: "make it an
-   internal package if it isn't part of the public API contract."
-   Verify whether any consumer is relying on `github.com/tmc/mcp/jsonrpc2`
-   directly; if no, move to `internal/jsonrpc2`. If yes, document
-   the contract.
+2. **Q4 — resolved.** `jsonrpc2/` moved to `internal/jsonrpc2` after
+   auditing direct consumers. The only in-repo imports were
+   `cmd/mcp-probe/main.go` and `cmd/mcp-probe/debug_test.go`, and no
+   root-package public API depended on the old path.
 
 3. **Conformance harness against upstream spec.** mcpscripttest is
    powerful but it's a tmc/mcp dialect. A v1 library needs a

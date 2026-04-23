@@ -33,8 +33,8 @@ mcp/                          # Root package - client/server implementations
 ├── modelcontextprotocol/     # Protocol types and definitions
 │   └── draft/               # Future protocol extensions
 ├── protocol/                # Basic protocol utilities
-├── jsonrpc2/               # JSON-RPC 2.0 implementation
 ├── internal/               # Internal utilities
+│   ├── jsonrpc2/          # JSON-RPC 2.0 implementation
 │   ├── jsonrpc2util/      # JSON-RPC helpers
 │   ├── jsonrpc2shim/      # Compatibility shims
 │   └── jsonrpc2gostruct/  # Code generation utilities

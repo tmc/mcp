@@ -50,7 +50,7 @@ import (
 // RegisterTypedTool registers a type-safe tool handler with automatic JSON marshaling/unmarshaling.
 // Input is the Go type for the tool's input, and Output is the Go type for the tool's output.
 //
-// Deprecated: Use server.RegisterTypedTool() method instead for better encapsulation.
+// Deprecated: Use RegisterTypedToolWithServer instead.
 // This function is maintained for backward compatibility.
 func RegisterTypedTool[Input any, Output any](
 	server *Server,

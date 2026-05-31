@@ -24,7 +24,7 @@ and external tools, resources, and prompts. This implementation provides:
 Here's a basic example of using the client:
 
 	// Create a transport
-	transport := mcp.NewStdioTransport(os.Stdin, os.Stdout)
+	transport := mcp.StdioTransport()
 
 	// Create a client
 	client, err := mcp.NewClient(transport)
@@ -65,8 +65,7 @@ Here's a basic example of implementing a server:
 
 	// Create a server
 	server := mcp.NewServer("example-server", "1.0.0",
-		mcp.WithToolCapabilities(true),
-		mcp.WithInstructions("An example MCP server"),
+		mcp.WithServerInstructions("An example MCP server"),
 	)
 
 	// Register a type-safe tool
@@ -79,7 +78,7 @@ Here's a basic example of implementing a server:
 		Result int `json:"result"`
 	}
 
-	err := mcp.RegisterTypedTool(server, "add", "Add two numbers",
+	err := mcp.RegisterTypedToolWithServer(server, "add", "Add two numbers",
 		func(ctx context.Context, input CalculatorInput) (CalculatorOutput, error) {
 			return CalculatorOutput{Result: input.A + input.B}, nil
 		})
@@ -143,13 +142,20 @@ the cancellation reason is automatically propagated:
 Resources represent data that can be read from the server:
 
 	// Register a resource on the server
-	server.RegisterResourceHandler("/data/config.json",
-		func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
-			// Return the resource content
-			return []mcp.ResourceContents{
-				// Resource implementation
-			}, nil
-		})
+	server.RegisterResource(mcp.Resource{
+		URI:         "/data/config.json",
+		Description: "Configuration",
+		MimeType:    "application/json",
+	}, func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+		// Return the resource content
+		return []mcp.ResourceContents{
+			mcp.TextResourceContents{
+				URI:      req.URI,
+				MimeType: "application/json",
+				Text:     `{"debug":true}`,
+			},
+		}, nil
+	})
 
 	// Read a resource from the client
 	result, err := client.ReadResource(ctx, mcp.ReadResourceRequest{

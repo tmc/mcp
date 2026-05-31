@@ -1,6 +1,7 @@
 package typescriptinterop
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -16,27 +17,107 @@ func TestTypeScriptSDKStdioSmoke(t *testing.T) {
 	node := findNode(t)
 	npm := findNPM(t, node)
 
-	tmp := t.TempDir()
-	serverPath := filepath.Join(tmp, "b8-stdio-smoke-server")
+	serverPath := buildTestServer(t, moduleDir)
+	clientDir, env := prepareTSClient(t, moduleDir, node, npm, "smoke.mjs")
+
+	out := run(t, clientDir, env, node, "smoke.mjs", serverPath)
+	t.Log(strings.TrimSpace(string(out)))
+}
+
+func TestTypeScriptSDKStreamableHTTPSmoke(t *testing.T) {
+	moduleDir := currentDir(t)
+	node := findNode(t)
+	npm := findNPM(t, node)
+
+	serverPath := buildTestServer(t, moduleDir)
+	endpoint := startStreamableHTTPServer(t, serverPath)
+	clientDir, env := prepareTSClient(t, moduleDir, node, npm, "streamable_http_smoke.mjs")
+
+	out := run(t, clientDir, env, node, "streamable_http_smoke.mjs", endpoint)
+	t.Log(strings.TrimSpace(string(out)))
+}
+
+func buildTestServer(t *testing.T, moduleDir string) string {
+	t.Helper()
+	serverPath := filepath.Join(t.TempDir(), "b8-smoke-server")
 	if runtime.GOOS == "windows" {
 		serverPath += ".exe"
 	}
-
 	run(t, moduleDir, nil, "go", "build", "-o", serverPath, "./testserver")
+	return serverPath
+}
 
-	clientDir := filepath.Join(tmp, "ts-client")
+func prepareTSClient(t *testing.T, moduleDir, node, npm, fixture string) (string, []string) {
+	t.Helper()
+	clientDir := filepath.Join(t.TempDir(), "ts-client")
 	if err := os.Mkdir(clientDir, 0o755); err != nil {
 		t.Fatalf("mkdir ts client dir: %v", err)
 	}
 	copyFile(t, filepath.Join(moduleDir, "testdata", "ts-client", "package.json"), filepath.Join(clientDir, "package.json"))
 	copyFile(t, filepath.Join(moduleDir, "testdata", "ts-client", "package-lock.json"), filepath.Join(clientDir, "package-lock.json"))
-	copyFile(t, filepath.Join(moduleDir, "testdata", "ts-client", "smoke.mjs"), filepath.Join(clientDir, "smoke.mjs"))
+	copyFile(t, filepath.Join(moduleDir, "testdata", "ts-client", fixture), filepath.Join(clientDir, fixture))
 
 	env := pathEnvFor(node)
 	run(t, clientDir, env, npm, "ci", "--ignore-scripts", "--no-audit", "--fund=false")
+	return clientDir, env
+}
 
-	out := run(t, clientDir, env, node, "smoke.mjs", serverPath)
-	t.Log(strings.TrimSpace(string(out)))
+func startStreamableHTTPServer(t *testing.T, serverPath string) string {
+	t.Helper()
+	urlFile := filepath.Join(t.TempDir(), "endpoint")
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cmd := exec.CommandContext(ctx, serverPath, "-http", "127.0.0.1:0", "-url-file", urlFile)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Start(); err != nil {
+		cancel()
+		t.Fatalf("start streamable HTTP server: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		select {
+		case err := <-done:
+			cancel()
+			t.Fatalf("streamable HTTP server exited early: %v\n%s", err, out.String())
+		default:
+		}
+		data, err := os.ReadFile(urlFile)
+		if err == nil {
+			endpoint := strings.TrimSpace(string(data))
+			if endpoint != "" {
+				t.Cleanup(func() {
+					select {
+					case err := <-done:
+						if err != nil {
+							t.Errorf("streamable HTTP server exited: %v\n%s", err, out.String())
+						}
+					default:
+						cancel()
+						<-done
+					}
+				})
+				return endpoint
+			}
+		} else if !os.IsNotExist(err) {
+			cancel()
+			<-done
+			t.Fatalf("read streamable HTTP endpoint: %v", err)
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	cancel()
+	<-done
+	t.Fatalf("streamable HTTP server did not write endpoint\n%s", out.String())
+	return ""
 }
 
 func currentDir(t *testing.T) string {

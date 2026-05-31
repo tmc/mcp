@@ -20,7 +20,7 @@
 //
 // Import the specific subpackage you need:
 //
-//	import "github.com/tmc/mcprepos/mcp/testing/mcptestutil"
+//	import "github.com/tmc/mcp/testing/mcptestutil"
 //
 //	func TestMyFeature(t *testing.T) {
 //	    server := mcptestutil.NewMockServer()

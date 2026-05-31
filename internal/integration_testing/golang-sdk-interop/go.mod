@@ -1,4 +1,4 @@
-module github.com/tmc/mcprepos/mcp/internal/integration_testing/golang-sdk-interop
+module github.com/tmc/mcp/internal/integration_testing/golang-sdk-interop
 
 go 1.25.0
 

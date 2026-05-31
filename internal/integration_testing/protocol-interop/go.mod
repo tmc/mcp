@@ -1,4 +1,4 @@
-module github.com/tmc/mcprepos/mcp/internal/integration_testing/protocol-interop
+module github.com/tmc/mcp/internal/integration_testing/protocol-interop
 
 go 1.25.0
 

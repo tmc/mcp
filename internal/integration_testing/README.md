@@ -13,21 +13,25 @@ Tests interoperability between this MCP implementation and the official Go MCP S
 ### protocol-interop
 Tests protocol-level compatibility and conformance across different MCP implementations.
 
+### typescript-sdk-interop
+Tests interoperability between this MCP implementation and the official
+TypeScript MCP SDK over stdio.
+
 ## Running Tests
 
 Each module contains its own test suite. To run all integration tests:
 
 ```bash
-cd internal/integration_testing
-go test ./...
+cd internal/integration_testing && make test
 ```
 
 To run tests for a specific module:
 
 ```bash
-go test ./marklabs-interop
-go test ./golang-sdk-interop
-go test ./protocol-interop
+(cd marklabs-interop && GOWORK=off go test ./...)
+(cd golang-sdk-interop && GOWORK=off go test ./...)
+(cd protocol-interop && GOWORK=off go test ./...)
+(cd typescript-sdk-interop && GOWORK=off go test ./...)
 ```
 
 ## Test Coverage

@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"golang.org/x/exp/jsonrpc2"
+	jsonrpc2 "github.com/modelcontextprotocol/go-sdk/jsonrpc"
 )
 
 func printSampleRequests() {
 	// Initialize request
 	initReq := &jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(1),
+		ID:     rpcID(1),
 		Method: "initialize",
 		Params: json.RawMessage(`{
 			"protocolVersion": "2025-03-26",
@@ -30,7 +30,7 @@ func printSampleRequests() {
 
 	// Sample tool call
 	toolReq := &jsonrpc2.Request{
-		ID:     jsonrpc2.Int64ID(2),
+		ID:     rpcID(2),
 		Method: "tools/call",
 		Params: json.RawMessage(`{
 			"name": "example-tool",
@@ -42,4 +42,9 @@ func printSampleRequests() {
 
 	toolData, _ := json.Marshal(toolReq)
 	fmt.Println(string(toolData))
+}
+
+func rpcID(n int64) jsonrpc2.ID {
+	id, _ := jsonrpc2.MakeID(float64(n))
+	return id
 }

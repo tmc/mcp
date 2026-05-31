@@ -356,13 +356,14 @@ type StreamableServerTransport struct {
 	logger       *slog.Logger
 	cancel       context.CancelFunc
 
-	mu               sync.RWMutex
-	isDone           bool
-	done             chan struct{}
-	outgoingMessages map[streamID][]*streamableMsg
-	signals          map[streamID]chan struct{}
-	requestStreams   map[interface{}]streamID
-	streamRequests   map[streamID]map[interface{}]struct{}
+	mu                sync.RWMutex
+	isDone            bool
+	done              chan struct{}
+	outgoingMessages  map[streamID][]*streamableMsg
+	signals           map[streamID]chan struct{}
+	requestStreams    map[interface{}]streamID
+	streamRequests    map[streamID]map[interface{}]struct{}
+	lastRequestStream streamID
 }
 
 // newStreamableServerTransport creates a new streamable server transport
@@ -458,6 +459,7 @@ func (t *StreamableServerTransport) receive(ctx context.Context, msg JSONRPCMess
 			t.streamRequests[sid] = make(map[interface{}]struct{})
 		}
 		t.streamRequests[sid][msg.ID] = struct{}{}
+		t.lastRequestStream = sid
 		t.mu.Unlock()
 	}
 
@@ -473,6 +475,13 @@ func (t *StreamableServerTransport) receive(ctx context.Context, msg JSONRPCMess
 
 // getStreamID determines the appropriate stream ID for a message
 func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
+	if msg.Method != "" && msg.ID == nil {
+		if t.lastRequestStream != 0 {
+			return t.lastRequestStream
+		}
+		return streamID(0)
+	}
+
 	// For requests, create or reuse stream
 	if msg.Method != "" {
 		if sid, exists := t.requestStreams[msg.ID]; exists {

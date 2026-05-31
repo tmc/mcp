@@ -968,13 +968,56 @@ func (s *Server) ResourceUpdated(ctx context.Context, params ResourceUpdatedNoti
 
 	s.mu.RLock()
 	subscribed := s.subscriptions[params.URI]
-	conn := s.conn
 	s.mu.RUnlock()
-	if !subscribed || conn == nil {
+	if !subscribed {
 		return nil
 	}
 
-	return conn.Notify(ctx, string(MethodResourceUpdated), params)
+	return s.notify(ctx, MethodResourceUpdated, params)
+}
+
+// NotifyProgress sends a progress notification to the connected client.
+func (s *Server) NotifyProgress(ctx context.Context, token any, progress float64, total *float64) error {
+	return s.notify(ctx, MethodProgress, ProgressNotification{
+		ProgressToken: token,
+		Progress:      progress,
+		Total:         total,
+	})
+}
+
+// NotifyLoggingMessage sends a protocol logging notification to the connected client.
+func (s *Server) NotifyLoggingMessage(ctx context.Context, level LoggingLevel, logger string, data any) error {
+	levelValue, ok := slogLevelForLoggingLevel(level)
+	if !ok {
+		return NewParameterError(string(MethodLogging), "level", "unsupported logging level", nil)
+	}
+
+	s.mu.RLock()
+	minLevel := s.logLevel
+	s.mu.RUnlock()
+	if minLevel == nil || levelValue < *minLevel {
+		return nil
+	}
+
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("marshal logging data: %w", err)
+	}
+	return s.notify(ctx, MethodLogging, LoggingMessageNotification{
+		Level:  level,
+		Logger: logger,
+		Data:   dataJSON,
+	})
+}
+
+func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error {
+	s.mu.RLock()
+	conn := s.conn
+	s.mu.RUnlock()
+	if conn == nil {
+		return nil
+	}
+	return conn.Notify(ctx, string(method), params)
 }
 
 // Serve starts serving MCP requests using the provided transport.

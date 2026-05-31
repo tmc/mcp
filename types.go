@@ -315,6 +315,15 @@ type Tool struct {
 type CallToolRequest struct {
 	Name      string          `json:"name"`
 	Arguments json.RawMessage `json:"arguments,omitempty"`
+	Meta      map[string]any  `json:"_meta,omitempty"`
+}
+
+// GetProgressToken returns the progress token attached to the request, if any.
+func (r CallToolRequest) GetProgressToken() any {
+	if r.Meta == nil {
+		return nil
+	}
+	return r.Meta["progressToken"]
 }
 
 // CallToolResult is the server's response to a tools/call request.

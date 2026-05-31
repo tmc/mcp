@@ -207,6 +207,42 @@ func registerConformanceTools(server *mcp.Server) {
 	})
 
 	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_tool_with_logging",
+		Description: "Tests tool that emits log messages during execution.",
+		InputSchema: noArgumentsSchema,
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		for _, msg := range []string{
+			"Tool execution started",
+			"Tool processing data",
+			"Tool execution completed",
+		} {
+			if err := server.NotifyLoggingMessage(ctx, mcp.LogLevelInfo, "conformance", msg); err != nil {
+				return nil, err
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		return textToolResult("Tool with logging executed successfully"), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_tool_with_progress",
+		Description: "Tests tool that reports progress notifications.",
+		InputSchema: noArgumentsSchema,
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		total := 100.0
+		token := req.GetProgressToken()
+		for _, progress := range []float64{0, 50, 100} {
+			if token != nil {
+				if err := server.NotifyProgress(ctx, token, progress, &total); err != nil {
+					return nil, err
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		return textToolResult(fmt.Sprint(token)), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
 		Name:        "test_error_handling",
 		Description: "Tests error response handling.",
 		InputSchema: noArgumentsSchema,

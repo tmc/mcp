@@ -116,6 +116,75 @@ func TestStreamableHTTPRejectsNonLocalhostHostHeader(t *testing.T) {
 	}
 }
 
+func TestStreamableHTTPInlineProgressNotification(t *testing.T) {
+	server := NewServer("streamable-test", "0.0.0")
+	if err := server.RegisterTool(Tool{Name: "progress"}, func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		total := 100.0
+		if err := server.NotifyProgress(ctx, req.GetProgressToken(), 50, &total); err != nil {
+			return nil, err
+		}
+		return &CallToolResult{Content: []any{TextContent{Type: "text", Text: "ok"}}}, nil
+	}); err != nil {
+		t.Fatalf("RegisterTool: %v", err)
+	}
+
+	httpServer := httptest.NewServer(NewStreamableHTTPHandler(func(*http.Request) *Server {
+		return server
+	}, nil))
+	defer httpServer.Close()
+
+	sessionID, _ := postStreamable(t, httpServer.URL+"/mcp", "", `{
+		"jsonrpc":"2.0",
+		"id":"init",
+		"method":"initialize",
+		"params":{
+			"protocolVersion":"2025-11-25",
+			"capabilities":{},
+			"clientInfo":{"name":"streamable-test-client","version":"0.0.0"}
+		}
+	}`)
+	if sessionID == "" {
+		t.Fatal("initial POST did not return Mcp-Session-Id")
+	}
+
+	_, got := postStreamable(t, httpServer.URL+"/mcp", sessionID, `{
+		"jsonrpc":"2.0",
+		"id":"call",
+		"method":"tools/call",
+		"params":{
+			"name":"progress",
+			"arguments":{},
+			"_meta":{"progressToken":"progress-test-1"}
+		}
+	}`)
+
+	var sawProgress, sawResponse bool
+	for _, msg := range got {
+		if msg.Method == string(MethodProgress) {
+			sawProgress = true
+			params, ok := msg.Params.(map[string]any)
+			if !ok {
+				t.Fatalf("progress params have type %T, want object", msg.Params)
+			}
+			if params["progressToken"] != "progress-test-1" {
+				t.Fatalf("progressToken = %v, want progress-test-1", params["progressToken"])
+			}
+			if params["progress"] != float64(50) {
+				t.Fatalf("progress = %v, want 50", params["progress"])
+			}
+		}
+		if msg.ID == "call" && msg.Method == "" {
+			sawResponse = true
+		}
+	}
+	if !sawProgress {
+		t.Fatalf("tools/call returned %#v, want progress notification", got)
+	}
+	if !sawResponse {
+		t.Fatalf("tools/call returned %#v, want call response", got)
+	}
+}
+
 func postStreamable(t *testing.T, url, sessionID, body string) (string, []JSONRPCMessage) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(body))

@@ -556,6 +556,20 @@ func TestServerResourceSubscriptionHandlers(t *testing.T) {
 	}
 }
 
+func TestServerNotificationHelpersWithoutConnection(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+	total := 100.0
+	if err := server.NotifyProgress(context.Background(), "progress-test-1", 50, &total); err != nil {
+		t.Fatalf("NotifyProgress failed without connection: %v", err)
+	}
+	if err := server.NotifyLoggingMessage(context.Background(), LogLevelInfo, "test", "message"); err != nil {
+		t.Fatalf("NotifyLoggingMessage failed without connection: %v", err)
+	}
+	if err := server.NotifyLoggingMessage(context.Background(), LoggingLevel("bad"), "test", "message"); err == nil {
+		t.Fatal("NotifyLoggingMessage accepted unsupported level")
+	}
+}
+
 func TestServerResourceSubscriptionHandlersRejectBadParams(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 

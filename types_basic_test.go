@@ -7,6 +7,20 @@ import (
 	"testing"
 )
 
+func TestCallToolRequestProgressToken(t *testing.T) {
+	var req CallToolRequest
+	if err := json.Unmarshal([]byte(`{
+		"name": "test_tool_with_progress",
+		"arguments": {},
+		"_meta": {"progressToken": "progress-test-1"}
+	}`), &req); err != nil {
+		t.Fatalf("Unmarshal CallToolRequest: %v", err)
+	}
+	if got := req.GetProgressToken(); got != "progress-test-1" {
+		t.Fatalf("progress token = %v, want progress-test-1", got)
+	}
+}
+
 // TestResourceContentsMethods tests the content() methods
 func TestResourceContentsMethods(t *testing.T) {
 	// The content() method is private, so we can't test it directly

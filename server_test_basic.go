@@ -100,7 +100,7 @@ func TestServerPromptRegistrationBasic(t *testing.T) {
 	handler := func(ctx context.Context, req GetPromptRequest) (*GetPromptResult, error) {
 		return &GetPromptResult{
 			Messages: []PromptMessage{
-				{Role: RoleUser, Content: []any{TextContent{Type: "text", Text: "test message"}}},
+				{Role: RoleUser, Content: TextContent{Type: "text", Text: "test message"}},
 			},
 		}, nil
 	}

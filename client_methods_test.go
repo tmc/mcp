@@ -63,7 +63,7 @@ func TestClientAllMethods(t *testing.T) {
 
 	mockServer.responses["prompts/get"] = GetPromptResult{
 		Messages: []PromptMessage{
-			{Role: "user", Content: []any{TextContent{Type: "text", Text: "Test prompt"}}},
+			{Role: "user", Content: TextContent{Type: "text", Text: "Test prompt"}},
 		},
 	}
 

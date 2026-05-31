@@ -79,10 +79,10 @@ func TestFullClientServerIntegration(t *testing.T) {
 			Messages: []PromptMessage{
 				{
 					Role: RoleUser,
-					Content: []any{map[string]string{
+					Content: map[string]string{
 						"type": "text",
 						"text": fmt.Sprintf("Hello, %s!", name),
-					}},
+					},
 				},
 			},
 		}, nil

@@ -219,6 +219,7 @@ func registerConformanceTools(server *mcp.Server) {
 func registerConformanceResources(server *mcp.Server) {
 	mustRegisterResource(server, mcp.Resource{
 		URI:         "test://static-text",
+		Name:        "static-text",
 		Description: "A static text resource for testing.",
 		MimeType:    "text/plain",
 	}, func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
@@ -233,6 +234,7 @@ func registerConformanceResources(server *mcp.Server) {
 
 	mustRegisterResource(server, mcp.Resource{
 		URI:         "test://static-binary",
+		Name:        "static-binary",
 		Description: "A static binary resource for testing.",
 		MimeType:    "image/png",
 	}, func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
@@ -254,6 +256,7 @@ func registerConformanceResources(server *mcp.Server) {
 	// directly so the fixture can still exercise the handler without root API edits.
 	mustRegisterResource(server, mcp.Resource{
 		URI:         "test://template/123/data",
+		Name:        "template-123-data",
 		Description: "A concrete resource served by the template fixture.",
 		MimeType:    "application/json",
 	}, templateResourceHandler)
@@ -268,7 +271,7 @@ func registerConformancePrompts(server *mcp.Server) {
 			Messages: []mcp.PromptMessage{
 				{
 					Role:    mcp.RoleUser,
-					Content: []any{mcp.TextContent{Type: "text", Text: "This is a simple prompt for testing."}},
+					Content: mcp.TextContent{Type: "text", Text: "This is a simple prompt for testing."},
 				},
 			},
 		}, nil
@@ -288,11 +291,9 @@ func registerConformancePrompts(server *mcp.Server) {
 			Messages: []mcp.PromptMessage{
 				{
 					Role: mcp.RoleUser,
-					Content: []any{
-						mcp.TextContent{
-							Type: "text",
-							Text: fmt.Sprintf("Prompt with arguments: arg1='%s', arg2='%s'", arg1, arg2),
-						},
+					Content: mcp.TextContent{
+						Type: "text",
+						Text: fmt.Sprintf("Prompt with arguments: arg1='%s', arg2='%s'", arg1, arg2),
 					},
 				},
 			},
@@ -314,11 +315,11 @@ func registerConformancePrompts(server *mcp.Server) {
 			Messages: []mcp.PromptMessage{
 				{
 					Role:    mcp.RoleUser,
-					Content: []any{embeddedTextResource(uri, "text/plain", "Embedded resource content for testing.")},
+					Content: embeddedTextResource(uri, "text/plain", "Embedded resource content for testing."),
 				},
 				{
 					Role:    mcp.RoleUser,
-					Content: []any{mcp.TextContent{Type: "text", Text: "Please process the embedded resource above."}},
+					Content: mcp.TextContent{Type: "text", Text: "Please process the embedded resource above."},
 				},
 			},
 		}, nil
@@ -336,11 +337,11 @@ func registerConformancePrompts(server *mcp.Server) {
 			Messages: []mcp.PromptMessage{
 				{
 					Role:    mcp.RoleUser,
-					Content: []any{mcp.ImageContent{Type: "image", Data: data, MimeType: "image/png"}},
+					Content: mcp.ImageContent{Type: "image", Data: data, MimeType: "image/png"},
 				},
 				{
 					Role:    mcp.RoleUser,
-					Content: []any{mcp.TextContent{Type: "text", Text: "Please analyze the image above."}},
+					Content: mcp.TextContent{Type: "text", Text: "Please analyze the image above."},
 				},
 			},
 		}, nil

@@ -770,6 +770,9 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 	defer s.mu.Unlock()
 
 	s.logger.Debug("Registering resource", "uri", resource.URI)
+	if resource.Name == "" {
+		resource.Name = resource.URI
+	}
 
 	if _, exists := s.resources[resource.URI]; exists {
 		s.logger.Warn("Resource already registered", "uri", resource.URI)

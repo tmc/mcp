@@ -285,11 +285,9 @@ func TestServerPromptManagement(t *testing.T) {
 			Messages: []PromptMessage{
 				{
 					Role: RoleUser,
-					Content: []any{
-						TextContent{
-							Type: "text",
-							Text: "Write about: " + topic,
-						},
+					Content: TextContent{
+						Type: "text",
+						Text: "Write about: " + topic,
 					},
 				},
 			},

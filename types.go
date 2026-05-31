@@ -430,8 +430,8 @@ type GetPromptResult struct {
 
 // PromptMessage describes a message returned as part of a prompt.
 type PromptMessage struct {
-	Role    Role  `json:"role"`
-	Content []any `json:"content"`
+	Role    Role `json:"role"`
+	Content any  `json:"content"`
 }
 
 // ListResourcesRequest is the client's request to list available resources.
@@ -450,6 +450,7 @@ type ListResourcesResult struct {
 // can access through the server. Each resource has a unique URI identifier.
 type Resource struct {
 	URI         string `json:"uri"`
+	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 	MimeType    string `json:"mimeType,omitempty"`
 }

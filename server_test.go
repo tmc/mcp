@@ -279,11 +279,9 @@ func TestServerRegisterPrompt(t *testing.T) {
 			Messages: []PromptMessage{
 				{
 					Role: RoleUser,
-					Content: []any{
-						map[string]interface{}{
-							"type": "text",
-							"text": fmt.Sprintf("Prompt with args: %v", req.Arguments),
-						},
+					Content: map[string]interface{}{
+						"type": "text",
+						"text": fmt.Sprintf("Prompt with args: %v", req.Arguments),
 					},
 				},
 			},

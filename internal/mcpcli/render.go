@@ -44,24 +44,32 @@ func RenderPromptResult(result *mcp.GetPromptResult, mode OutputMode) ([]byte, e
 			b.WriteString("\n\n")
 		}
 		fmt.Fprintf(&b, "[%s]\n", msg.Role)
-		for _, item := range msg.Content {
-			switch v := item.(type) {
-			case map[string]any:
-				if v["type"] == "text" {
-					if text, ok := v["text"].(string); ok {
-						b.WriteString(text)
-						continue
-					}
-				}
-				raw, _ := json.MarshalIndent(v, "", "  ")
-				b.Write(raw)
-			default:
-				raw, _ := json.MarshalIndent(v, "", "  ")
-				b.Write(raw)
-			}
-		}
+		writePromptContent(&b, msg.Content)
 	}
 	return []byte(b.String()), nil
+}
+
+func writePromptContent(b *strings.Builder, item any) {
+	switch v := item.(type) {
+	case []any:
+		for _, item := range v {
+			writePromptContent(b, item)
+		}
+	case mcp.TextContent:
+		b.WriteString(v.Text)
+	case map[string]any:
+		if v["type"] == "text" {
+			if text, ok := v["text"].(string); ok {
+				b.WriteString(text)
+				return
+			}
+		}
+		raw, _ := json.MarshalIndent(v, "", "  ")
+		b.Write(raw)
+	default:
+		raw, _ := json.MarshalIndent(v, "", "  ")
+		b.Write(raw)
+	}
 }
 
 // RenderResourceResult renders a resource read result.

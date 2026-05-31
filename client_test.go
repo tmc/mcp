@@ -128,7 +128,7 @@ func TestClientWithRawFramer(t *testing.T) {
 	defer clientConn.Close()
 	defer serverConn.Close()
 
-	client, err := NewClient(&ReadWriteCloserTransport{clientConn}, WithFramer(RawFramer()))
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn}, WithRawFraming())
 	if err != nil {
 		t.Fatalf("NewClient failed: %v", err)
 	}

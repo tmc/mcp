@@ -114,8 +114,13 @@ func WithValidationConfig(config *ValidationConfig) ServerOption {
 	}
 }
 
-// WithServerFramer sets the JSON-RPC framing used by server connections.
-func WithServerFramer(framer jsonrpc2.Framer) ServerOption {
+// WithServerRawFraming uses the undelimited JSON-RPC framing used by older
+// versions of this package.
+func WithServerRawFraming() ServerOption {
+	return withServerFramer(jsonrpc2.RawFramer())
+}
+
+func withServerFramer(framer jsonrpc2.Framer) ServerOption {
 	return func(s *Server) {
 		s.framer = framer
 	}

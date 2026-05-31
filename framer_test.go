@@ -10,7 +10,7 @@ import (
 
 func TestLineFramerWrite(t *testing.T) {
 	var buf bytes.Buffer
-	w := LineFramer().Writer(&buf)
+	w := defaultFramer().Writer(&buf)
 	msg, err := jsonrpc2.NewCall(jsonrpc2.Int64ID(1), "ping", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -27,7 +27,7 @@ func TestLineFramerWrite(t *testing.T) {
 
 func TestLineFramerRead(t *testing.T) {
 	data := []byte("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}\n")
-	r := LineFramer().Reader(bytes.NewReader(data))
+	r := defaultFramer().Reader(bytes.NewReader(data))
 	msg, _, err := r.Read(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +43,7 @@ func TestLineFramerRead(t *testing.T) {
 
 func TestLineFramerReadRawValue(t *testing.T) {
 	data := []byte("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}")
-	r := LineFramer().Reader(bytes.NewReader(data))
+	r := defaultFramer().Reader(bytes.NewReader(data))
 	msg, _, err := r.Read(context.Background())
 	if err != nil {
 		t.Fatal(err)

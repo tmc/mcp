@@ -8,19 +8,7 @@ import (
 	errors "golang.org/x/xerrors"
 )
 
-// LineFramer returns a JSON-RPC framer that writes one message per line.
-//
-// The reader accepts ordinary JSON-RPC values as well as newline-delimited
-// values, which preserves compatibility with older raw-framed peers. The writer
-// uses newline-delimited JSON, matching MCP stdio and the official Go and
-// TypeScript SDKs.
-func LineFramer() jsonrpc2.Framer { return lineFramer{} }
-
-// RawFramer returns the undelimited JSON-RPC framer used by older versions of
-// this package.
-func RawFramer() jsonrpc2.Framer { return jsonrpc2.RawFramer() }
-
-func defaultFramer() jsonrpc2.Framer { return LineFramer() }
+func defaultFramer() jsonrpc2.Framer { return lineFramer{} }
 
 type lineFramer struct{}
 

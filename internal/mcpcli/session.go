@@ -72,11 +72,7 @@ func Connect(ctx context.Context, cfg Config) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	clientOpts := []mcp.ClientOption{}
-	if cfg.Cmd != "" {
-		clientOpts = append(clientOpts, mcp.WithFramer(mcp.LineFramer()))
-	}
-	client, err := mcp.NewClient(transport, clientOpts...)
+	client, err := mcp.NewClient(transport)
 	if err != nil {
 		return nil, err
 	}

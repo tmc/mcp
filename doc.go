@@ -4,9 +4,8 @@ client and server. It defines core MCP types, interfaces for interaction, and
 abstractions for transport mechanisms, aiming to provide an idiomatic Go API
 for building MCP integrations.
 
-This package relies on the standard Go library and the experimental jsonrpc2
-package (golang.org/x/exp/jsonrpc2) for underlying JSON-RPC communication,
-which is kept internal to this SDK.
+This package relies on the standard Go library for transports and keeps its
+JSON-RPC connection machinery internal.
 
 # Overview
 

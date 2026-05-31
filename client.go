@@ -43,8 +43,13 @@ func WithNotificationHandler(handler func(notification JSONRPCNotification)) Cli
 	}
 }
 
-// WithFramer sets the JSON-RPC framing used by the client connection.
-func WithFramer(framer jsonrpc2.Framer) ClientOption {
+// WithRawFraming uses the undelimited JSON-RPC framing used by older versions
+// of this package.
+func WithRawFraming() ClientOption {
+	return withFramer(jsonrpc2.RawFramer())
+}
+
+func withFramer(framer jsonrpc2.Framer) ClientOption {
 	return func(c *Client) {
 		c.framer = framer
 	}

@@ -608,11 +608,7 @@ func newLiveBackend(ctx context.Context, opts bootstrapOptions) (backend, error)
 	if err != nil {
 		return nil, err
 	}
-	clientOpts := []mcp.ClientOption{}
-	if opts.Cmd != "" {
-		clientOpts = append(clientOpts, mcp.WithFramer(mcp.LineFramer()))
-	}
-	client, err := mcp.NewClient(transport, clientOpts...)
+	client, err := mcp.NewClient(transport)
 	if err != nil {
 		return nil, err
 	}

@@ -143,7 +143,7 @@ func TestServerDefaultFramerWritesLine(t *testing.T) {
 }
 
 func TestServerWithRawFramer(t *testing.T) {
-	server := NewServer("test-server", "1.0.0", WithServerFramer(RawFramer()))
+	server := NewServer("test-server", "1.0.0", WithServerRawFraming())
 	if _, ok := server.framer.(lineFramer); ok {
 		t.Fatal("server framer is LineFramer, want raw framer")
 	}

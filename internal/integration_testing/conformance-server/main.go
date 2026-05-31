@@ -23,7 +23,11 @@ func main() {
 	urlFile := flag.String("url-file", "", "path to write the MCP endpoint URL")
 	flag.Parse()
 
-	server := mcp.NewServer("tmc-mcp-conformance-fixture", "0.0.1")
+	server := mcp.NewServer("tmc-mcp-conformance-fixture", "0.0.1", mcp.WithCompletionHandler(func(ctx context.Context, req mcp.CompleteRequest) (*mcp.CompleteResult, error) {
+		var result mcp.CompleteResult
+		result.Completion.Values = []string{}
+		return &result, nil
+	}))
 	if err := server.RegisterTool(mcp.Tool{
 		Name:        "echo",
 		Description: "Echo a message.",

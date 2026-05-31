@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -505,6 +506,86 @@ func TestClientSetLoggingLevel(t *testing.T) {
 	server.mu.RUnlock()
 	if got == nil || *got != slog.LevelError+8 {
 		t.Fatalf("logLevel = %v, want alert", got)
+	}
+}
+
+func TestServerCompletionCompleteHandler(t *testing.T) {
+	server := NewServer("test-server", "1.0.0", WithCompletionHandler(func(ctx context.Context, req CompleteRequest) (*CompleteResult, error) {
+		var result CompleteResult
+		result.Completion.Values = []string{req.Argument.Value + "thon", req.Argument.Value + "test"}
+		return &result, nil
+	}))
+
+	if server.capabilities.Completions == nil {
+		t.Fatal("completions capability not advertised")
+	}
+
+	handler, exists := server.handlers[string(MethodCompletionComplete)]
+	if !exists {
+		t.Fatal("completion/complete handler not registered")
+	}
+	result, err := handler(context.Background(), &jsonrpc2.Request{
+		Method: string(MethodCompletionComplete),
+		Params: json.RawMessage(`{
+			"ref": {"type": "ref/prompt", "name": "code_review"},
+			"argument": {"name": "language", "value": "py"}
+		}`),
+	})
+	if err != nil {
+		t.Fatalf("completion/complete failed: %v", err)
+	}
+
+	completeResult, ok := result.(*CompleteResult)
+	if !ok {
+		t.Fatalf("completion/complete result type = %T", result)
+	}
+	if got, want := completeResult.Completion.Values, []string{"python", "pytest"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("completion values = %v, want %v", got, want)
+	}
+}
+
+func TestClientComplete(t *testing.T) {
+	server := NewServer("test-server", "1.0.0", WithCompletionHandler(func(ctx context.Context, req CompleteRequest) (*CompleteResult, error) {
+		var result CompleteResult
+		result.Completion.Values = []string{"go", "gofmt"}
+		return &result, nil
+	}))
+	clientConn, serverConn := net.Pipe()
+
+	serverCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = server.Serve(serverCtx, &ReadWriteCloserTransport{serverConn})
+	}()
+
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn})
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	defer client.Close()
+
+	_, err = client.Initialize(context.Background(), InitializeRequest{
+		ClientInfo: Implementation{
+			Name:    "test-client",
+			Version: "1.0.0",
+		},
+		ProtocolVersion: LATEST_PROTOCOL_VERSION,
+	})
+	if err != nil {
+		t.Fatalf("Initialize failed: %v", err)
+	}
+
+	var req CompleteRequest
+	req.Ref = map[string]string{"type": "ref/prompt", "name": "code_review"}
+	req.Argument.Name = "language"
+	req.Argument.Value = "go"
+	result, err := client.Complete(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Complete failed: %v", err)
+	}
+	if got, want := result.Completion.Values, []string{"go", "gofmt"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("completion values = %v, want %v", got, want)
 	}
 }
 

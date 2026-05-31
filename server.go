@@ -57,6 +57,7 @@ type Server struct {
 	resources     map[string]resourceDefinition
 	resourceTmpls map[string]resourceTemplateDefinition
 	prompts       map[string]promptDefinition
+	completion    CompletionHandlerFunc
 	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
 	framer        jsonrpc2.Framer
@@ -411,6 +412,7 @@ func (s *Server) registerDefaultHandlers() {
 	s.registerInitializeHandler()
 	s.registerPingHandler()
 	s.registerLoggingHandler()
+	s.registerCompletionHandler()
 	s.registerToolHandlers()
 	s.registerPromptHandlers()
 	s.registerResourceHandlers()
@@ -510,6 +512,29 @@ func (s *Server) registerLoggingHandler() {
 		s.mu.Unlock()
 
 		return struct{}{}, nil
+	}
+}
+
+func (s *Server) registerCompletionHandler() {
+	if s.completion != nil {
+		s.capabilities.Completions = &struct{}{}
+	}
+	s.handlers[string(MethodCompletionComplete)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		if s.completion == nil {
+			return nil, jsonrpc2.ErrMethodNotFound
+		}
+		if len(req.Params) == 0 || strings.TrimSpace(string(req.Params)) == "null" {
+			return nil, NewParameterError(string(MethodCompletionComplete), "params", "missing required params", nil)
+		}
+		if err := s.validator.ValidateRequest(string(MethodCompletionComplete), req.Params); err != nil {
+			return nil, err
+		}
+
+		var params CompleteRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return nil, NewParameterErrorFromJSON(string(MethodCompletionComplete), err)
+		}
+		return s.completion(ctx, params)
 	}
 }
 

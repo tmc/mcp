@@ -547,6 +547,9 @@ type ReadResourceHandlerFunc func(ctx context.Context, request ReadResourceReque
 // ResourceTemplateHandlerFunc defines the signature for functions handling resources/read requests that match a resource template.
 type ResourceTemplateHandlerFunc func(ctx context.Context, request ReadResourceRequest) ([]ResourceContents, error)
 
+// CompletionHandlerFunc defines the signature for completion/complete requests.
+type CompletionHandlerFunc func(ctx context.Context, request CompleteRequest) (*CompleteResult, error)
+
 // Error helper functions for consistent error handling
 
 // NewParameterError creates a new parameter validation error

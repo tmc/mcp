@@ -22,6 +22,13 @@ func WithCapabilities(caps ServerCapabilities) ServerOption {
 	}
 }
 
+// WithCompletionHandler configures the completion/complete handler.
+func WithCompletionHandler(handler CompletionHandlerFunc) ServerOption {
+	return func(s *Server) {
+		s.completion = handler
+	}
+}
+
 // WithLogger configures a custom logger for the server
 func WithLogger(logger *slog.Logger) ServerOption {
 	return func(s *Server) {

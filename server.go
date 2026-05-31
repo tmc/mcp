@@ -410,6 +410,7 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 func (s *Server) registerDefaultHandlers() {
 	s.registerInitializeHandler()
 	s.registerPingHandler()
+	s.registerLoggingHandler()
 	s.registerToolHandlers()
 	s.registerPromptHandlers()
 	s.registerResourceHandlers()
@@ -450,6 +451,64 @@ func (s *Server) registerInitializeHandler() {
 // registerPingHandler registers the ping handler for server liveness checks
 func (s *Server) registerPingHandler() {
 	s.handlers[string(MethodPing)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		return struct{}{}, nil
+	}
+}
+
+const (
+	slogLevelNotice    = (slog.LevelInfo + slog.LevelWarn) / 2
+	slogLevelCritical  = slog.LevelError + 4
+	slogLevelAlert     = slog.LevelError + 8
+	slogLevelEmergency = slog.LevelError + 12
+)
+
+func slogLevelForLoggingLevel(level LoggingLevel) (slog.Level, bool) {
+	switch level {
+	case LogLevelDebug:
+		return slog.LevelDebug, true
+	case LogLevelInfo:
+		return slog.LevelInfo, true
+	case LogLevelNotice:
+		return slogLevelNotice, true
+	case LogLevelWarning:
+		return slog.LevelWarn, true
+	case LogLevelError:
+		return slog.LevelError, true
+	case LogLevelCritical:
+		return slogLevelCritical, true
+	case LogLevelAlert:
+		return slogLevelAlert, true
+	case LogLevelEmergency:
+		return slogLevelEmergency, true
+	default:
+		return 0, false
+	}
+}
+
+func (s *Server) registerLoggingHandler() {
+	s.capabilities.Logging = &struct{}{}
+	s.handlers[string(MethodLoggingSetLevel)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		if len(req.Params) == 0 || strings.TrimSpace(string(req.Params)) == "null" {
+			return nil, NewParameterError(string(MethodLoggingSetLevel), "params", "missing required params", nil)
+		}
+		if err := s.validator.ValidateRequest(string(MethodLoggingSetLevel), req.Params); err != nil {
+			return nil, err
+		}
+
+		var params SetLevelRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return nil, NewParameterErrorFromJSON(string(MethodLoggingSetLevel), err)
+		}
+
+		level, ok := slogLevelForLoggingLevel(params.Level)
+		if !ok {
+			return nil, NewParameterError(string(MethodLoggingSetLevel), "level", "unsupported logging level", nil)
+		}
+
+		s.mu.Lock()
+		s.logLevel = &level
+		s.mu.Unlock()
+
 		return struct{}{}, nil
 	}
 }

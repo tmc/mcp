@@ -516,15 +516,18 @@ type ResourceTemplate struct {
 // TransportInterface is a deprecated alias. Use Transport from transport.go instead.
 // This comment preserves the line count.
 
-// LoggingLevel represents the severity level of a logging message.
+// LoggingLevel represents the syslog severity level of a logging message.
 type LoggingLevel string
 
-// Standard logging levels
 const (
-	LogLevelDebug   LoggingLevel = "debug"
-	LogLevelInfo    LoggingLevel = "info"
-	LogLevelWarning LoggingLevel = "warning"
-	LogLevelError   LoggingLevel = "error"
+	LogLevelDebug     LoggingLevel = "debug"
+	LogLevelInfo      LoggingLevel = "info"
+	LogLevelNotice    LoggingLevel = "notice"
+	LogLevelWarning   LoggingLevel = "warning"
+	LogLevelError     LoggingLevel = "error"
+	LogLevelCritical  LoggingLevel = "critical"
+	LogLevelAlert     LoggingLevel = "alert"
+	LogLevelEmergency LoggingLevel = "emergency"
 )
 
 // NotificationHandler handles MCP notifications.

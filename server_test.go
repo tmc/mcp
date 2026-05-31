@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"strings"
 	"testing"
@@ -411,6 +412,124 @@ func TestServerHandleInitialize(t *testing.T) {
 
 			if initResult.ServerInfo.Name != server.name {
 				t.Errorf("Expected server name %s, got %s", server.name, initResult.ServerInfo.Name)
+			}
+			if initResult.Capabilities.Logging == nil {
+				t.Error("Expected logging capability")
+			}
+		})
+	}
+}
+
+func TestServerLoggingSetLevelHandler(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	handler, exists := server.handlers[string(MethodLoggingSetLevel)]
+	if !exists {
+		t.Fatal("logging/setLevel handler not registered")
+	}
+	if server.capabilities.Logging == nil {
+		t.Fatal("logging capability not advertised")
+	}
+
+	tests := []struct {
+		level LoggingLevel
+		want  slog.Level
+	}{
+		{level: LogLevelDebug, want: slog.LevelDebug},
+		{level: LogLevelInfo, want: slog.LevelInfo},
+		{level: LogLevelNotice, want: slog.LevelInfo + 2},
+		{level: LogLevelWarning, want: slog.LevelWarn},
+		{level: LogLevelError, want: slog.LevelError},
+		{level: LogLevelCritical, want: slog.LevelError + 4},
+		{level: LogLevelAlert, want: slog.LevelError + 8},
+		{level: LogLevelEmergency, want: slog.LevelError + 12},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.level), func(t *testing.T) {
+			result, err := handler(context.Background(), &jsonrpc2.Request{
+				Method: string(MethodLoggingSetLevel),
+				Params: json.RawMessage(fmt.Sprintf(`{"level":%q}`, tt.level)),
+			})
+			if err != nil {
+				t.Fatalf("logging/setLevel failed: %v", err)
+			}
+			if _, ok := result.(struct{}); !ok {
+				t.Fatalf("logging/setLevel result type = %T", result)
+			}
+
+			server.mu.RLock()
+			got := server.logLevel
+			server.mu.RUnlock()
+			if got == nil || *got != tt.want {
+				t.Fatalf("logLevel = %v, want %s", got, tt.level)
+			}
+		})
+	}
+}
+
+func TestClientSetLoggingLevel(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+	clientConn, serverConn := net.Pipe()
+
+	serverCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		_ = server.Serve(serverCtx, &ReadWriteCloserTransport{serverConn})
+	}()
+
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn})
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	defer client.Close()
+
+	_, err = client.Initialize(context.Background(), InitializeRequest{
+		ClientInfo: Implementation{
+			Name:    "test-client",
+			Version: "1.0.0",
+		},
+		ProtocolVersion: LATEST_PROTOCOL_VERSION,
+	})
+	if err != nil {
+		t.Fatalf("Initialize failed: %v", err)
+	}
+
+	if err := client.SetLoggingLevel(context.Background(), LogLevelAlert); err != nil {
+		t.Fatalf("SetLoggingLevel failed: %v", err)
+	}
+
+	server.mu.RLock()
+	got := server.logLevel
+	server.mu.RUnlock()
+	if got == nil || *got != slog.LevelError+8 {
+		t.Fatalf("logLevel = %v, want alert", got)
+	}
+}
+
+func TestServerLoggingSetLevelRejectsBadParams(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+	handler := server.handlers[string(MethodLoggingSetLevel)]
+
+	tests := []struct {
+		name   string
+		params json.RawMessage
+	}{
+		{name: "missing"},
+		{name: "null", params: json.RawMessage(`null`)},
+		{name: "unknown level", params: json.RawMessage(`{"level":"verbose"}`)},
+		{name: "invalid json", params: json.RawMessage(`{invalid json}`)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := handler(context.Background(), &jsonrpc2.Request{
+				Method: string(MethodLoggingSetLevel),
+				Params: tt.params,
+			})
+			if err == nil {
+				t.Fatal("expected error")
 			}
 		})
 	}

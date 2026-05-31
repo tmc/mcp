@@ -82,8 +82,6 @@ ok  github.com/tmc/mcp/cmd/mcpcat          1.723s
 ok  github.com/tmc/mcp/cmd/mcpdiff         3.804s
 ok  github.com/tmc/mcp/cmd/mcpspy          0.948s
 ok  github.com/tmc/mcp/internal/jsonrpc2gostruct     2.130s
-ok  github.com/tmc/mcp/internal/jsonrpc2shim         2.280s
-ok  github.com/tmc/mcp/internal/jsonrpc2util         2.824s
 ok  github.com/tmc/mcp/modelcontextprotocol          2.952s
 ok  github.com/tmc/mcp/modelcontextprotocol/draft    3.213s
 ok  github.com/tmc/mcp/protocol            3.400s

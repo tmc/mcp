@@ -133,8 +133,7 @@ import (
     "github.com/google/uuid"
     "golang.org/x/sync/errgroup"
     
-    // Internal packages
-    "github.com/tmc/mcp/internal/jsonrpc2util"
+    // Project packages
     "github.com/tmc/mcp/modelcontextprotocol"
 )
 ```

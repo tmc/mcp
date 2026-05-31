@@ -214,11 +214,13 @@ Acceptance criteria:
 Recorded subset and tolerance:
 
 1. `BenchmarkServer_HandleRequest/PayloadSize_1024`
-   Baseline medians: `232719.5 ns/op`, `27077 B/op`, `6162 allocs/op`
+   Baseline: `219643 ns/op` best observed latency sample,
+   `27077 B/op` median, `6162 allocs/op` median
    Tolerance: `ns/op <= 5.0x baseline`, `B/op <= 1.10x baseline`,
    `allocs/op <= 1.10x baseline`
 2. `BenchmarkTokenValidation`
-   Baseline medians: `44.22 ns/op`, `0 B/op`, `0 allocs/op`
+   Baseline: `43.62 ns/op` best observed latency sample,
+   `0 B/op` median, `0 allocs/op` median
    Tolerance: `ns/op <= 5.0x baseline`, `B/op == 0`,
    `allocs/op == 0`
 
@@ -229,8 +231,11 @@ bash ./scripts/bench-gate.sh
 ```
 
 The committed baseline is a bootstrap capture from `darwin/arm64`.
-The tolerances are intentionally conservative so CI can gate on large
-regressions before a dedicated Linux refresh is recorded.
+The gate compares best observed latency samples for `ns/op` so shared
+or overloaded runners do not fail solely because of scheduler pauses,
+and compares median allocation metrics. The tolerances are intentionally
+conservative so CI can gate on large regressions before a dedicated
+Linux refresh is recorded.
 
 Evidence anchors:
 

@@ -66,6 +66,31 @@ median_value() {
 	awk -v lower="$lower" -v upper="$upper" 'BEGIN { printf "%.6f\n", (lower + upper) / 2 }'
 }
 
+best_value() {
+	local file=$1
+	local benchmark=$2
+	local metric=$3
+	local value
+
+	value=$(extract_values "$file" "$benchmark" "$metric" | LC_ALL=C sort -n | sed -n '1p')
+	if [ -z "$value" ]; then
+		echo "missing $benchmark $metric in $file" >&2
+		return 1
+	fi
+	printf '%s\n' "$value"
+}
+
+comparison_value() {
+	local file=$1
+	local benchmark=$2
+	local metric=$3
+
+	case "$metric" in
+		ns/op) best_value "$file" "$benchmark" "$metric" ;;
+		*) median_value "$file" "$benchmark" "$metric" ;;
+	esac
+}
+
 tolerance_factor() {
 	case "$1|$2" in
 		BenchmarkServer_HandleRequest/PayloadSize_1024'|ns/op') echo 5.0 ;;
@@ -86,8 +111,8 @@ check_metric() {
 	local metric=$2
 	local baseline current factor limit ratio
 
-	baseline=$(median_value "$baseline_file" "$benchmark" "$metric")
-	current=$(median_value "$current_file" "$benchmark" "$metric")
+	baseline=$(comparison_value "$baseline_file" "$benchmark" "$metric")
+	current=$(comparison_value "$current_file" "$benchmark" "$metric")
 	factor=$(tolerance_factor "$benchmark" "$metric")
 	ratio=$(awk -v baseline="$baseline" -v current="$current" 'BEGIN {
 		if (baseline == 0) {

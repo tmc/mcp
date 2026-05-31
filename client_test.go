@@ -1,9 +1,11 @@
 package mcp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -39,6 +41,60 @@ func TestNewClient(t *testing.T) {
 	client.Close()
 }
 
+func TestClientDefaultFramerWritesLine(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn})
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	defer client.Close()
+
+	gotReq := make(chan string, 1)
+	serverErr := make(chan error, 1)
+	go func() {
+		line, err := bufio.NewReader(serverConn).ReadString('\n')
+		if err != nil {
+			serverErr <- err
+			return
+		}
+		gotReq <- line
+
+		var req map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(line), &req); err != nil {
+			serverErr <- err
+			return
+		}
+		id, ok := req["id"]
+		if !ok {
+			serverErr <- errors.New("missing request id")
+			return
+		}
+		_, err = fmt.Fprintf(serverConn, `{"jsonrpc":"2.0","id":%s,"result":{}}`+"\n", id)
+		serverErr <- err
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := client.Ping(ctx); err != nil {
+		t.Fatalf("Ping failed: %v", err)
+	}
+
+	select {
+	case line := <-gotReq:
+		if !strings.HasSuffix(line, "\n") {
+			t.Fatalf("request = %q, want newline suffix", line)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("server did not receive request")
+	}
+	if err := <-serverErr; err != nil {
+		t.Fatalf("server failed: %v", err)
+	}
+}
+
 func TestClientWithOptions(t *testing.T) {
 	clientConn, serverConn := net.Pipe()
 	defer clientConn.Close()
@@ -65,6 +121,22 @@ func TestClientWithOptions(t *testing.T) {
 	}
 
 	client.Close()
+}
+
+func TestClientWithRawFramer(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn}, WithFramer(RawFramer()))
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+	defer client.Close()
+
+	if _, ok := client.framer.(lineFramer); ok {
+		t.Fatal("client framer is LineFramer, want raw framer")
+	}
 }
 
 func TestClientOnNotification(t *testing.T) {

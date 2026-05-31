@@ -20,12 +20,17 @@ import (
 type serverBinder struct {
 	handler jsonrpc2.Handler
 	logger  *slog.Logger
+	framer  jsonrpc2.Framer
 }
 
 func (b serverBinder) Bind(ctx context.Context, conn *jsonrpc2.Connection) (jsonrpc2.ConnectionOptions, error) {
+	framer := b.framer
+	if framer == nil {
+		framer = defaultFramer()
+	}
 	return jsonrpc2.ConnectionOptions{
 		Handler: b.handler,
-		Framer:  jsonrpc2.RawFramer(),
+		Framer:  framer,
 		Preempter: &CancellablePreempter{
 			Conn:   conn,
 			Logger: b.logger,
@@ -54,6 +59,7 @@ type Server struct {
 	prompts       map[string]promptDefinition
 	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
+	framer        jsonrpc2.Framer
 }
 
 type toolDefinition struct {
@@ -108,6 +114,13 @@ func WithValidationConfig(config *ValidationConfig) ServerOption {
 	}
 }
 
+// WithServerFramer sets the JSON-RPC framing used by server connections.
+func WithServerFramer(framer jsonrpc2.Framer) ServerOption {
+	return func(s *Server) {
+		s.framer = framer
+	}
+}
+
 var defaultServerOptions = []ServerOption{
 	withInferredServerName(),
 	withInferredServerVersion(),
@@ -141,6 +154,7 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 		validator:     NewParameterValidator(DefaultValidationConfig()),
 		logger:        defaultLogger,
 		activeTools:   make(map[string]context.CancelFunc),
+		framer:        defaultFramer(),
 		mu:            sync.RWMutex{},
 	}
 
@@ -811,7 +825,7 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 
 	// Create the connection with cancellation support
 	handler := jsonrpc2.HandlerFunc(s.handleRequest)
-	binder := serverBinder{handler: handler, logger: s.logger}
+	binder := serverBinder{handler: handler, logger: s.logger, framer: s.framer}
 	conn, err := jsonrpc2.Dial(ctx, flushingd, binder)
 	if err != nil {
 		return fmt.Errorf("failed to establish connection: %w", err)

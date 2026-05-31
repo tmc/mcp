@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -89,6 +90,62 @@ func TestNewServer(t *testing.T) {
 				t.Error("Server dispatcher is nil")
 			}
 		})
+	}
+}
+
+func TestServerDefaultFramerWritesLine(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	serveDone := make(chan error, 1)
+	go func() {
+		serveDone <- server.Serve(ctx, &ReadWriteCloserTransport{serverConn})
+	}()
+
+	req := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"` +
+		LATEST_PROTOCOL_VERSION +
+		`","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}` + "\n"
+	if _, err := clientConn.Write([]byte(req)); err != nil {
+		t.Fatalf("write request: %v", err)
+	}
+
+	if err := clientConn.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
+	line, err := bufio.NewReader(clientConn).ReadString('\n')
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	if !strings.HasSuffix(line, "\n") {
+		t.Fatalf("response = %q, want newline suffix", line)
+	}
+
+	var resp map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(line), &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if _, ok := resp["result"]; !ok {
+		t.Fatalf("response missing result: %s", line)
+	}
+
+	clientConn.Close()
+	cancel()
+	select {
+	case <-serveDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("server did not stop")
+	}
+}
+
+func TestServerWithRawFramer(t *testing.T) {
+	server := NewServer("test-server", "1.0.0", WithServerFramer(RawFramer()))
+	if _, ok := server.framer.(lineFramer); ok {
+		t.Fatal("server framer is LineFramer, want raw framer")
 	}
 }
 

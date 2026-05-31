@@ -55,7 +55,7 @@ func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	ctx := context.Background()
 	c := &Client{
 		requestHandlers: make(map[string]RequestHandler),
-		framer:          jsonrpc2.RawFramer(),
+		framer:          defaultFramer(),
 	}
 
 	// Apply options

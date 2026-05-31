@@ -1,56 +1,39 @@
 package mcp
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"io"
-	"strings"
 
 	"golang.org/x/exp/jsonrpc2"
 	errors "golang.org/x/xerrors"
 )
 
-// LineFramer returns a JSON-RPC framer that reads and writes one message per line.
+// LineFramer returns a JSON-RPC framer that writes one message per line.
 //
-// This matches the stdio transport used by the current Node MCP SDK.
+// The reader accepts ordinary JSON-RPC values as well as newline-delimited
+// values, which preserves compatibility with older raw-framed peers. The writer
+// uses newline-delimited JSON, matching MCP stdio and the official Go and
+// TypeScript SDKs.
 func LineFramer() jsonrpc2.Framer { return lineFramer{} }
 
-type lineFramer struct{}
+// RawFramer returns the undelimited JSON-RPC framer used by older versions of
+// this package.
+func RawFramer() jsonrpc2.Framer { return jsonrpc2.RawFramer() }
 
-type lineReader struct {
-	in *bufio.Reader
-}
+func defaultFramer() jsonrpc2.Framer { return LineFramer() }
+
+type lineFramer struct{}
 
 type lineWriter struct {
 	out io.Writer
 }
 
 func (lineFramer) Reader(rw io.Reader) jsonrpc2.Reader {
-	return &lineReader{in: bufio.NewReader(rw)}
+	return jsonrpc2.RawFramer().Reader(rw)
 }
 
 func (lineFramer) Writer(rw io.Writer) jsonrpc2.Writer {
 	return &lineWriter{out: rw}
-}
-
-func (r *lineReader) Read(ctx context.Context) (jsonrpc2.Message, int64, error) {
-	select {
-	case <-ctx.Done():
-		return nil, 0, ctx.Err()
-	default:
-	}
-	line, err := r.in.ReadString('\n')
-	if err != nil {
-		return nil, int64(len(line)), err
-	}
-	line = strings.TrimSuffix(line, "\n")
-	line = strings.TrimSuffix(line, "\r")
-	if line == "" {
-		return nil, int64(len(line)), io.EOF
-	}
-	msg, err := jsonrpc2.DecodeMessage(json.RawMessage(line))
-	return msg, int64(len(line)), err
 }
 
 func (w *lineWriter) Write(ctx context.Context, msg jsonrpc2.Message) (int64, error) {

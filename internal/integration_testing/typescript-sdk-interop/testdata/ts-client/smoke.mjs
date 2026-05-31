@@ -1,85 +1,15 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { spawn } from "node:child_process";
-import { PassThrough } from "node:stream";
-
-class RawStdioTransport {
-  constructor(command) {
-    this.command = command;
-    this.stderr = new PassThrough();
-    this.stdout = "";
-  }
-
-  async start() {
-    this.process = spawn(this.command, [], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    this.process.stderr.pipe(this.stderr);
-    this.process.on("error", (err) => {
-      this.onerror?.(err);
-    });
-    this.process.on("close", () => {
-      this.onclose?.();
-    });
-    this.process.stdout.on("data", (chunk) => {
-      this.stdout += chunk.toString("utf8");
-      this.processReadBuffer();
-    });
-  }
-
-  async send(message) {
-    if (!this.process?.stdin) {
-      throw new Error("transport is not started");
-    }
-    await new Promise((resolve) => {
-      if (this.process.stdin.write(JSON.stringify(message))) {
-        resolve();
-        return;
-      }
-      this.process.stdin.once("drain", resolve);
-    });
-  }
-
-  async close() {
-    const proc = this.process;
-    this.process = undefined;
-    if (!proc) {
-      return;
-    }
-    const closed = new Promise((resolve) => proc.once("close", resolve));
-    proc.stdin.end();
-    await Promise.race([closed, delay(2000)]);
-    if (proc.exitCode === null) {
-      proc.kill("SIGTERM");
-      await Promise.race([closed, delay(2000)]);
-    }
-    if (proc.exitCode === null) {
-      proc.kill("SIGKILL");
-    }
-  }
-
-  processReadBuffer() {
-    while (true) {
-      const end = findJSONObjectEnd(this.stdout);
-      if (end < 0) {
-        return;
-      }
-      const raw = this.stdout.slice(0, end);
-      this.stdout = this.stdout.slice(end);
-      try {
-        this.onmessage?.(JSON.parse(raw));
-      } catch (err) {
-        this.onerror?.(err);
-      }
-    }
-  }
-}
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const server = process.argv[2];
 if (!server) {
   throw new Error("usage: node smoke.mjs /path/to/server");
 }
 
-const transport = new RawStdioTransport(server);
+const transport = new StdioClientTransport({
+  command: server,
+  stderr: "pipe",
+});
 const stderr = [];
 transport.stderr.on("data", (chunk) => {
   stderr.push(chunk.toString("utf8"));
@@ -147,54 +77,4 @@ async function withTimeout(promise, label) {
   } finally {
     clearTimeout(timeout);
   }
-}
-
-function findJSONObjectEnd(input) {
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-  let started = false;
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i];
-    if (!started) {
-      if (/\s/.test(ch)) {
-        continue;
-      }
-      if (ch !== "{") {
-        throw new Error(`unexpected JSON-RPC response prefix: ${JSON.stringify(input.slice(0, i + 1))}`);
-      }
-      started = true;
-      depth = 1;
-      continue;
-    }
-    if (inString) {
-      if (escape) {
-        escape = false;
-      } else if (ch === "\\") {
-        escape = true;
-      } else if (ch === "\"") {
-        inString = false;
-      }
-      continue;
-    }
-    if (ch === "\"") {
-      inString = true;
-      continue;
-    }
-    if (ch === "{") {
-      depth++;
-      continue;
-    }
-    if (ch === "}") {
-      depth--;
-      if (depth === 0) {
-        return i + 1;
-      }
-    }
-  }
-  return -1;
-}
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

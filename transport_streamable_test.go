@@ -303,6 +303,124 @@ func TestStreamableHTTPInlineSamplingRequest(t *testing.T) {
 	}
 }
 
+func TestStreamableHTTPInlineElicitationRequest(t *testing.T) {
+	server := NewServer("streamable-test", "0.0.0")
+	if err := server.RegisterTool(Tool{Name: "elicit"}, func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		result, err := server.Elicit(ctx, ElicitRequest{
+			Message: "need input",
+			RequestedSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"username": map[string]any{"type": "string"},
+				},
+				"required": []string{"username"},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &CallToolResult{Content: []any{TextContent{Type: "text", Text: result.Content["username"].(string)}}}, nil
+	}); err != nil {
+		t.Fatalf("RegisterTool: %v", err)
+	}
+
+	httpServer := httptest.NewServer(NewStreamableHTTPHandler(func(*http.Request) *Server {
+		return server
+	}, nil))
+	defer httpServer.Close()
+
+	sessionID, _ := postStreamable(t, httpServer.URL+"/mcp", "", `{
+		"jsonrpc":"2.0",
+		"id":"init",
+		"method":"initialize",
+		"params":{
+			"protocolVersion":"2025-11-25",
+			"capabilities":{"elicitation":{"form":{}}},
+			"clientInfo":{"name":"streamable-test-client","version":"0.0.0"}
+		}
+	}`)
+	if sessionID == "" {
+		t.Fatal("initial POST did not return Mcp-Session-Id")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, httpServer.URL+"/mcp", bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id":"call",
+		"method":"tools/call",
+		"params":{"name":"elicit","arguments":{}}
+	}`))
+	if err != nil {
+		t.Fatalf("NewRequest POST: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set(streamableSessionHeader, sessionID)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST tools/call: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		data, _ := io.ReadAll(resp.Body)
+		t.Fatalf("POST status = %d, want %d: %s", resp.StatusCode, http.StatusOK, data)
+	}
+
+	var sawElicitation, sawResponse bool
+	for evt, err := range scanEvents(resp.Body) {
+		if err != nil {
+			t.Fatalf("scan SSE: %v", err)
+		}
+		if len(evt.data) == 0 {
+			continue
+		}
+		var msg JSONRPCMessage
+		if err := json.Unmarshal(evt.data, &msg); err != nil {
+			t.Fatalf("decode SSE data %q: %v", evt.data, err)
+		}
+		if msg.Method == string(MethodElicitationCreate) {
+			sawElicitation = true
+			reply := JSONRPCMessage{
+				JSONRPC: JSONRPC_VERSION,
+				ID:      msg.ID,
+				Result: map[string]any{
+					"action": "accept",
+					"content": map[string]any{
+						"username": "alice",
+					},
+				},
+			}
+			data, err := json.Marshal(reply)
+			if err != nil {
+				t.Fatalf("marshal elicitation reply: %v", err)
+			}
+			postStreamableAccepted(t, httpServer.URL+"/mcp", sessionID, data)
+		}
+		if msg.ID == "call" && msg.Method == "" {
+			sawResponse = true
+			result, ok := msg.Result.(map[string]any)
+			if !ok {
+				t.Fatalf("call result has type %T, want object", msg.Result)
+			}
+			content, ok := result["content"].([]any)
+			if !ok || len(content) != 1 {
+				t.Fatalf("call content = %#v, want one item", result["content"])
+			}
+			text, ok := content[0].(map[string]any)
+			if !ok || text["text"] != "alice" {
+				t.Fatalf("call content = %#v, want alice", content[0])
+			}
+			break
+		}
+	}
+	if !sawElicitation {
+		t.Fatal("tools/call did not receive elicitation request")
+	}
+	if !sawResponse {
+		t.Fatal("tools/call did not receive final response")
+	}
+}
+
 func postStreamable(t *testing.T, url, sessionID, body string) (string, []JSONRPCMessage) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(body))

@@ -193,12 +193,9 @@ type ClientCapabilities struct {
 	Roots        *struct {
 		ListChanged bool `json:"listChanged,omitempty"`
 	} `json:"roots,omitempty"`
-	Sampling    *struct{} `json:"sampling,omitempty"`
-	Elicitation *struct {
-		Form bool `json:"form,omitempty"`
-		URL  bool `json:"url,omitempty"`
-	} `json:"elicitation,omitempty"`
-	Tasks *struct {
+	Sampling    *struct{}                `json:"sampling,omitempty"`
+	Elicitation *ElicitationCapabilities `json:"elicitation,omitempty"`
+	Tasks       *struct {
 		List     *struct{} `json:"list,omitempty"`
 		Cancel   *struct{} `json:"cancel,omitempty"`
 		Requests *struct {
@@ -210,6 +207,12 @@ type ClientCapabilities struct {
 			} `json:"elicitation,omitempty"`
 		} `json:"requests,omitempty"`
 	} `json:"tasks,omitempty"`
+}
+
+// ElicitationCapabilities describes client support for elicitation modes.
+type ElicitationCapabilities struct {
+	Form *struct{} `json:"form,omitempty"`
+	URL  *struct{} `json:"url,omitempty"`
 }
 
 // ServerCapabilities describes the features supported by an MCP server.
@@ -352,6 +355,23 @@ type CompleteResult struct {
 		Total   *int     `json:"total,omitempty"`
 		HasMore *bool    `json:"hasMore,omitempty"`
 	} `json:"completion"`
+}
+
+// ElicitRequest asks the client to collect non-sensitive information from the user.
+type ElicitRequest struct {
+	Meta            map[string]any `json:"_meta,omitempty"`
+	Mode            string         `json:"mode,omitempty"`
+	Message         string         `json:"message"`
+	RequestedSchema any            `json:"requestedSchema,omitempty"`
+	URL             string         `json:"url,omitempty"`
+	ElicitationID   string         `json:"elicitationId,omitempty"`
+}
+
+// ElicitResult is the client's response to an elicitation request.
+type ElicitResult struct {
+	Meta    map[string]any `json:"_meta,omitempty"`
+	Action  string         `json:"action"`
+	Content map[string]any `json:"content,omitempty"`
 }
 
 // SetLevelRequest changes the logging level on a server that supports protocol logging.

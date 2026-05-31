@@ -1042,6 +1042,49 @@ func (s *Server) CreateMessage(ctx context.Context, request CreateMessageRequest
 	return &result, nil
 }
 
+// Elicit asks the connected client to collect non-sensitive information from the user.
+func (s *Server) Elicit(ctx context.Context, request ElicitRequest) (*ElicitResult, error) {
+	if s == nil {
+		return nil, fmt.Errorf("server is nil")
+	}
+
+	s.mu.RLock()
+	conn := s.conn
+	caps := s.clientCaps.Elicitation
+	s.mu.RUnlock()
+	if conn == nil {
+		return nil, fmt.Errorf("mcp: client connection is not established")
+	}
+	if caps == nil {
+		return nil, fmt.Errorf("%w: client does not support elicitation", ErrUnsupported)
+	}
+	if request.Mode == "" {
+		if request.URL != "" || request.ElicitationID != "" {
+			request.Mode = "url"
+		} else {
+			request.Mode = "form"
+		}
+	}
+	switch request.Mode {
+	case "form":
+		if caps.Form == nil && caps.URL != nil {
+			return nil, fmt.Errorf("%w: client does not support form elicitation", ErrUnsupported)
+		}
+	case "url":
+		if caps.URL == nil {
+			return nil, fmt.Errorf("%w: client does not support url elicitation", ErrUnsupported)
+		}
+	default:
+		return nil, NewParameterError(string(MethodElicitationCreate), "mode", "unsupported elicitation mode", nil)
+	}
+
+	var result ElicitResult
+	if err := conn.Call(ctx, string(MethodElicitationCreate), request).Await(ctx, &result); err != nil {
+		return nil, fmt.Errorf("elicitation/create: %w", err)
+	}
+	return &result, nil
+}
+
 func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error {
 	s.mu.RLock()
 	conn := s.conn

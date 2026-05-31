@@ -280,6 +280,139 @@ func registerConformanceTools(server *mcp.Server) {
 	})
 
 	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_elicitation",
+		Description: "Tests server-to-client elicitation during a tool call.",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"message": {"type": "string", "description": "The message to show the user"}
+			},
+			"required": ["message"]
+		}`),
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		var args struct {
+			Message string `json:"message"`
+		}
+		if len(req.Arguments) > 0 {
+			if err := json.Unmarshal(req.Arguments, &args); err != nil {
+				return nil, err
+			}
+		}
+		if args.Message == "" {
+			args.Message = "Please provide your information"
+		}
+		result, err := server.Elicit(ctx, mcp.ElicitRequest{
+			Message: args.Message,
+			RequestedSchema: objectSchema(map[string]any{
+				"username": map[string]any{
+					"type":        "string",
+					"description": "User's response",
+				},
+				"email": map[string]any{
+					"type":        "string",
+					"description": "User's email address",
+				},
+			}, []string{"username", "email"}),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return textToolResult(fmt.Sprintf("User response: action=%s, content=%s", result.Action, mustJSON(result.Content))), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_elicitation_sep1034_defaults",
+		Description: "Tests elicitation schemas with default values.",
+		InputSchema: noArgumentsSchema,
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := server.Elicit(ctx, mcp.ElicitRequest{
+			Message: "Test default value handling - please accept",
+			RequestedSchema: objectSchema(map[string]any{
+				"name": map[string]any{
+					"type":        "string",
+					"description": "User name",
+					"default":     "John Doe",
+				},
+				"age": map[string]any{
+					"type":        "integer",
+					"description": "User age",
+					"default":     30,
+				},
+				"score": map[string]any{
+					"type":        "number",
+					"description": "User score",
+					"default":     95.5,
+				},
+				"status": map[string]any{
+					"type":        "string",
+					"description": "User status",
+					"enum":        []string{"active", "inactive", "pending"},
+					"default":     "active",
+				},
+				"verified": map[string]any{
+					"type":        "boolean",
+					"description": "Verification status",
+					"default":     true,
+				},
+			}, nil),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return elicitationToolResult(result), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_elicitation_sep1330_enums",
+		Description: "Tests elicitation enum schema variants.",
+		InputSchema: noArgumentsSchema,
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := server.Elicit(ctx, mcp.ElicitRequest{
+			Message: "Test enum schema handling - please accept",
+			RequestedSchema: objectSchema(map[string]any{
+				"untitledSingle": map[string]any{
+					"type": "string",
+					"enum": []string{"option1", "option2", "option3"},
+				},
+				"titledSingle": map[string]any{
+					"type": "string",
+					"oneOf": []map[string]any{
+						{"const": "value1", "title": "First Option"},
+						{"const": "value2", "title": "Second Option"},
+						{"const": "value3", "title": "Third Option"},
+					},
+				},
+				"legacyEnum": map[string]any{
+					"type":      "string",
+					"enum":      []string{"opt1", "opt2", "opt3"},
+					"enumNames": []string{"Option One", "Option Two", "Option Three"},
+				},
+				"untitledMulti": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "string",
+						"enum": []string{"option1", "option2", "option3"},
+					},
+				},
+				"titledMulti": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"anyOf": []map[string]any{
+							{"const": "value1", "title": "First Option"},
+							{"const": "value2", "title": "Second Option"},
+							{"const": "value3", "title": "Third Option"},
+						},
+					},
+				},
+			}, nil),
+		})
+		if err != nil {
+			return nil, err
+		}
+		return elicitationToolResult(result), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
 		Name:        "test_error_handling",
 		Description: "Tests error response handling.",
 		InputSchema: noArgumentsSchema,
@@ -452,6 +585,29 @@ func textFromContent(content any) string {
 	default:
 		return fmt.Sprint(content)
 	}
+}
+
+func objectSchema(properties map[string]any, required []string) map[string]any {
+	schema := map[string]any{
+		"type":       "object",
+		"properties": properties,
+	}
+	if required != nil {
+		schema["required"] = required
+	}
+	return schema
+}
+
+func elicitationToolResult(result *mcp.ElicitResult) *mcp.CallToolResult {
+	return textToolResult(fmt.Sprintf("Elicitation completed: action=%s, content=%s", result.Action, mustJSON(result.Content)))
+}
+
+func mustJSON(v any) string {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "{}"
+	}
+	return string(data)
 }
 
 type audioContent struct {

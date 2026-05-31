@@ -66,6 +66,7 @@ type ToolAnnotations = base.ToolAnnotations
 type ToolSchema = base.ToolSchema
 type SetLevelRequestParams = base.SetLevelRequestParams
 type LoggingMessageNotificationParams = base.LoggingMessageNotificationParams
+type ElicitationCompleteNotificationParams = base.ElicitationCompleteNotificationParams
 type ModelPreferences = base.ModelPreferences
 type ModelHint = base.ModelHint
 type CreateMessageRequestParams = base.CreateMessageRequestParams

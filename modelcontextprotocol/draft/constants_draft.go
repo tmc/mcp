@@ -51,6 +51,7 @@ const (
 	MethodNotificationInitialized          = base.MethodNotificationInitialized
 	MethodNotificationProgress             = base.MethodNotificationProgress
 	MethodNotificationMessage              = base.MethodNotificationMessage
+	MethodNotificationElicitationComplete  = base.MethodNotificationElicitationComplete
 	MethodNotificationResourcesUpdated     = base.MethodNotificationResourcesUpdated
 	MethodNotificationResourcesListChanged = base.MethodNotificationResourcesListChanged
 	MethodNotificationToolsListChanged     = base.MethodNotificationToolsListChanged

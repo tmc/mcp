@@ -568,6 +568,12 @@ func TestServerNotificationHelpersWithoutConnection(t *testing.T) {
 	if err := server.NotifyLoggingMessage(context.Background(), LoggingLevel("bad"), "test", "message"); err == nil {
 		t.Fatal("NotifyLoggingMessage accepted unsupported level")
 	}
+	if err := server.NotifyElicitationComplete(context.Background(), "elicit-123"); err != nil {
+		t.Fatalf("NotifyElicitationComplete failed without connection: %v", err)
+	}
+	if err := server.NotifyElicitationComplete(context.Background(), ""); err == nil {
+		t.Fatal("NotifyElicitationComplete accepted empty elicitation id")
+	}
 }
 
 func TestServerResourceSubscriptionHandlersRejectBadParams(t *testing.T) {

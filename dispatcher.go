@@ -94,3 +94,18 @@ func (d *Dispatcher) NotifyLoggingMessage(ctx context.Context, level LoggingLeve
 	}
 	return d.Dispatch(ctx, string(MethodLogging), paramData)
 }
+
+// NotifyElicitationComplete sends an out-of-band elicitation completion notification.
+func (d *Dispatcher) NotifyElicitationComplete(ctx context.Context, elicitationID string) error {
+	if elicitationID == "" {
+		return NewParameterError(string(MethodElicitationComplete), "elicitationId", "missing required elicitation id", nil)
+	}
+	params := modelcontextprotocol.ElicitationCompleteNotificationParams{
+		ElicitationID: elicitationID,
+	}
+	data, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	return d.Dispatch(ctx, string(MethodElicitationComplete), data)
+}

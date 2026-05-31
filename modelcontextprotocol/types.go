@@ -468,6 +468,14 @@ type LoggingMessageNotificationParams struct {
 
 func (LoggingMessageNotificationParams) isServerNotification() {}
 
+// ElicitationCompleteNotificationParams informs the client that an out-of-band elicitation completed.
+type ElicitationCompleteNotificationParams struct {
+	Meta          map[string]any `json:"_meta,omitempty"`
+	ElicitationID string         `json:"elicitationId"`
+}
+
+func (ElicitationCompleteNotificationParams) isServerNotification() {}
+
 type ModelPreferences struct {
 	Hints                []ModelHint `json:"hints,omitempty"`
 	CostPriority         *float64    `json:"costPriority,omitempty"`

@@ -108,6 +108,7 @@ const (
 	// Notification methods
 	MethodProgress            MCPMethod = "notifications/progress"
 	MethodLogging             MCPMethod = "notifications/message"
+	MethodElicitationComplete MCPMethod = "notifications/elicitation/complete"
 	MethodResourceUpdated     MCPMethod = "notifications/resources/updated"
 	MethodResourceListChanged MCPMethod = "notifications/resources/list_changed"
 	MethodPromptListChanged   MCPMethod = "notifications/prompts/list_changed"

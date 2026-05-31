@@ -1015,6 +1015,18 @@ func (s *Server) NotifyLoggingMessage(ctx context.Context, level LoggingLevel, l
 	})
 }
 
+// NotifyElicitationComplete tells the client an out-of-band elicitation completed.
+func (s *Server) NotifyElicitationComplete(ctx context.Context, elicitationID string) error {
+	if elicitationID == "" {
+		return NewParameterError(string(MethodElicitationComplete), "elicitationId", "missing required elicitation id", nil)
+	}
+	return s.notify(ctx, MethodElicitationComplete, struct {
+		ElicitationID string `json:"elicitationId"`
+	}{
+		ElicitationID: elicitationID,
+	})
+}
+
 // CreateMessage sends a sampling request to the connected client.
 func (s *Server) CreateMessage(ctx context.Context, request CreateMessageRequest) (*CreateMessageResult, error) {
 	if s == nil {

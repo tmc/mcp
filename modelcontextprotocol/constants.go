@@ -72,6 +72,7 @@ const (
 	MethodNotificationInitialized          = "notifications/initialized"
 	MethodNotificationProgress             = "notifications/progress"
 	MethodNotificationMessage              = "notifications/message"
+	MethodNotificationElicitationComplete  = "notifications/elicitation/complete"
 	MethodNotificationResourcesUpdated     = "notifications/resources/updated"
 	MethodNotificationResourcesListChanged = "notifications/resources/list_changed"
 	MethodNotificationToolsListChanged     = "notifications/tools/list_changed"

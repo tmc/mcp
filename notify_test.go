@@ -105,6 +105,14 @@ func TestNotifications(t *testing.T) {
 			wantType: string(MethodLogging),
 			wantData: `{"level":"info","logger":"test","data":"hello"}`,
 		},
+		{
+			name: "elicitation complete",
+			send: func(d *Dispatcher) error {
+				return d.NotifyElicitationComplete(context.Background(), "elicit-123")
+			},
+			wantType: string(MethodElicitationComplete),
+			wantData: `{"elicitationId":"elicit-123"}`,
+		},
 	}
 
 	for _, tt := range tests {

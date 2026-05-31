@@ -123,6 +123,10 @@ jobs:
         fi
         rm go.mod.bak go.sum.bak
 
+    - name: Check root dependency contract
+      run: |
+        bash ./scripts/check-root-dep-contract.sh
+
     - name: Check for binary files
       run: |
         # Ensure no compiled binaries are committed (text executables like shell scripts are fine)

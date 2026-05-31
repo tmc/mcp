@@ -4,6 +4,19 @@ This directory contains development and CI/CD scripts for the MCP Go implementat
 
 ## Scripts
 
+### `check-root-dep-contract.sh`
+
+Checks the root package runtime dependency contract for the v1 release gate.
+Runtime dependencies must be the standard library, `golang.org/x/*`, or the
+approved root API exceptions recorded in
+`docs/design/v1-release-exemplary-gate.md`.
+
+**Usage:**
+```bash
+bash ./scripts/check-root-dep-contract.sh
+make check-deps
+```
+
 ### `pre-commit.sh`
 
 Local development pre-commit script that runs the same checks as the CI pipeline.

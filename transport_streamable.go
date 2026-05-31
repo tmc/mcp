@@ -10,7 +10,9 @@ import (
 	"io"
 	"iter"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,6 +50,10 @@ type StreamableHTTPOptions struct {
 	Logger         *slog.Logger
 	MaxSessions    int
 	SessionTimeout time.Duration
+
+	// DisableLocalhostProtection disables DNS rebinding protection for local
+	// streamable HTTP servers.
+	DisableLocalhostProtection bool
 }
 
 // StreamableHTTPHandler serves streamable MCP sessions as defined by the MCP spec
@@ -83,6 +89,11 @@ func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *Strea
 
 // ServeHTTP implements the HTTP handler interface
 func (h *StreamableHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !h.opts.DisableLocalhostProtection && streamableIsLocalhostRequest(r) && !streamableIsLoopback(r.Host) {
+		http.Error(w, fmt.Sprintf("Forbidden: invalid Host header %q", r.Host), http.StatusForbidden)
+		return
+	}
+
 	h.opts.Logger.DebugContext(r.Context(), "StreamableHTTPHandler: handling request",
 		"method", r.Method, "path", r.URL.Path)
 
@@ -263,6 +274,23 @@ func streamableAccepts(values []string) (jsonOK, streamOK bool) {
 		}
 	}
 	return jsonOK, streamOK
+}
+
+func streamableIsLocalhostRequest(r *http.Request) bool {
+	localAddr, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	return ok && localAddr != nil && streamableIsLoopback(localAddr.String())
+}
+
+func streamableIsLoopback(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = strings.Trim(addr, "[]")
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip, err := netip.ParseAddr(host)
+	return err == nil && ip.IsLoopback()
 }
 
 func (h *StreamableHTTPHandler) getSession(sessionID string) (*StreamableServerTransport, error) {

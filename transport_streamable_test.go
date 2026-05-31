@@ -81,6 +81,41 @@ func TestStreamableHTTPInitialPostCreatesSession(t *testing.T) {
 	}
 }
 
+func TestStreamableHTTPRejectsNonLocalhostHostHeader(t *testing.T) {
+	server := NewServer("streamable-test", "0.0.0")
+	httpServer := httptest.NewServer(NewStreamableHTTPHandler(func(*http.Request) *Server {
+		return server
+	}, nil))
+	defer httpServer.Close()
+
+	req, err := http.NewRequest(http.MethodPost, httpServer.URL+"/mcp", bytes.NewBufferString(`{
+		"jsonrpc":"2.0",
+		"id":"init",
+		"method":"initialize",
+		"params":{
+			"protocolVersion":"2025-11-25",
+			"capabilities":{},
+			"clientInfo":{"name":"streamable-test-client","version":"0.0.0"}
+		}
+	}`))
+	if err != nil {
+		t.Fatalf("NewRequest POST: %v", err)
+	}
+	req.Host = "evil.example.com"
+	req.Header.Set("Origin", "http://evil.example.com")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST invalid host: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("POST invalid host status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+}
+
 func postStreamable(t *testing.T, url, sessionID, body string) (string, []JSONRPCMessage) {
 	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBufferString(body))

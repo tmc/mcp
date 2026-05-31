@@ -19,7 +19,7 @@ import (
 // TypedToolHandlerFunc defines the signature for type-safe tool handlers
 type TypedToolHandlerFunc[TArg any, TResult any] func(ctx context.Context, args TArg) (TResult, error)
 
-// RegisterTypedTool registers a type-safe tool handler with automatic JSON marshaling/unmarshaling
+// RegisterTypedToolWithServer registers a type-safe tool handler with automatic JSON marshaling/unmarshaling
 // and schema generation. It provides compile-time type safety while maintaining runtime compatibility.
 func RegisterTypedToolWithServer[TArg any, TResult any](
 	s *Server,
@@ -35,6 +35,11 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 	inputSchema, err := createJSONSchema[TArg]()
 	if err != nil {
 		return fmt.Errorf("failed to create input schema for tool %q: %w", name, err)
+	}
+
+	outputSchema, err := createJSONSchema[TResult]()
+	if err != nil {
+		return fmt.Errorf("failed to create output schema for tool %q: %w", name, err)
 	}
 
 	// Create the untyped handler wrapper
@@ -92,14 +97,16 @@ func RegisterTypedToolWithServer[TArg any, TResult any](
 					"text":   string(outputJSON),
 				},
 			},
+			StructuredContent: json.RawMessage(outputJSON),
 		}, nil
 	}
 
 	// Register the tool with the server
 	tool := Tool{
-		Name:        name,
-		Description: description,
-		InputSchema: inputSchema,
+		Name:         name,
+		Description:  description,
+		InputSchema:  inputSchema,
+		OutputSchema: outputSchema,
 	}
 
 	return s.RegisterTool(tool, toolHandler)
@@ -149,6 +156,20 @@ func CallToolTyped[TArg any, TResult any](
 	}
 
 	// Parse the typed result
+	if result.StructuredContent != nil {
+		structuredJSON, err := json.Marshal(result.StructuredContent)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal structured result from tool %q: %w", toolName, err)
+		}
+		if string(structuredJSON) != "null" {
+			var typedResult TResult
+			if err := json.Unmarshal(structuredJSON, &typedResult); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal structured result from tool %q: %w", toolName, err)
+			}
+			return &typedResult, nil
+		}
+	}
+
 	if len(result.Content) == 0 {
 		return nil, fmt.Errorf("tool %q returned no content", toolName)
 	}

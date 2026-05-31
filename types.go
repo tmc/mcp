@@ -303,9 +303,10 @@ type ListToolsResult struct {
 // operations like file system access, API calls, or data processing.
 // The InputSchema provides JSON Schema validation for tool arguments.
 type Tool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	InputSchema json.RawMessage `json:"inputSchema,omitempty"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description,omitempty"`
+	InputSchema  json.RawMessage `json:"inputSchema,omitempty"`
+	OutputSchema json.RawMessage `json:"outputSchema,omitempty"`
 }
 
 // CallToolRequest is the client's request to call a specific tool.
@@ -320,9 +321,10 @@ type CallToolRequest struct {
 // It contains the tool's output as content blocks, an error flag,
 // and optional metadata. Content can include text, images, or other media.
 type CallToolResult struct {
-	Content []any `json:"content"`
-	IsError bool  `json:"isError,omitempty"`
-	Meta    any   `json:"_meta,omitempty"`
+	Content           []any `json:"content"`
+	StructuredContent any   `json:"structuredContent,omitempty"`
+	IsError           bool  `json:"isError,omitempty"`
+	Meta              any   `json:"_meta,omitempty"`
 }
 
 // CompleteRequest describes a completion lookup for a prompt or resource reference.

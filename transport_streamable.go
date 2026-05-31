@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const streamableSessionHeader = "Mcp-Session-Id"
+
 // StreamableTransport extends the basic Transport interface with advanced connection capabilities
 type StreamableTransport interface {
 	Transport
@@ -84,17 +86,20 @@ func (h *StreamableHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	h.opts.Logger.DebugContext(r.Context(), "StreamableHTTPHandler: handling request",
 		"method", r.Method, "path", r.URL.Path)
 
-	// Check Accept header for required content types
-	accept := r.Header.Get("Accept")
-	if !strings.Contains(accept, "application/json") || !strings.Contains(accept, "text/event-stream") {
-		http.Error(w, "Accept header must include both application/json and text/event-stream", http.StatusNotAcceptable)
-		return
-	}
+	jsonOK, streamOK := streamableAccepts(r.Header.Values("Accept"))
 
 	switch r.Method {
 	case http.MethodGet:
+		if !streamOK {
+			http.Error(w, "Accept header must include text/event-stream", http.StatusNotAcceptable)
+			return
+		}
 		h.handleSSEStream(w, r)
 	case http.MethodPost:
+		if len(r.Header.Values("Accept")) > 0 && (!jsonOK || !streamOK) {
+			http.Error(w, "Accept header must include application/json and text/event-stream", http.StatusNotAcceptable)
+			return
+		}
 		h.handleMessage(w, r)
 	case http.MethodDelete:
 		h.handleSessionDelete(w, r)
@@ -105,18 +110,16 @@ func (h *StreamableHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 
 // handleSSEStream handles SSE streaming with optional session resumption
 func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session")
+	sessionID := streamableSessionID(r)
 	if sessionID == "" {
 		sessionID = randText()
 	}
 
-	h.sessionsMu.Lock()
-	session, exists := h.sessions[sessionID]
-	if !exists {
-		session = newStreamableServerTransport(sessionID, h.opts.Logger)
-		h.sessions[sessionID] = session
+	session, err := h.getOrCreateSession(r, sessionID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
-	h.sessionsMu.Unlock()
 
 	// Handle resumption via Last-Event-ID
 	lastEventID := r.Header.Get("Last-Event-ID")
@@ -136,6 +139,7 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set(streamableSessionHeader, session.id)
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -154,21 +158,6 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 
 // handleMessage handles incoming JSON-RPC messages
 func (h *StreamableHTTPHandler) handleMessage(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session")
-	if sessionID == "" {
-		http.Error(w, "Missing session parameter", http.StatusBadRequest)
-		return
-	}
-
-	h.sessionsMu.RLock()
-	session, exists := h.sessions[sessionID]
-	h.sessionsMu.RUnlock()
-
-	if !exists {
-		http.Error(w, "Session not found", http.StatusNotFound)
-		return
-	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
@@ -181,22 +170,61 @@ func (h *StreamableHTTPHandler) handleMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Send message to session
-	select {
-	case session.incoming <- msg:
-		w.WriteHeader(http.StatusNoContent)
-	case <-r.Context().Done():
-		http.Error(w, "Request cancelled", http.StatusRequestTimeout)
-	case <-time.After(5 * time.Second):
-		http.Error(w, "Session busy", http.StatusServiceUnavailable)
+	sessionID := streamableSessionID(r)
+	var session *StreamableServerTransport
+	if sessionID == "" {
+		sessionID = randText()
+		session, err = h.getOrCreateSession(r, sessionID)
+	} else {
+		session, err = h.getSession(sessionID)
+	}
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	sid := streamID(session.nextStreamID.Add(1))
+	if err := session.receive(r.Context(), msg, sid); err != nil {
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+		return
+	}
+
+	w.Header().Set(streamableSessionHeader, session.id)
+	if msg.ID == nil || msg.Method == "" {
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	next := 0
+	for {
+		out, idx, err := session.waitStreamMessage(r.Context(), sid, next)
+		if err != nil {
+			return
+		}
+		next = idx
+		session.writeSSEMessage(w, out)
+		flusher.Flush()
+		if out.Message.ID == msg.ID && out.Message.Method == "" {
+			return
+		}
 	}
 }
 
 // handleSessionDelete handles session termination
 func (h *StreamableHTTPHandler) handleSessionDelete(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.URL.Query().Get("session")
+	sessionID := streamableSessionID(r)
 	if sessionID == "" {
-		http.Error(w, "Missing session parameter", http.StatusBadRequest)
+		http.Error(w, "Missing session ID", http.StatusBadRequest)
 		return
 	}
 
@@ -209,6 +237,78 @@ func (h *StreamableHTTPHandler) handleSessionDelete(w http.ResponseWriter, r *ht
 	h.sessionsMu.Unlock()
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func streamableSessionID(r *http.Request) string {
+	if sessionID := r.Header.Get(streamableSessionHeader); sessionID != "" {
+		return sessionID
+	}
+	return r.URL.Query().Get("session")
+}
+
+func streamableAccepts(values []string) (jsonOK, streamOK bool) {
+	for _, value := range values {
+		for _, raw := range strings.Split(value, ",") {
+			token := strings.TrimSpace(raw)
+			base, _, _ := strings.Cut(token, ";")
+			switch strings.ToLower(strings.TrimSpace(base)) {
+			case "application/json", "application/*":
+				jsonOK = true
+			case "text/event-stream", "text/*":
+				streamOK = true
+			case "*/*":
+				jsonOK = true
+				streamOK = true
+			}
+		}
+	}
+	return jsonOK, streamOK
+}
+
+func (h *StreamableHTTPHandler) getSession(sessionID string) (*StreamableServerTransport, error) {
+	h.sessionsMu.RLock()
+	session := h.sessions[sessionID]
+	h.sessionsMu.RUnlock()
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+	return session, nil
+}
+
+func (h *StreamableHTTPHandler) getOrCreateSession(r *http.Request, sessionID string) (*StreamableServerTransport, error) {
+	h.sessionsMu.RLock()
+	session := h.sessions[sessionID]
+	h.sessionsMu.RUnlock()
+	if session != nil {
+		return session, nil
+	}
+
+	server := h.getServer(r)
+	if server == nil {
+		return nil, fmt.Errorf("no server available")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	session = newStreamableServerTransport(sessionID, h.opts.Logger)
+	session.cancel = cancel
+
+	h.sessionsMu.Lock()
+	if existing := h.sessions[sessionID]; existing != nil {
+		h.sessionsMu.Unlock()
+		cancel()
+		return existing, nil
+	}
+	h.sessions[sessionID] = session
+	h.sessionsMu.Unlock()
+
+	go func() {
+		_ = server.Serve(ctx, session)
+		h.sessionsMu.Lock()
+		if h.sessions[sessionID] == session {
+			delete(h.sessions, sessionID)
+		}
+		h.sessionsMu.Unlock()
+	}()
+	return session, nil
 }
 
 // streamID represents a logical stream within a session
@@ -226,6 +326,7 @@ type StreamableServerTransport struct {
 	id           string
 	incoming     chan JSONRPCMessage
 	logger       *slog.Logger
+	cancel       context.CancelFunc
 
 	mu               sync.RWMutex
 	isDone           bool
@@ -313,9 +414,33 @@ func (t *StreamableServerTransport) Close() error {
 	if !t.isDone {
 		t.isDone = true
 		close(t.done)
+		if t.cancel != nil {
+			t.cancel()
+		}
 	}
 
 	return nil
+}
+
+func (t *StreamableServerTransport) receive(ctx context.Context, msg JSONRPCMessage, sid streamID) error {
+	if msg.ID != nil && msg.Method != "" {
+		t.mu.Lock()
+		t.requestStreams[msg.ID] = sid
+		if t.streamRequests[sid] == nil {
+			t.streamRequests[sid] = make(map[interface{}]struct{})
+		}
+		t.streamRequests[sid][msg.ID] = struct{}{}
+		t.mu.Unlock()
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.done:
+		return transportClosedError("streamable receive")
+	case t.incoming <- msg:
+		return nil
+	}
 }
 
 // getStreamID determines the appropriate stream ID for a message
@@ -410,6 +535,42 @@ func (t *StreamableServerTransport) writeSSEMessage(w http.ResponseWriter, msg *
 
 	fmt.Fprintf(w, "id: %s\n", msg.EventID)
 	fmt.Fprintf(w, "data: %s\n\n", string(data))
+}
+
+func (t *StreamableServerTransport) waitStreamMessage(ctx context.Context, sid streamID, idx int) (*streamableMsg, int, error) {
+	signalCh := make(chan struct{}, 1)
+	t.mu.Lock()
+	t.signals[sid] = signalCh
+	t.mu.Unlock()
+	defer func() {
+		t.mu.Lock()
+		if t.signals[sid] == signalCh {
+			delete(t.signals, sid)
+		}
+		t.mu.Unlock()
+	}()
+
+	for {
+		t.mu.RLock()
+		if messages := t.outgoingMessages[sid]; idx < len(messages) {
+			msg := messages[idx]
+			t.mu.RUnlock()
+			return msg, idx + 1, nil
+		}
+		done := t.isDone
+		t.mu.RUnlock()
+		if done {
+			return nil, idx, transportClosedError("streamable wait")
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, idx, ctx.Err()
+		case <-t.done:
+			return nil, idx, transportClosedError("streamable wait")
+		case <-signalCh:
+		}
+	}
 }
 
 // Event represents an SSE event

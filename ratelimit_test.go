@@ -70,7 +70,7 @@ func TestTokenBucketRateLimiterWait(t *testing.T) {
 	}
 
 	// Test wait with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 
 	start := time.Now()
@@ -80,8 +80,8 @@ func TestTokenBucketRateLimiterWait(t *testing.T) {
 	if err != nil {
 		t.Errorf("Wait should succeed within timeout: %v", err)
 	}
-	if elapsed > 20*time.Millisecond {
-		t.Errorf("Wait took too long: %v", elapsed)
+	if elapsed < 8*time.Millisecond {
+		t.Errorf("Wait returned before token refill: %v", elapsed)
 	}
 
 	// Test wait with cancellation

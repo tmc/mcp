@@ -146,6 +146,13 @@ func (rl *TokenBucketRateLimiter) WaitN(ctx context.Context, key string, n int) 
 	bucket := rl.getBucket(key)
 
 	for {
+		if err := ctx.Err(); err != nil {
+			stats := rl.stats.Load().(*RateLimitStats)
+			atomic.AddInt64(&stats.TotalRequests, int64(n))
+			atomic.AddInt64(&stats.RejectedRequests, int64(n))
+			return err
+		}
+
 		// Check if we can proceed
 		if bucket.allowN(n) {
 			// Update stats
@@ -717,7 +724,7 @@ type EnhancedRateLimitMiddleware struct {
 	keyExtractor    func(context.Context, MCPRequest) string
 	skipMethods     map[string]bool
 	errorHandler    func(context.Context, MCPRequest) MCPResponse
-	perEndpointRate bool // Enable per-endpoint rate limiting
+	perEndpointRate bool     // Enable per-endpoint rate limiting
 	methodLimiters  sync.Map // method -> RateLimiter
 }
 

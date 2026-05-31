@@ -482,14 +482,17 @@ func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
 		return streamID(0)
 	}
 
-	// For requests, create or reuse stream
+	// For requests, create or reuse stream. Server-initiated requests emitted
+	// while handling a client request belong on that active response stream.
 	if msg.Method != "" {
 		if sid, exists := t.requestStreams[msg.ID]; exists {
 			return sid
 		}
 
-		// Create new stream
-		sid := streamID(t.nextStreamID.Add(1))
+		sid := t.lastRequestStream
+		if sid == 0 {
+			sid = streamID(t.nextStreamID.Add(1))
+		}
 		t.requestStreams[msg.ID] = sid
 		if t.streamRequests[sid] == nil {
 			t.streamRequests[sid] = make(map[interface{}]struct{})

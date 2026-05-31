@@ -59,6 +59,7 @@ type Server struct {
 	prompts       map[string]promptDefinition
 	subscriptions map[string]bool
 	conn          *jsonrpc2.Connection
+	clientCaps    ClientCapabilities
 	completion    CompletionHandlerFunc
 	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
@@ -438,6 +439,10 @@ func (s *Server) registerInitializeHandler() {
 		if err := s.validator.ValidateInitializeRequest(params); err != nil {
 			return nil, err
 		}
+
+		s.mu.Lock()
+		s.clientCaps = params.Capabilities
+		s.mu.Unlock()
 
 		result := InitializeResult{
 			ProtocolVersion: LATEST_PROTOCOL_VERSION,
@@ -1008,6 +1013,33 @@ func (s *Server) NotifyLoggingMessage(ctx context.Context, level LoggingLevel, l
 		Logger: logger,
 		Data:   dataJSON,
 	})
+}
+
+// CreateMessage sends a sampling request to the connected client.
+func (s *Server) CreateMessage(ctx context.Context, request CreateMessageRequest) (*CreateMessageResult, error) {
+	if s == nil {
+		return nil, fmt.Errorf("server is nil")
+	}
+
+	s.mu.RLock()
+	conn := s.conn
+	supported := s.clientCaps.Sampling != nil
+	s.mu.RUnlock()
+	if conn == nil {
+		return nil, fmt.Errorf("mcp: client connection is not established")
+	}
+	if !supported {
+		return nil, fmt.Errorf("%w: client does not support sampling", ErrUnsupported)
+	}
+	if request.Messages == nil {
+		request.Messages = []SamplingMessage{}
+	}
+
+	var result CreateMessageResult
+	if err := conn.Call(ctx, string(MethodSamplingCreateMessage), request).Await(ctx, &result); err != nil {
+		return nil, fmt.Errorf("sampling/createMessage: %w", err)
+	}
+	return &result, nil
 }
 
 func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error {

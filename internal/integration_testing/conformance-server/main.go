@@ -243,6 +243,43 @@ func registerConformanceTools(server *mcp.Server) {
 	})
 
 	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_sampling",
+		Description: "Tests server-initiated sampling requests.",
+		InputSchema: json.RawMessage(`{
+			"type": "object",
+			"properties": {
+				"prompt": {"type": "string"}
+			},
+			"required": ["prompt"]
+		}`),
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		var args struct {
+			Prompt string `json:"prompt"`
+		}
+		if len(req.Arguments) > 0 {
+			if err := json.Unmarshal(req.Arguments, &args); err != nil {
+				return nil, err
+			}
+		}
+		if args.Prompt == "" {
+			return nil, fmt.Errorf("prompt is required")
+		}
+		result, err := server.CreateMessage(ctx, mcp.CreateMessageRequest{
+			Messages: []mcp.SamplingMessage{
+				{
+					Role:    mcp.RoleUser,
+					Content: mcp.TextContent{Type: "text", Text: args.Prompt},
+				},
+			},
+			MaxTokens: 100,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return textToolResult("LLM response: " + textFromContent(result.Content)), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
 		Name:        "test_error_handling",
 		Description: "Tests error response handling.",
 		InputSchema: noArgumentsSchema,
@@ -402,6 +439,18 @@ func templateResourceHandler(ctx context.Context, req mcp.ReadResourceRequest) (
 func textToolResult(text string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{
 		Content: []any{mcp.TextContent{Type: "text", Text: text}},
+	}
+}
+
+func textFromContent(content any) string {
+	switch c := content.(type) {
+	case mcp.TextContent:
+		return c.Text
+	case map[string]any:
+		text, _ := c["text"].(string)
+		return text
+	default:
+		return fmt.Sprint(content)
 	}
 }
 

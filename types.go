@@ -366,6 +366,47 @@ type LoggingMessageNotification struct {
 	Data   json.RawMessage `json:"data"`
 }
 
+// ModelHint identifies a model the client may prefer for sampling.
+type ModelHint struct {
+	Name string `json:"name,omitempty"`
+}
+
+// ModelPreferences describes model selection priorities for sampling.
+type ModelPreferences struct {
+	Hints                []ModelHint `json:"hints,omitempty"`
+	CostPriority         *float64    `json:"costPriority,omitempty"`
+	SpeedPriority        *float64    `json:"speedPriority,omitempty"`
+	IntelligencePriority *float64    `json:"intelligencePriority,omitempty"`
+}
+
+// SamplingMessage is a message sent in a sampling/createMessage request.
+type SamplingMessage struct {
+	Role    Role `json:"role"`
+	Content any  `json:"content"`
+}
+
+// CreateMessageRequest asks the client to sample a message from a model.
+type CreateMessageRequest struct {
+	Meta             map[string]any    `json:"_meta,omitempty"`
+	Messages         []SamplingMessage `json:"messages"`
+	ModelPreferences *ModelPreferences `json:"modelPreferences,omitempty"`
+	SystemPrompt     string            `json:"systemPrompt,omitempty"`
+	IncludeContext   string            `json:"includeContext,omitempty"`
+	Temperature      *float64          `json:"temperature,omitempty"`
+	MaxTokens        int64             `json:"maxTokens"`
+	StopSequences    []string          `json:"stopSequences,omitempty"`
+	Metadata         map[string]any    `json:"metadata,omitempty"`
+}
+
+// CreateMessageResult is the client's response to a sampling request.
+type CreateMessageResult struct {
+	Meta       map[string]any `json:"_meta,omitempty"`
+	Role       Role           `json:"role"`
+	Content    any            `json:"content"`
+	Model      string         `json:"model"`
+	StopReason string         `json:"stopReason,omitempty"`
+}
+
 // TaskInfo describes the current state of a durable task.
 type TaskInfo struct {
 	TaskID        string `json:"taskId"`

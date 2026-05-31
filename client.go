@@ -250,6 +250,26 @@ func (c *Client) ReadResource(ctx context.Context, request ReadResourceRequest) 
 	return &result, nil
 }
 
+// SubscribeResource subscribes to update notifications for a resource.
+func (c *Client) SubscribeResource(ctx context.Context, request SubscribeResourceRequest) error {
+	if err := c.checkInitialized(); err != nil {
+		return err
+	}
+
+	var result any
+	return c.call(ctx, string(MethodResourcesSubscribe), request, &result)
+}
+
+// UnsubscribeResource cancels a resource update subscription.
+func (c *Client) UnsubscribeResource(ctx context.Context, request UnsubscribeResourceRequest) error {
+	if err := c.checkInitialized(); err != nil {
+		return err
+	}
+
+	var result any
+	return c.call(ctx, string(MethodResourcesUnsubscribe), request, &result)
+}
+
 // ListResourceTemplates requests a list of available resource templates from the server.
 func (c *Client) ListResourceTemplates(ctx context.Context, request ListResourceTemplatesRequest) (*ListResourceTemplatesResult, error) {
 	if err := c.checkInitialized(); err != nil {

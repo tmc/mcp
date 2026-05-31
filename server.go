@@ -57,6 +57,8 @@ type Server struct {
 	resources     map[string]resourceDefinition
 	resourceTmpls map[string]resourceTemplateDefinition
 	prompts       map[string]promptDefinition
+	subscriptions map[string]bool
+	conn          *jsonrpc2.Connection
 	completion    CompletionHandlerFunc
 	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
@@ -155,6 +157,7 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 		resources:     make(map[string]resourceDefinition),
 		resourceTmpls: make(map[string]resourceTemplateDefinition),
 		prompts:       make(map[string]promptDefinition),
+		subscriptions: make(map[string]bool),
 		handlers:      make(map[string]jsonrpc2.HandlerFunc),
 		dispatch:      NewDispatcher(),
 		validator:     NewParameterValidator(DefaultValidationConfig()),
@@ -769,11 +772,51 @@ func (s *Server) registerResourceHandlers() {
 
 		return result, nil
 	}
+
+	s.handlers[string(MethodResourcesSubscribe)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		var params SubscribeResourceRequest
+		if err := unmarshalRequiredParams(string(MethodResourcesSubscribe), req.Params, &params); err != nil {
+			return nil, err
+		}
+		if err := s.validator.ValidateResourceSubscription(MethodResourcesSubscribe, params.URI); err != nil {
+			return nil, err
+		}
+
+		s.mu.Lock()
+		s.subscriptions[params.URI] = true
+		s.mu.Unlock()
+		return struct{}{}, nil
+	}
+
+	s.handlers[string(MethodResourcesUnsubscribe)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		var params UnsubscribeResourceRequest
+		if err := unmarshalRequiredParams(string(MethodResourcesUnsubscribe), req.Params, &params); err != nil {
+			return nil, err
+		}
+		if err := s.validator.ValidateResourceSubscription(MethodResourcesUnsubscribe, params.URI); err != nil {
+			return nil, err
+		}
+
+		s.mu.Lock()
+		delete(s.subscriptions, params.URI)
+		s.mu.Unlock()
+		return struct{}{}, nil
+	}
 }
 
 func unmarshalOptionalParams(method string, params json.RawMessage, dst any) error {
 	if len(params) == 0 || strings.TrimSpace(string(params)) == "null" {
 		return nil
+	}
+	if err := json.Unmarshal(params, dst); err != nil {
+		return NewParameterErrorFromJSON(method, err)
+	}
+	return nil
+}
+
+func unmarshalRequiredParams(method string, params json.RawMessage, dst any) error {
+	if len(params) == 0 || strings.TrimSpace(string(params)) == "null" {
+		return NewParameterError(method, "params", "missing required params", nil)
 	}
 	if err := json.Unmarshal(params, dst); err != nil {
 		return NewParameterErrorFromJSON(method, err)
@@ -876,6 +919,7 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 		}{}
 	}
 	s.capabilities.Resources.ListChanged = true
+	s.capabilities.Resources.Subscribe = true
 
 	s.logger.Info("Resource registered successfully", "uri", resource.URI)
 	s.logger.Debug("Sending resource list changed notification")
@@ -900,12 +944,37 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 		template: template,
 		handler:  handler,
 	}
+	if s.capabilities.Resources == nil {
+		s.capabilities.Resources = &struct {
+			Subscribe   bool `json:"subscribe,omitempty"`
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{}
+	}
+	s.capabilities.Resources.ListChanged = true
+	s.capabilities.Resources.Subscribe = true
 
 	s.logger.Info("Resource template registered successfully", "template", template.Template)
 	s.logger.Debug("Sending resource list changed notification")
 	go s.dispatch.NotifyListChanged(context.Background(), MethodResourceListChanged)
 
 	return nil
+}
+
+// ResourceUpdated notifies subscribed clients that a resource changed.
+func (s *Server) ResourceUpdated(ctx context.Context, params ResourceUpdatedNotificationParams) error {
+	if err := s.validator.ValidateResourceSubscription(MethodResourceUpdated, params.URI); err != nil {
+		return err
+	}
+
+	s.mu.RLock()
+	subscribed := s.subscriptions[params.URI]
+	conn := s.conn
+	s.mu.RUnlock()
+	if !subscribed || conn == nil {
+		return nil
+	}
+
+	return conn.Notify(ctx, string(MethodResourceUpdated), params)
 }
 
 // Serve starts serving MCP requests using the provided transport.
@@ -932,7 +1001,17 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 	if err != nil {
 		return fmt.Errorf("failed to establish connection: %w", err)
 	}
-	defer conn.Close()
+	s.mu.Lock()
+	s.conn = conn
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		if s.conn == conn {
+			s.conn = nil
+		}
+		s.mu.Unlock()
+		conn.Close()
+	}()
 
 	// Wait for either context cancellation or connection to finish
 	// The connection will automatically handle incoming requests via the handler

@@ -256,7 +256,7 @@ func TestServerRegisterResource(t *testing.T) {
 	}
 
 	// Test capabilities update
-	if server.capabilities.Resources == nil || !server.capabilities.Resources.ListChanged {
+	if server.capabilities.Resources == nil || !server.capabilities.Resources.ListChanged || !server.capabilities.Resources.Subscribe {
 		t.Error("Expected resources capability to be set")
 	}
 }
@@ -506,6 +506,85 @@ func TestClientSetLoggingLevel(t *testing.T) {
 	server.mu.RUnlock()
 	if got == nil || *got != slog.LevelError+8 {
 		t.Fatalf("logLevel = %v, want alert", got)
+	}
+}
+
+func TestServerResourceSubscriptionHandlers(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	subscribe := server.handlers[string(MethodResourcesSubscribe)]
+	if subscribe == nil {
+		t.Fatal("resources/subscribe handler not registered")
+	}
+	unsubscribe := server.handlers[string(MethodResourcesUnsubscribe)]
+	if unsubscribe == nil {
+		t.Fatal("resources/unsubscribe handler not registered")
+	}
+
+	_, err := subscribe(context.Background(), &jsonrpc2.Request{
+		Method: string(MethodResourcesSubscribe),
+		Params: json.RawMessage(`{"uri":"test://resource"}`),
+	})
+	if err != nil {
+		t.Fatalf("subscribe failed: %v", err)
+	}
+
+	server.mu.RLock()
+	subscribed := server.subscriptions["test://resource"]
+	server.mu.RUnlock()
+	if !subscribed {
+		t.Fatal("resource was not subscribed")
+	}
+
+	if err := server.ResourceUpdated(context.Background(), ResourceUpdatedNotificationParams{URI: "test://resource"}); err != nil {
+		t.Fatalf("ResourceUpdated failed without connection: %v", err)
+	}
+
+	_, err = unsubscribe(context.Background(), &jsonrpc2.Request{
+		Method: string(MethodResourcesUnsubscribe),
+		Params: json.RawMessage(`{"uri":"test://resource"}`),
+	})
+	if err != nil {
+		t.Fatalf("unsubscribe failed: %v", err)
+	}
+
+	server.mu.RLock()
+	subscribed = server.subscriptions["test://resource"]
+	server.mu.RUnlock()
+	if subscribed {
+		t.Fatal("resource remained subscribed")
+	}
+}
+
+func TestServerResourceSubscriptionHandlersRejectBadParams(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	tests := []struct {
+		name   string
+		method MCPMethod
+		params json.RawMessage
+	}{
+		{name: "subscribe missing", method: MethodResourcesSubscribe},
+		{name: "subscribe null", method: MethodResourcesSubscribe, params: json.RawMessage(`null`)},
+		{name: "subscribe missing uri", method: MethodResourcesSubscribe, params: json.RawMessage(`{}`)},
+		{name: "subscribe invalid uri", method: MethodResourcesSubscribe, params: json.RawMessage(`{"uri":"bad uri"}`)},
+		{name: "unsubscribe missing", method: MethodResourcesUnsubscribe},
+		{name: "unsubscribe null", method: MethodResourcesUnsubscribe, params: json.RawMessage(`null`)},
+		{name: "unsubscribe missing uri", method: MethodResourcesUnsubscribe, params: json.RawMessage(`{}`)},
+		{name: "unsubscribe invalid uri", method: MethodResourcesUnsubscribe, params: json.RawMessage(`{"uri":"bad uri"}`)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := server.handlers[string(tt.method)]
+			_, err := handler(context.Background(), &jsonrpc2.Request{
+				Method: string(tt.method),
+				Params: tt.params,
+			})
+			if err == nil {
+				t.Fatal("expected error")
+			}
+		})
 	}
 }
 

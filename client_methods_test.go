@@ -78,6 +78,8 @@ func TestClientAllMethods(t *testing.T) {
 			TextResourceContents{URI: "test://resource", Text: "Resource content"},
 		},
 	}
+	mockServer.responses["resources/subscribe"] = struct{}{}
+	mockServer.responses["resources/unsubscribe"] = struct{}{}
 
 	mockServer.responses["resources/templates/list"] = ListResourceTemplatesResult{
 		Templates: []ResourceTemplate{
@@ -224,6 +226,26 @@ func TestClientAllMethods(t *testing.T) {
 			}
 		} else {
 			t.Errorf("Unexpected resource content type: %T, value: %+v", result.Contents[0], result.Contents[0])
+		}
+	})
+
+	// Test SubscribeResource
+	t.Run("SubscribeResource", func(t *testing.T) {
+		err := client.SubscribeResource(context.Background(), SubscribeResourceRequest{
+			URI: "test://resource",
+		})
+		if err != nil {
+			t.Fatalf("SubscribeResource failed: %v", err)
+		}
+	})
+
+	// Test UnsubscribeResource
+	t.Run("UnsubscribeResource", func(t *testing.T) {
+		err := client.UnsubscribeResource(context.Background(), UnsubscribeResourceRequest{
+			URI: "test://resource",
+		})
+		if err != nil {
+			t.Fatalf("UnsubscribeResource failed: %v", err)
 		}
 	})
 

@@ -465,6 +465,21 @@ type ReadResourceResult struct {
 	Contents []ResourceContents `json:"contents"`
 }
 
+// SubscribeResourceRequest asks the server to send updates for a resource.
+type SubscribeResourceRequest struct {
+	URI string `json:"uri"`
+}
+
+// UnsubscribeResourceRequest cancels a resource subscription.
+type UnsubscribeResourceRequest struct {
+	URI string `json:"uri"`
+}
+
+// ResourceUpdatedNotificationParams identifies an updated resource.
+type ResourceUpdatedNotificationParams struct {
+	URI string `json:"uri"`
+}
+
 // ResourceContents represents the content of a specific resource.
 // This interface allows for different content types (text, binary)
 // while maintaining type safety and proper JSON serialization.
@@ -720,6 +735,24 @@ func (v *ParameterValidator) ValidateReadResourceRequest(params ReadResourceRequ
 
 	if v.config.ValidateFormat && !isValidURI(params.URI) {
 		return NewParameterError(string(MethodResourcesRead), "uri", "invalid URI format", nil)
+	}
+
+	return nil
+}
+
+func (v *ParameterValidator) ValidateResourceSubscription(method MCPMethod, uri string) error {
+	if !v.config.ValidateRequired {
+		return nil
+	}
+
+	if err := ValidateRequiredFields(string(method), map[string]string{
+		"uri": uri,
+	}); err != nil {
+		return err
+	}
+
+	if v.config.ValidateFormat && !isValidURI(uri) {
+		return NewParameterError(string(method), "uri", "invalid URI format", nil)
 	}
 
 	return nil

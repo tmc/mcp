@@ -1,6 +1,6 @@
 module github.com/tmc/mcp/exp/cmd/mcp2go
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/tmc/mcp v0.0.0

@@ -91,6 +91,8 @@ Current state:
 
 - `cmd/mcp` is now an explicit submodule, so the Cobra/TUI dependency
   tree no longer pollutes the root module.
+- `scripts/check-root-dep-contract.sh` is the reproducible local
+  verifier for this gate and is exposed as `make check-deps`.
 - The root `go.mod` still carries two non-stdlib, non-`golang.org/x/*`
   dependencies, and both are part of the root package surface today.
 - `github.com/gorilla/websocket` is required by the exported
@@ -136,14 +138,19 @@ Evidence anchors:
 - `security.go`
 - `transport_websocket.go`
 - `cmd/mcp/`
+- `scripts/check-root-dep-contract.sh`
 
 ### B7. Upstream conformance harness
 
 Current state:
 
 - `mcpscripttest` is valuable, but it is a project-local harness.
-- The repo still lacks a named conformance gate against the stable
-  upstream MCP spec.
+- The canonical upstream conformance target is
+  `@modelcontextprotocol/conformance@0.1.16`.
+- `scripts/mcp-conformance.sh` runs that harness against an
+  already-running HTTP MCP endpoint and is exposed as `make conformance`.
+- A live release-gate run still requires a `tmc/mcp` server URL via
+  `MCP_CONFORMANCE_URL`.
 
 Acceptance criteria:
 
@@ -157,16 +164,19 @@ Evidence anchors:
 
 - `testing/mcpscripttest/`
 - `docs/design/release-readiness-synthesis.md`
+- `scripts/mcp-conformance.sh`
 
 ### B8. Non-Go interop baseline
 
 Current state:
 
-- The repo does not yet name one non-Go client as the release interop
-  baseline.
-- The current release path does not prove wire compatibility from a
-  non-Go implementation into a `tmc/mcp` server across the transports
-  kept in the root v1 surface.
+- The baseline non-Go client is the official TypeScript SDK
+  `@modelcontextprotocol/sdk`.
+- `internal/integration_testing/typescript-sdk-interop` provides the
+  first executable smoke path: TypeScript SDK client initialization,
+  `tools/list`, and `tools/call` against a `tmc/mcp` stdio server.
+- B8 remains open until the smoke path covers every transport still in
+  scope for the root v1 surface at tag time.
 
 Acceptance criteria:
 
@@ -180,6 +190,7 @@ Evidence anchors:
 
 - `internal/integration_testing/`
 - `docs/design/release-readiness-synthesis.md`
+- `internal/integration_testing/typescript-sdk-interop/`
 
 ### B9. Performance baseline in CI
 

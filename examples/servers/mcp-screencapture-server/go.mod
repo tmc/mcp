@@ -1,8 +1,6 @@
 module github.com/tmc/mcp/examples/servers/mcp-screencapture-server
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	github.com/tmc/macgo v0.0.0-00010101000000-000000000000
@@ -10,15 +8,15 @@ require (
 )
 
 require (
-	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/ebitengine/purego v0.11.0-alpha.3 // indirect
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/exp/event v0.0.0-20220217172124-1812c5b45e43 // indirect
-	golang.org/x/exp/jsonrpc2 v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
-	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/exp/event v0.0.0-20260410095643-746e56fc9e2f // indirect
+	golang.org/x/exp/jsonrpc2 v0.0.0-20260529124908-c761662dc8c9 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
 
 replace github.com/tmc/mcp => ../../..

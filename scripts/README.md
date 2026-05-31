@@ -19,15 +19,18 @@ make check-deps
 
 ### `mcp-conformance.sh`
 
-Runs the upstream MCP server conformance harness against an already-running
-HTTP MCP server endpoint. The script pins the harness to
+Runs the upstream MCP server conformance harness. By default the script starts a
+small in-tree streamable HTTP fixture and stops it when the harness exits. Set
+`MCP_CONFORMANCE_URL` to run against an already-running HTTP MCP server
+endpoint instead. The script pins the harness to
 `@modelcontextprotocol/conformance@0.1.16` and prefers the local Node 24
 installation when present because Node 20 lacks `fs.globSync`.
 
 **Usage:**
 ```bash
+./scripts/mcp-conformance.sh
+make conformance
 MCP_CONFORMANCE_URL=http://127.0.0.1:3000/mcp ./scripts/mcp-conformance.sh
-make conformance MCP_CONFORMANCE_URL=http://127.0.0.1:3000/mcp
 ```
 
 Use `--dry-run` to print the resolved command without running the harness.

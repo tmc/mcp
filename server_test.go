@@ -418,6 +418,72 @@ func TestServerHandleInitialize(t *testing.T) {
 	}
 }
 
+func TestServerListHandlersAllowOmittedParams(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	tests := []struct {
+		method MCPMethod
+		params json.RawMessage
+		check  func(any) bool
+	}{
+		{
+			method: MethodToolsList,
+			check: func(result any) bool {
+				_, ok := result.(ListToolsResult)
+				return ok
+			},
+		},
+		{
+			method: MethodToolsList,
+			params: json.RawMessage(`null`),
+			check: func(result any) bool {
+				_, ok := result.(ListToolsResult)
+				return ok
+			},
+		},
+		{
+			method: MethodPromptsList,
+			check: func(result any) bool {
+				_, ok := result.(ListPromptsResult)
+				return ok
+			},
+		},
+		{
+			method: MethodResourcesList,
+			check: func(result any) bool {
+				_, ok := result.(ListResourcesResult)
+				return ok
+			},
+		},
+		{
+			method: MethodResourcesTemplatesList,
+			check: func(result any) bool {
+				_, ok := result.(ListResourceTemplatesResult)
+				return ok
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.method), func(t *testing.T) {
+			handler, ok := server.handlers[string(tt.method)]
+			if !ok {
+				t.Fatalf("%s handler not registered", tt.method)
+			}
+			result, err := handler(context.Background(), &jsonrpc2.Request{
+				Method: string(tt.method),
+				Params: tt.params,
+			})
+			if err != nil {
+				t.Fatalf("%s with omitted params: %v", tt.method, err)
+			}
+			if !tt.check(result) {
+				t.Fatalf("%s result type = %T", tt.method, result)
+			}
+		})
+	}
+}
+
 func TestServerToolsListHandler(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 

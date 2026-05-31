@@ -459,8 +459,8 @@ func (s *Server) registerToolHandlers() {
 	// Register tools/list handler
 	s.handlers[string(MethodToolsList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListToolsRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, NewParameterErrorFromJSON(string(MethodToolsList), err)
+		if err := unmarshalOptionalParams(string(MethodToolsList), req.Params, &params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -518,8 +518,8 @@ func (s *Server) registerPromptHandlers() {
 	// Register prompts/list handler
 	s.handlers[string(MethodPromptsList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListPromptsRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, NewParameterErrorFromJSON(string(MethodPromptsList), err)
+		if err := unmarshalOptionalParams(string(MethodPromptsList), req.Params, &params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -577,8 +577,8 @@ func (s *Server) registerResourceHandlers() {
 	// Register resources/list handler
 	s.handlers[string(MethodResourcesList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListResourcesRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, NewParameterErrorFromJSON(string(MethodResourcesList), err)
+		if err := unmarshalOptionalParams(string(MethodResourcesList), req.Params, &params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -666,8 +666,8 @@ func (s *Server) registerResourceHandlers() {
 	// Register resources/templates/list handler
 	s.handlers[string(MethodResourcesTemplatesList)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		var params ListResourceTemplatesRequest
-		if err := json.Unmarshal(req.Params, &params); err != nil {
-			return nil, NewParameterErrorFromJSON(string(MethodResourcesTemplatesList), err)
+		if err := unmarshalOptionalParams(string(MethodResourcesTemplatesList), req.Params, &params); err != nil {
+			return nil, err
 		}
 
 		s.mu.RLock()
@@ -685,6 +685,16 @@ func (s *Server) registerResourceHandlers() {
 
 		return result, nil
 	}
+}
+
+func unmarshalOptionalParams(method string, params json.RawMessage, dst any) error {
+	if len(params) == 0 || strings.TrimSpace(string(params)) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(params, dst); err != nil {
+		return NewParameterErrorFromJSON(method, err)
+	}
+	return nil
 }
 
 // RegisterTool adds a new tool to the server.

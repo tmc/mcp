@@ -54,7 +54,7 @@ func TestOfficialGoSDKCommandTransportStdioSmoke(t *testing.T) {
 		}
 	}()
 
-	tools, err := session.ListTools(ctx, &officialmcp.ListToolsParams{})
+	tools, err := session.ListTools(ctx, nil)
 	if err != nil {
 		t.Fatalf("list tools: %v", err)
 	}

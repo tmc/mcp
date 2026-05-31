@@ -148,7 +148,7 @@ if [ -z "$url" ]; then
 		)
 		(
 			cd "$repo_root"
-			"${fixture_cmd[@]}"
+			exec "${fixture_cmd[@]}"
 		) >"$fixture_tmp/stdout" 2>"$fixture_tmp/stderr" &
 		fixture_pid=$!
 		for _ in {1..100}; do

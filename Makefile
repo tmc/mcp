@@ -1,6 +1,6 @@
 # MCP Go Implementation - Development Makefile
 
-.PHONY: test test-synctest test-race test-coverage build build-tools fmt vet lint check-deps pre-commit clean help security-scan security-quick security-baseline
+.PHONY: test test-synctest test-race test-coverage build build-tools fmt vet lint check-deps conformance pre-commit clean help security-scan security-quick security-baseline
 
 # Default target
 all: test
@@ -77,6 +77,9 @@ lint:
 check-deps:
 	bash ./scripts/check-root-dep-contract.sh
 
+conformance:
+	./scripts/mcp-conformance.sh
+
 # Security targets
 security-scan:
 	@echo "Running comprehensive security scan..."
@@ -137,6 +140,7 @@ help:
 	@echo "  vet            - Run go vet"
 	@echo "  lint           - Run golangci-lint"
 	@echo "  check-deps     - Check root runtime dependency contract"
+	@echo "  conformance    - Run upstream MCP conformance harness"
 	@echo "  security-scan  - Run comprehensive security scan (gosec + govulncheck)"
 	@echo "  security-quick - Run quick security scan (gosec only)"
 	@echo "  security-baseline - Establish security baseline reports"

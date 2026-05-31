@@ -17,6 +17,21 @@ bash ./scripts/check-root-dep-contract.sh
 make check-deps
 ```
 
+### `mcp-conformance.sh`
+
+Runs the upstream MCP server conformance harness against an already-running
+HTTP MCP server endpoint. The script pins the harness to
+`@modelcontextprotocol/conformance@0.1.16` and prefers the local Node 24
+installation when present because Node 20 lacks `fs.globSync`.
+
+**Usage:**
+```bash
+MCP_CONFORMANCE_URL=http://127.0.0.1:3000/mcp ./scripts/mcp-conformance.sh
+make conformance MCP_CONFORMANCE_URL=http://127.0.0.1:3000/mcp
+```
+
+Use `--dry-run` to print the resolved command without running the harness.
+
 ### `pre-commit.sh`
 
 Local development pre-commit script that runs the same checks as the CI pipeline.

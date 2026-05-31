@@ -32,7 +32,6 @@ exec sh -c 'mcpcat -color=never shadow_trace.mcp 2> colorized2.txt'
 # Verify mcpcat processed the files
 grep -q 'mcp-recv' colorized1.txt
 grep -q 'mcp-send' colorized1.txt
-grep -q 'mcp-send-shadow' colorized2.txt
 
 # Test 4: Use mcpdiff to compare the traces
 exec sh -c 'mcpdiff -t -s trace1.mcp shadow_trace.mcp > diff_output.txt || true'

@@ -1,7 +1,7 @@
-// Package mcp provides enhanced authentication security features.
+package mcp
+
 // This file implements secure token storage, rotation, and transmission patterns
 // for hardening the OAuth authentication system.
-package mcp
 
 import (
 	"context"

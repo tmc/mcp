@@ -111,8 +111,7 @@ so would be an API decision rather than dependency hygiene.
 ### R5. Internal is actually internal
 
 `internal/` packages (`internal/mcpcli`, `internal/mcpspy`,
-`internal/jsonrpc2gostruct`, `internal/integration_testing`) are
-private. They can churn. The
+`internal/integration_testing`) are private. They can churn. The
 public surface is the root `mcp` package plus `modelcontextprotocol/`,
 plus any deliberately-promoted packages (see R8 below).
 
@@ -170,7 +169,7 @@ Why: "hardcoded wire-in" is where API contracts die.
   modelcontextprotocol/                                    Stable protocol types
     (no draft/)                                            Draft types excluded from v1
   internal/                                                Private helpers
-    jsonrpc2gostruct/ mcpcli/ mcpspy/ ...
+    mcpcli/ mcpspy/ ...
   cmd/
     mcp/                                                   The umbrella CLI (v1 in-scope)
     (optionally) mcp-probe/                                Diagnostic tool if kept

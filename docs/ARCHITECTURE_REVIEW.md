@@ -34,7 +34,6 @@ mcp/                          # Root package - client/server implementations
 │   └── draft/               # Future protocol extensions
 ├── protocol/                # Basic protocol utilities
 ├── internal/               # Internal utilities
-│   └── jsonrpc2gostruct/  # Code generation utilities
 ├── cmd/                    # CLI tools
 ├── exp/                    # Experimental features
 ├── testing/               # Testing utilities

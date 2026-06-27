@@ -9,7 +9,11 @@ import (
 	"time"
 )
 
-// Protocol constants
+// Protocol constants.
+//
+// The types in this package are the canonical wire types used by the mcp
+// Client and Server. The separate modelcontextprotocol package provides a
+// standalone schema model; when the two disagree, this package is canonical.
 const (
 	LATEST_PROTOCOL_VERSION = "2025-11-25"
 	JSONRPC_VERSION         = "2.0"

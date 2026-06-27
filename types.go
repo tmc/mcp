@@ -175,7 +175,8 @@ type ListRootsRequest struct{}
 
 // ListRootsResult contains the client's current roots.
 type ListRootsResult struct {
-	Roots []Root `json:"roots"`
+	Roots []Root         `json:"roots"`
+	Meta  map[string]any `json:"_meta,omitempty"`
 }
 
 // Implementation describes the name and version of an MCP client or server.
@@ -261,6 +262,7 @@ type InitializeResult struct {
 	ServerInfo      Implementation     `json:"serverInfo"`
 	Capabilities    ServerCapabilities `json:"capabilities"`
 	Instructions    string             `json:"instructions,omitempty"`
+	Meta            map[string]any     `json:"_meta,omitempty"`
 }
 
 // Content represents the various data types that can be included in MCP messages.
@@ -281,15 +283,26 @@ type TextContent struct {
 func (TextContent) content() {}
 
 // ImageContent represents image data within a message.
-// Images can be embedded directly as binary data or referenced by URI,
-// with optional MIME type specification for proper handling.
+// The Data field carries the raw image bytes, base64 encoded on the wire,
+// and MimeType identifies the image format. Both are required by the spec.
 type ImageContent struct {
 	Type     string `json:"type"`
-	Data     []byte `json:"data,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	Data     []byte `json:"data"`
+	MimeType string `json:"mimeType"`
 }
 
 func (ImageContent) content() {}
+
+// AudioContent represents audio data within a message.
+// The Data field carries the raw audio bytes, base64 encoded on the wire,
+// and MimeType identifies the audio format. Both are required by the spec.
+type AudioContent struct {
+	Type     string `json:"type"`
+	Data     []byte `json:"data"`
+	MimeType string `json:"mimeType"`
+}
+
+func (AudioContent) content() {}
 
 // ListToolsRequest is the client's request to list available tools.
 type ListToolsRequest struct {
@@ -298,8 +311,9 @@ type ListToolsRequest struct {
 
 // ListToolsResult is the server's response to a tools/list request.
 type ListToolsResult struct {
-	Tools      []Tool `json:"tools"`
-	NextCursor string `json:"nextCursor,omitempty"`
+	Tools      []Tool         `json:"tools"`
+	NextCursor string         `json:"nextCursor,omitempty"`
+	Meta       map[string]any `json:"_meta,omitempty"`
 }
 
 // Tool represents the definition for a tool that clients can call.
@@ -334,10 +348,10 @@ func (r CallToolRequest) GetProgressToken() any {
 // It contains the tool's output as content blocks, an error flag,
 // and optional metadata. Content can include text, images, or other media.
 type CallToolResult struct {
-	Content           []any `json:"content"`
-	StructuredContent any   `json:"structuredContent,omitempty"`
-	IsError           bool  `json:"isError,omitempty"`
-	Meta              any   `json:"_meta,omitempty"`
+	Content           []any          `json:"content"`
+	StructuredContent any            `json:"structuredContent,omitempty"`
+	IsError           bool           `json:"isError,omitempty"`
+	Meta              map[string]any `json:"_meta,omitempty"`
 }
 
 // CompleteRequest describes a completion lookup for a prompt or resource reference.
@@ -428,6 +442,11 @@ type CreateMessageResult struct {
 	StopReason string         `json:"stopReason,omitempty"`
 }
 
+// The tasks types and method constants below describe the draft MCP tasks
+// surface. They are provided as wire types for clients that talk to a
+// task-capable server; this package does not yet implement server-side task
+// handlers, so a Server created here does not advertise the tasks capability.
+
 // TaskInfo describes the current state of a durable task.
 type TaskInfo struct {
 	TaskID        string `json:"taskId"`
@@ -446,8 +465,9 @@ type ListTasksRequest struct {
 
 // ListTasksResult contains the current page of tasks.
 type ListTasksResult struct {
-	Tasks      []TaskInfo `json:"tasks"`
-	NextCursor string     `json:"nextCursor,omitempty"`
+	Tasks      []TaskInfo     `json:"tasks"`
+	NextCursor string         `json:"nextCursor,omitempty"`
+	Meta       map[string]any `json:"_meta,omitempty"`
 }
 
 // GetTaskRequest requests the current status of a task.
@@ -467,8 +487,9 @@ type ListPromptsRequest struct {
 
 // ListPromptsResult is the server's response to a prompts/list request.
 type ListPromptsResult struct {
-	Prompts    []Prompt `json:"prompts"`
-	NextCursor string   `json:"nextCursor,omitempty"`
+	Prompts    []Prompt       `json:"prompts"`
+	NextCursor string         `json:"nextCursor,omitempty"`
+	Meta       map[string]any `json:"_meta,omitempty"`
 }
 
 // Prompt represents a prompt or prompt template offered by a server.
@@ -497,6 +518,7 @@ type GetPromptRequest struct {
 // GetPromptResult is the server's response to a prompts/get request.
 type GetPromptResult struct {
 	Messages []PromptMessage `json:"messages"`
+	Meta     map[string]any  `json:"_meta,omitempty"`
 }
 
 // PromptMessage describes a message returned as part of a prompt.
@@ -512,8 +534,9 @@ type ListResourcesRequest struct {
 
 // ListResourcesResult is the server's response to a resources/list request.
 type ListResourcesResult struct {
-	Resources  []Resource `json:"resources"`
-	NextCursor string     `json:"nextCursor,omitempty"`
+	Resources  []Resource     `json:"resources"`
+	NextCursor string         `json:"nextCursor,omitempty"`
+	Meta       map[string]any `json:"_meta,omitempty"`
 }
 
 // Resource represents a known resource that the server can read.
@@ -534,6 +557,7 @@ type ReadResourceRequest struct {
 // ReadResourceResult is the server's response to a resources/read request.
 type ReadResourceResult struct {
 	Contents []ResourceContents `json:"contents"`
+	Meta     map[string]any     `json:"_meta,omitempty"`
 }
 
 // SubscribeResourceRequest asks the server to send updates for a resource.
@@ -589,6 +613,7 @@ type ListResourceTemplatesRequest struct {
 type ListResourceTemplatesResult struct {
 	Templates  []ResourceTemplate `json:"templates"`
 	NextCursor string             `json:"nextCursor,omitempty"`
+	Meta       map[string]any     `json:"_meta,omitempty"`
 }
 
 // ResourceTemplate represents a template description for dynamic resources.

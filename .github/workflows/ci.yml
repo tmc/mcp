@@ -490,7 +490,10 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        # Node 22+ is required by the conformance harness (fs.globSync); the
+        # TypeScript SDK interop smoke (B8) needs only Node >=18, so one
+        # version serves both.
+        node-version: '22'
 
     - name: Build tools for integration testing
       run: |
@@ -535,6 +538,16 @@ jobs:
         # rather than self-skipping.
         cd internal/integration_testing/typescript-sdk-interop
         GOWORK=off go test -timeout=10m -count=1 ./...
+
+    - name: Run upstream conformance harness (B7)
+      run: |
+        # B7 gate: run @modelcontextprotocol/conformance against an in-tree
+        # streamable HTTP fixture. With MCP_CONFORMANCE_URL unset the script
+        # builds and starts internal/integration_testing/conformance-server,
+        # runs the active suite, and stops the fixture. The active suite is the
+        # upstream must-pass set; tmc/mcp passes it with no expected-failures
+        # file (bootstrap evidence: testdata/conformance/b7-bootstrap-active.txt).
+        MCP_CONFORMANCE_SUITE=active ./scripts/mcp-conformance.sh
 
   # ============================================================================
   # SECURITY CHECKS

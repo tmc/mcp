@@ -487,6 +487,11 @@ jobs:
         go-version-file: go.mod
         cache: true
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
     - name: Build tools for integration testing
       run: |
         # Build required tools
@@ -521,6 +526,15 @@ jobs:
           go test -timeout=5m ./...
           cd ../..
         fi
+
+    - name: Run non-Go interop smoke (B8, TypeScript SDK)
+      run: |
+        # B8 gate: drive a tmc/mcp server from the official TypeScript SDK
+        # client over every transport the root package can serve at v1
+        # (stdio + streamable HTTP). Node is set up above, so the smoke runs
+        # rather than self-skipping.
+        cd internal/integration_testing/typescript-sdk-interop
+        GOWORK=off go test -timeout=10m -count=1 ./...
 
   # ============================================================================
   # SECURITY CHECKS

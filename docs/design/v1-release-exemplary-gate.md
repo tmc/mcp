@@ -60,8 +60,19 @@ running each gate's recorded command; the scoping pass is captured in
   `golang.org/x/exp/jsonrpc2` and `cmd/mcp-probe` consumes the upstream
   public `github.com/modelcontextprotocol/go-sdk/jsonrpc` from its own
   nested module. Full criteria below under "Closed-blocker evidence: B10".
+- `B7` upstream conformance harness: closed. `scripts/mcp-conformance.sh`
+  runs `@modelcontextprotocol/conformance@0.1.16` (suite `active`) against an
+  in-tree streamable HTTP fixture
+  (`internal/integration_testing/conformance-server`) and is now CI-wired in
+  the `integration` job. tmc/mcp passes the active suite 100% (30 scenarios,
+  40 assertions, 0 failures); the bootstrap run is committed at
+  `testdata/conformance/b7-bootstrap-active.txt`. Full criteria below under
+  "B7".
 
-## Open hard blockers
+With B7 closed, all hard blockers B5–B14 are closed. No open hard blockers
+remain; the v1.0.0 tag is unblocked on this checklist.
+
+## Closed hard blockers (formerly open)
 
 ### B5. Security evidence and auth hardening — CLOSED
 
@@ -186,31 +197,52 @@ Evidence anchors:
 - `cmd/mcp/`
 - `scripts/check-root-dep-contract.sh`
 
-### B7. Upstream conformance harness — OPEN
+### B7. Upstream conformance harness — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
-- `mcpscripttest` is valuable, but it is a project-local harness.
 - The canonical upstream conformance target is
-  `@modelcontextprotocol/conformance@0.1.16`.
-- `scripts/mcp-conformance.sh` runs that harness against an
-  already-running HTTP MCP endpoint and is exposed as `make conformance`.
-- A live release-gate run still requires a `tmc/mcp` server URL via
-  `MCP_CONFORMANCE_URL`.
+  `@modelcontextprotocol/conformance@0.1.16` (criterion 1).
+- `scripts/mcp-conformance.sh` runs that harness and — with
+  `MCP_CONFORMANCE_URL` unset — builds and starts an in-tree streamable HTTP
+  fixture (`internal/integration_testing/conformance-server`), runs the
+  suite against it, and stops the fixture. This is the reproducible command
+  against the v1 surface (criterion 2); it is also `make conformance`.
+- The harness now runs in CI: the `integration` job
+  (`.github/workflows/ci.yml`) invokes
+  `MCP_CONFORMANCE_SUITE=active ./scripts/mcp-conformance.sh` after the B8
+  interop smoke. The job's Node version was raised to 22 because the harness
+  needs `fs.globSync`; the B8 smoke needs only Node >=18, so one version
+  serves both. That makes the result part of the release path, not a manual
+  one-off (criterion 3).
 
-Acceptance criteria:
+Suite decision:
 
-1. One canonical conformance target is chosen and documented.
-2. The repo contains a reproducible command or script that runs that
-   harness against the v1 surface.
-3. The result is part of the release path and not a manual,
-   one-off notebook exercise.
+- The gate runs the **`active`** suite — the upstream-curated must-pass set.
+  tmc/mcp passes it 100% (30 scenarios, 40 assertions, 0 failures), so no
+  expected-failures file is needed.
+- The wider `all` suite was also run for comparison: it additionally includes
+  `json-schema-2020-12` (a pending scenario that fails) and
+  `server-sse-polling` (not exercised), and exits non-zero. Those are not part
+  of the active contract, so `active` is the correct gate suite (and the
+  script default).
+
+Acceptance criteria — all met:
+
+1. One canonical conformance target is chosen and documented:
+   `@modelcontextprotocol/conformance@0.1.16`.
+2. The repo contains a reproducible command that runs that harness against
+   the v1 surface: `scripts/mcp-conformance.sh` (self-fixture mode).
+3. The result is part of the release path: CI-wired in the `integration` job.
 
 Evidence anchors:
 
-- `testing/mcpscripttest/`
-- `docs/design/release-readiness-synthesis.md`
 - `scripts/mcp-conformance.sh`
+- `internal/integration_testing/conformance-server/`
+- `.github/workflows/ci.yml` (`integration` job, "Run upstream conformance
+  harness (B7)")
+- `testdata/conformance/b7-bootstrap-active.txt` (bootstrap passing run)
+- `testing/mcpscripttest/`, `docs/design/release-readiness-synthesis.md`
 
 ### B8. Non-Go interop baseline — CLOSED
 

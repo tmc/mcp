@@ -197,6 +197,7 @@ type InMemoryCache struct {
 	size         int64
 	maxSize      int64
 	cleanupTimer *time.Timer
+	closed       bool
 }
 
 type cacheItem struct {
@@ -310,12 +311,33 @@ func (c *InMemoryCache) evictLRU() {
 }
 
 func (c *InMemoryCache) startCleanup() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return
+	}
 	c.cleanupTimer = time.AfterFunc(10*time.Minute, func() {
 		c.mu.Lock()
 		c.evictLRU()
 		c.mu.Unlock()
 		c.startCleanup() // Reschedule
 	})
+}
+
+// Close stops the cache's background cleanup timer. It is safe to call more
+// than once. After Close the cache may still be read and written, but expired
+// entries are no longer reclaimed automatically.
+func (c *InMemoryCache) Close() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return nil
+	}
+	c.closed = true
+	if c.cleanupTimer != nil {
+		c.cleanupTimer.Stop()
+	}
+	return nil
 }
 
 // DefaultCacheKeyStrategy implements a default cache key strategy

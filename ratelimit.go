@@ -68,6 +68,7 @@ type TokenBucketRateLimiter struct {
 	stats           atomic.Value // *RateLimitStats
 	perKeyRules     map[string]RateLimitRule
 	mu              sync.RWMutex
+	closed          bool
 }
 
 // tokenBucket represents a single token bucket
@@ -315,8 +316,28 @@ func (rl *TokenBucketRateLimiter) cleanup() {
 		return true
 	})
 
-	// Schedule next cleanup
-	rl.cleanupTimer.Reset(rl.cleanupInterval)
+	// Schedule next cleanup unless the limiter has been closed.
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if !rl.closed {
+		rl.cleanupTimer.Reset(rl.cleanupInterval)
+	}
+}
+
+// Close stops the rate limiter's background cleanup timer. It is safe to call
+// more than once. After Close the limiter still enforces limits, but inactive
+// buckets are no longer reclaimed automatically.
+func (rl *TokenBucketRateLimiter) Close() error {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if rl.closed {
+		return nil
+	}
+	rl.closed = true
+	if rl.cleanupTimer != nil {
+		rl.cleanupTimer.Stop()
+	}
+	return nil
 }
 
 // SlidingWindowRateLimiter implements sliding window algorithm
@@ -329,6 +350,7 @@ type SlidingWindowRateLimiter struct {
 	stats           atomic.Value // *RateLimitStats
 	perKeyRules     map[string]RateLimitRule
 	mu              sync.RWMutex
+	closed          bool
 }
 
 // slidingWindow represents a single sliding window
@@ -593,8 +615,28 @@ func (rl *SlidingWindowRateLimiter) cleanup() {
 		return true
 	})
 
-	// Schedule next cleanup
-	rl.cleanupTimer.Reset(rl.cleanupInterval)
+	// Schedule next cleanup unless the limiter has been closed.
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if !rl.closed {
+		rl.cleanupTimer.Reset(rl.cleanupInterval)
+	}
+}
+
+// Close stops the rate limiter's background cleanup timer. It is safe to call
+// more than once. After Close the limiter still enforces limits, but inactive
+// windows are no longer reclaimed automatically.
+func (rl *SlidingWindowRateLimiter) Close() error {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if rl.closed {
+		return nil
+	}
+	rl.closed = true
+	if rl.cleanupTimer != nil {
+		rl.cleanupTimer.Stop()
+	}
+	return nil
 }
 
 // CompositeRateLimiter combines multiple rate limiters with different strategies

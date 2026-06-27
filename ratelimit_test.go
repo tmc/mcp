@@ -9,6 +9,83 @@ import (
 	"time"
 )
 
+func TestRateLimiterClose(t *testing.T) {
+	t.Run("token bucket", func(t *testing.T) {
+		rl := NewTokenBucketRateLimiter(10, 5)
+		if !rl.cleanupTimer.Stop() {
+			t.Fatal("cleanup timer should be pending before Close")
+		}
+		// Restart so Close has a live timer to stop, mirroring real use.
+		rl.cleanupTimer.Reset(rl.cleanupInterval)
+
+		if err := rl.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		if !rl.closed {
+			t.Fatal("limiter not marked closed")
+		}
+		// Idempotent.
+		if err := rl.Close(); err != nil {
+			t.Fatalf("second Close: %v", err)
+		}
+		// cleanup must not resurrect the timer after Close.
+		rl.cleanup()
+		if rl.cleanupTimer.Stop() {
+			t.Fatal("cleanup rescheduled the timer after Close")
+		}
+		// Limits still enforced post-Close.
+		if !rl.Allow(context.Background(), "k") {
+			t.Fatal("Allow should still work after Close")
+		}
+	})
+
+	t.Run("sliding window", func(t *testing.T) {
+		rl := NewSlidingWindowRateLimiter(time.Second, 10)
+		if err := rl.Close(); err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		if err := rl.Close(); err != nil {
+			t.Fatalf("second Close: %v", err)
+		}
+		rl.cleanup()
+		if rl.cleanupTimer.Stop() {
+			t.Fatal("cleanup rescheduled the timer after Close")
+		}
+		if !rl.Allow(context.Background(), "k") {
+			t.Fatal("Allow should still work after Close")
+		}
+	})
+}
+
+func TestInMemoryCacheClose(t *testing.T) {
+	c := NewInMemoryCache(1024)
+	if c.cleanupTimer == nil {
+		t.Fatal("cleanup timer should be set after construction")
+	}
+	if err := c.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if !c.closed {
+		t.Fatal("cache not marked closed")
+	}
+	// Idempotent.
+	if err := c.Close(); err != nil {
+		t.Fatalf("second Close: %v", err)
+	}
+	// startCleanup must be a no-op once closed (no new timer scheduled).
+	c.startCleanup()
+	if c.cleanupTimer.Stop() {
+		t.Fatal("startCleanup rescheduled the timer after Close")
+	}
+	// Cache still usable post-Close.
+	if err := c.Set(context.Background(), "k", []byte("v"), time.Minute); err != nil {
+		t.Fatalf("Set after Close: %v", err)
+	}
+	if v, ok := c.Get(context.Background(), "k"); !ok || string(v) != "v" {
+		t.Fatalf("Get after Close = %q, %v; want \"v\", true", v, ok)
+	}
+}
+
 func TestTokenBucketRateLimiter(t *testing.T) {
 	// Create limiter with 10 requests per second, burst of 5
 	limiter := NewTokenBucketRateLimiter(10, 5)

@@ -22,19 +22,59 @@ serious v1 review could begin.
 - `B4` dirty core `.go` files resolved: closed
 - `cmd/` trim: closed; only `cmd/mcp` and `cmd/mcp-probe` remain
 
+## Closed hard blockers
+
+These were verified against the tree on 2026-06-27 (HEAD `bb582aa97`) by
+running each gate's recorded command; the scoping pass is captured in
+[`b5-b10-scoping-2026-06-27.md`](b5-b10-scoping-2026-06-27.md).
+
+- `B5` security evidence and auth hardening: closed. All ten named auth
+  tests pass and `go test -race ./...` is CI-wired
+  (`.github/workflows/ci.yml`). `SECURITY.md` was rewritten so every claim
+  maps to a code location, a named check, or an explicit deferral
+  (criterion 3). Full criteria below under "B5".
+- `B6` root-module dependency contract: closed.
+  `scripts/check-root-dep-contract.sh` exits 0
+  (`root runtime dependency contract satisfied`) and is wired in CI
+  (`.github/workflows/ci.yml`) and `make check-deps`. Runtime modules are
+  stdlib + `golang.org/x/*` + the two approved R4 exceptions
+  (`gorilla/websocket`, `santhosh-tekuri/jsonschema/v5`); test-only modules
+  are correctly segregated. Full criteria below under "Closed-blocker
+  evidence: B6".
+- `B9` performance baseline in CI: closed. `scripts/bench-gate.sh` exits 0
+  with both gated benchmarks inside tolerance
+  (`BenchmarkServer_HandleRequest/PayloadSize_1024` 0.89x ns/op;
+  `BenchmarkTokenValidation` 0.93x ns/op, 0 B/op, 0 allocs/op) against the
+  committed `testdata/benchmarks/b9-baseline.txt`, wired in
+  `.github/workflows/ci.yml`. Full criteria below under "Closed-blocker
+  evidence: B9".
+- `B10` `jsonrpc2` boundary decision: closed. The repo-local `jsonrpc2/`
+  package is removed; no non-test root `.go` file references
+  `github.com/tmc/mcp/jsonrpc2`; the root build uses
+  `golang.org/x/exp/jsonrpc2` and `cmd/mcp-probe` consumes the upstream
+  public `github.com/modelcontextprotocol/go-sdk/jsonrpc` from its own
+  nested module. Full criteria below under "Closed-blocker evidence: B10".
+
 ## Open hard blockers
 
-### B5. Security evidence and auth hardening
+### B5. Security evidence and auth hardening — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
-- `SECURITY.md` is narrative, not gate evidence.
+- `SECURITY.md` was rewritten so every retained claim maps to a code
+  location or a named regression test, and unbacked claims (TLS
+  enforcement, SQL/XXE/path/command-injection "prevention", SOC2/GDPR/HIPAA
+  compliance checkmarks, a dated aspirational roadmap, a non-existent
+  `FuzzInputValidation` target) were removed or moved to an explicit
+  "not provided / deferred" list. Criterion 3 is now satisfied.
 - Security claims touch `auth.go`, `auth_security.go`, `security.go`,
   and `middleware.go`.
-- The auth path now has direct tests for entropy failure handling,
+- The auth path has direct tests for entropy failure handling,
   constant-time secret validation, token-race behavior, context-value
   sanitization, rate-limit granularity, key derivation, production
   error sanitization, and CORS defaults.
+- The named subset and `go test -race ./...` pass at HEAD (verified
+  2026-06-27); see [`b5-b10-scoping-2026-06-27.md`](b5-b10-scoping-2026-06-27.md).
 
 Acceptance criteria:
 
@@ -85,9 +125,9 @@ Evidence anchors:
 - `security.go`
 - `SECURITY.md`
 
-### B6. Root-module dependency contract
+### Closed-blocker evidence: B6 — Root-module dependency contract — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
 - `cmd/mcp` is now an explicit submodule, so the Cobra/TUI dependency
   tree no longer pollutes the root module.
@@ -140,7 +180,7 @@ Evidence anchors:
 - `cmd/mcp/`
 - `scripts/check-root-dep-contract.sh`
 
-### B7. Upstream conformance harness
+### B7. Upstream conformance harness — OPEN
 
 Current state:
 
@@ -166,7 +206,7 @@ Evidence anchors:
 - `docs/design/release-readiness-synthesis.md`
 - `scripts/mcp-conformance.sh`
 
-### B8. Non-Go interop baseline
+### B8. Non-Go interop baseline — OPEN
 
 Current state:
 
@@ -192,9 +232,9 @@ Evidence anchors:
 - `docs/design/release-readiness-synthesis.md`
 - `internal/integration_testing/typescript-sdk-interop/`
 
-### B9. Performance baseline in CI
+### Closed-blocker evidence: B9 — Performance baseline in CI — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
 - Benchmarks exist, and the repo now has a narrow regression gate for
   the v1-critical request and auth paths.
@@ -242,9 +282,9 @@ Evidence anchors:
 - `benchmark_test.go`
 - `benchmark_auth_test.go`
 
-### B10. `jsonrpc2` boundary decision
+### Closed-blocker evidence: B10 — `jsonrpc2` boundary decision — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
 - The repo-local `jsonrpc2/` package was removed after auditing direct
   consumers.

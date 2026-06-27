@@ -541,8 +541,11 @@ func (f *CORSMiddlewareFactory) Description() string {
 type CompressionMiddlewareFactory struct{}
 
 func (f *CompressionMiddlewareFactory) Create(config interface{}) (Middleware, error) {
-	// Implementation would go here
-	return &NoOpMiddleware{name: "compression"}, nil
+	cfg, ok := config.(CompressionConfig)
+	if !ok && config != nil {
+		return nil, fmt.Errorf("compression middleware: want %T config, got %T", CompressionConfig{}, config)
+	}
+	return NewCompressionMiddleware(cfg), nil
 }
 
 func (f *CompressionMiddlewareFactory) ConfigType() interface{} {
@@ -560,8 +563,11 @@ func (f *CompressionMiddlewareFactory) Description() string {
 type ValidationMiddlewareFactory struct{}
 
 func (f *ValidationMiddlewareFactory) Create(config interface{}) (Middleware, error) {
-	// Implementation would go here
-	return &NoOpMiddleware{name: "validation"}, nil
+	cfg, ok := config.(MiddlewareValidationConfig)
+	if !ok && config != nil {
+		return nil, fmt.Errorf("validation middleware: want %T config, got %T", MiddlewareValidationConfig{}, config)
+	}
+	return NewValidationMiddleware(cfg), nil
 }
 
 func (f *ValidationMiddlewareFactory) ConfigType() interface{} {
@@ -579,8 +585,11 @@ func (f *ValidationMiddlewareFactory) Description() string {
 type CachingMiddlewareFactory struct{}
 
 func (f *CachingMiddlewareFactory) Create(config interface{}) (Middleware, error) {
-	// Implementation would go here
-	return &NoOpMiddleware{name: "caching"}, nil
+	cfg, ok := config.(CachingConfig)
+	if !ok && config != nil {
+		return nil, fmt.Errorf("caching middleware: want %T config, got %T", CachingConfig{}, config)
+	}
+	return NewCachingMiddleware(cfg), nil
 }
 
 func (f *CachingMiddlewareFactory) ConfigType() interface{} {

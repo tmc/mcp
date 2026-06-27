@@ -42,7 +42,17 @@ they are not re-litigated:
 
 ## Proposed new v1 blockers
 
-### B11. Single canonical protocol-type package
+> **Status (2026-06-27): B11–B14 all resolved** on branch `next`
+> (commits 83b168a06..e304a90a6, each with git-notes). The execution workflow
+> — ordering, the surgical B11 scope, and the v2 deferrals — was designed with
+> the panel and is recorded in
+> [`go-team-fix-execution-plan-2026-06-27.md`](go-team-fix-execution-plan-2026-06-27.md).
+> The non-breaking polish items below (NoOp factories, string context keys,
+> encoder-pool theater, the deadlocking Example) were also fixed in the same
+> pass. NotificationHandler-ctx and the constructor/naming churn remain deferred
+> to v2. B5–B10 are unaffected and remain the open v1 gate.
+
+### B11. Single canonical protocol-type package — DONE
 The repo carries three drifting definitions of the same wire types:
 `types.go` (root, 1186 L), `modelcontextprotocol/types.go` (559 L),
 `protocol/types.go` (173 L). The drift is already concrete:
@@ -57,7 +67,7 @@ what `Client`/`Server` use), so the cheapest correct move is to delete `protocol
 and reduce `modelcontextprotocol/` to a compatibility alias or remove it.
 Cost: L. API-breaking for anyone importing `protocol`/`modelcontextprotocol`.
 
-### B12. Honor list pagination cursors
+### B12. Honor list pagination cursors — DONE
 `ListTools` / `ListPrompts` / `ListResources` accept a `Cursor` but the handlers
 return the full set and never populate `NextCursor` (server.go list handlers, with
 an in-code "future version" comment). A parameter that is accepted but ignored is a
@@ -68,7 +78,7 @@ page and asserts paging. If pagination is deliberately deferred, the `Cursor` fi
 must be documented as accepted-but-ignored and the gate records the deferral.
 Cost: M. Not breaking (additive behavior).
 
-### B13. `io.Reader` contract violation in the Darwin transport
+### B13. `io.Reader` contract violation in the Darwin transport — DONE
 `platform_darwin.go:132-139` (`AppleOptimizedTransport.Read`) reslices the caller's
 buffer `p` up to `cap(p)`/BufferSize when `len(p)` is smaller. `io.Reader` must
 never write beyond `len(p)`; this can corrupt caller-owned memory. Correctness bug,
@@ -80,7 +90,7 @@ wanted. Also delete the redundant `runtime.GOOS != "darwin"` panic guard
 either implement or remove the placeholder `sysctlByName` (`:66-77`).
 Cost: S. Not breaking.
 
-### B14. Background-goroutine / timer lifecycle
+### B14. Background-goroutine / timer lifecycle — DONE
 `InMemoryCache.startCleanup` (`middleware_advanced.go:312-318`) reschedules itself
 via `time.AfterFunc` forever with no stop path; `TokenBucketRateLimiter`
 (`ratelimit.go:92-97`) has a cleanup timer with no `Stop()`. Long-lived servers and

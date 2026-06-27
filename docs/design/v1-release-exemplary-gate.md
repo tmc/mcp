@@ -33,6 +33,12 @@ running each gate's recorded command; the scoping pass is captured in
   (`.github/workflows/ci.yml`). `SECURITY.md` was rewritten so every claim
   maps to a code location, a named check, or an explicit deferral
   (criterion 3). Full criteria below under "B5".
+- `B8` non-Go interop baseline: closed. The TypeScript-SDK interop smoke
+  drives a `tmc/mcp` server over the two transports the root package can
+  serve (stdio + streamable HTTP) and is CI-wired in the `integration` job.
+  Root SSE/WS are client-only, so an SSE-server handler + WebSocket upgrader
+  plus their interop coverage are deferred to v1.x. Full criteria below
+  under "B8".
 - `B6` root-module dependency contract: closed.
   `scripts/check-root-dep-contract.sh` exits 0
   (`root runtime dependency contract satisfied`) and is wired in CI
@@ -206,31 +212,53 @@ Evidence anchors:
 - `docs/design/release-readiness-synthesis.md`
 - `scripts/mcp-conformance.sh`
 
-### B8. Non-Go interop baseline — OPEN
+### B8. Non-Go interop baseline — CLOSED
 
-Current state:
+Closed 2026-06-27. Current state:
 
 - The baseline non-Go client is the official TypeScript SDK
-  `@modelcontextprotocol/sdk`.
-- `internal/integration_testing/typescript-sdk-interop` provides the
-  first executable smoke path: TypeScript SDK client initialization,
-  `tools/list`, and `tools/call` against a `tmc/mcp` stdio server.
-- B8 remains open until the smoke path covers every transport still in
-  scope for the root v1 surface at tag time.
+  `@modelcontextprotocol/sdk` (`1.29.0`).
+- `internal/integration_testing/typescript-sdk-interop` drives a `tmc/mcp`
+  server from that client through `initialize`, `tools/list`, and
+  `tools/call`, over **stdio** (`TestTypeScriptSDKStdioSmoke`) and
+  **streamable HTTP** (`TestTypeScriptSDKStreamableHTTPSmoke`).
+- The suite is wired into CI: the `integration` job in
+  `.github/workflows/ci.yml` sets up Node 20 and runs
+  `GOWORK=off go test ./...` in that module, so it is part of the release
+  path rather than a manual one-off. It passes locally at HEAD.
+
+Transport scope and the SSE/WebSocket deferral:
+
+- The root v1 surface can **serve** exactly two transports today: stdio
+  (`StdioTransport`) and streamable HTTP (`NewStreamableHTTPHandler`). The
+  smoke covers both.
+- SSE and WebSocket are exported at root only as **client-side** transports
+  (`SSEClientTransport`, `WebSocketTransport`). There is no root-package SSE
+  HTTP server handler and no root-package WebSocket upgrader — server-side
+  SSE/WS exist only under `exp/cmd/*`, which is not the v1 surface (R5/R8).
+  A non-Go client therefore has no root SSE/WS endpoint to connect to.
+- B8 is closed against the transports the v1 root package can actually
+  serve. **Adding an SSE HTTP server handler and a WebSocket upgrader to the
+  root package, then extending the interop smoke to all four transports, is
+  deferred to v1.x** — that is net-new exported API to design and freeze, not
+  interop-test work. This couples to S3 (streamable promotion) in
+  `release-readiness-synthesis.md`.
 
 Acceptance criteria:
 
-1. One baseline client is chosen and documented.
+1. One baseline client is chosen and documented. ✔ TypeScript SDK.
 2. The repo contains a reproducible smoke path for that client against
-   a `tmc/mcp` server.
+   a `tmc/mcp` server. ✔ Two transports, CI-wired.
 3. The smoke covers every transport still in scope for the root v1
-   surface at tag time.
+   surface at tag time. ✔ The in-scope (server-capable) set is stdio +
+   streamable HTTP; client-only SSE/WS server support is an explicit
+   v1.x deferral recorded above.
 
 Evidence anchors:
 
-- `internal/integration_testing/`
-- `docs/design/release-readiness-synthesis.md`
 - `internal/integration_testing/typescript-sdk-interop/`
+- `.github/workflows/ci.yml` (`integration` job)
+- `docs/design/release-readiness-synthesis.md`
 
 ### Closed-blocker evidence: B9 — Performance baseline in CI — CLOSED
 

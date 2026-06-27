@@ -282,23 +282,23 @@ func (cm *CancelManager) CreateCancelledNotification(requestID string) *JSONRPCN
 
 // ContextWithProgress adds progress tracking to a context
 func ContextWithProgress(ctx context.Context, progress *Progress) context.Context {
-	return context.WithValue(ctx, "mcp_progress", progress)
+	return context.WithValue(ctx, progressKey, progress)
 }
 
 // ProgressFromContext retrieves progress tracker from context
 func ProgressFromContext(ctx context.Context) (*Progress, bool) {
-	progress, ok := ctx.Value("mcp_progress").(*Progress)
+	progress, ok := ctx.Value(progressKey).(*Progress)
 	return progress, ok
 }
 
 // ContextWithCancelManager adds cancel manager to a context
 func ContextWithCancelManager(ctx context.Context, cm *CancelManager) context.Context {
-	return context.WithValue(ctx, "mcp_cancel_manager", cm)
+	return context.WithValue(ctx, cancelManagerKey, cm)
 }
 
 // CancelManagerFromContext retrieves cancel manager from context
 func CancelManagerFromContext(ctx context.Context) (*CancelManager, bool) {
-	cm, ok := ctx.Value("mcp_cancel_manager").(*CancelManager)
+	cm, ok := ctx.Value(cancelManagerKey).(*CancelManager)
 	return cm, ok
 }
 

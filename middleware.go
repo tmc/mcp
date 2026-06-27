@@ -645,9 +645,11 @@ type AuthContext struct {
 type contextKey string
 
 const (
-	requestIDKey contextKey = "mcp_request_id"
-	authCtxKey   contextKey = "mcp_auth_context"
-	metricsKey   contextKey = "mcp_metrics"
+	requestIDKey     contextKey = "mcp_request_id"
+	authCtxKey       contextKey = "mcp_auth_context"
+	metricsKey       contextKey = "mcp_metrics"
+	progressKey      contextKey = "mcp_progress"
+	cancelManagerKey contextKey = "mcp_cancel_manager"
 )
 
 // WithAuthContext adds authentication context to the request context

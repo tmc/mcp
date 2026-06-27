@@ -13,7 +13,9 @@ If you discover a security vulnerability in this project, please report it respo
 
 **Last Audit**: August 31, 2025
 **Security Update**: October 6, 2025
-**Overall Rating**: A- (Excellent - all critical issues resolved)
+
+All critical and medium-risk issues from the audit are resolved, each with a
+named regression test (see the claim-to-evidence mapping below).
 
 ### Critical Vulnerabilities (Fixed)
 
@@ -90,35 +92,59 @@ If you discover a security vulnerability in this project, please report it respo
 - **Status**: ✅ Fixed - strict defaults, environment-aware
 - **Gate evidence**: `TestNewCORSMiddlewareDefaults`
 
-### Security Features
+### Security mechanisms implemented in this library
 
-#### Authentication & Authorization
-- ✅ OAuth2 with PKCE support
-- ✅ Token rotation policies
-- ✅ Secure session management
-- ✅ Client authentication
-- 🔄 MFA support (planned)
+Each item below maps to a concrete location in the source tree. Claims that
+could not be grounded in code were removed (see the deferral list that
+follows).
 
 #### Cryptography
-- ✅ AES-256-GCM for token encryption
-- ✅ HMAC-SHA256 for signatures
-- ✅ Secure random generation
-- ✅ Constant-time comparisons
-- 📋 HSM integration (planned)
+- Constant-time secret comparison — `subtle.ConstantTimeCompare`
+  (`auth.go:215`, `auth_security.go:449`)
+- AES-GCM for token/payload encryption — `aes.NewCipher` + `cipher.NewGCM`
+  (`security.go:547`, `security.go:644`)
+- HMAC-SHA256 for signatures — `hmac.New(sha256.New, ...)`
+  (`auth_security.go:440`)
+- Argon2id / PBKDF2 key derivation — `argon2.IDKey`
+  (`auth_security.go:107`); covered by `TestDeriveKeyMethods` and
+  `security_gate_test.go`
+- crypto/rand token generation with no predictable fallback — covered by
+  `TestGenerateRandomString_ReadError` (see Critical Vulnerability #1)
 
-#### Network Security
-- ✅ TLS 1.2+ enforcement
-- ✅ Rate limiting per client
-- ✅ Request size limits
-- 🔄 DDoS protection (in progress)
-- 📋 IP allowlisting (planned)
+#### Authentication & authorization
+- OAuth2 provider with client authentication — `auth.go`, `auth_security.go`
+- Token validation hardened against revocation races — covered by
+  `TestConcurrentTokenOperations` and `go test -race ./...` (#3)
+- Context-value sanitization on client-info extraction — covered by
+  `TestSecureOAuthProvider_ExtractClientInfoSanitizesContextValues` (#4)
 
-#### Input Validation
-- ✅ JSON schema validation
-- ✅ SQL injection prevention
-- ✅ Path traversal protection
-- ✅ Command injection prevention
-- ✅ XXE attack prevention
+#### Request handling
+- Per-endpoint rate limiting — `ratelimit.go`, `middleware.go`; covered by
+  `TestRateLimitMiddleware_PerEndpointLimiting` (#5)
+- Environment-aware error sanitization — `errors.go`; covered by
+  `TestSanitizeErrorModes` (#7)
+- Secure CORS defaults — `middleware_advanced.go`; covered by
+  `TestNewCORSMiddlewareDefaults` (#8)
+- JSON schema validation — `security.go` (`JSONSchemaValidator`)
+
+### Explicitly not provided (do not claim these)
+
+These are out of scope for the library or not yet implemented. They are
+listed so the security posture is honest and so the v1 gate (B5) can map
+every claim to a named check, a deferral, or a removed claim.
+
+- **TLS enforcement / `MinVersion`.** The library does not configure TLS;
+  transport TLS is the embedding application's responsibility. Removed the
+  prior "TLS 1.2+ enforcement" claim — there is no `tls.Config` with
+  `MinVersion` in this package.
+- **SQL injection, XXE, path-traversal, and command-injection "prevention."**
+  Removed. This is a protocol library with no SQL, XML, filesystem, or shell
+  surface of its own; those prior claims were not backed by any code.
+- **MFA, HSM integration, IP allowlisting, DDoS protection.** Not
+  implemented; deferred beyond v1.
+- **Formal compliance (SOC 2 / GDPR / HIPAA).** No certification or audit is
+  asserted by this library. Any prior compliance checkmarks were aspirational
+  and have been removed.
 
 ## Security Best Practices
 
@@ -126,9 +152,8 @@ If you discover a security vulnerability in this project, please report it respo
 
 1. **Never commit secrets** - Use environment variables
 2. **Validate all inputs** - Use the validation middleware
-3. **Use prepared statements** - Prevent SQL injection
-4. **Sanitize logs** - Don't log sensitive data
-5. **Update dependencies** - Run `go get -u` regularly
+3. **Sanitize logs** - Don't log sensitive data
+4. **Update dependencies** - Run `govulncheck ./...` regularly
 
 ### For Operators
 
@@ -185,46 +210,6 @@ MCP_MAX_REQUEST_SIZE=1048576
 MCP_SESSION_TIMEOUT=900
 ```
 
-## Compliance
-
-### SOC 2
-- ✅ Access controls implemented
-- ✅ Encryption at rest and in transit
-- 🔄 Audit logging improvements in progress
-- 📋 Formal compliance audit planned
-
-### GDPR
-- ✅ Data minimization practices
-- ✅ Right to deletion support
-- 🔄 Consent management in progress
-- 📋 Privacy policy integration planned
-
-### HIPAA
-- ✅ Access controls and encryption
-- 🔄 Audit logging enhancements
-- 📋 BAA template preparation
-- 📋 PHI handling guidelines
-
-## Security Roadmap
-
-### Q4 2025
-- [ ] Complete rate limiting improvements
-- [ ] Implement automated security testing
-- [ ] Add security headers middleware
-- [ ] Deploy WAF integration
-
-### Q1 2026
-- [ ] HSM integration for key management
-- [ ] Implement perfect forward secrecy
-- [ ] Add intrusion detection system
-- [ ] Complete SOC 2 certification
-
-### Q2 2026
-- [ ] Zero-trust architecture migration
-- [ ] Implement homomorphic encryption
-- [ ] Add quantum-resistant algorithms
-- [ ] Complete HIPAA compliance
-
 ## Security Tools
 
 ### Static Analysis
@@ -240,8 +225,8 @@ govulncheck ./...
 
 ### Dynamic Analysis
 ```bash
-# Fuzzing
-go test -fuzz=FuzzInputValidation -fuzztime=10s
+# Fuzzing (protocol marshaling targets live in modelcontextprotocol/)
+go test -fuzz=FuzzCallToolResultUnmarshal -fuzztime=10s ./modelcontextprotocol/
 
 # Race detection
 go test -race ./...

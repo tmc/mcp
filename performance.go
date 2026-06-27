@@ -341,13 +341,11 @@ func NewPerformanceAwareServer(name, version string, options ...ServerOption) *P
 
 // ResourcePool manages reusable resources to reduce allocations
 type ResourcePool struct {
-	bufferPool      sync.Pool
-	contextPool     sync.Pool
-	requestPool     sync.Pool
-	responsePool    sync.Pool
-	rawMessagePool  sync.Pool
-	jsonEncoderPool sync.Pool
-	jsonDecoderPool sync.Pool
+	bufferPool     sync.Pool
+	contextPool    sync.Pool
+	requestPool    sync.Pool
+	responsePool   sync.Pool
+	rawMessagePool sync.Pool
 }
 
 // NewResourcePool creates a new resource pool
@@ -377,16 +375,6 @@ func NewResourcePool() *ResourcePool {
 			New: func() interface{} {
 				msg := make(json.RawMessage, 0, 1024)
 				return &msg
-			},
-		},
-		jsonEncoderPool: sync.Pool{
-			New: func() interface{} {
-				return json.NewEncoder(nil)
-			},
-		},
-		jsonDecoderPool: sync.Pool{
-			New: func() interface{} {
-				return json.NewDecoder(nil)
 			},
 		},
 	}
@@ -446,31 +434,22 @@ func (rp *ResourcePool) PutRawMessage(msg *json.RawMessage) {
 	}
 }
 
-// GetJSONEncoder gets a JSON encoder from the pool
+// GetJSONEncoder returns a JSON encoder writing to w.
+//
+// json.Encoder binds to its writer at construction and has no Reset, so it
+// cannot be pooled across writers; this is a plain constructor kept for API
+// symmetry with the pooled resources above.
 func (rp *ResourcePool) GetJSONEncoder(w io.Writer) *json.Encoder {
-	_ = rp.jsonEncoderPool.Get().(*json.Encoder)
-	// Note: We can't easily reset the encoder's writer, so we create a new one
-	// This is still beneficial as it reduces some internal allocations
 	return json.NewEncoder(w)
 }
 
-// PutJSONEncoder returns a JSON encoder to the pool
-func (rp *ResourcePool) PutJSONEncoder(enc *json.Encoder) {
-	// Note: We can't pool encoders effectively without resetting their state
-	// This is a placeholder for future optimization if json.Encoder gains a Reset method
-}
-
-// GetJSONDecoder gets a JSON decoder from the pool
+// GetJSONDecoder returns a JSON decoder reading from r.
+//
+// json.Decoder binds to its reader at construction and has no Reset, so it
+// cannot be pooled across readers; this is a plain constructor kept for API
+// symmetry with the pooled resources above.
 func (rp *ResourcePool) GetJSONDecoder(r io.Reader) *json.Decoder {
-	_ = rp.jsonDecoderPool.Get().(*json.Decoder)
-	// Note: We can't easily reset the decoder's reader, so we create a new one
 	return json.NewDecoder(r)
-}
-
-// PutJSONDecoder returns a JSON decoder to the pool
-func (rp *ResourcePool) PutJSONDecoder(dec *json.Decoder) {
-	// Note: We can't pool decoders effectively without resetting their state
-	// This is a placeholder for future optimization if json.Decoder gains a Reset method
 }
 
 // =============================================================================

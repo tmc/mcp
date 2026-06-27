@@ -9,7 +9,7 @@ import (
 
 	"github.com/tmc/mcp"
 	"github.com/tmc/mcp/exp/adapters/golang_tools"
-	"github.com/tmc/mcp/protocol"
+	protocol "github.com/tmc/mcp/modelcontextprotocol"
 	"github.com/tmc/mcp/server"
 	"github.com/tmc/mcp/transport"
 )

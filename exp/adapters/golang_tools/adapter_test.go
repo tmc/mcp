@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tmc/mcp/protocol"
+	protocol "github.com/tmc/mcp/modelcontextprotocol"
 	"github.com/tmc/mcp/server"
 )
 

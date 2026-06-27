@@ -21,6 +21,7 @@ type Client struct {
 	notifyHandler      func(notification JSONRPCNotification)
 	requestMu          sync.RWMutex
 	requestHandlers    map[string]RequestHandler
+	advertise          ClientCapabilities
 	framer             jsonrpc2.Framer
 	serverInfo         Implementation
 	serverCapabilities ServerCapabilities
@@ -132,6 +133,101 @@ func (c *Client) OnRequest(method string, handler RequestHandler) {
 	c.requestMu.Unlock()
 }
 
+// OnSampling registers a typed handler for server-initiated sampling/createMessage
+// requests and marks the sampling capability for advertisement during Initialize.
+// Pass a nil handler to remove a previously registered handler.
+func (c *Client) OnSampling(handler func(context.Context, CreateMessageRequest) (*CreateMessageResult, error)) {
+	if handler == nil {
+		c.OnRequest(string(MethodSamplingCreateMessage), nil)
+		c.setAdvertise(func(caps *ClientCapabilities) { caps.Sampling = nil })
+		return
+	}
+	c.OnRequest(string(MethodSamplingCreateMessage), func(ctx context.Context, params json.RawMessage) (any, error) {
+		var req CreateMessageRequest
+		if len(params) > 0 {
+			if err := json.Unmarshal(params, &req); err != nil {
+				return nil, fmt.Errorf("sampling/createMessage params: %w", err)
+			}
+		}
+		return handler(ctx, req)
+	})
+	c.setAdvertise(func(caps *ClientCapabilities) { caps.Sampling = &struct{}{} })
+}
+
+// ElicitMode identifies an elicitation interaction style a client supports.
+type ElicitMode string
+
+const (
+	// ElicitModeForm declares support for form-based elicitation.
+	ElicitModeForm ElicitMode = "form"
+	// ElicitModeURL declares support for URL-based elicitation.
+	ElicitModeURL ElicitMode = "url"
+)
+
+// OnElicit registers a typed handler for server-initiated elicitation/create
+// requests and marks the elicitation capability for advertisement during
+// Initialize. The modes argument declares which elicitation styles the client
+// supports; if omitted it defaults to form. Pass a nil handler to remove a
+// previously registered handler.
+func (c *Client) OnElicit(handler func(context.Context, ElicitRequest) (*ElicitResult, error), modes ...ElicitMode) {
+	if handler == nil {
+		c.OnRequest(string(MethodElicitationCreate), nil)
+		c.setAdvertise(func(caps *ClientCapabilities) { caps.Elicitation = nil })
+		return
+	}
+	if len(modes) == 0 {
+		modes = []ElicitMode{ElicitModeForm}
+	}
+	c.OnRequest(string(MethodElicitationCreate), func(ctx context.Context, params json.RawMessage) (any, error) {
+		var req ElicitRequest
+		if len(params) > 0 {
+			if err := json.Unmarshal(params, &req); err != nil {
+				return nil, fmt.Errorf("elicitation/create params: %w", err)
+			}
+		}
+		return handler(ctx, req)
+	})
+	c.setAdvertise(func(caps *ClientCapabilities) {
+		ec := &ElicitationCapabilities{}
+		for _, m := range modes {
+			switch m {
+			case ElicitModeForm:
+				ec.Form = &struct{}{}
+			case ElicitModeURL:
+				ec.URL = &struct{}{}
+			}
+		}
+		caps.Elicitation = ec
+	})
+}
+
+// OnListRoots registers a typed handler for server-initiated roots/list requests
+// and marks the roots capability for advertisement during Initialize. Pass a nil
+// handler to remove a previously registered handler.
+func (c *Client) OnListRoots(handler func(context.Context) (*ListRootsResult, error)) {
+	if handler == nil {
+		c.OnRequest(string(MethodRootsList), nil)
+		c.setAdvertise(func(caps *ClientCapabilities) { caps.Roots = nil })
+		return
+	}
+	c.OnRequest(string(MethodRootsList), func(ctx context.Context, _ json.RawMessage) (any, error) {
+		return handler(ctx)
+	})
+	c.setAdvertise(func(caps *ClientCapabilities) {
+		caps.Roots = &struct {
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{}
+	})
+}
+
+// setAdvertise mutates the capabilities the client will advertise during
+// Initialize unless the caller supplies its own capabilities.
+func (c *Client) setAdvertise(fn func(*ClientCapabilities)) {
+	c.requestMu.Lock()
+	fn(&c.advertise)
+	c.requestMu.Unlock()
+}
+
 // Initialize performs the initial MCP handshake with the server.
 func (c *Client) Initialize(ctx context.Context, request InitializeRequest) (*InitializeResult, error) {
 	// Check if already initialized
@@ -145,6 +241,21 @@ func (c *Client) Initialize(ctx context.Context, request InitializeRequest) (*In
 	if request.ProtocolVersion == "" {
 		request.ProtocolVersion = LATEST_PROTOCOL_VERSION
 	}
+
+	// Merge capabilities implied by registered typed handlers, without clobbering
+	// any the caller set explicitly. This keeps advertised capabilities in sync
+	// with the handlers actually able to service them.
+	c.requestMu.RLock()
+	if request.Capabilities.Sampling == nil {
+		request.Capabilities.Sampling = c.advertise.Sampling
+	}
+	if request.Capabilities.Elicitation == nil {
+		request.Capabilities.Elicitation = c.advertise.Elicitation
+	}
+	if request.Capabilities.Roots == nil {
+		request.Capabilities.Roots = c.advertise.Roots
+	}
+	c.requestMu.RUnlock()
 
 	var result InitializeResult
 	if err := c.call(ctx, string(MethodInitialize), request, &result); err != nil {

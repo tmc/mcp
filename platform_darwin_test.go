@@ -141,6 +141,42 @@ func TestAppleOptimizedTransportRead(t *testing.T) {
 	}
 }
 
+// TestAppleOptimizedTransportReadRespectsLen guards the io.Reader contract:
+// Read must never write past len(p), even when cap(p) is much larger. An
+// earlier version resliced p to the platform buffer size and corrupted the
+// caller's backing array beyond the length it offered.
+func TestAppleOptimizedTransportReadRespectsLen(t *testing.T) {
+	mock := &mockReadWriteCloser{readData: make([]byte, 64*1024)}
+	for i := range mock.readData {
+		mock.readData[i] = 0xAA
+	}
+
+	base := &ReadWriteCloserTransport{ReadWriteCloser: mock}
+	transport := NewAppleOptimizedTransport(base)
+
+	// A buffer with a small length but a large capacity. The bytes beyond
+	// len(buf) are sentinels that Read must leave untouched.
+	const want = 8
+	backing := make([]byte, transport.config.BufferSize+want)
+	for i := range backing {
+		backing[i] = 0x55
+	}
+	buf := backing[:want]
+
+	n, err := transport.Read(buf)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+	if n > want {
+		t.Fatalf("Read returned %d > len(p)=%d", n, want)
+	}
+	for i := want; i < len(backing); i++ {
+		if backing[i] != 0x55 {
+			t.Fatalf("Read wrote past len(p): backing[%d] = %#x, want sentinel 0x55", i, backing[i])
+		}
+	}
+}
+
 func TestAppleOptimizedTransportWrite(t *testing.T) {
 	mock := &mockReadWriteCloser{}
 	base := &ReadWriteCloserTransport{ReadWriteCloser: mock}

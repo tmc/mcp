@@ -40,41 +40,20 @@ func isAppleSilicon() bool {
 	return runtime.GOARCH == "arm64" && runtime.GOOS == "darwin"
 }
 
-// isRosetta detects if running under Rosetta 2 translation
+// isRosetta detects if running under Rosetta 2 translation.
+//
+// Detecting translation reliably needs the sysctl.proc_translated value, which
+// requires a syscall (or CGO) this purego build deliberately avoids. Without it
+// we cannot tell, so we report false rather than guess. Wire up sysctl here if
+// Rosetta detection becomes load-bearing.
 func isRosetta() bool {
-	if runtime.GOARCH != "amd64" || runtime.GOOS != "darwin" {
-		return false
-	}
-
-	// Use sysctl to check if running under Rosetta
-	// This is a pure Go approach without CGO
-	ret, err := sysctlByName("sysctl.proc_translated")
-	if err != nil {
-		return false
-	}
-
-	return ret == 1
+	return false
 }
 
 // getSystemVersion gets macOS version using pure Go approach
 func getSystemVersion() string {
 	// For purego implementation, return runtime version
 	return runtime.GOOS + "/" + runtime.GOARCH
-}
-
-// sysctlByName gets sysctl value by name using pure Go
-func sysctlByName(name string) (int, error) {
-	// This is a simplified implementation
-	// In a full implementation, you'd use syscall.Syscall with proper sysctl calls
-
-	// For proc_translated, we can use a different approach
-	if name == "sysctl.proc_translated" {
-		// Check if we're running translated by examining the process
-		// This is a heuristic approach without CGO
-		return 0, nil // Assume not translated for safety
-	}
-
-	return 0, nil
 }
 
 // DarwinTransportOptimizations provides platform-specific transport optimizations
@@ -128,14 +107,13 @@ func NewAppleOptimizedTransport(base *ReadWriteCloserTransport) *AppleOptimizedT
 	}
 }
 
-// Read implements optimized reading for Apple platforms
+// Read implements optimized reading for Apple platforms.
+//
+// It satisfies io.Reader exactly: it reads into p and never writes beyond
+// len(p). The caller owns p, so growing it to cap(p) (an earlier "optimization")
+// would corrupt memory the caller did not offer. Buffer-size tuning belongs to
+// whoever allocates the buffer, not to Read.
 func (t *AppleOptimizedTransport) Read(p []byte) (n int, err error) {
-	// Use platform-optimized buffer size if needed
-	if len(p) < t.config.BufferSize && cap(p) >= t.config.BufferSize {
-		// Extend slice to optimal size for reading
-		p = p[:t.config.BufferSize]
-	}
-
 	return t.ReadWriteCloserTransport.Read(p)
 }
 
@@ -320,11 +298,3 @@ func (o *AppleMemoryOptimizer) ShouldUseMemoryMapping(size int64) bool {
 	// For other platforms, use conservative threshold
 	return size > 1024*1024 // 1MB threshold
 }
-
-// Ensure this file only compiles on Darwin/macOS
-var _ = func() struct{} {
-	if runtime.GOOS != "darwin" {
-		panic("This file should only be compiled on Darwin/macOS")
-	}
-	return struct{}{}
-}()

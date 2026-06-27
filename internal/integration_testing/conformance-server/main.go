@@ -280,6 +280,18 @@ func registerConformanceTools(server *mcp.Server) {
 	})
 
 	mustRegisterTool(server, mcp.Tool{
+		Name:        "test_list_roots",
+		Description: "Tests server-initiated roots/list requests.",
+		InputSchema: json.RawMessage(`{"type": "object", "properties": {}}`),
+	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		result, err := server.ListRoots(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return textToolResult(fmt.Sprintf("Client roots: %s", mustJSON(result.Roots))), nil
+	})
+
+	mustRegisterTool(server, mcp.Tool{
 		Name:        "test_elicitation",
 		Description: "Tests server-to-client elicitation during a tool call.",
 		InputSchema: json.RawMessage(`{

@@ -1,0 +1,51 @@
+# Bootstrap B7 conformance evidence captured on 2026-06-27 from darwin/arm64.
+#
+# Harness:  @modelcontextprotocol/conformance@0.1.16, suite=active
+# Fixture:  internal/integration_testing/conformance-server (streamable HTTP)
+# Command:  MCP_CONFORMANCE_SUITE=active ./scripts/mcp-conformance.sh
+# Node:     v24.14.1 (the harness needs Node 22+ for fs.globSync)
+#
+# The active suite is the upstream-curated must-pass set. tmc/mcp passes it
+# 100% with no expected-failures file. The wider "all" suite additionally
+# includes json-schema-2020-12 (a pending scenario that fails) and
+# server-sse-polling (not exercised), so the gate runs "active", matching the
+# script default. See docs/design/v1-release-exemplary-gate.md (B7).
+
+node: v24.14.1
+npx: @modelcontextprotocol/conformance@0.1.16
+command: npx -y @modelcontextprotocol/conformance@0.1.16 server --url http://127.0.0.1:<auto>/mcp --suite active
+Running active suite (30 scenarios)
+
+=== SUMMARY ===
+✓ server-initialize: 1 passed, 0 failed
+✓ logging-set-level: 1 passed, 0 failed
+✓ ping: 1 passed, 0 failed
+✓ completion-complete: 1 passed, 0 failed
+✓ tools-list: 1 passed, 0 failed
+✓ tools-call-simple-text: 1 passed, 0 failed
+✓ tools-call-image: 1 passed, 0 failed
+✓ tools-call-audio: 1 passed, 0 failed
+✓ tools-call-embedded-resource: 1 passed, 0 failed
+✓ tools-call-mixed-content: 1 passed, 0 failed
+✓ tools-call-with-logging: 1 passed, 0 failed
+✓ tools-call-error: 1 passed, 0 failed
+✓ tools-call-with-progress: 1 passed, 0 failed
+✓ tools-call-sampling: 1 passed, 0 failed
+✓ tools-call-elicitation: 1 passed, 0 failed
+✓ elicitation-sep1034-defaults: 5 passed, 0 failed
+✓ server-sse-multiple-streams: 2 passed, 0 failed
+✓ elicitation-sep1330-enums: 5 passed, 0 failed
+✓ resources-list: 1 passed, 0 failed
+✓ resources-read-text: 1 passed, 0 failed
+✓ resources-read-binary: 1 passed, 0 failed
+✓ resources-templates-read: 1 passed, 0 failed
+✓ resources-subscribe: 1 passed, 0 failed
+✓ resources-unsubscribe: 1 passed, 0 failed
+✓ prompts-list: 1 passed, 0 failed
+✓ prompts-get-simple: 1 passed, 0 failed
+✓ prompts-get-with-args: 1 passed, 0 failed
+✓ prompts-get-embedded-resource: 1 passed, 0 failed
+✓ prompts-get-with-image: 1 passed, 0 failed
+✓ dns-rebinding-protection: 2 passed, 0 failed
+
+Total: 40 passed, 0 failed

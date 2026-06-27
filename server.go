@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"golang.org/x/exp/jsonrpc2"
 )
@@ -51,6 +52,11 @@ type Server struct {
 
 	logLevel *slog.Level
 	logger   *slog.Logger
+
+	// serverRequestTimeout bounds how long a server-initiated request
+	// (sampling, elicitation, roots/list) waits for a client response when the
+	// caller's context has no earlier deadline. Zero means no added deadline.
+	serverRequestTimeout time.Duration
 
 	mu            sync.RWMutex // Protects the following fields:
 	tools         map[string]toolDefinition
@@ -118,6 +124,16 @@ func WithValidationConfig(config *ValidationConfig) ServerOption {
 	}
 }
 
+// WithServerRequestTimeout sets how long a server-initiated request (sampling,
+// elicitation, roots/list) waits for a client response when the caller's context
+// has no earlier deadline. A zero or negative duration disables the added
+// deadline. The default is 30 seconds.
+func WithServerRequestTimeout(d time.Duration) ServerOption {
+	return func(s *Server) {
+		s.serverRequestTimeout = d
+	}
+}
+
 // WithServerRawFraming uses the undelimited JSON-RPC framing used by older
 // versions of this package.
 func WithServerRawFraming() ServerOption {
@@ -151,21 +167,22 @@ func NewServer(name, version string, opts ...ServerOption) *Server {
 	}
 
 	s := &Server{
-		name:          name,
-		version:       version,
-		capabilities:  ServerCapabilities{},
-		tools:         make(map[string]toolDefinition),
-		resources:     make(map[string]resourceDefinition),
-		resourceTmpls: make(map[string]resourceTemplateDefinition),
-		prompts:       make(map[string]promptDefinition),
-		subscriptions: make(map[string]bool),
-		handlers:      make(map[string]jsonrpc2.HandlerFunc),
-		dispatch:      NewDispatcher(),
-		validator:     NewParameterValidator(DefaultValidationConfig()),
-		logger:        defaultLogger,
-		activeTools:   make(map[string]context.CancelFunc),
-		framer:        defaultFramer(),
-		mu:            sync.RWMutex{},
+		name:                 name,
+		version:              version,
+		capabilities:         ServerCapabilities{},
+		tools:                make(map[string]toolDefinition),
+		resources:            make(map[string]resourceDefinition),
+		resourceTmpls:        make(map[string]resourceTemplateDefinition),
+		prompts:              make(map[string]promptDefinition),
+		subscriptions:        make(map[string]bool),
+		handlers:             make(map[string]jsonrpc2.HandlerFunc),
+		dispatch:             NewDispatcher(),
+		validator:            NewParameterValidator(DefaultValidationConfig()),
+		logger:               defaultLogger,
+		activeTools:          make(map[string]context.CancelFunc),
+		framer:               defaultFramer(),
+		serverRequestTimeout: 30 * time.Second,
+		mu:                   sync.RWMutex{},
 	}
 
 	// Apply options
@@ -497,6 +514,13 @@ func slogLevelForLoggingLevel(level LoggingLevel) (slog.Level, bool) {
 
 func (s *Server) registerLoggingHandler() {
 	s.capabilities.Logging = &struct{}{}
+	// Default to Info so protocol logging messages flow before a client sends
+	// logging/setLevel. Without a default, NotifyLoggingMessage would silently
+	// drop everything until the first setLevel request.
+	if s.logLevel == nil {
+		defaultLevel := slog.LevelInfo
+		s.logLevel = &defaultLevel
+	}
 	s.handlers[string(MethodLoggingSetLevel)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
 		if len(req.Params) == 0 || strings.TrimSpace(string(req.Params)) == "null" {
 			return nil, NewParameterError(string(MethodLoggingSetLevel), "params", "missing required params", nil)
@@ -859,7 +883,7 @@ func (s *Server) RegisterTool(tool Tool, handler ToolHandlerFunc) error {
 
 	s.logger.Info("Tool registered successfully", "name", tool.Name)
 	s.logger.Debug("Sending tool list changed notification")
-	go s.dispatch.NotifyListChanged(context.Background(), MethodToolListChanged)
+	go s.notifyListChanged(MethodToolListChanged)
 
 	return nil
 }
@@ -891,7 +915,7 @@ func (s *Server) RegisterPrompt(prompt Prompt, handler GetPromptHandlerFunc) err
 
 	s.logger.Info("Prompt registered successfully", "name", prompt.Name)
 	s.logger.Debug("Sending prompt list changed notification")
-	go s.dispatch.NotifyListChanged(context.Background(), MethodPromptListChanged)
+	go s.notifyListChanged(MethodPromptListChanged)
 
 	return nil
 }
@@ -928,7 +952,7 @@ func (s *Server) RegisterResource(resource Resource, handler ReadResourceHandler
 
 	s.logger.Info("Resource registered successfully", "uri", resource.URI)
 	s.logger.Debug("Sending resource list changed notification")
-	go s.dispatch.NotifyListChanged(context.Background(), MethodResourceListChanged)
+	go s.notifyListChanged(MethodResourceListChanged)
 
 	return nil
 }
@@ -960,7 +984,7 @@ func (s *Server) RegisterResourceTemplate(template ResourceTemplate, handler Res
 
 	s.logger.Info("Resource template registered successfully", "template", template.Template)
 	s.logger.Debug("Sending resource list changed notification")
-	go s.dispatch.NotifyListChanged(context.Background(), MethodResourceListChanged)
+	go s.notifyListChanged(MethodResourceListChanged)
 
 	return nil
 }
@@ -1047,6 +1071,9 @@ func (s *Server) CreateMessage(ctx context.Context, request CreateMessageRequest
 		request.Messages = []SamplingMessage{}
 	}
 
+	ctx, cancel := s.requestContext(ctx)
+	defer cancel()
+
 	var result CreateMessageResult
 	if err := conn.Call(ctx, string(MethodSamplingCreateMessage), request).Await(ctx, &result); err != nil {
 		return nil, fmt.Errorf("sampling/createMessage: %w", err)
@@ -1090,11 +1117,58 @@ func (s *Server) Elicit(ctx context.Context, request ElicitRequest) (*ElicitResu
 		return nil, NewParameterError(string(MethodElicitationCreate), "mode", "unsupported elicitation mode", nil)
 	}
 
+	ctx, cancel := s.requestContext(ctx)
+	defer cancel()
+
 	var result ElicitResult
 	if err := conn.Call(ctx, string(MethodElicitationCreate), request).Await(ctx, &result); err != nil {
 		return nil, fmt.Errorf("elicitation/create: %w", err)
 	}
 	return &result, nil
+}
+
+// ListRoots asks the connected client for its current set of filesystem roots.
+// The client must have advertised the roots capability during initialization.
+func (s *Server) ListRoots(ctx context.Context) (*ListRootsResult, error) {
+	if s == nil {
+		return nil, fmt.Errorf("server is nil")
+	}
+
+	s.mu.RLock()
+	conn := s.conn
+	supported := s.clientCaps.Roots != nil
+	s.mu.RUnlock()
+	if conn == nil {
+		return nil, fmt.Errorf("mcp: client connection is not established")
+	}
+	if !supported {
+		return nil, fmt.Errorf("%w: client does not support roots", ErrUnsupported)
+	}
+
+	ctx, cancel := s.requestContext(ctx)
+	defer cancel()
+
+	var result ListRootsResult
+	if err := conn.Call(ctx, string(MethodRootsList), ListRootsRequest{}).Await(ctx, &result); err != nil {
+		return nil, fmt.Errorf("roots/list: %w", err)
+	}
+	return &result, nil
+}
+
+// requestContext derives a context for a server-initiated request, applying the
+// configured serverRequestTimeout unless the caller's context already carries an
+// earlier deadline. The returned cancel func must always be called.
+func (s *Server) requestContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	s.mu.RLock()
+	timeout := s.serverRequestTimeout
+	s.mu.RUnlock()
+	if timeout <= 0 {
+		return ctx, func() {}
+	}
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= timeout {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
 }
 
 func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error {
@@ -1105,6 +1179,15 @@ func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error
 		return nil
 	}
 	return conn.Notify(ctx, string(method), params)
+}
+
+// notifyListChanged sends a list_changed notification to the connected client.
+// It no-ops when no client is connected (for example, when a tool, prompt, or
+// resource is registered before Serve), so startup-time registration is silent.
+func (s *Server) notifyListChanged(method MCPMethod) {
+	if err := s.notify(context.Background(), method, struct{}{}); err != nil {
+		s.logger.Debug("failed to send list changed notification", "method", string(method), "error", err)
+	}
 }
 
 // Serve starts serving MCP requests using the provided transport.

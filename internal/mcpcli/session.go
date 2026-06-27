@@ -24,6 +24,16 @@ type Config struct {
 	ServerStderr    bool
 	StateDir        string
 	ClientInfo      mcp.Implementation
+
+	// SamplingHandler, when set, answers server-initiated sampling/createMessage
+	// requests and causes the session to advertise the sampling capability.
+	SamplingHandler func(context.Context, mcp.CreateMessageRequest) (*mcp.CreateMessageResult, error)
+	// ElicitHandler, when set, answers server-initiated elicitation/create
+	// requests and causes the session to advertise the elicitation capability.
+	ElicitHandler func(context.Context, mcp.ElicitRequest) (*mcp.ElicitResult, error)
+	// ElicitModes declares which elicitation styles ElicitHandler supports.
+	// It defaults to form when ElicitHandler is set and no modes are listed.
+	ElicitModes []mcp.ElicitMode
 }
 
 // DefaultConfig returns the default shared CLI configuration.
@@ -90,20 +100,25 @@ func Connect(ctx context.Context, cfg Config) (*Session, error) {
 			Params: notification.Params,
 		})
 	})
-	client.OnRequest(string(mcp.MethodRootsList), func(ctx context.Context, _ json.RawMessage) (any, error) {
+	client.OnListRoots(func(ctx context.Context) (*mcp.ListRootsResult, error) {
 		roots, err := s.roots.List()
 		if err != nil {
 			return nil, err
 		}
-		return mcp.ListRootsResult{Roots: roots}, nil
+		return &mcp.ListRootsResult{Roots: roots}, nil
 	})
+	if cfg.SamplingHandler != nil {
+		client.OnSampling(cfg.SamplingHandler)
+	}
+	if cfg.ElicitHandler != nil {
+		client.OnElicit(cfg.ElicitHandler, cfg.ElicitModes...)
+	}
 
 	initCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
 	defer cancel()
 	initResult, err := client.Initialize(initCtx, mcp.InitializeRequest{
 		ProtocolVersion: cfg.ProtocolVersion,
 		ClientInfo:      cfg.ClientInfo,
-		Capabilities:    sessionCapabilities(),
 	})
 	if err != nil {
 		_ = client.Close()
@@ -140,14 +155,6 @@ func defaultStateDir() string {
 		return ".mcp"
 	}
 	return home + "/.mcp"
-}
-
-func sessionCapabilities() mcp.ClientCapabilities {
-	return mcp.ClientCapabilities{
-		Roots: &struct {
-			ListChanged bool `json:"listChanged,omitempty"`
-		}{},
-	}
 }
 
 func (cfg Config) transportCount() int {

@@ -268,9 +268,15 @@ func TestModelPreferencesAndHints(t *testing.T) {
 
 // TestSamplingCapabilityNegotiation tests sampling capability negotiation
 func TestSamplingCapabilityNegotiation(t *testing.T) {
-	// Test client capabilities with sampling
-	clientCaps := modelcontextprotocol.ClientCapabilities{
-		Sampling: &struct{}{}, // Sampling capability enabled
+	// Round-trip the root ClientCapabilities type that the Server actually gates
+	// server-initiated requests on (see Server.CreateMessage/Elicit/ListRoots),
+	// covering sampling, elicitation, and roots together.
+	clientCaps := ClientCapabilities{
+		Sampling:    &struct{}{},
+		Elicitation: &ElicitationCapabilities{Form: &struct{}{}, URL: &struct{}{}},
+		Roots: &struct {
+			ListChanged bool `json:"listChanged,omitempty"`
+		}{ListChanged: true},
 	}
 
 	data, err := json.Marshal(clientCaps)
@@ -278,14 +284,19 @@ func TestSamplingCapabilityNegotiation(t *testing.T) {
 		t.Fatalf("Failed to marshal client capabilities: %v", err)
 	}
 
-	var unmarshaled modelcontextprotocol.ClientCapabilities
-	err = json.Unmarshal(data, &unmarshaled)
-	if err != nil {
+	var unmarshaled ClientCapabilities
+	if err := json.Unmarshal(data, &unmarshaled); err != nil {
 		t.Fatalf("Failed to unmarshal client capabilities: %v", err)
 	}
 
 	if unmarshaled.Sampling == nil {
 		t.Error("Sampling capability should be non-nil after round-trip")
+	}
+	if unmarshaled.Elicitation == nil || unmarshaled.Elicitation.Form == nil || unmarshaled.Elicitation.URL == nil {
+		t.Errorf("Elicitation capability not preserved: %+v", unmarshaled.Elicitation)
+	}
+	if unmarshaled.Roots == nil || !unmarshaled.Roots.ListChanged {
+		t.Errorf("Roots capability not preserved: %+v", unmarshaled.Roots)
 	}
 }
 

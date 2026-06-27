@@ -197,9 +197,8 @@ func TestStreamableHTTPInlineSamplingRequest(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		content, _ := result.Content.(map[string]any)
-		text, _ := content["text"].(string)
-		return &CallToolResult{Content: []any{TextContent{Type: "text", Text: text}}}, nil
+		text, _ := result.Content.(TextContent)
+		return &CallToolResult{Content: []any{TextContent{Type: "text", Text: text.Text}}}, nil
 	}); err != nil {
 		t.Fatalf("RegisterTool: %v", err)
 	}

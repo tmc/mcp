@@ -356,27 +356,34 @@ type StreamableServerTransport struct {
 	logger       *slog.Logger
 	cancel       context.CancelFunc
 
-	mu                sync.RWMutex
-	isDone            bool
-	done              chan struct{}
-	outgoingMessages  map[streamID][]*streamableMsg
-	signals           map[streamID]chan struct{}
-	requestStreams    map[interface{}]streamID
-	streamRequests    map[streamID]map[interface{}]struct{}
+	mu               sync.RWMutex
+	isDone           bool
+	done             chan struct{}
+	outgoingMessages map[streamID][]*streamableMsg
+	signals          map[streamID]chan struct{}
+	// clientRequestStreams maps an inbound client request id to the stream it
+	// arrived on. Its response and any server requests it triggers route there.
+	clientRequestStreams map[interface{}]streamID
+	// serverRequestStreams maps an outbound server-initiated request id to the
+	// stream it was emitted on. Kept separate from clientRequestStreams so client
+	// and server request id spaces (both small integers) cannot collide.
+	serverRequestStreams map[interface{}]streamID
+	// lastRequestStream is the stream of the client request currently being
+	// handled, used to route server-initiated requests and notifications.
 	lastRequestStream streamID
 }
 
 // newStreamableServerTransport creates a new streamable server transport
 func newStreamableServerTransport(sessionID string, logger *slog.Logger) *StreamableServerTransport {
 	return &StreamableServerTransport{
-		id:               sessionID,
-		incoming:         make(chan JSONRPCMessage, 100),
-		logger:           logger,
-		done:             make(chan struct{}),
-		outgoingMessages: make(map[streamID][]*streamableMsg),
-		signals:          make(map[streamID]chan struct{}),
-		requestStreams:   make(map[interface{}]streamID),
-		streamRequests:   make(map[streamID]map[interface{}]struct{}),
+		id:                   sessionID,
+		incoming:             make(chan JSONRPCMessage, 100),
+		logger:               logger,
+		done:                 make(chan struct{}),
+		outgoingMessages:     make(map[streamID][]*streamableMsg),
+		signals:              make(map[streamID]chan struct{}),
+		clientRequestStreams: make(map[interface{}]streamID),
+		serverRequestStreams: make(map[interface{}]streamID),
 	}
 }
 
@@ -432,7 +439,32 @@ func (t *StreamableServerTransport) Write(ctx context.Context, msg JSONRPCMessag
 		}
 	}
 
+	// A response to a client request completes that request and frees its stream.
+	if msg.Method == "" && msg.ID != nil {
+		t.releaseClientRequest(msg.ID)
+	}
+
 	return nil
+}
+
+// releaseClientRequest drops the correlation for a completed client request and
+// any server-initiated requests still pinned to its stream (for example server
+// requests abandoned on timeout), and clears lastRequestStream when it pointed
+// at that now-finished stream. It must be called with t.mu held.
+func (t *StreamableServerTransport) releaseClientRequest(id interface{}) {
+	sid, ok := t.clientRequestStreams[id]
+	if !ok {
+		return
+	}
+	delete(t.clientRequestStreams, id)
+	for srvID, srvSid := range t.serverRequestStreams {
+		if srvSid == sid {
+			delete(t.serverRequestStreams, srvID)
+		}
+	}
+	if t.lastRequestStream == sid {
+		t.lastRequestStream = 0
+	}
 }
 
 // Close implements the Connection interface
@@ -452,14 +484,18 @@ func (t *StreamableServerTransport) Close() error {
 }
 
 func (t *StreamableServerTransport) receive(ctx context.Context, msg JSONRPCMessage, sid streamID) error {
-	if msg.ID != nil && msg.Method != "" {
+	switch {
+	case msg.ID != nil && msg.Method != "":
+		// An inbound client request owns the stream it arrived on. Its response
+		// and any server requests it triggers route back to this stream.
 		t.mu.Lock()
-		t.requestStreams[msg.ID] = sid
-		if t.streamRequests[sid] == nil {
-			t.streamRequests[sid] = make(map[interface{}]struct{})
-		}
-		t.streamRequests[sid][msg.ID] = struct{}{}
+		t.clientRequestStreams[msg.ID] = sid
 		t.lastRequestStream = sid
+		t.mu.Unlock()
+	case msg.ID != nil && msg.Method == "":
+		// An inbound response answers a server-initiated request, completing it.
+		t.mu.Lock()
+		delete(t.serverRequestStreams, msg.ID)
 		t.mu.Unlock()
 	}
 
@@ -473,40 +509,34 @@ func (t *StreamableServerTransport) receive(ctx context.Context, msg JSONRPCMess
 	}
 }
 
-// getStreamID determines the appropriate stream ID for a message
+// getStreamID determines the appropriate stream for an outbound message. It must
+// be called with t.mu held.
 func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
+	// Server-initiated notification: follow the active client request stream when
+	// one is in flight, otherwise the standalone GET stream (0).
 	if msg.Method != "" && msg.ID == nil {
-		if t.lastRequestStream != 0 {
-			return t.lastRequestStream
-		}
-		return streamID(0)
+		return t.lastRequestStream
 	}
 
-	// For requests, create or reuse stream. Server-initiated requests emitted
-	// while handling a client request belong on that active response stream.
+	// Server-initiated request: route to the active client request stream (the
+	// stream of the request currently being handled), or the standalone GET
+	// stream (0) when emitted out of band. Tracked separately from client
+	// requests so id spaces cannot collide.
 	if msg.Method != "" {
-		if sid, exists := t.requestStreams[msg.ID]; exists {
+		if sid, exists := t.serverRequestStreams[msg.ID]; exists {
 			return sid
 		}
-
 		sid := t.lastRequestStream
-		if sid == 0 {
-			sid = streamID(t.nextStreamID.Add(1))
-		}
-		t.requestStreams[msg.ID] = sid
-		if t.streamRequests[sid] == nil {
-			t.streamRequests[sid] = make(map[interface{}]struct{})
-		}
-		t.streamRequests[sid][msg.ID] = struct{}{}
+		t.serverRequestStreams[msg.ID] = sid
 		return sid
 	}
 
-	// For responses, use existing stream
-	if sid, exists := t.requestStreams[msg.ID]; exists {
+	// Response to a client request: use the stream the request arrived on.
+	if sid, exists := t.clientRequestStreams[msg.ID]; exists {
 		return sid
 	}
 
-	// Default stream
+	// Default stream.
 	return streamID(1)
 }
 
@@ -514,14 +544,16 @@ func (t *StreamableServerTransport) getStreamID(msg JSONRPCMessage) streamID {
 func (t *StreamableServerTransport) streamMessages(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, resumeStreamID streamID, resumeIndex int) {
 	t.mu.RLock()
 
-	// Send buffered messages for resumption
-	if resumeStreamID > 0 {
-		if messages, exists := t.outgoingMessages[resumeStreamID]; exists {
-			for i := resumeIndex; i < len(messages); i++ {
-				msg := messages[i]
-				t.writeSSEMessage(w, msg)
-				flusher.Flush()
-			}
+	// Flush messages already buffered on this stream. This both replays from a
+	// resumption point (Last-Event-ID) and delivers out-of-band server
+	// requests/notifications that were routed to the standalone GET stream (0)
+	// before this GET connected. resumeIndex is advanced so the live loop below
+	// does not re-deliver them.
+	if messages, exists := t.outgoingMessages[resumeStreamID]; exists {
+		for i := resumeIndex; i < len(messages); i++ {
+			t.writeSSEMessage(w, messages[i])
+			flusher.Flush()
+			resumeIndex = i + 1
 		}
 	}
 

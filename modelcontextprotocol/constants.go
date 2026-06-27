@@ -1,7 +1,9 @@
 package modelcontextprotocol
 
-// LATEST_PROTOCOL_VERSION is the 2025-03-26 version of the Model Context Protocol.
-const LATEST_PROTOCOL_VERSION = "2025-03-26"
+// LATEST_PROTOCOL_VERSION is the current version of the Model Context Protocol.
+// It matches the canonical constant in the root mcp package so the two type
+// packages negotiate the same version.
+const LATEST_PROTOCOL_VERSION = "2025-11-25"
 
 // JSONRPC_VERSION is the JSON-RPC version used ("2.0").
 const JSONRPC_VERSION = "2.0"

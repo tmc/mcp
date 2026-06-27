@@ -831,6 +831,68 @@ func TestServerToolsListHandler(t *testing.T) {
 	}
 }
 
+func TestServerToolsListPagination(t *testing.T) {
+	server := NewServer("test-server", "1.0.0")
+
+	handler := func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+		return &CallToolResult{}, nil
+	}
+
+	// Register more tools than fit in a single page.
+	const total = defaultPageSize + 25
+	for i := 0; i < total; i++ {
+		name := fmt.Sprintf("tool-%04d", i)
+		if err := server.RegisterTool(Tool{Name: name}, handler); err != nil {
+			t.Fatalf("RegisterTool %s: %v", name, err)
+		}
+	}
+
+	listHandler := server.handlers[string(MethodToolsList)]
+	ctx := context.Background()
+
+	seen := make(map[string]bool)
+	cursor := ""
+	pages := 0
+	for {
+		params, err := json.Marshal(ListToolsRequest{Cursor: cursor})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := listHandler(ctx, &jsonrpc2.Request{
+			Method: string(MethodToolsList),
+			Params: params,
+		})
+		if err != nil {
+			t.Fatalf("tools/list (cursor %q): %v", cursor, err)
+		}
+		page := result.(ListToolsResult)
+		if len(page.Tools) > defaultPageSize {
+			t.Fatalf("page returned %d tools, exceeds page size %d", len(page.Tools), defaultPageSize)
+		}
+		for _, tool := range page.Tools {
+			if seen[tool.Name] {
+				t.Fatalf("tool %q returned on more than one page", tool.Name)
+			}
+			seen[tool.Name] = true
+		}
+		pages++
+		if page.NextCursor == "" {
+			break
+		}
+		cursor = page.NextCursor
+		if pages > total {
+			t.Fatal("pagination did not terminate")
+		}
+	}
+
+	if pages < 2 {
+		t.Fatalf("expected multiple pages for %d tools, got %d", total, pages)
+	}
+	if len(seen) != total {
+		t.Fatalf("paged through %d tools, want %d", len(seen), total)
+	}
+}
+
 func TestServerToolsCallHandler(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 

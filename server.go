@@ -587,12 +587,8 @@ func (s *Server) registerToolHandlers() {
 			tools = append(tools, def.tool)
 		}
 
-		result := ListToolsResult{
-			Tools: tools,
-			// Implement cursor-based pagination in a future version
-		}
-
-		return result, nil
+		page, next := paginate(tools, params.Cursor, func(t Tool) string { return t.Name })
+		return ListToolsResult{Tools: page, NextCursor: next}, nil
 	}
 
 	// Register tools/call handler
@@ -646,12 +642,8 @@ func (s *Server) registerPromptHandlers() {
 			prompts = append(prompts, def.prompt)
 		}
 
-		result := ListPromptsResult{
-			Prompts: prompts,
-			// Implement cursor-based pagination in a future version
-		}
-
-		return result, nil
+		page, next := paginate(prompts, params.Cursor, func(p Prompt) string { return p.Name })
+		return ListPromptsResult{Prompts: page, NextCursor: next}, nil
 	}
 
 	// Register prompts/get handler
@@ -705,12 +697,8 @@ func (s *Server) registerResourceHandlers() {
 			resources = append(resources, def.resource)
 		}
 
-		result := ListResourcesResult{
-			Resources: resources,
-			// Implement cursor-based pagination in a future version
-		}
-
-		return result, nil
+		page, next := paginate(resources, params.Cursor, func(r Resource) string { return r.URI })
+		return ListResourcesResult{Resources: page, NextCursor: next}, nil
 	}
 
 	// Register resources/read handler
@@ -794,12 +782,8 @@ func (s *Server) registerResourceHandlers() {
 			templates = append(templates, def.template)
 		}
 
-		result := ListResourceTemplatesResult{
-			Templates: templates,
-			// Implement cursor-based pagination in a future version
-		}
-
-		return result, nil
+		page, next := paginate(templates, params.Cursor, func(t ResourceTemplate) string { return t.Template })
+		return ListResourceTemplatesResult{Templates: page, NextCursor: next}, nil
 	}
 
 	s.handlers[string(MethodResourcesSubscribe)] = func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {

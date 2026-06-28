@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -349,20 +350,23 @@ func (p *ConnectionPool) GracefulShutdown(ctx context.Context) error {
 
 // pooledConnectionWrapper wraps a pooled connection to automatically return it on close
 type pooledConnectionWrapper struct {
-	conn   *PooledConnection
-	pool   *ConnectionPool
-	closed bool
+	conn *PooledConnection
+	pool *ConnectionPool
+	// closed is atomic so Read/Write/Close can be called from different
+	// goroutines without racing; Close uses CompareAndSwap so the connection is
+	// returned to the pool at most once even under concurrent Close.
+	closed atomic.Bool
 }
 
 func (w *pooledConnectionWrapper) Read(p []byte) (n int, err error) {
-	if w.closed {
+	if w.closed.Load() {
 		return 0, ErrTransportClosed
 	}
 	return w.conn.conn.Read(p)
 }
 
 func (w *pooledConnectionWrapper) Write(p []byte) (n int, err error) {
-	if w.closed {
+	if w.closed.Load() {
 		return 0, ErrTransportClosed
 	}
 	n, err = w.conn.conn.Write(p)
@@ -376,10 +380,9 @@ func (w *pooledConnectionWrapper) Write(p []byte) (n int, err error) {
 }
 
 func (w *pooledConnectionWrapper) Close() error {
-	if w.closed {
+	if !w.closed.CompareAndSwap(false, true) {
 		return nil
 	}
-	w.closed = true
 
 	// Return connection to pool instead of closing it
 	w.pool.Return(w.conn)

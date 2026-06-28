@@ -371,7 +371,10 @@ func (ph *ProgressHandler) NotifyProgress(token ProgressToken, value float64, to
 	ph.mu.RUnlock()
 
 	for _, callback := range callbacks {
-		go callback(token, value, total, message)
+		cb := callback
+		safeGo(nil, "progress callback", func() {
+			cb(token, value, total, message)
+		})
 	}
 }
 
@@ -401,6 +404,9 @@ func (ch *CancellationHandler) NotifyCancellation(requestID string, reason strin
 	ch.mu.RUnlock()
 
 	for _, callback := range callbacks {
-		go callback(requestID, reason)
+		cb := callback
+		safeGo(nil, "cancellation callback", func() {
+			cb(requestID, reason)
+		})
 	}
 }

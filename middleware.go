@@ -24,7 +24,6 @@ import (
 
 // MiddlewareChain manages middleware for MCP handlers with type safety and performance optimization
 type MiddlewareChain struct {
-	mu          sync.RWMutex
 	middlewares []Middleware
 	registry    *MiddlewareRegistry
 	config      *MiddlewareConfig
@@ -442,8 +441,17 @@ func (m *TimeoutMiddleware) Apply(next MCPHandler) MCPHandler {
 		}
 		resultChan := make(chan result, 1)
 
-		// Execute handler in goroutine
+		// Execute handler in goroutine. Recover here: this goroutine runs the
+		// downstream handler, and a panic in it would bypass any
+		// RecoveryMiddleware sitting above this in the chain (recover only
+		// catches panics in its own goroutine) and crash the process. Report
+		// the panic as an error so the select unblocks.
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					resultChan <- result{err: fmt.Errorf("handler: %w", recoverPanic(r))}
+				}
+			}()
 			resp, err := next.Handle(timeoutCtx, req.WithContext(timeoutCtx))
 			resultChan <- result{resp: resp, err: err}
 		}()
@@ -650,6 +658,7 @@ const (
 	metricsKey       contextKey = "mcp_metrics"
 	progressKey      contextKey = "mcp_progress"
 	cancelManagerKey contextKey = "mcp_cancel_manager"
+	accessTokenKey   contextKey = "mcp_access_token"
 )
 
 // WithAuthContext adds authentication context to the request context

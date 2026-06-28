@@ -11,7 +11,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 
 	"golang.org/x/exp/jsonrpc2"
@@ -388,6 +387,20 @@ func (s *Server) handleRequest(ctx context.Context, req *jsonrpc2.Request) (inte
 	errChan := make(chan error, 1)
 
 	go func() {
+		// Recover panics from the user handler so a single bad request
+		// degrades to an error instead of crashing the whole server. The
+		// recover must live in this goroutine; RecoveryMiddleware runs in the
+		// caller's goroutine and cannot catch a panic here. Reporting the
+		// panic as an error also unblocks the select below, which would
+		// otherwise wait on the result channel until ctx cancellation.
+		defer func() {
+			if r := recover(); r != nil {
+				err := recoverPanic(r)
+				s.logger.Error("recovered panic in handler",
+					"method", req.Method, "error", err)
+				errChan <- fmt.Errorf("handler %s: %w", req.Method, err)
+			}
+		}()
 		result, err := handler(ctx, req)
 		if err != nil {
 			errChan <- err
@@ -1274,9 +1287,4 @@ func isInTest() bool {
 	return strings.HasSuffix(os.Args[0], ".test") ||
 		strings.Contains(os.Args[0], "/_test/") ||
 		os.Getenv("GOTEST") == "1"
-}
-
-// isShortTest returns true if we're running tests in short mode
-func isShortTest() bool {
-	return testing.Short()
 }

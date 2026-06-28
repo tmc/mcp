@@ -591,7 +591,7 @@ func (w *slidingWindow) timeToAvailable(windowSize time.Duration) time.Duration 
 	}
 
 	// Calculate when it will fall out of the window
-	timeUntilAvailable := oldestRequest.Add(windowSize).Sub(time.Now())
+	timeUntilAvailable := time.Until(oldestRequest.Add(windowSize))
 	if timeUntilAvailable < 0 {
 		return 0
 	}
@@ -766,8 +766,7 @@ type EnhancedRateLimitMiddleware struct {
 	keyExtractor    func(context.Context, MCPRequest) string
 	skipMethods     map[string]bool
 	errorHandler    func(context.Context, MCPRequest) MCPResponse
-	perEndpointRate bool     // Enable per-endpoint rate limiting
-	methodLimiters  sync.Map // method -> RateLimiter
+	perEndpointRate bool // Enable per-endpoint rate limiting
 }
 
 // NewEnhancedRateLimitMiddleware creates enhanced rate limiting middleware

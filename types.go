@@ -1072,38 +1072,9 @@ var (
 		*r = CallToolRequest{}
 	})
 
-	getPromptRequestPool = NewObjectPool(func(r *GetPromptRequest) {
-		*r = GetPromptRequest{}
-	})
-
-	readResourceRequestPool = NewObjectPool(func(r *ReadResourceRequest) {
-		*r = ReadResourceRequest{}
-	})
-
-	listToolsRequestPool = NewObjectPool(func(r *ListToolsRequest) {
-		*r = ListToolsRequest{}
-	})
-
-	listPromptsRequestPool = NewObjectPool(func(r *ListPromptsRequest) {
-		*r = ListPromptsRequest{}
-	})
-
-	listResourcesRequestPool = NewObjectPool(func(r *ListResourcesRequest) {
-		*r = ListResourcesRequest{}
-	})
-
 	// Response type pools
 	callToolResultPool = NewObjectPool(func(r *CallToolResult) {
 		*r = CallToolResult{}
-	})
-
-	// Buffer pool for JSON unmarshaling operations
-	byteBufferPool = NewObjectPool(func(b *[]byte) {
-		if cap(*b) > 64*1024 { // Reset large buffers to avoid memory leaks
-			*b = make([]byte, 0, 1024)
-		} else {
-			*b = (*b)[:0]
-		}
 	})
 )
 

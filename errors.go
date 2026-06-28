@@ -102,13 +102,13 @@ func removePaths(msg string) string {
 func removeInternalDetails(msg string) string {
 	// Patterns to remove or replace
 	replacements := map[string]string{
-		"panic:":           "error:",
-		"goroutine":        "",
-		"runtime.":         "",
-		".go:":             "",
-		"database/sql:":    "database error",
-		"crypto/":          "cryptographic error",
-		"internal error:":  "error:",
+		"panic:":          "error:",
+		"goroutine":       "",
+		"runtime.":        "",
+		".go:":            "",
+		"database/sql:":   "database error",
+		"crypto/":         "cryptographic error",
+		"internal error:": "error:",
 		"unexpected type": "invalid data",
 	}
 

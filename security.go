@@ -97,9 +97,7 @@ type ValidatorFunc func(value interface{}) error
 // InputValidator provides comprehensive input validation
 type InputValidator struct {
 	config           *SecurityConfig
-	schemaCache      sync.Map
 	compiledPatterns []*regexp.Regexp
-	mu               sync.RWMutex
 }
 
 // NewInputValidator creates a new input validator with the given configuration

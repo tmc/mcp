@@ -184,7 +184,6 @@ func (r *MiddlewareRegistry) ListFactories() []MiddlewareFactory {
 type MiddlewareGroup struct {
 	name        string
 	middlewares []Middleware
-	config      *MiddlewareConfig
 	registry    *MiddlewareRegistry
 	enabled     bool
 }

@@ -373,7 +373,6 @@ func TestWithAppleOptimizations(t *testing.T) {
 	}
 }
 
-
 // Benchmark Apple-specific optimizations
 func BenchmarkAppleOptimizedTransportRead(b *testing.B) {
 	if runtime.GOOS != "darwin" {

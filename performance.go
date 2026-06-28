@@ -352,8 +352,11 @@ type ResourcePool struct {
 func NewResourcePool() *ResourcePool {
 	return &ResourcePool{
 		bufferPool: sync.Pool{
+			// Store *[]byte rather than []byte: putting a slice header by value
+			// boxes it into an interface and allocates on every Put (SA6002).
 			New: func() interface{} {
-				return make([]byte, 0, 4096)
+				b := make([]byte, 0, 4096)
+				return &b
 			},
 		},
 		contextPool: sync.Pool{
@@ -382,13 +385,13 @@ func NewResourcePool() *ResourcePool {
 
 // GetBuffer gets a buffer from the pool
 func (rp *ResourcePool) GetBuffer() []byte {
-	return rp.bufferPool.Get().([]byte)[:0]
+	return (*rp.bufferPool.Get().(*[]byte))[:0]
 }
 
 // PutBuffer returns a buffer to the pool
 func (rp *ResourcePool) PutBuffer(buf []byte) {
 	if cap(buf) <= 65536 { // Don't pool very large buffers
-		rp.bufferPool.Put(buf)
+		rp.bufferPool.Put(&buf)
 	}
 }
 
@@ -511,10 +514,10 @@ func isConnectionError(err error) bool {
 	if err == nil {
 		return false
 	}
-	errStr := fmt.Sprintf("%v", err)
-	return fmt.Sprintf("%s", errStr) == "connection refused" ||
-		fmt.Sprintf("%s", errStr) == "connection reset" ||
-		fmt.Sprintf("%s", errStr) == "broken pipe"
+	errStr := err.Error()
+	return errStr == "connection refused" ||
+		errStr == "connection reset" ||
+		errStr == "broken pipe"
 }
 
 // Global performance monitor instance

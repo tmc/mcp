@@ -474,15 +474,8 @@ func (sv *StructValidator) applyValidationRule(fieldName, rule string, fieldValu
 			return fmt.Errorf("field %q cannot be empty", fieldName)
 		}
 	default:
-		// Support custom validation patterns
-		if strings.HasPrefix(rule, "min=") {
-			// Example: min=5
-			// This would need more implementation for different types
-		}
-		if strings.HasPrefix(rule, "max=") {
-			// Example: max=100
-			// This would need more implementation for different types
-		}
+		// Unknown rules are ignored. Parameterized rules such as "min=5" /
+		// "max=100" are not implemented; add cases here when they are.
 	}
 	return nil
 }

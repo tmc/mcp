@@ -18,7 +18,6 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -520,19 +519,10 @@ func NewCORSMiddleware(config CORSConfig) *CORSMiddleware {
 }
 
 func (m *CORSMiddleware) Apply(next MCPHandler) MCPHandler {
-	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		// Add CORS headers to context for later use by transport layer
-		corsHeaders := map[string]string{
-			"Access-Control-Allow-Origin":  strings.Join(m.config.AllowOrigins, ", "),
-			"Access-Control-Allow-Methods": strings.Join(m.config.AllowMethods, ", "),
-			"Access-Control-Allow-Headers": strings.Join(m.config.AllowHeaders, ", "),
-			"Access-Control-Max-Age":       strconv.Itoa(m.config.MaxAge),
-		}
-
-		corsCtx := context.WithValue(ctx, "cors_headers", corsHeaders)
-
-		return next.Handle(corsCtx, req.WithContext(corsCtx))
-	})
+	// CORS is an HTTP-layer concern; in the MCP handler chain this middleware
+	// is a pass-through. Actual CORS headers are set by the HTTP transports
+	// (see the streamable handler's AllowOrigin option).
+	return next
 }
 
 func (m *CORSMiddleware) Name() string {
@@ -611,7 +601,7 @@ func (m *ContentTransformationMiddleware) Apply(next MCPHandler) MCPHandler {
 func (m *ContentTransformationMiddleware) transformRequest(ctx context.Context, req MCPRequest) MCPRequest {
 	// Safely transform request parameters using available transformers
 	params := req.GetParams()
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		for _, transformer := range m.transformers {
 			if transformer.CanTransform("application/json") {
 				// Parse, transform, and re-marshal JSON parameters

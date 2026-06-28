@@ -401,8 +401,8 @@ func (p *MemoryOAuthProvider) RefreshAccessToken(ctx context.Context, refreshTok
 // ValidateAccessToken implements OAuthProvider
 func (p *MemoryOAuthProvider) ValidateAccessToken(ctx context.Context, tokenStr string) (*AccessToken, error) {
 	p.mu.RLock()
-	defer p.mu.RUnlock()
 	token, exists := p.accessTokens[tokenStr]
+	p.mu.RUnlock()
 	if !exists {
 		return nil, &OAuthError{
 			Code:        ErrorInvalidClient,
@@ -411,7 +411,15 @@ func (p *MemoryOAuthProvider) ValidateAccessToken(ctx context.Context, tokenStr 
 	}
 
 	if time.Now().After(token.ExpiresAt) {
-		delete(p.accessTokens, tokenStr)
+		// Evict the expired token under a write lock. delete is a map write, so
+		// it must not run while only the read lock is held (that would be a
+		// fatal concurrent map write against RevokeToken or a concurrent
+		// validation). Re-check existence in case it was already removed.
+		p.mu.Lock()
+		if cur, ok := p.accessTokens[tokenStr]; ok && cur == token {
+			delete(p.accessTokens, tokenStr)
+		}
+		p.mu.Unlock()
 		return nil, &OAuthError{
 			Code:        ErrorInvalidClient,
 			Description: "Access token expired",
@@ -495,17 +503,22 @@ func GeneratePKCEChallenge() (verifier, challenge string, err error) {
 func ValidatePKCEChallenge(verifier, challenge string) bool {
 	hash := sha256.Sum256([]byte(verifier))
 	expectedChallenge := base64.RawURLEncoding.EncodeToString(hash[:])
-	return expectedChallenge == challenge
+	// Constant-time compare so the match does not leak timing about how many
+	// leading bytes of the challenge are correct.
+	return subtle.ConstantTimeCompare([]byte(expectedChallenge), []byte(challenge)) == 1
 }
 
 // Utility functions
 
+// generateRandomString returns a hex string of the given length. It reads
+// ceil(length/2) random bytes and truncates, so odd lengths are honored (a
+// bare length/2 would return a string one character short).
 func generateRandomString(length int) (string, error) {
-	bytes := make([]byte, length/2)
+	bytes := make([]byte, (length+1)/2)
 	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
 		return "", fmt.Errorf("read random bytes: %w", err)
 	}
-	return hex.EncodeToString(bytes), nil
+	return hex.EncodeToString(bytes)[:length], nil
 }
 
 // ParseAuthorizationHeader parses an Authorization header for Bearer tokens
@@ -547,8 +560,10 @@ func AuthMiddleware(provider OAuthProvider) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Add token info to request context
-			ctx := context.WithValue(r.Context(), "access_token", accessToken)
+			// Add token info to request context under an unexported typed key
+			// so it cannot collide with or be overwritten by a bare string key
+			// from another package in the same context chain.
+			ctx := context.WithValue(r.Context(), accessTokenKey, accessToken)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -556,6 +571,6 @@ func AuthMiddleware(provider OAuthProvider) func(http.Handler) http.Handler {
 
 // GetAccessTokenFromContext retrieves the access token from request context
 func GetAccessTokenFromContext(ctx context.Context) (*AccessToken, bool) {
-	token, ok := ctx.Value("access_token").(*AccessToken)
+	token, ok := ctx.Value(accessTokenKey).(*AccessToken)
 	return token, ok
 }

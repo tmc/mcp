@@ -83,7 +83,6 @@ type SecureOAuthProvider struct {
 	revokedTokens  sync.Map // token -> revocation time
 	tokenMetadata  sync.Map // token -> metadata
 	signingKey     []byte
-	mu             sync.RWMutex
 }
 
 // KeyDerivationMethod specifies the key derivation algorithm to use
@@ -502,11 +501,13 @@ func (p *SecureOAuthProvider) ValidateScopes(ctx context.Context, clientID strin
 	return p.provider.ValidateScopes(ctx, clientID, scopes)
 }
 
-// TokenTransmissionGuard provides secure token transmission patterns
+// TokenTransmissionGuard provides secure token transmission patterns. Call
+// Close when done to stop its background nonce-cleanup goroutine.
 type TokenTransmissionGuard struct {
 	maxTransmissionAge time.Duration
 	nonceCache         sync.Map // nonce -> timestamp
-	mu                 sync.RWMutex
+	done               chan struct{}
+	closeOnce          sync.Once
 }
 
 // NewTokenTransmissionGuard creates a new transmission guard
@@ -517,12 +518,20 @@ func NewTokenTransmissionGuard(maxAge time.Duration) *TokenTransmissionGuard {
 
 	guard := &TokenTransmissionGuard{
 		maxTransmissionAge: maxAge,
+		done:               make(chan struct{}),
 	}
 
 	// Start cleanup routine
-	go guard.cleanupNonces()
+	safeGo(nil, "nonce cleanup", guard.cleanupNonces)
 
 	return guard
+}
+
+// Close stops the guard's background nonce-cleanup goroutine. It is safe to
+// call more than once.
+func (g *TokenTransmissionGuard) Close() error {
+	g.closeOnce.Do(func() { close(g.done) })
+	return nil
 }
 
 // PrepareTokenForTransmission prepares a token for secure transmission
@@ -590,13 +599,13 @@ func (g *TokenTransmissionGuard) ValidateTokenTransmission(transmitted string) (
 		return "", errors.New("missing nonce")
 	}
 
-	// Check if nonce was already used
-	if _, exists := g.nonceCache.Load(nonce); exists {
+	// Atomically claim the nonce to prevent replay. A separate Load-then-Store
+	// has a TOCTOU window: two concurrent replays of the same nonce both see it
+	// absent before either stores, so both are accepted. LoadOrStore closes
+	// that window.
+	if _, loaded := g.nonceCache.LoadOrStore(nonce, time.Now()); loaded {
 		return "", errors.New("nonce already used")
 	}
-
-	// Store nonce to prevent replay
-	g.nonceCache.Store(nonce, time.Now())
 
 	// Extract token
 	token, ok := transmission["token"].(string)
@@ -612,26 +621,40 @@ func (g *TokenTransmissionGuard) cleanupNonces() {
 	ticker := time.NewTicker(g.maxTransmissionAge)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		cutoff := time.Now().Add(-g.maxTransmissionAge * 2)
+	for {
+		select {
+		case <-g.done:
+			return
+		case <-ticker.C:
+			cutoff := time.Now().Add(-g.maxTransmissionAge * 2)
 
-		g.nonceCache.Range(func(key, value interface{}) bool {
-			if timestamp, ok := value.(time.Time); ok {
-				if timestamp.Before(cutoff) {
-					g.nonceCache.Delete(key)
+			g.nonceCache.Range(func(key, value interface{}) bool {
+				if timestamp, ok := value.(time.Time); ok {
+					if timestamp.Before(cutoff) {
+						g.nonceCache.Delete(key)
+					}
 				}
-			}
-			return true
-		})
+				return true
+			})
+		}
 	}
 }
 
-// SecureAuthenticationMiddleware provides enhanced authentication middleware
+// SecureAuthenticationMiddleware provides enhanced authentication middleware.
+// Call Close when done to release the transmission guard's background
+// goroutine.
 type SecureAuthenticationMiddleware struct {
 	provider    *SecureOAuthProvider
 	guard       *TokenTransmissionGuard
 	skipMethods map[string]bool
-	tokenCache  sync.Map
+}
+
+// Close releases the middleware's transmission guard.
+func (m *SecureAuthenticationMiddleware) Close() error {
+	if m.guard != nil {
+		return m.guard.Close()
+	}
+	return nil
 }
 
 // NewSecureAuthenticationMiddleware creates secure authentication middleware

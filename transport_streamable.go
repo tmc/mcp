@@ -51,10 +51,24 @@ type StreamableHTTPOptions struct {
 	MaxSessions    int
 	SessionTimeout time.Duration
 
+	// MaxRequestBytes caps the size of an incoming POST body. Bodies larger
+	// than this are rejected rather than read into memory. Zero selects the
+	// default (4 MiB).
+	MaxRequestBytes int64
+
+	// AllowOrigin, if non-empty, is echoed as the Access-Control-Allow-Origin
+	// header on SSE responses. It is empty by default, so no CORS header is
+	// emitted and the stream is not exposed cross-origin; set it explicitly
+	// (e.g. "*" or a specific origin) to opt in.
+	AllowOrigin string
+
 	// DisableLocalhostProtection disables DNS rebinding protection for local
 	// streamable HTTP servers.
 	DisableLocalhostProtection bool
 }
+
+// defaultMaxRequestBytes bounds an unconfigured POST body at 4 MiB.
+const defaultMaxRequestBytes = 4 << 20
 
 // StreamableHTTPHandler serves streamable MCP sessions as defined by the MCP spec
 type StreamableHTTPHandler struct {
@@ -63,6 +77,10 @@ type StreamableHTTPHandler struct {
 
 	sessionsMu sync.RWMutex
 	sessions   map[string]*StreamableServerTransport
+
+	reaperOnce sync.Once
+	done       chan struct{}
+	closeOnce  sync.Once
 }
 
 // NewStreamableHTTPHandler creates a new streamable HTTP handler
@@ -79,12 +97,81 @@ func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *Strea
 	if opts.SessionTimeout <= 0 {
 		opts.SessionTimeout = 5 * time.Minute
 	}
+	if opts.MaxRequestBytes <= 0 {
+		opts.MaxRequestBytes = defaultMaxRequestBytes
+	}
 
 	return &StreamableHTTPHandler{
 		getServer: getServer,
 		opts:      *opts,
 		sessions:  make(map[string]*StreamableServerTransport),
+		done:      make(chan struct{}),
 	}
+}
+
+// touch records the current time as this session's last activity.
+func (t *StreamableServerTransport) touch() {
+	t.lastActive.Store(time.Now().UnixNano())
+}
+
+// startReaper lazily starts the idle-session reaper. It runs at most once per
+// handler and stops when the handler is closed, so it does not leak: a session
+// whose lastActive is older than SessionTimeout is cancelled, which makes its
+// Serve goroutine return and self-delete from the map.
+func (h *StreamableHTTPHandler) startReaper() {
+	h.reaperOnce.Do(func() {
+		safeGo(h.opts.Logger, "session reaper", func() {
+			ticker := time.NewTicker(h.opts.SessionTimeout)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-h.done:
+					return
+				case <-ticker.C:
+					h.reapIdleSessions()
+				}
+			}
+		})
+	})
+}
+
+func (h *StreamableHTTPHandler) reapIdleSessions() {
+	cutoff := time.Now().Add(-h.opts.SessionTimeout).UnixNano()
+	var idle []*StreamableServerTransport
+	h.sessionsMu.RLock()
+	for _, s := range h.sessions {
+		if s.lastActive.Load() < cutoff {
+			idle = append(idle, s)
+		}
+	}
+	h.sessionsMu.RUnlock()
+	// Cancel outside the lock; each cancelled session's Serve goroutine deletes
+	// itself from the map under the write lock.
+	for _, s := range idle {
+		if s.cancel != nil {
+			s.cancel()
+		}
+	}
+}
+
+// Close shuts the handler down: it stops the reaper and cancels every live
+// session so their Serve goroutines return. It is safe to call more than once.
+func (h *StreamableHTTPHandler) Close() error {
+	h.closeOnce.Do(func() {
+		close(h.done)
+		h.sessionsMu.RLock()
+		sessions := make([]*StreamableServerTransport, 0, len(h.sessions))
+		for _, s := range h.sessions {
+			sessions = append(sessions, s)
+		}
+		h.sessionsMu.RUnlock()
+		for _, s := range sessions {
+			if s.cancel != nil {
+				s.cancel()
+			}
+		}
+	})
+	return nil
 }
 
 // ServeHTTP implements the HTTP handler interface
@@ -128,9 +215,10 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 
 	session, err := h.getOrCreateSession(r, sessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
+	session.touch()
 
 	// Handle resumption via Last-Event-ID
 	lastEventID := r.Header.Get("Last-Event-ID")
@@ -139,7 +227,10 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 
 	if lastEventID != "" {
 		sid, idx, ok := parseEventID(lastEventID)
-		if ok {
+		// Guard against a forged Last-Event-ID: ignore negative indices/stream
+		// ids. The replay loop is already bounded by the buffered message
+		// count, so a too-large index simply resumes at the end.
+		if ok && idx >= 0 && sid >= 0 {
 			resumeStreamID = sid
 			resumeIndex = idx + 1
 		}
@@ -149,7 +240,12 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// CORS is opt-in: only expose the stream cross-origin when an origin is
+	// explicitly configured. The previous unconditional "*" let any origin read
+	// session-scoped data.
+	if h.opts.AllowOrigin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", h.opts.AllowOrigin)
+	}
 	w.Header().Set(streamableSessionHeader, session.id)
 
 	flusher, ok := w.(http.Flusher)
@@ -169,9 +265,11 @@ func (h *StreamableHTTPHandler) handleSSEStream(w http.ResponseWriter, r *http.R
 
 // handleMessage handles incoming JSON-RPC messages
 func (h *StreamableHTTPHandler) handleMessage(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
+	// Cap the body so a peer cannot exhaust memory with an arbitrarily large or
+	// infinite request. MaxBytesReader makes the read fail past the limit.
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, h.opts.MaxRequestBytes))
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		http.Error(w, "Failed to read request body", http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -194,6 +292,7 @@ func (h *StreamableHTTPHandler) handleMessage(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	session.touch()
 	sid := streamID(session.nextStreamID.Add(1))
 	if err := session.receive(r.Context(), msg, sid); err != nil {
 		http.Error(w, err.Error(), http.StatusRequestTimeout)
@@ -325,17 +424,29 @@ func (h *StreamableHTTPHandler) getOrCreateSession(r *http.Request, sessionID st
 		cancel()
 		return existing, nil
 	}
+	// Enforce the session cap before inserting. Without this, a peer sending
+	// unbounded unique session IDs (or omitting the header so a fresh ID is
+	// minted each time) grows this map without bound and leaks a Serve
+	// goroutine per session — a memory/goroutine-exhaustion DoS.
+	if len(h.sessions) >= h.opts.MaxSessions {
+		h.sessionsMu.Unlock()
+		cancel()
+		return nil, fmt.Errorf("session limit reached (%d)", h.opts.MaxSessions)
+	}
+	session.touch()
 	h.sessions[sessionID] = session
 	h.sessionsMu.Unlock()
 
-	go func() {
+	h.startReaper()
+
+	safeGo(h.opts.Logger, "session serve", func() {
 		_ = server.Serve(ctx, session)
 		h.sessionsMu.Lock()
 		if h.sessions[sessionID] == session {
 			delete(h.sessions, sessionID)
 		}
 		h.sessionsMu.Unlock()
-	}()
+	})
 	return session, nil
 }
 
@@ -355,6 +466,9 @@ type StreamableServerTransport struct {
 	incoming     chan JSONRPCMessage
 	logger       *slog.Logger
 	cancel       context.CancelFunc
+	// lastActive is the unix-nano time of the most recent activity on this
+	// session, read by the handler's reaper to evict idle sessions.
+	lastActive atomic.Int64
 
 	mu               sync.RWMutex
 	isDone           bool
@@ -556,11 +670,25 @@ func (t *StreamableServerTransport) streamMessages(ctx context.Context, w http.R
 			resumeIndex = i + 1
 		}
 	}
-
-	// Create signal channel for this stream
-	signalCh := make(chan struct{}, 1)
-	t.signals[resumeStreamID] = signalCh
 	t.mu.RUnlock()
+
+	// Register the signal channel under a write lock: t.signals is a shared
+	// map, so the assignment must hold Lock (matching waitStreamMessage), not
+	// RLock — two concurrent GET streams writing it under RLock would be a
+	// fatal concurrent map write. Re-read outgoingMessages under the same lock
+	// and flush anything published between the RUnlock above and here, so no
+	// message is missed in the gap.
+	signalCh := make(chan struct{}, 1)
+	t.mu.Lock()
+	if messages, exists := t.outgoingMessages[resumeStreamID]; exists {
+		for i := resumeIndex; i < len(messages); i++ {
+			t.writeSSEMessage(w, messages[i])
+			flusher.Flush()
+			resumeIndex = i + 1
+		}
+	}
+	t.signals[resumeStreamID] = signalCh
+	t.mu.Unlock()
 
 	defer func() {
 		t.mu.Lock()

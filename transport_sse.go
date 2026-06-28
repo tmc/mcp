@@ -18,6 +18,16 @@ import (
 	// "golang.org/x/exp/jsonrpc2" // Only for Message type if sseRWCAdapter needs to parse/encode
 )
 
+const (
+	// maxSSEErrorBody caps how much of an error response body is read for an
+	// error message, so a hostile server cannot exhaust client memory there.
+	maxSSEErrorBody = 4 << 10 // 4 KiB
+	// maxSSELine bounds a single SSE line/token, raising bufio.Scanner's
+	// default 64 KiB limit while still rejecting an unbounded line instead of
+	// silently killing the connection with ErrTooLong.
+	maxSSELine = 1 << 20 // 1 MiB
+)
+
 // SSEClientTransport connects to an MCP server over Server-Sent Events.
 type SSEClientTransport struct {
 	sseURL *url.URL
@@ -58,7 +68,7 @@ func (t *SSEClientTransport) Dial(ctx context.Context) (io.ReadWriteCloser, erro
 		return nil, fmt.Errorf("sse client: GET request failed: %w", err)
 	}
 	if sseResp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(sseResp.Body)
+		bodyBytes, _ := io.ReadAll(io.LimitReader(sseResp.Body, maxSSEErrorBody))
 		sseResp.Body.Close()
 		return nil, fmt.Errorf("sse client: GET request status %d: %s", sseResp.StatusCode, string(bodyBytes))
 	}
@@ -66,6 +76,7 @@ func (t *SSEClientTransport) Dial(ctx context.Context) (io.ReadWriteCloser, erro
 	sseReader := bufio.NewReader(sseResp.Body)
 	var postURL *url.URL
 	scanner := bufio.NewScanner(sseReader)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSSELine)
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -140,7 +151,9 @@ func (s *sseRWCAdapter) readLoop() {
 	defer s.logger.DebugContext(s.ctx, "sseRWCAdapter: readLoop finished")
 
 	scanner := bufio.NewScanner(s.sseReader)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxSSELine)
 	var currentEventDataLines []string
+	var currentEventDataSize int
 
 	for {
 		select {
@@ -179,6 +192,7 @@ func (s *sseRWCAdapter) readLoop() {
 			if len(currentEventDataLines) > 0 {
 				fullMessage := strings.Join(currentEventDataLines, "")
 				currentEventDataLines = nil
+				currentEventDataSize = 0
 
 				select {
 				case s.readChan <- []byte(fullMessage + "\n"):
@@ -192,12 +206,23 @@ func (s *sseRWCAdapter) readLoop() {
 				}
 			}
 		} else if strings.HasPrefix(line, "data:") {
-			currentEventDataLines = append(currentEventDataLines, strings.TrimSpace(strings.TrimPrefix(line, "data:")))
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			// Bound the accumulated event so a peer streaming "data:" lines
+			// with no blank separator cannot grow this slice without limit.
+			if currentEventDataSize+len(data) > maxSSELine {
+				err := wrapTransportClosed("sse read", fmt.Errorf("sse event exceeds %d bytes", maxSSELine))
+				s.logger.ErrorContext(s.ctx, "sseRWCAdapter: readLoop event too large", "error", err)
+				s.readErrChan <- err
+				return
+			}
+			currentEventDataSize += len(data)
+			currentEventDataLines = append(currentEventDataLines, data)
 		} else if strings.HasPrefix(line, "event:") {
 			if len(currentEventDataLines) > 0 {
 				s.logger.WarnContext(s.ctx, "sseRWCAdapter: data received before non-message event, sending previous data", "event", line)
 				fullMessage := strings.Join(currentEventDataLines, "")
 				currentEventDataLines = nil
+				currentEventDataSize = 0
 				select {
 				case s.readChan <- []byte(fullMessage + "\n"):
 				case <-s.closed:
@@ -287,7 +312,7 @@ func (s *sseRWCAdapter) Write(p []byte) (n int, err error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, maxSSEErrorBody))
 		s.logger.ErrorContext(s.ctx, "sseRWCAdapter: POST request returned error status", "status_code", resp.StatusCode, "body", string(bodyBytes))
 		return 0, fmt.Errorf("sse client: POST status %d: %s", resp.StatusCode, string(bodyBytes))
 	}

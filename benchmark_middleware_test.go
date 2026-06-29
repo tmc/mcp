@@ -400,16 +400,16 @@ func BenchmarkAuthMiddleware_CacheScenarios(b *testing.B) {
 					// Create new token each time (no cache)
 					newAuthCode, _ := provider.CreateAuthorizationCode(context.Background(), authReq)
 					newToken, _ := provider.CreateAccessToken(context.Background(), newAuthCode)
-					ctx = context.WithValue(context.Background(), "Authorization", "Bearer "+newToken.AccessToken)
+					ctx = context.WithValue(context.Background(), authHeaderKey, "Bearer "+newToken.AccessToken)
 
 				case "cache-hit":
 					// Use same token (cache hit)
-					ctx = context.WithValue(context.Background(), "Authorization", "Bearer "+validToken.AccessToken)
+					ctx = context.WithValue(context.Background(), authHeaderKey, "Bearer "+validToken.AccessToken)
 
 				case "cache-miss":
 					// Use invalid token (cache miss)
 					invalidToken := generateRandomToken(64)
-					ctx = context.WithValue(context.Background(), "Authorization", "Bearer "+invalidToken)
+					ctx = context.WithValue(context.Background(), authHeaderKey, "Bearer "+invalidToken)
 				}
 
 				req = &MockRequestForBenchmark{
@@ -439,7 +439,7 @@ func BenchmarkAuthMiddleware_TokenExtraction(b *testing.B) {
 	extractionMethods := map[string]func(i int) (context.Context, MCPRequest){
 		"HeaderExtraction": func(i int) (context.Context, MCPRequest) {
 			token := generateRandomToken(64)
-			ctx := context.WithValue(context.Background(), "Authorization", "Bearer "+token)
+			ctx := context.WithValue(context.Background(), authHeaderKey, "Bearer "+token)
 			req := &MockRequestForBenchmark{
 				method: "tools/call",
 				id:     "test-id",

@@ -49,8 +49,8 @@ func TestSecureOAuthProvider(t *testing.T) {
 	}
 
 	// Create access token
-	ctx := context.WithValue(context.Background(), "User-Agent", "test-agent")
-	ctx = context.WithValue(ctx, "RemoteAddr", "127.0.0.1")
+	ctx := context.WithValue(context.Background(), userAgentKey, "test-agent")
+	ctx = context.WithValue(ctx, remoteAddrKey, "127.0.0.1")
 
 	token, err := secureProvider.CreateAccessToken(ctx, authCode)
 	if err != nil {
@@ -312,7 +312,7 @@ func TestSecureAuthenticationMiddleware(t *testing.T) {
 	}
 
 	// Test with valid token in header
-	ctx := context.WithValue(context.Background(), "Authorization", "Bearer "+token.AccessToken)
+	ctx := context.WithValue(context.Background(), authHeaderKey, "Bearer "+token.AccessToken)
 	authReq := &mockMCPRequest{method: "tools/call"}
 	_, err = protected.Handle(ctx, authReq)
 	if err != nil {

@@ -250,7 +250,7 @@ func (m *AuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 
 func (m *AuthenticationMiddleware) extractToken(ctx context.Context, req MCPRequest) (string, error) {
 	// Try to extract from Authorization header in context
-	if authHeader, ok := ctx.Value("Authorization").(string); ok {
+	if authHeader, ok := ctx.Value(authHeaderKey).(string); ok {
 		return ParseAuthorizationHeader(authHeader)
 	}
 
@@ -608,7 +608,7 @@ func (m *MetricsMiddleware) extractLabels(ctx context.Context, req MCPRequest) m
 	}
 
 	// Extract transport type from context
-	if transport, ok := ctx.Value("transport").(string); ok {
+	if transport, ok := ctx.Value(transportKey).(string); ok {
 		labels["transport"] = transport
 	} else {
 		labels["transport"] = "unknown"
@@ -653,12 +653,18 @@ type AuthContext struct {
 type contextKey string
 
 const (
-	requestIDKey     contextKey = "mcp_request_id"
-	authCtxKey       contextKey = "mcp_auth_context"
-	metricsKey       contextKey = "mcp_metrics"
-	progressKey      contextKey = "mcp_progress"
-	cancelManagerKey contextKey = "mcp_cancel_manager"
-	accessTokenKey   contextKey = "mcp_access_token"
+	requestIDKey        contextKey = "mcp_request_id"
+	authCtxKey          contextKey = "mcp_auth_context"
+	metricsKey          contextKey = "mcp_metrics"
+	progressKey         contextKey = "mcp_progress"
+	cancelManagerKey    contextKey = "mcp_cancel_manager"
+	accessTokenKey      contextKey = "mcp_access_token"
+	authHeaderKey       contextKey = "mcp_authorization"
+	transmittedTokenKey contextKey = "mcp_transmitted_token"
+	transportKey        contextKey = "mcp_transport"
+	userAgentKey        contextKey = "mcp_user_agent"
+	remoteAddrKey       contextKey = "mcp_remote_addr"
+	clientIDKey         contextKey = "mcp_client_id"
 )
 
 // WithAuthContext adds authentication context to the request context

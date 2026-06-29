@@ -397,13 +397,13 @@ func (p *SecureOAuthProvider) extractClientInfo(ctx context.Context) map[string]
 	info := make(map[string]interface{})
 
 	// Extract from context values
-	if userAgent, ok := ctx.Value("User-Agent").(string); ok {
+	if userAgent, ok := ctx.Value(userAgentKey).(string); ok {
 		info["userAgent"] = sanitizeClientMetadataValue(userAgent)
 	}
-	if remoteAddr, ok := ctx.Value("RemoteAddr").(string); ok {
+	if remoteAddr, ok := ctx.Value(remoteAddrKey).(string); ok {
 		info["remoteAddr"] = sanitizeClientMetadataValue(remoteAddr)
 	}
-	if clientID, ok := ctx.Value("ClientID").(string); ok {
+	if clientID, ok := ctx.Value(clientIDKey).(string); ok {
 		info["clientId"] = sanitizeClientMetadataValue(clientID)
 	}
 
@@ -694,7 +694,7 @@ func (m *SecureAuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 		}
 
 		// Validate token transmission if needed
-		if transmitted, ok := ctx.Value("TransmittedToken").(string); ok {
+		if transmitted, ok := ctx.Value(transmittedTokenKey).(string); ok {
 			token, err = m.guard.ValidateTokenTransmission(transmitted)
 			if err != nil {
 				return nil, NewAuthError("Invalid token transmission", ErrorInvalidClient)
@@ -724,7 +724,7 @@ func (m *SecureAuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 // extractSecureToken extracts token with enhanced security checks
 func (m *SecureAuthenticationMiddleware) extractSecureToken(ctx context.Context, req MCPRequest) (string, error) {
 	// Try Authorization header
-	if authHeader, ok := ctx.Value("Authorization").(string); ok {
+	if authHeader, ok := ctx.Value(authHeaderKey).(string); ok {
 		return ParseAuthorizationHeader(authHeader)
 	}
 

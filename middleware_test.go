@@ -308,7 +308,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 			req := MCPRequest(NewMockRequest(tt.method, nil))
 			ctx := req.GetContext()
 			if tt.token != "" {
-				ctx = context.WithValue(ctx, "Authorization", "Bearer "+tt.token)
+				ctx = context.WithValue(ctx, authHeaderKey, "Bearer "+tt.token)
 			}
 			req = req.WithContext(ctx)
 

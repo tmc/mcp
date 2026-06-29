@@ -51,9 +51,9 @@ func TestMemoryOAuthProvider_CreateAccessToken_ReadError(t *testing.T) {
 func TestSecureOAuthProvider_ExtractClientInfoSanitizesContextValues(t *testing.T) {
 	provider := &SecureOAuthProvider{}
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, "User-Agent", "<script>alert('x')</script>\x00")
-	ctx = context.WithValue(ctx, "RemoteAddr", "127.0.0.1<script>")
-	ctx = context.WithValue(ctx, "ClientID", "\"quoted\"")
+	ctx = context.WithValue(ctx, userAgentKey, "<script>alert('x')</script>\x00")
+	ctx = context.WithValue(ctx, remoteAddrKey, "127.0.0.1<script>")
+	ctx = context.WithValue(ctx, clientIDKey, "\"quoted\"")
 
 	info := provider.extractClientInfo(ctx)
 	if got, want := info["userAgent"], "&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;"; got != want {

@@ -62,7 +62,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return server
-	}, &mcp.StreamableHTTPOptions{Logger: logger}))
+	}, &mcp.StreamableHTTPConfig{Logger: logger}))
 
 	ln, err := net.Listen("tcp", *addr)
 	if err != nil {

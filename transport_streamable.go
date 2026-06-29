@@ -45,8 +45,8 @@ type JSONRPCMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 }
 
-// StreamableHTTPOptions configures the streamable HTTP handler
-type StreamableHTTPOptions struct {
+// StreamableHTTPConfig configures the streamable HTTP handler
+type StreamableHTTPConfig struct {
 	Logger         *slog.Logger
 	MaxSessions    int
 	SessionTimeout time.Duration
@@ -73,7 +73,7 @@ const defaultMaxRequestBytes = 4 << 20
 // StreamableHTTPHandler serves streamable MCP sessions as defined by the MCP spec
 type StreamableHTTPHandler struct {
 	getServer func(*http.Request) *Server
-	opts      StreamableHTTPOptions
+	opts      StreamableHTTPConfig
 
 	sessionsMu sync.RWMutex
 	sessions   map[string]*StreamableServerTransport
@@ -84,9 +84,9 @@ type StreamableHTTPHandler struct {
 }
 
 // NewStreamableHTTPHandler creates a new streamable HTTP handler
-func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *StreamableHTTPOptions) *StreamableHTTPHandler {
+func NewStreamableHTTPHandler(getServer func(*http.Request) *Server, opts *StreamableHTTPConfig) *StreamableHTTPHandler {
 	if opts == nil {
-		opts = &StreamableHTTPOptions{}
+		opts = &StreamableHTTPConfig{}
 	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()

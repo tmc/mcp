@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// StreamableClientTransportOptions configures the streamable client transport
-type StreamableClientTransportOptions struct {
+// StreamableClientConfig configures the streamable client transport
+type StreamableClientConfig struct {
 	HTTPClient     *http.Client
 	Logger         *slog.Logger
 	SessionTimeout time.Duration
@@ -26,11 +26,11 @@ type StreamableClientTransportOptions struct {
 // StreamableClientTransport implements streamable HTTP transport for MCP clients
 type StreamableClientTransport struct {
 	url  string
-	opts StreamableClientTransportOptions
+	opts StreamableClientConfig
 }
 
 // NewStreamableClientTransport creates a new streamable client transport
-func NewStreamableClientTransport(url string, opts *StreamableClientTransportOptions) *StreamableClientTransport {
+func NewStreamableClientTransport(url string, opts *StreamableClientConfig) *StreamableClientTransport {
 	t := &StreamableClientTransport{url: url}
 
 	if opts != nil {
@@ -78,7 +78,7 @@ type streamableClientConnection struct {
 	url        string
 	sessionID  string
 	postURL    string
-	opts       StreamableClientTransportOptions
+	opts       StreamableClientConfig
 	httpClient *http.Client
 
 	mu          sync.RWMutex
@@ -93,7 +93,7 @@ type streamableClientConnection struct {
 }
 
 // newStreamableClientConnection creates a new streamable client connection
-func newStreamableClientConnection(ctx context.Context, baseURL string, opts StreamableClientTransportOptions) (*streamableClientConnection, error) {
+func newStreamableClientConnection(ctx context.Context, baseURL string, opts StreamableClientConfig) (*streamableClientConnection, error) {
 	conn := &streamableClientConnection{
 		url:        baseURL,
 		opts:       opts,

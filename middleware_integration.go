@@ -373,7 +373,7 @@ func (s *EnhancedServer) delegateToOriginalServer(ctx context.Context, req MCPRe
 	// Use the original server's handleRequest method directly
 	result, err := s.Server.handleRequest(ctx, jsonRPCReq)
 	if err != nil {
-		return &ErrorResponseImpl{
+		return &errorResponse{
 			Error: &ResponseError{
 				Code:    -32603,
 				Message: err.Error(),
@@ -382,7 +382,7 @@ func (s *EnhancedServer) delegateToOriginalServer(ctx context.Context, req MCPRe
 	}
 
 	// Wrap the result in a success response
-	return &SuccessResponseImpl{
+	return &successResponse{
 		Result: result,
 	}, nil
 }
@@ -423,26 +423,26 @@ func (r *UnifiedRequest) WithContext(ctx context.Context) MCPRequest {
 	}
 }
 
-// SuccessResponseImpl implements Response for successful responses
-type SuccessResponseImpl struct {
+// successResponse implements Response for successful responses
+type successResponse struct {
 	Result interface{} `json:"result"`
 }
 
-func (r *SuccessResponseImpl) GetResult() interface{} {
+func (r *successResponse) GetResult() interface{} {
 	return r.Result
 }
 
-func (r *SuccessResponseImpl) GetError() *ResponseError {
+func (r *successResponse) GetError() *ResponseError {
 	return nil
 }
 
-func (r *SuccessResponseImpl) IsError() bool {
+func (r *successResponse) IsError() bool {
 	return false
 }
 
 // Helper methods
 func (s *EnhancedServer) getTransportFromContext(ctx context.Context) string {
-	if transport, ok := ctx.Value("transport").(string); ok {
+	if transport, ok := ctx.Value(transportKey).(string); ok {
 		return transport
 	}
 	return "unknown"

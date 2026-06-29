@@ -1037,7 +1037,7 @@ func (r *BenchmarkMockRequest) WithContext(ctx context.Context) MCPRequest {
 	}
 }
 
-// SuccessResponseImpl for testing
+// BenchmarkSuccessResponseImpl for testing
 type BenchmarkSuccessResponseImpl struct {
 	Result interface{}
 }

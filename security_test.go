@@ -453,7 +453,7 @@ func TestInputValidationMiddleware(t *testing.T) {
 	// Create a test handler
 	handler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Return a success response for testing
-		return &SuccessResponseImpl{Result: "success"}, nil
+		return &successResponse{Result: "success"}, nil
 	})
 
 	// Apply middleware

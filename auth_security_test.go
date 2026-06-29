@@ -292,7 +292,7 @@ func TestSecureAuthenticationMiddleware(t *testing.T) {
 		if authCtx == nil {
 			return NewErrorResponse("No auth context", -32000), nil
 		}
-		return &ErrorResponseImpl{}, nil
+		return &errorResponse{}, nil
 	})
 
 	protected := middleware.Apply(handler)

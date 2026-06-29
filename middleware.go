@@ -704,7 +704,7 @@ func (e *ResponseError) Error() string {
 
 // NewErrorResponse creates a new error response
 func NewErrorResponse(message string, code int) MCPResponse {
-	return &ErrorResponseImpl{
+	return &errorResponse{
 		Error: &ResponseError{
 			Code:    code,
 			Message: message,
@@ -725,19 +725,19 @@ func NewRateLimitError(message string) MCPResponse {
 	return NewErrorResponse(message, -32001) // Custom rate limit error code
 }
 
-// ErrorResponseImpl implements the Response interface for errors
-type ErrorResponseImpl struct {
+// errorResponse implements the Response interface for errors
+type errorResponse struct {
 	Error *ResponseError `json:"error"`
 }
 
-func (r *ErrorResponseImpl) GetResult() interface{} {
+func (r *errorResponse) GetResult() interface{} {
 	return nil
 }
 
-func (r *ErrorResponseImpl) GetError() *ResponseError {
+func (r *errorResponse) GetError() *ResponseError {
 	return r.Error
 }
 
-func (r *ErrorResponseImpl) IsError() bool {
+func (r *errorResponse) IsError() bool {
 	return true
 }

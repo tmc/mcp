@@ -68,7 +68,7 @@ func (m *MockHandler) Handle(ctx context.Context, req MCPRequest) (MCPResponse, 
 	}
 
 	// Default response
-	return &SuccessResponseImpl{
+	return &successResponse{
 		Result: map[string]interface{}{
 			"method":    req.GetMethod(),
 			"processed": true,
@@ -495,7 +495,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				if tt.shouldPanic {
 					panic(tt.panicValue)
 				}
-				return &SuccessResponseImpl{Result: "success"}, nil
+				return &successResponse{Result: "success"}, nil
 			})
 
 			// Apply middleware

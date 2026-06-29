@@ -10,8 +10,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -724,33 +726,69 @@ func TestMiddlewareRegistry(t *testing.T) {
 // Integration Tests
 // ================
 
-func TestEnhancedServerMiddleware(t *testing.T) {
-	// Create enhanced server
-	server := NewEnhancedServer()
+// TestServerUseRegistersMiddleware verifies Use appends to the server chain.
+func TestServerUseRegistersMiddleware(t *testing.T) {
+	t.Parallel()
+	s := NewServer("test", "1.0.0")
+	s.Use(NewRecoveryMiddleware(nil, false))
+	s.Use(NewLoggingMiddleware(LoggingConfig{Level: slog.LevelError}))
+	if got := len(s.middleware); got != 2 {
+		t.Errorf("len(s.middleware) = %d, want 2", got)
+	}
+}
 
-	// Configure middleware
-	config := &ServerMiddlewareConfig{
-		GlobalConfig: &MiddlewareConfig{
-			Enabled: true,
-			Logging: &LoggingConfig{
-				Level: slog.LevelInfo,
-			},
-			Recovery: &RecoveryConfig{
-				IncludeStack: false,
-			},
-		},
+// TestServerMiddlewareRunsOnRequest proves middleware registered via Use runs
+// for each request handled by Serve, end to end over a real transport. Before
+// the chain was wired into Serve, the marker never ran.
+func TestServerMiddlewareRunsOnRequest(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
 	}
 
-	err := server.SetMiddlewareConfig(config)
+	var ran atomic.Int64
+	marker := &TestMiddleware{
+		name:       "marker",
+		priority:   500,
+		beforeFunc: func() { ran.Add(1) },
+	}
+
+	server := NewServer("test-server", "1.0.0", WithTestLogger(t, slog.LevelError))
+	server.Use(marker)
+	if err := server.RegisterTool(Tool{Name: "echo", Description: "echo"},
+		func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
+			return &CallToolResult{Content: []any{map[string]string{"type": "text", "text": "ok"}}}, nil
+		}); err != nil {
+		t.Fatalf("RegisterTool: %v", err)
+	}
+
+	clientConn, serverConn := net.Pipe()
+	serverReady := make(chan struct{})
+	go func() {
+		serverReady <- struct{}{}
+		_ = server.Serve(context.Background(), &ReadWriteCloserTransport{serverConn})
+	}()
+	<-serverReady
+
+	client, err := NewClient(&ReadWriteCloserTransport{clientConn})
 	if err != nil {
-		t.Errorf("Failed to set middleware config: %v", err)
+		t.Fatalf("NewClient: %v", err)
+	}
+	defer client.Close()
+
+	if _, err := client.Initialize(context.Background(), InitializeRequest{
+		ClientInfo:      Implementation{Name: "test-client", Version: "1.0"},
+		ProtocolVersion: LATEST_PROTOCOL_VERSION,
+	}); err != nil {
+		t.Fatalf("Initialize: %v", err)
 	}
 
-	// Test that middleware is applied
-	// Note: This is a basic integration test
-	// In practice, you'd test the full request flow
-	if server.middlewareManager.globalChain == nil {
-		t.Error("Expected global middleware chain to be configured")
+	before := ran.Load()
+	if _, err := client.CallTool(context.Background(), CallToolRequest{Name: "echo"}); err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if got := ran.Load() - before; got != 1 {
+		t.Fatalf("marker ran %d times for tools/call, want 1 (chain not wired into Serve)", got)
 	}
 }
 

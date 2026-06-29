@@ -20,19 +20,18 @@ import (
 
 // ExampleBasicMiddlewareSetup demonstrates basic middleware configuration
 func ExampleBasicMiddlewareSetup() {
-	// Create enhanced server
-	server := NewEnhancedServer()
+	server := NewServer("example", "1.0.0")
 
 	// Add middleware programmatically
-	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
+	server.Use(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelInfo,
 		IncludeRequest:  true,
 		IncludeResponse: true,
 	}))
 
-	server.UseMiddleware(NewRecoveryMiddleware(nil, true))
+	server.Use(NewRecoveryMiddleware(nil, true))
 
-	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
+	server.Use(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 100,
 		BurstSize:         10,
 	}))
@@ -40,125 +39,9 @@ func ExampleBasicMiddlewareSetup() {
 	fmt.Println("Basic middleware setup complete")
 }
 
-// ExampleConfigurationDrivenSetup demonstrates configuration-driven middleware
-func ExampleConfigurationDrivenSetup() {
-	// Load configuration from JSON
-	configJSON := `{
-		"enabled": true,
-		"default_timeout": "30s",
-		"max_concurrency": 100,
-		"logging": {
-			"level": "info",
-			"include_request": true,
-			"include_response": false
-		},
-		"authentication": {
-			"skip_methods": ["initialize", "ping"],
-			"cache_timeout": "5m"
-		},
-		"rate_limit": {
-			"requests_per_second": 50,
-			"burst_size": 10
-		},
-		"timeout": {
-			"timeout": "30s"
-		},
-		"recovery": {
-			"include_stack": true
-		},
-		"metrics": {
-			"labels": ["method", "client_id", "transport"]
-		}
-	}`
-
-	// Parse configuration
-	config, err := LoadMiddlewareConfigFromJSON([]byte(configJSON))
-	if err != nil {
-		fmt.Printf("Failed to load config: %v\n", err)
-		return
-	}
-
-	// Create server with configuration
-	server := NewEnhancedServer()
-	serverConfig := &ServerMiddlewareConfig{
-		GlobalConfig: config,
-	}
-
-	err = server.SetMiddlewareConfig(serverConfig)
-	if err != nil {
-		fmt.Printf("Failed to set middleware config: %v\n", err)
-		return
-	}
-
-	fmt.Println("Configuration-driven setup complete")
-}
-
-// ExampleTransportSpecificMiddleware demonstrates transport-specific configuration
-func ExampleTransportSpecificMiddleware() {
-	server := NewEnhancedServer()
-
-	// HTTP-specific middleware (CORS, compression)
-	server.UseMiddlewareForTransport("http", NewCORSMiddleware(CORSConfig{
-		AllowOrigins: []string{"https://example.com", "https://app.example.com"},
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE"},
-		AllowHeaders: []string{"Content-Type", "Authorization"},
-		MaxAge:       86400,
-	}))
-
-	server.UseMiddlewareForTransport("http", NewCompressionMiddleware(CompressionConfig{
-		Algorithms: []string{"gzip"},
-		MinSize:    1024,
-		Level:      6,
-	}))
-
-	// WebSocket-specific middleware
-	server.UseMiddlewareForTransport("websocket", NewCompressionMiddleware(CompressionConfig{
-		Algorithms: []string{"gzip"},
-		MinSize:    512,
-		Level:      1, // Faster compression for real-time
-	}))
-
-	// Stdio-specific optimizations
-	server.UseMiddlewareForTransport("stdio", NewLoggingMiddleware(LoggingConfig{
-		Level: slog.LevelWarn, // Minimal logging for stdio
-	}))
-
-	fmt.Println("Transport-specific middleware setup complete")
-}
-
-// ExampleMethodSpecificMiddleware demonstrates method-specific configuration
-func ExampleMethodSpecificMiddleware() {
-	server := NewEnhancedServer()
-
-	// Expensive operations get longer timeouts
-	server.UseMiddlewareForMethod("tools/call", NewTimeoutMiddleware(60*time.Second))
-
-	// Resource operations can be cached
-	server.UseMiddlewareForMethod("resources/read", NewCachingMiddleware(CachingConfig{
-		TTL:         10 * time.Minute,
-		MaxSize:     100 * 1024 * 1024, // 100MB
-		KeyStrategy: "default",
-	}))
-
-	// Prompts can be cached longer
-	server.UseMiddlewareForMethod("prompts/get", NewCachingMiddleware(CachingConfig{
-		TTL:         1 * time.Hour,
-		MaxSize:     50 * 1024 * 1024, // 50MB
-		KeyStrategy: "default",
-	}))
-
-	// Critical operations get stricter rate limiting
-	server.UseMiddlewareForMethod("tools/call", NewRateLimitMiddleware(RateLimitConfig{
-		RequestsPerSecond: 10,
-		BurstSize:         3,
-	}))
-
-	fmt.Println("Method-specific middleware setup complete")
-}
-
 // ExampleConditionalMiddleware demonstrates conditional middleware application
 func ExampleConditionalMiddleware() {
-	server := NewEnhancedServer()
+	server := NewServer("example", "1.0.0")
 
 	// Apply authentication only for specific clients
 	authMiddleware := NewAuthenticationMiddleware(AuthConfig{
@@ -167,7 +50,7 @@ func ExampleConditionalMiddleware() {
 
 	condition := NewClientCondition([]string{"premium-client", "enterprise-client"})
 	conditionalAuth := NewConditionalMiddleware(condition, authMiddleware, nil)
-	server.UseMiddleware(conditionalAuth)
+	server.Use(conditionalAuth)
 
 	// Apply enhanced logging for debug clients
 	debugLogging := NewLoggingMiddleware(LoggingConfig{
@@ -178,7 +61,7 @@ func ExampleConditionalMiddleware() {
 
 	debugCondition := NewClientCondition([]string{"debug-client", "test-client"})
 	conditionalLogging := NewConditionalMiddleware(debugCondition, debugLogging, nil)
-	server.UseMiddleware(conditionalLogging)
+	server.Use(conditionalLogging)
 
 	fmt.Println("Conditional middleware setup complete")
 }
@@ -201,10 +84,10 @@ func ExampleCustomMiddleware() {
 		failureCounter: make(map[string]int),
 	}
 
-	server := NewEnhancedServer()
-	server.UseMiddleware(requestIDMiddleware)
-	server.UseMiddleware(auditMiddleware)
-	server.UseMiddleware(circuitBreakerMiddleware)
+	server := NewServer("example", "1.0.0")
+	server.Use(requestIDMiddleware)
+	server.Use(auditMiddleware)
+	server.Use(circuitBreakerMiddleware)
 
 	fmt.Println("Custom middleware setup complete")
 }
@@ -369,143 +252,6 @@ func (m *CustomCircuitBreakerMiddleware) Priority() int {
 	return 700
 }
 
-// Advanced Configuration Examples
-// ===============================
-
-// ExampleComplexConfiguration demonstrates a complex real-world configuration
-func ExampleComplexConfiguration() {
-	configJSON := `{
-		"enabled": true,
-		"default_timeout": "30s",
-		"max_concurrency": 1000,
-		"logging": {
-			"level": "info",
-			"include_request": true,
-			"include_response": false,
-			"request_fields": ["method", "client_id"],
-			"response_fields": ["status", "duration"]
-		},
-		"authentication": {
-			"skip_methods": ["initialize", "initialized", "ping", "capabilities"],
-			"cache_timeout": "10m"
-		},
-		"rate_limit": {
-			"requests_per_second": 100,
-			"burst_size": 20,
-			"window_size": "1m",
-			"cleanup_interval": "5m"
-		},
-		"timeout": {
-			"timeout": "30s"
-		},
-		"recovery": {
-			"include_stack": false
-		},
-		"metrics": {
-			"labels": ["method", "client_id", "transport", "status"]
-		},
-		"cors": {
-			"allow_origins": ["https://app.example.com"],
-			"allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-			"allow_headers": ["Content-Type", "Authorization", "X-Request-ID"],
-			"max_age": 86400
-		},
-		"compression": {
-			"algorithms": ["gzip"],
-			"min_size": 1024,
-			"level": 6
-		},
-		"validation": {
-			"strict_mode": true,
-			"schemas": {}
-		},
-		"caching": {
-			"ttl": "5m",
-			"max_size": 104857600,
-			"key_strategy": "default"
-		},
-		"transport_configs": {
-			"http": {
-				"enabled_only": ["cors", "compression"],
-				"custom_config": {
-					"cors": {
-						"allow_origins": ["*"]
-					}
-				}
-			},
-			"websocket": {
-				"disabled_only": ["cors"],
-				"custom_config": {
-					"compression": {
-						"level": 1
-					}
-				}
-			},
-			"stdio": {
-				"disabled_only": ["cors", "compression"],
-				"custom_config": {
-					"logging": {
-						"level": "error"
-					}
-				}
-			}
-		},
-		"method_configs": {
-			"tools/call": {
-				"custom_timeout": "60s",
-				"custom_config": {
-					"rate_limit": {
-						"requests_per_second": 10
-					}
-				}
-			},
-			"resources/read": {
-				"enabled_only": ["caching", "compression"],
-				"custom_config": {
-					"caching": {
-						"ttl": "30m"
-					}
-				}
-			}
-		},
-		"conditional_middleware": [
-			{
-				"name": "authentication",
-				"condition": "client:premium-client,enterprise-client",
-				"priority": 900
-			},
-			{
-				"name": "logging",
-				"condition": "method:tools/call,resources/read",
-				"config": {
-					"level": "debug",
-					"include_response": true
-				}
-			}
-		]
-	}`
-
-	// Load and apply configuration
-	config, err := LoadMiddlewareConfigFromJSON([]byte(configJSON))
-	if err != nil {
-		fmt.Printf("Failed to load config: %v\n", err)
-		return
-	}
-
-	server := NewEnhancedServer()
-	serverConfig := &ServerMiddlewareConfig{
-		GlobalConfig: config,
-	}
-
-	err = server.SetMiddlewareConfig(serverConfig)
-	if err != nil {
-		fmt.Printf("Failed to set middleware config: %v\n", err)
-		return
-	}
-
-	fmt.Println("Complex configuration applied successfully")
-}
-
 // ExampleMiddlewareGroups demonstrates middleware grouping
 func ExampleMiddlewareGroups() {
 	registry := NewMiddlewareRegistry(nil)
@@ -540,14 +286,6 @@ func ExampleMiddlewareGroups() {
 		Timeout: 30 * time.Second,
 	})
 
-	// Apply groups to handler
-	// mockHandler := NewMockHandler()
-
-	// Apply in order: security -> observability -> reliability
-	// handler := securityGroup.Apply(mockHandler)
-	// handler = observabilityGroup.Apply(handler)
-	// handler = reliabilityGroup.Apply(handler)
-
 	fmt.Println("Middleware groups applied successfully")
 }
 
@@ -556,27 +294,27 @@ func ExampleMiddlewareGroups() {
 
 // ExampleHighPerformanceSetup demonstrates optimized middleware for high performance
 func ExampleHighPerformanceSetup() {
-	server := NewEnhancedServer()
+	server := NewServer("example", "1.0.0")
 
 	// Minimal logging for production
-	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
+	server.Use(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelWarn,
 		IncludeRequest:  false,
 		IncludeResponse: false,
 	}))
 
 	// Essential recovery only
-	server.UseMiddleware(NewRecoveryMiddleware(nil, false))
+	server.Use(NewRecoveryMiddleware(nil, false))
 
 	// Optimized rate limiting
-	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
+	server.Use(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 1000,
 		BurstSize:         100,
 		CleanupInterval:   30 * time.Minute,
 	}))
 
 	// Efficient caching
-	server.UseMiddleware(NewCachingMiddleware(CachingConfig{
+	server.Use(NewCachingMiddleware(CachingConfig{
 		TTL:         5 * time.Minute,
 		MaxSize:     500 * 1024 * 1024, // 500MB
 		KeyStrategy: "default",
@@ -587,26 +325,26 @@ func ExampleHighPerformanceSetup() {
 
 // ExampleDevelopmentSetup demonstrates middleware optimized for development
 func ExampleDevelopmentSetup() {
-	server := NewEnhancedServer()
+	server := NewServer("example", "1.0.0")
 
 	// Verbose logging for development
-	server.UseMiddleware(NewLoggingMiddleware(LoggingConfig{
+	server.Use(NewLoggingMiddleware(LoggingConfig{
 		Level:           slog.LevelDebug,
 		IncludeRequest:  true,
 		IncludeResponse: true,
 	}))
 
 	// Recovery with stack traces
-	server.UseMiddleware(NewRecoveryMiddleware(nil, true))
+	server.Use(NewRecoveryMiddleware(nil, true))
 
 	// Lenient rate limiting
-	server.UseMiddleware(NewRateLimitMiddleware(RateLimitConfig{
+	server.Use(NewRateLimitMiddleware(RateLimitConfig{
 		RequestsPerSecond: 1000,
 		BurstSize:         100,
 	}))
 
 	// Short cache TTL for development
-	server.UseMiddleware(NewCachingMiddleware(CachingConfig{
+	server.Use(NewCachingMiddleware(CachingConfig{
 		TTL:         30 * time.Second,
 		MaxSize:     10 * 1024 * 1024, // 10MB
 		KeyStrategy: "default",

@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -69,6 +70,10 @@ type Server struct {
 	handlers      map[string]jsonrpc2.HandlerFunc
 	activeTools   map[string]context.CancelFunc
 	framer        jsonrpc2.Framer
+
+	// middleware is the chain applied per request in Serve. It is configured
+	// with Use before Serve and read-only afterward, so it is not guarded by mu.
+	middleware []Middleware
 }
 
 type toolDefinition struct {
@@ -1187,6 +1192,76 @@ func (s *Server) notifyListChanged(method Method) {
 	}
 }
 
+// Use appends middleware to the server's chain. Middleware runs per request,
+// in priority order, when Serve handles a connection. Call Use before Serve.
+func (s *Server) Use(m Middleware) {
+	s.middleware = append(s.middleware, m)
+}
+
+// mcpBaseHandler adapts handleRequest into the middleware MCPHandler interface.
+// It is the base of the chain: the chain wraps this, and Serve adapts the
+// chain's MCPResponse back to a jsonrpc2 result. A *ResponseError from
+// handleRequest is preserved so its code survives the round-trip; any other
+// error becomes an internal error.
+func (s *Server) mcpBaseHandler() MCPHandler {
+	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
+		result, err := s.handleRequest(ctx, mcpRequestToJSONRPC(req))
+		if err != nil {
+			var re *ResponseError
+			if errors.As(err, &re) {
+				return &errorResponse{err: re}, nil
+			}
+			return &errorResponse{err: &ResponseError{Code: -32603, Message: err.Error()}}, nil
+		}
+		return &successResponse{result: result}, nil
+	})
+}
+
+// middlewareHandler wraps handleRequest with the configured middleware chain.
+// It returns s.handleRequest unchanged when no middleware is configured, so the
+// default path is byte-identical to serving without middleware.
+func (s *Server) middlewareHandler() jsonrpc2.HandlerFunc {
+	if len(s.middleware) == 0 {
+		return s.handleRequest
+	}
+	chain := &MiddlewareChain{middlewares: s.middleware}
+	wrapped := chain.Apply(s.mcpBaseHandler())
+	return func(ctx context.Context, req *jsonrpc2.Request) (interface{}, error) {
+		resp, err := wrapped.Handle(ctx, &UnifiedRequest{
+			method: req.Method,
+			id:     req.ID.Raw(),
+			params: req.Params,
+			ctx:    ctx,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if resp == nil {
+			return nil, nil
+		}
+		if resp.IsError() {
+			return nil, resp.Error()
+		}
+		return resp.Result(), nil
+	}
+}
+
+// mcpRequestToJSONRPC converts a middleware MCPRequest back to a jsonrpc2.Request
+// so the chain's base handler can call handleRequest. Only string and integer
+// IDs occur on the wire; a nil ID (notification) yields the zero ID.
+func mcpRequestToJSONRPC(req MCPRequest) *jsonrpc2.Request {
+	var id jsonrpc2.ID
+	switch v := req.ID().(type) {
+	case string:
+		id = jsonrpc2.StringID(v)
+	case int:
+		id = jsonrpc2.Int64ID(int64(v))
+	case int64:
+		id = jsonrpc2.Int64ID(v)
+	}
+	return &jsonrpc2.Request{Method: req.Method(), ID: id, Params: req.Params()}
+}
+
 // Serve starts serving MCP requests using the provided transport.
 // It establishes a JSON-RPC connection and handles incoming requests.
 func (s *Server) Serve(ctx context.Context, transport Transport) error {
@@ -1204,8 +1279,9 @@ func (s *Server) Serve(ctx context.Context, transport Transport) error {
 		logger: s.logger,
 	}
 
-	// Create the connection with cancellation support
-	handler := jsonrpc2.HandlerFunc(s.handleRequest)
+	// Create the connection with cancellation support. When middleware is
+	// configured, the chain wraps the request handler so it runs on the wire.
+	handler := jsonrpc2.HandlerFunc(s.middlewareHandler())
 	binder := serverBinder{handler: handler, logger: s.logger, framer: s.framer}
 	conn, err := jsonrpc2.Dial(ctx, flushingd, binder)
 	if err != nil {

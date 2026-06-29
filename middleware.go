@@ -25,9 +25,6 @@ import (
 // MiddlewareChain manages middleware for MCP handlers with type safety and performance optimization
 type MiddlewareChain struct {
 	middlewares []Middleware
-	registry    *MiddlewareRegistry
-	config      *MiddlewareConfig
-	metrics     *MiddlewareMetrics
 }
 
 // Middleware defines the core middleware interface compatible with both

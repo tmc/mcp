@@ -20,7 +20,7 @@ type Client struct {
 	notificationMu     sync.RWMutex
 	notifyHandler      func(notification JSONRPCNotification)
 	requestMu          sync.RWMutex
-	requestHandlers    map[string]RequestHandler
+	requestHandlers    map[string]RequestHandlerFunc
 	advertise          ClientCapabilities
 	framer             jsonrpc2.Framer
 	serverInfo         Implementation
@@ -32,8 +32,8 @@ type Client struct {
 // ClientOption defines a function for configuring a Client instance.
 type ClientOption func(*Client)
 
-// RequestHandler handles server-to-client MCP requests.
-type RequestHandler func(ctx context.Context, params json.RawMessage) (any, error)
+// RequestHandlerFunc handles server-to-client MCP requests.
+type RequestHandlerFunc func(ctx context.Context, params json.RawMessage) (any, error)
 
 // WithNotificationHandler sets a notification handler for the client.
 func WithNotificationHandler(handler func(notification JSONRPCNotification)) ClientOption {
@@ -60,7 +60,7 @@ func withFramer(framer jsonrpc2.Framer) ClientOption {
 func NewClient(transport Transport, opts ...ClientOption) (*Client, error) {
 	ctx := context.Background()
 	c := &Client{
-		requestHandlers: make(map[string]RequestHandler),
+		requestHandlers: make(map[string]RequestHandlerFunc),
 		framer:          defaultFramer(),
 	}
 
@@ -123,7 +123,7 @@ func (c *Client) OnNotification(handler func(notification JSONRPCNotification)) 
 }
 
 // OnRequest registers a handler for a specific server-to-client request method.
-func (c *Client) OnRequest(method string, handler RequestHandler) {
+func (c *Client) OnRequest(method string, handler RequestHandlerFunc) {
 	c.requestMu.Lock()
 	if handler == nil {
 		delete(c.requestHandlers, method)

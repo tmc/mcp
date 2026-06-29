@@ -50,17 +50,17 @@ type MCPHandler interface {
 
 // MCPRequest represents a unified request interface for all MCP operations
 type MCPRequest interface {
-	GetMethod() string
-	GetID() interface{}
-	GetParams() json.RawMessage
-	GetContext() context.Context
+	Method() string
+	ID() interface{}
+	Params() json.RawMessage
+	Context() context.Context
 	WithContext(ctx context.Context) MCPRequest
 }
 
 // MCPResponse represents a unified response interface for all MCP operations
 type MCPResponse interface {
-	GetResult() interface{}
-	GetError() *ResponseError
+	Result() interface{}
+	Error() *ResponseError
 	IsError() bool
 }
 
@@ -121,12 +121,12 @@ func (m *LoggingMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Log request start
 		logFields := []interface{}{
 			"request_id", requestID,
-			"method", req.GetMethod(),
+			"method", req.Method(),
 			"start_time", start,
 		}
 
 		if len(m.requestFields) > 0 {
-			params := req.GetParams()
+			params := req.Params()
 			if params != nil && m.sanitizer != nil {
 				var paramsMap map[string]interface{}
 				if err := json.Unmarshal(params, &paramsMap); err == nil {
@@ -146,13 +146,13 @@ func (m *LoggingMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Log response
 		responseFields := []interface{}{
 			"request_id", requestID,
-			"method", req.GetMethod(),
+			"method", req.Method(),
 			"duration", duration,
 			"has_error", err != nil || (resp != nil && resp.IsError()),
 		}
 
 		if resp != nil && len(m.responseFields) > 0 {
-			if result := resp.GetResult(); result != nil && m.sanitizer != nil {
+			if result := resp.Result(); result != nil && m.sanitizer != nil {
 				sanitized := m.sanitizer(result)
 				responseFields = append(responseFields, "result", sanitized)
 			}
@@ -221,7 +221,7 @@ func NewAuthenticationMiddleware(config AuthConfig) *AuthenticationMiddleware {
 func (m *AuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Check if method should skip authentication
-		if m.skipMethods[req.GetMethod()] {
+		if m.skipMethods[req.Method()] {
 			return next.Handle(ctx, req)
 		}
 
@@ -255,7 +255,7 @@ func (m *AuthenticationMiddleware) extractToken(ctx context.Context, req MCPRequ
 	}
 
 	// Try to extract from request parameters
-	params := req.GetParams()
+	params := req.Params()
 	if params != nil {
 		var paramsMap map[string]interface{}
 		if err := json.Unmarshal(params, &paramsMap); err == nil {
@@ -353,7 +353,7 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Check if method should skip rate limiting
 		for _, method := range m.config.SkipMethods {
-			if method == req.GetMethod() {
+			if method == req.Method() {
 				return next.Handle(ctx, req)
 			}
 		}
@@ -361,7 +361,7 @@ func (m *RateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Get rate limit key
 		key := m.config.KeyExtractor(ctx, req)
 		if m.config.PerEndpointLimiting {
-			key = fmt.Sprintf("%s:%s", key, req.GetMethod())
+			key = fmt.Sprintf("%s:%s", key, req.Method())
 		}
 
 		// Get or create limiter
@@ -507,7 +507,7 @@ func (m *RecoveryMiddleware) Apply(next MCPHandler) MCPHandler {
 
 				logFields := []interface{}{
 					"request_id", requestID,
-					"method", req.GetMethod(),
+					"method", req.Method(),
 					"panic", r,
 				}
 
@@ -583,14 +583,14 @@ func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 		if err != nil || (resp != nil && resp.IsError()) {
 			statusCode = 500
 			if err != nil {
-				m.registry.RecordError(req.GetMethod(), "handler_error", labels)
+				m.registry.RecordError(req.Method(), "handler_error", labels)
 			} else {
-				m.registry.RecordError(req.GetMethod(), "response_error", labels)
+				m.registry.RecordError(req.Method(), "response_error", labels)
 			}
 		}
 
 		// Record metrics
-		m.registry.RecordRequest(req.GetMethod(), duration, statusCode, labels)
+		m.registry.RecordRequest(req.Method(), duration, statusCode, labels)
 
 		return resp, err
 	})
@@ -598,7 +598,7 @@ func (m *MetricsMiddleware) Apply(next MCPHandler) MCPHandler {
 
 func (m *MetricsMiddleware) extractLabels(ctx context.Context, req MCPRequest) map[string]string {
 	labels := make(map[string]string)
-	labels["method"] = req.GetMethod()
+	labels["method"] = req.Method()
 
 	// Extract client ID from auth context if available
 	if authCtx := GetAuthContext(ctx); authCtx != nil {
@@ -694,7 +694,7 @@ func getOrGenerateRequestID(ctx context.Context) string {
 // NewErrorResponse creates a new error response
 func NewErrorResponse(message string, code int) MCPResponse {
 	return &errorResponse{
-		Error: &ResponseError{
+		err: &ResponseError{
 			Code:    code,
 			Message: message,
 		},
@@ -716,15 +716,15 @@ func NewRateLimitError(message string) MCPResponse {
 
 // errorResponse implements the Response interface for errors
 type errorResponse struct {
-	Error *ResponseError `json:"error"`
+	err *ResponseError
 }
 
-func (r *errorResponse) GetResult() interface{} {
+func (r *errorResponse) Result() interface{} {
 	return nil
 }
 
-func (r *errorResponse) GetError() *ResponseError {
-	return r.Error
+func (r *errorResponse) Error() *ResponseError {
+	return r.err
 }
 
 func (r *errorResponse) IsError() bool {

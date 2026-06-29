@@ -230,7 +230,7 @@ func registerConformanceTools(server *mcp.Server) {
 		InputSchema: noArgumentsSchema,
 	}, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		total := 100.0
-		token := req.GetProgressToken()
+		token := req.ProgressToken()
 		for _, progress := range []float64{0, 50, 100} {
 			if token != nil {
 				if err := server.NotifyProgress(ctx, token, progress, &total); err != nil {

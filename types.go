@@ -340,8 +340,8 @@ type CallToolRequest struct {
 	Meta      map[string]any  `json:"_meta,omitempty"`
 }
 
-// GetProgressToken returns the progress token attached to the request, if any.
-func (r CallToolRequest) GetProgressToken() any {
+// ProgressToken returns the progress token attached to the request, if any.
+func (r CallToolRequest) ProgressToken() any {
 	if r.Meta == nil {
 		return nil
 	}

@@ -120,7 +120,7 @@ func TestStreamableHTTPInlineProgressNotification(t *testing.T) {
 	server := NewServer("streamable-test", "0.0.0")
 	if err := server.RegisterTool(Tool{Name: "progress"}, func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 		total := 100.0
-		if err := server.NotifyProgress(ctx, req.GetProgressToken(), 50, &total); err != nil {
+		if err := server.NotifyProgress(ctx, req.ProgressToken(), 50, &total); err != nil {
 			return nil, err
 		}
 		return &CallToolResult{Content: []any{TextContent{Type: "text", Text: "ok"}}}, nil

@@ -453,7 +453,7 @@ func TestInputValidationMiddleware(t *testing.T) {
 	// Create a test handler
 	handler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Return a success response for testing
-		return &successResponse{Result: "success"}, nil
+		return &successResponse{result: "success"}, nil
 	})
 
 	// Apply middleware
@@ -502,7 +502,7 @@ func TestInputValidationMiddleware(t *testing.T) {
 					t.Error("Expected error response")
 				}
 				if resp != nil && resp.IsError() {
-					if respErr := resp.GetError(); respErr != nil && respErr.Code != tt.errorCode {
+					if respErr := resp.Error(); respErr != nil && respErr.Code != tt.errorCode {
 						t.Errorf("Error code = %d, want %d", respErr.Code, tt.errorCode)
 					}
 				}
@@ -523,19 +523,19 @@ type mockMCPRequest struct {
 	ctx    context.Context
 }
 
-func (r *mockMCPRequest) GetMethod() string {
+func (r *mockMCPRequest) Method() string {
 	return r.method
 }
 
-func (r *mockMCPRequest) GetID() interface{} {
+func (r *mockMCPRequest) ID() interface{} {
 	return r.id
 }
 
-func (r *mockMCPRequest) GetParams() json.RawMessage {
+func (r *mockMCPRequest) Params() json.RawMessage {
 	return r.params
 }
 
-func (r *mockMCPRequest) GetContext() context.Context {
+func (r *mockMCPRequest) Context() context.Context {
 	if r.ctx == nil {
 		return context.Background()
 	}

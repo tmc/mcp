@@ -66,22 +66,22 @@ func (p *Progress) Update(value float64, message string) {
 	)
 }
 
-// GetValue returns the current progress value
-func (p *Progress) GetValue() float64 {
+// Value returns the current progress value
+func (p *Progress) Value() float64 {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.value
 }
 
-// GetMessage returns the current progress message
-func (p *Progress) GetMessage() string {
+// Message returns the current progress message
+func (p *Progress) Message() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.message
 }
 
-// GetTotal returns the total progress value
-func (p *Progress) GetTotal() *float64 {
+// Total returns the total progress value
+func (p *Progress) Total() *float64 {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.total

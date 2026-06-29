@@ -16,7 +16,7 @@ func TestCallToolRequestProgressToken(t *testing.T) {
 	}`), &req); err != nil {
 		t.Fatalf("Unmarshal CallToolRequest: %v", err)
 	}
-	if got := req.GetProgressToken(); got != "progress-test-1" {
+	if got := req.ProgressToken(); got != "progress-test-1" {
 		t.Fatalf("progress token = %v, want progress-test-1", got)
 	}
 }

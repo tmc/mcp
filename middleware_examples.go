@@ -248,7 +248,7 @@ func (m *CustomAuditMiddleware) Apply(next MCPHandler) MCPHandler {
 		// Extract audit information
 		auditInfo := map[string]interface{}{
 			"request_id": getOrGenerateRequestID(ctx),
-			"method":     req.GetMethod(),
+			"method":     req.Method(),
 			"timestamp":  start,
 		}
 
@@ -259,7 +259,7 @@ func (m *CustomAuditMiddleware) Apply(next MCPHandler) MCPHandler {
 		}
 
 		// Add request parameters (sanitized)
-		if params := req.GetParams(); params != nil {
+		if params := req.Params(); params != nil {
 			auditInfo["params"] = m.sanitizeParams(params)
 		}
 
@@ -322,7 +322,7 @@ func (m *CustomCircuitBreakerMiddleware) Apply(next MCPHandler) MCPHandler {
 	}
 
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		method := req.GetMethod()
+		method := req.Method()
 
 		m.mu.RLock()
 		failures := m.failureCounter[method]

@@ -336,7 +336,7 @@ func (s *EnhancedServer) createUnifiedHandler() MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Extract transport and method information
 		transport := s.getTransportFromContext(ctx)
-		method := req.GetMethod()
+		method := req.Method()
 
 		// Get appropriate middleware chain
 		chain := s.middlewareManager.GetChainForRequest(transport, method)
@@ -374,7 +374,7 @@ func (s *EnhancedServer) delegateToOriginalServer(ctx context.Context, req MCPRe
 	result, err := s.Server.handleRequest(ctx, jsonRPCReq)
 	if err != nil {
 		return &errorResponse{
-			Error: &ResponseError{
+			err: &ResponseError{
 				Code:    -32603,
 				Message: err.Error(),
 			},
@@ -383,7 +383,7 @@ func (s *EnhancedServer) delegateToOriginalServer(ctx context.Context, req MCPRe
 
 	// Wrap the result in a success response
 	return &successResponse{
-		Result: result,
+		result: result,
 	}, nil
 }
 
@@ -398,19 +398,19 @@ type UnifiedRequest struct {
 	ctx    context.Context
 }
 
-func (r *UnifiedRequest) GetMethod() string {
+func (r *UnifiedRequest) Method() string {
 	return r.method
 }
 
-func (r *UnifiedRequest) GetID() interface{} {
+func (r *UnifiedRequest) ID() interface{} {
 	return r.id
 }
 
-func (r *UnifiedRequest) GetParams() json.RawMessage {
+func (r *UnifiedRequest) Params() json.RawMessage {
 	return r.params
 }
 
-func (r *UnifiedRequest) GetContext() context.Context {
+func (r *UnifiedRequest) Context() context.Context {
 	return r.ctx
 }
 
@@ -425,14 +425,14 @@ func (r *UnifiedRequest) WithContext(ctx context.Context) MCPRequest {
 
 // successResponse implements Response for successful responses
 type successResponse struct {
-	Result interface{} `json:"result"`
+	result interface{}
 }
 
-func (r *successResponse) GetResult() interface{} {
-	return r.Result
+func (r *successResponse) Result() interface{} {
+	return r.result
 }
 
-func (r *successResponse) GetError() *ResponseError {
+func (r *successResponse) Error() *ResponseError {
 	return nil
 }
 
@@ -450,7 +450,7 @@ func (s *EnhancedServer) getTransportFromContext(ctx context.Context) string {
 
 func (s *EnhancedServer) requestToJSONRPC(req MCPRequest) (*jsonrpc2.Request, error) {
 	var id jsonrpc2.ID
-	if reqID := req.GetID(); reqID != nil {
+	if reqID := req.ID(); reqID != nil {
 		if idStr, ok := reqID.(string); ok {
 			id = jsonrpc2.StringID(idStr)
 		} else if idNum, ok := reqID.(int); ok {
@@ -461,9 +461,9 @@ func (s *EnhancedServer) requestToJSONRPC(req MCPRequest) (*jsonrpc2.Request, er
 	}
 
 	return &jsonrpc2.Request{
-		Method: req.GetMethod(),
+		Method: req.Method(),
 		ID:     id,
-		Params: req.GetParams(),
+		Params: req.Params(),
 	}, nil
 }
 

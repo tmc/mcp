@@ -345,9 +345,9 @@ type DefaultCacheKeyStrategy struct{}
 func (s *DefaultCacheKeyStrategy) GenerateKey(ctx context.Context, req MCPRequest) string {
 	// Generate key based on method and params
 	hash := sha256.New()
-	hash.Write([]byte(req.GetMethod()))
+	hash.Write([]byte(req.Method()))
 
-	if params := req.GetParams(); params != nil {
+	if params := req.Params(); params != nil {
 		hash.Write(params)
 	}
 
@@ -387,7 +387,7 @@ func NewCachingMiddleware(config CachingConfig) *CachingMiddleware {
 func (m *CachingMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Check if method should be cached
-		if m.skipMethods[req.GetMethod()] {
+		if m.skipMethods[req.Method()] {
 			return next.Handle(ctx, req)
 		}
 
@@ -600,7 +600,7 @@ func (m *ContentTransformationMiddleware) Apply(next MCPHandler) MCPHandler {
 
 func (m *ContentTransformationMiddleware) transformRequest(ctx context.Context, req MCPRequest) MCPRequest {
 	// Safely transform request parameters using available transformers
-	params := req.GetParams()
+	params := req.Params()
 	if len(params) > 0 {
 		for _, transformer := range m.transformers {
 			if transformer.CanTransform("application/json") {
@@ -625,7 +625,7 @@ func (m *ContentTransformationMiddleware) transformRequest(ctx context.Context, 
 
 func (m *ContentTransformationMiddleware) transformResponse(ctx context.Context, resp MCPResponse) MCPResponse {
 	// Safely transform response result using available transformers
-	result := resp.GetResult()
+	result := resp.Result()
 	if result != nil {
 		for _, transformer := range m.transformers {
 			if transformer.CanTransform("application/json") {
@@ -656,20 +656,20 @@ type transformedRequest struct {
 	params   json.RawMessage
 }
 
-func (tr *transformedRequest) GetMethod() string {
-	return tr.original.GetMethod()
+func (tr *transformedRequest) Method() string {
+	return tr.original.Method()
 }
 
-func (tr *transformedRequest) GetID() interface{} {
-	return tr.original.GetID()
+func (tr *transformedRequest) ID() interface{} {
+	return tr.original.ID()
 }
 
-func (tr *transformedRequest) GetParams() json.RawMessage {
+func (tr *transformedRequest) Params() json.RawMessage {
 	return tr.params
 }
 
-func (tr *transformedRequest) GetContext() context.Context {
-	return tr.original.GetContext()
+func (tr *transformedRequest) Context() context.Context {
+	return tr.original.Context()
 }
 
 func (tr *transformedRequest) WithContext(ctx context.Context) MCPRequest {
@@ -685,12 +685,12 @@ type transformedResponse struct {
 	result   interface{}
 }
 
-func (tr *transformedResponse) GetResult() interface{} {
+func (tr *transformedResponse) Result() interface{} {
 	return tr.result
 }
 
-func (tr *transformedResponse) GetError() *ResponseError {
-	return tr.original.GetError()
+func (tr *transformedResponse) Error() *ResponseError {
+	return tr.original.Error()
 }
 
 func (tr *transformedResponse) IsError() bool {
@@ -726,7 +726,7 @@ func NewMethodCondition(methods []string) *MethodCondition {
 }
 
 func (c *MethodCondition) Evaluate(ctx context.Context, req MCPRequest) bool {
-	return c.methods[req.GetMethod()]
+	return c.methods[req.Method()]
 }
 
 // ClientCondition evaluates based on client ID
@@ -775,7 +775,7 @@ func (c *RegexCondition) Evaluate(ctx context.Context, req MCPRequest) bool {
 
 	switch c.field {
 	case "method":
-		value = req.GetMethod()
+		value = req.Method()
 	case "client_id":
 		if authCtx := GetAuthContext(ctx); authCtx != nil {
 			value = authCtx.ClientID
@@ -807,7 +807,7 @@ func (m *ConditionalMiddleware) Apply(next MCPHandler) MCPHandler {
 		if m.condition.Evaluate(ctx, req) {
 			m.logger.Debug("Conditional middleware applied",
 				"middleware", m.middleware.Name(),
-				"method", req.GetMethod())
+				"method", req.Method())
 			return wrappedHandler.Handle(ctx, req)
 		}
 

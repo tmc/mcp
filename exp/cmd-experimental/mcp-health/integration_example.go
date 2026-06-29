@@ -112,7 +112,7 @@ func (m *ProductionOperationsManager) setupMiddleware() error {
 
 			// Log request
 			m.logger.Info("Production operations request",
-				"method", req.GetMethod(),
+				"method", req.Method(),
 				"timestamp", start.Format(time.RFC3339),
 			)
 
@@ -121,7 +121,7 @@ func (m *ProductionOperationsManager) setupMiddleware() error {
 
 			// Log response
 			m.logger.Info("Production operations response",
-				"method", req.GetMethod(),
+				"method", req.Method(),
 				"duration", time.Since(start),
 				"success", err == nil,
 			)

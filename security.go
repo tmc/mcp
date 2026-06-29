@@ -442,15 +442,15 @@ func (v *JSONSchemaValidator) ValidateMessage(messageType string, data interface
 
 // ValidateRequest validates an MCP request against its schema (RequestValidator interface)
 func (v *JSONSchemaValidator) ValidateRequest(ctx context.Context, req MCPRequest) error {
-	if req.GetMethod() == "" {
+	if req.Method() == "" {
 		return fmt.Errorf("request method is required")
 	}
 
 	// Extract params for validation
-	if params := req.GetParams(); params != nil {
+	if params := req.Params(); params != nil {
 		var paramsObj interface{}
 		if err := json.Unmarshal(params, &paramsObj); err == nil {
-			return v.ValidateMessage(req.GetMethod(), paramsObj)
+			return v.ValidateMessage(req.Method(), paramsObj)
 		}
 	}
 
@@ -464,7 +464,7 @@ func (v *JSONSchemaValidator) ValidateResponse(ctx context.Context, resp MCPResp
 	}
 
 	// Validate response result if available
-	if result := resp.GetResult(); result != nil {
+	if result := resp.Result(); result != nil {
 		return v.ValidateMessage("response", result)
 	}
 
@@ -678,15 +678,15 @@ func NewInputValidationMiddleware(config *SecurityConfig) (*InputValidationMiddl
 func (m *InputValidationMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Extract raw params for validation
-		if params := req.GetParams(); params != nil {
-			if err := m.validator.ValidateRequest(ctx, req.GetMethod(), params); err != nil {
+		if params := req.Params(); params != nil {
+			if err := m.validator.ValidateRequest(ctx, req.Method(), params); err != nil {
 				return NewErrorResponse(err.Error(), -32602), nil // Invalid params error
 			}
 
 			// Schema validation if available
 			var paramsObj interface{}
 			if err := json.Unmarshal(params, &paramsObj); err == nil {
-				if err := m.schemaValidator.ValidateMessage(req.GetMethod(), paramsObj); err != nil {
+				if err := m.schemaValidator.ValidateMessage(req.Method(), paramsObj); err != nil {
 					return NewErrorResponse(err.Error(), -32602), nil
 				}
 			}
@@ -697,7 +697,7 @@ func (m *InputValidationMiddleware) Apply(next MCPHandler) MCPHandler {
 
 		// Validate response size
 		if resp != nil {
-			if respData, err := json.Marshal(resp.GetResult()); err == nil {
+			if respData, err := json.Marshal(resp.Result()); err == nil {
 				if len(respData) > m.validator.config.MaxResponseSize {
 					return NewErrorResponse("Response too large", -32603), nil
 				}

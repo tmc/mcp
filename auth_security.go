@@ -683,7 +683,7 @@ func NewSecureAuthenticationMiddleware(provider *SecureOAuthProvider, config Aut
 func (m *SecureAuthenticationMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Check if method should skip authentication
-		if m.skipMethods[req.GetMethod()] {
+		if m.skipMethods[req.Method()] {
 			return next.Handle(ctx, req)
 		}
 
@@ -729,7 +729,7 @@ func (m *SecureAuthenticationMiddleware) extractSecureToken(ctx context.Context,
 	}
 
 	// Try request parameters
-	params := req.GetParams()
+	params := req.Params()
 	if params != nil {
 		var paramsMap map[string]interface{}
 		if err := json.Unmarshal(params, &paramsMap); err == nil {

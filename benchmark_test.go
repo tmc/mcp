@@ -350,7 +350,7 @@ func benchmarkJSONUnmarshal(b *testing.B, payloadSize int) {
 func BenchmarkMiddleware_LoggingOverhead(b *testing.B) {
 	// Create base handler
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &BenchmarkSuccessResponseImpl{Result: "success"}, nil
+		return &BenchmarkSuccessResponseImpl{result: "success"}, nil
 	})
 
 	// Create logging middleware
@@ -380,7 +380,7 @@ func BenchmarkMiddleware_LoggingOverhead(b *testing.B) {
 func BenchmarkMiddleware_ChainOverhead(b *testing.B) {
 	// Create base handler
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &BenchmarkSuccessResponseImpl{Result: "success"}, nil
+		return &BenchmarkSuccessResponseImpl{result: "success"}, nil
 	})
 
 	// Test with different chain lengths
@@ -1012,19 +1012,19 @@ type BenchmarkMockRequest struct {
 	ctx    context.Context
 }
 
-func (r *BenchmarkMockRequest) GetMethod() string {
+func (r *BenchmarkMockRequest) Method() string {
 	return r.method
 }
 
-func (r *BenchmarkMockRequest) GetID() interface{} {
+func (r *BenchmarkMockRequest) ID() interface{} {
 	return r.id
 }
 
-func (r *BenchmarkMockRequest) GetParams() json.RawMessage {
+func (r *BenchmarkMockRequest) Params() json.RawMessage {
 	return r.params
 }
 
-func (r *BenchmarkMockRequest) GetContext() context.Context {
+func (r *BenchmarkMockRequest) Context() context.Context {
 	return r.ctx
 }
 
@@ -1039,19 +1039,19 @@ func (r *BenchmarkMockRequest) WithContext(ctx context.Context) MCPRequest {
 
 // BenchmarkSuccessResponseImpl for testing
 type BenchmarkSuccessResponseImpl struct {
-	Result interface{}
+	result interface{}
 }
 
 func (r *BenchmarkSuccessResponseImpl) IsError() bool {
 	return false
 }
 
-func (r *BenchmarkSuccessResponseImpl) GetError() *ResponseError {
+func (r *BenchmarkSuccessResponseImpl) Error() *ResponseError {
 	return nil
 }
 
-func (r *BenchmarkSuccessResponseImpl) GetResult() interface{} {
-	return r.Result
+func (r *BenchmarkSuccessResponseImpl) Result() interface{} {
+	return r.result
 }
 
 // =============================================================================

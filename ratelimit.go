@@ -801,7 +801,7 @@ func NewEnhancedRateLimitMiddleware(limiter RateLimiter, config RateLimitConfig)
 func (m *EnhancedRateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 	return MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
 		// Check if method should skip rate limiting
-		if m.skipMethods[req.GetMethod()] {
+		if m.skipMethods[req.Method()] {
 			return next.Handle(ctx, req)
 		}
 
@@ -812,7 +812,7 @@ func (m *EnhancedRateLimitMiddleware) Apply(next MCPHandler) MCPHandler {
 		var limiter RateLimiter
 		if m.perEndpointRate {
 			// Use per-endpoint rate limiting: combine client ID + method
-			endpointKey := fmt.Sprintf("%s:%s", key, req.GetMethod())
+			endpointKey := fmt.Sprintf("%s:%s", key, req.Method())
 			limiter = m.limiter
 			key = endpointKey
 		} else {

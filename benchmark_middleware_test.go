@@ -41,7 +41,7 @@ func BenchmarkMiddlewareChainOverhead(b *testing.B) {
 func benchmarkMiddlewareChainOverhead(b *testing.B, chainLength int) {
 	// Create base handler that does minimal work
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Build middleware chain
@@ -74,7 +74,7 @@ func benchmarkMiddlewareChainOverhead(b *testing.B, chainLength int) {
 
 func BenchmarkMiddlewareChain_DifferentTypes(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Test different middleware combinations
@@ -141,7 +141,7 @@ func BenchmarkRateLimiting_UnderLoad(b *testing.B) {
 
 func benchmarkRateLimitingUnderLoad(b *testing.B, requestsPerSecond int) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Create rate limiting middleware
@@ -181,7 +181,7 @@ func benchmarkRateLimitingUnderLoad(b *testing.B, requestsPerSecond int) {
 
 func BenchmarkRateLimiting_MultipleClients(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Per-client rate limiting
@@ -222,7 +222,7 @@ func BenchmarkRateLimiting_MultipleClients(b *testing.B) {
 
 func BenchmarkRateLimiting_ConcurrentAccess(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	rateLimitMiddleware := NewRateLimitMiddleware(RateLimitConfig{
@@ -265,7 +265,7 @@ func BenchmarkRateLimiting_ConcurrentAccess(b *testing.B) {
 
 func BenchmarkLoggingMiddleware_Impact(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	logLevels := map[string]slog.Level{
@@ -313,7 +313,7 @@ func BenchmarkLoggingMiddleware_Impact(b *testing.B) {
 
 func BenchmarkLoggingMiddleware_PayloadSizes(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	logger := slog.New(slog.NewJSONHandler(os.NewFile(0, os.DevNull), nil))
@@ -378,7 +378,7 @@ func BenchmarkAuthMiddleware_CacheScenarios(b *testing.B) {
 	validToken, _ := provider.CreateAccessToken(context.Background(), authCode)
 
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	authMiddleware := NewAuthenticationMiddleware(AuthConfig{
@@ -488,7 +488,7 @@ func BenchmarkAuthMiddleware_TokenExtraction(b *testing.B) {
 
 func BenchmarkMetricsMiddleware(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Mock metrics registry
@@ -532,13 +532,13 @@ func BenchmarkRecoveryMiddleware(b *testing.B) {
 
 	scenarios := map[string]MCPHandlerFunc{
 		"NormalOperation": func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-			return &SuccessResponseForBenchmark{Result: "success"}, nil
+			return &SuccessResponseForBenchmark{result: "success"}, nil
 		},
 		"WithPanic": func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-			if req.GetMethod() == "panic-method" {
+			if req.Method() == "panic-method" {
 				panic("test panic")
 			}
-			return &SuccessResponseForBenchmark{Result: "success"}, nil
+			return &SuccessResponseForBenchmark{result: "success"}, nil
 		},
 	}
 
@@ -580,7 +580,7 @@ func BenchmarkRecoveryMiddleware(b *testing.B) {
 
 func BenchmarkMiddlewareMemoryAllocation(b *testing.B) {
 	baseHandler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	b.Run("ChainCreation", func(b *testing.B) {
@@ -641,7 +641,7 @@ func BenchmarkMiddlewareMemoryPressure(b *testing.B) {
 		// Create some allocation pressure
 		data := make([]byte, 1024)
 		_ = data
-		return &SuccessResponseForBenchmark{Result: "success"}, nil
+		return &SuccessResponseForBenchmark{result: "success"}, nil
 	})
 
 	// Build heavy middleware chain
@@ -692,19 +692,19 @@ type MockRequestForBenchmark struct {
 	ctx    context.Context
 }
 
-func (r *MockRequestForBenchmark) GetMethod() string {
+func (r *MockRequestForBenchmark) Method() string {
 	return r.method
 }
 
-func (r *MockRequestForBenchmark) GetID() interface{} {
+func (r *MockRequestForBenchmark) ID() interface{} {
 	return r.id
 }
 
-func (r *MockRequestForBenchmark) GetParams() json.RawMessage {
+func (r *MockRequestForBenchmark) Params() json.RawMessage {
 	return r.params
 }
 
-func (r *MockRequestForBenchmark) GetContext() context.Context {
+func (r *MockRequestForBenchmark) Context() context.Context {
 	return r.ctx
 }
 
@@ -719,19 +719,19 @@ func (r *MockRequestForBenchmark) WithContext(ctx context.Context) MCPRequest {
 
 // SuccessResponseForBenchmark for testing
 type SuccessResponseForBenchmark struct {
-	Result interface{}
+	result interface{}
 }
 
 func (r *SuccessResponseForBenchmark) IsError() bool {
 	return false
 }
 
-func (r *SuccessResponseForBenchmark) GetError() *ResponseError {
+func (r *SuccessResponseForBenchmark) Error() *ResponseError {
 	return nil
 }
 
-func (r *SuccessResponseForBenchmark) GetResult() interface{} {
-	return r.Result
+func (r *SuccessResponseForBenchmark) Result() interface{} {
+	return r.result
 }
 
 // MockMetricsRegistry for testing metrics middleware

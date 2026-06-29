@@ -48,8 +48,8 @@ func (m *MockHandler) Handle(ctx context.Context, req MCPRequest) (MCPResponse, 
 
 	// Record the call
 	m.calls = append(m.calls, MockCall{
-		Method: req.GetMethod(),
-		Params: req.GetParams(),
+		Method: req.Method(),
+		Params: req.Params(),
 		Time:   time.Now(),
 	})
 
@@ -59,18 +59,18 @@ func (m *MockHandler) Handle(ctx context.Context, req MCPRequest) (MCPResponse, 
 	}
 
 	// Return configured response or error
-	if err, exists := m.errors[req.GetMethod()]; exists {
+	if err, exists := m.errors[req.Method()]; exists {
 		return nil, err
 	}
 
-	if resp, exists := m.responses[req.GetMethod()]; exists {
+	if resp, exists := m.responses[req.Method()]; exists {
 		return resp, nil
 	}
 
 	// Default response
 	return &successResponse{
-		Result: map[string]interface{}{
-			"method":    req.GetMethod(),
+		result: map[string]interface{}{
+			"method":    req.Method(),
 			"processed": true,
 		},
 	}, nil
@@ -140,19 +140,19 @@ func NewMockRequest(method string, params interface{}) *MockRequest {
 	}
 }
 
-func (r *MockRequest) GetMethod() string {
+func (r *MockRequest) Method() string {
 	return r.method
 }
 
-func (r *MockRequest) GetID() interface{} {
+func (r *MockRequest) ID() interface{} {
 	return r.id
 }
 
-func (r *MockRequest) GetParams() json.RawMessage {
+func (r *MockRequest) Params() json.RawMessage {
 	return r.params
 }
 
-func (r *MockRequest) GetContext() context.Context {
+func (r *MockRequest) Context() context.Context {
 	return r.ctx
 }
 
@@ -306,7 +306,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 
 			// Create request with auth context
 			req := MCPRequest(NewMockRequest(tt.method, nil))
-			ctx := req.GetContext()
+			ctx := req.Context()
 			if tt.token != "" {
 				ctx = context.WithValue(ctx, authHeaderKey, "Bearer "+tt.token)
 			}
@@ -325,7 +325,7 @@ func TestAuthenticationMiddleware(t *testing.T) {
 					t.Errorf("Expected no error, got %v", err)
 				}
 				if resp != nil && resp.IsError() {
-					t.Errorf("Expected successful response, got error: %v", resp.GetError())
+					t.Errorf("Expected successful response, got error: %v", resp.Error())
 				}
 			}
 
@@ -453,7 +453,7 @@ func TestTimeoutMiddleware(t *testing.T) {
 					t.Errorf("Expected no error, got %v", err)
 				}
 				if resp != nil && resp.IsError() {
-					t.Errorf("Expected successful response, got error: %v", resp.GetError())
+					t.Errorf("Expected successful response, got error: %v", resp.Error())
 				}
 			}
 		})
@@ -495,7 +495,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 				if tt.shouldPanic {
 					panic(tt.panicValue)
 				}
-				return &successResponse{Result: "success"}, nil
+				return &successResponse{result: "success"}, nil
 			})
 
 			// Apply middleware

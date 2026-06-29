@@ -420,7 +420,7 @@ func TestEnhancedRateLimitMiddleware(t *testing.T) {
 
 	// Create test handler that returns success when rate limiting allows the request
 	handler := MCPHandlerFunc(func(ctx context.Context, req MCPRequest) (MCPResponse, error) {
-		return &successResponse{Result: "success"}, nil
+		return &successResponse{result: "success"}, nil
 	})
 
 	protected := middleware.Apply(handler)

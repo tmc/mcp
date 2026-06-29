@@ -155,13 +155,6 @@ func (t *AppleOptimizedTransport) GetOptimizationInfo() map[string]interface{} {
 	}
 }
 
-// AppleServerOptions provides Apple-specific server optimizations
-type AppleServerOptions struct {
-	EnableAppleOptimizations bool
-	UsePlatformTransport     bool
-	OptimizeForAppleSilicon  bool
-}
-
 // WithAppleOptimizations enables Apple platform optimizations for servers
 func WithAppleOptimizations() ServerOption {
 	return func(s *Server) {

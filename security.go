@@ -237,7 +237,7 @@ func (v *InputValidator) validateObject(obj map[string]interface{}, depth int) e
 
 // validateMethodParams performs method-specific parameter validation
 func (v *InputValidator) validateMethodParams(method string, params map[string]interface{}) error {
-	switch MCPMethod(method) {
+	switch Method(method) {
 	case modelcontextprotocol.MethodToolsCall:
 		return v.validateToolsCallParams(params)
 	case modelcontextprotocol.MethodResourcesRead:

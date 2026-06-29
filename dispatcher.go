@@ -56,7 +56,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, method string, params json.Ra
 }
 
 // NotifyListChanged sends a list changed notification.
-func (d *Dispatcher) NotifyListChanged(ctx context.Context, method MCPMethod) error {
+func (d *Dispatcher) NotifyListChanged(ctx context.Context, method Method) error {
 	data, _ := json.Marshal(struct{}{})
 	return d.Dispatch(ctx, string(method), data)
 }

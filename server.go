@@ -1168,7 +1168,7 @@ func (s *Server) requestContext(ctx context.Context) (context.Context, context.C
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error {
+func (s *Server) notify(ctx context.Context, method Method, params any) error {
 	s.mu.RLock()
 	conn := s.conn
 	s.mu.RUnlock()
@@ -1181,7 +1181,7 @@ func (s *Server) notify(ctx context.Context, method MCPMethod, params any) error
 // notifyListChanged sends a list_changed notification to the connected client.
 // It no-ops when no client is connected (for example, when a tool, prompt, or
 // resource is registered before Serve), so startup-time registration is silent.
-func (s *Server) notifyListChanged(method MCPMethod) {
+func (s *Server) notifyListChanged(method Method) {
 	if err := s.notify(context.Background(), method, struct{}{}); err != nil {
 		s.logger.Debug("failed to send list changed notification", "method", string(method), "error", err)
 	}

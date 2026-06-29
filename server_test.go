@@ -581,7 +581,7 @@ func TestServerResourceSubscriptionHandlersRejectBadParams(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		method MCPMethod
+		method Method
 		params json.RawMessage
 	}{
 		{name: "subscribe missing", method: MethodResourcesSubscribe},
@@ -719,7 +719,7 @@ func TestServerListHandlersAllowOmittedParams(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 
 	tests := []struct {
-		method MCPMethod
+		method Method
 		params json.RawMessage
 		check  func(any) bool
 	}{

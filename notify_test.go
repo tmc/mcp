@@ -11,7 +11,7 @@ import (
 func TestListChangeNotifications(t *testing.T) {
 	tests := []struct {
 		name     string
-		method   MCPMethod
+		method   Method
 		caps     ServerCapabilities
 		wantSent bool
 	}{

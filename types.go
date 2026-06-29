@@ -80,45 +80,45 @@ const (
 	RoleAssistant Role = "assistant"
 )
 
-// MCPMethod represents the standard method names used in the MCP protocol.
+// Method represents the standard method names used in the MCP protocol.
 // These constants define all the JSON-RPC method names that clients and servers
 // use to communicate, including both request-response methods and notifications.
-type MCPMethod string
+type Method string
 
 const (
-	MethodInitialize              MCPMethod = "initialize"
-	MethodPing                    MCPMethod = "ping"
-	MethodRootsList               MCPMethod = "roots/list"
-	MethodCompletionComplete      MCPMethod = "completion/complete"
-	MethodLoggingSetLevel         MCPMethod = "logging/setLevel"
-	MethodSamplingCreateMessage   MCPMethod = "sampling/createMessage"
-	MethodElicitationCreate       MCPMethod = "elicitation/create"
-	MethodTasksList               MCPMethod = "tasks/list"
-	MethodTasksGet                MCPMethod = "tasks/get"
-	MethodTasksResult             MCPMethod = "tasks/result"
-	MethodTasksCancel             MCPMethod = "tasks/cancel"
-	MethodResourcesList           MCPMethod = "resources/list"
-	MethodResourcesTemplatesList  MCPMethod = "resources/templates/list"
-	MethodResourcesSubscribe      MCPMethod = "resources/subscribe"
-	MethodResourcesUnsubscribe    MCPMethod = "resources/unsubscribe"
-	MethodResourcesRead           MCPMethod = "resources/read"
-	MethodPromptsList             MCPMethod = "prompts/list"
-	MethodPromptsGet              MCPMethod = "prompts/get"
-	MethodToolsList               MCPMethod = "tools/list"
-	MethodToolsCall               MCPMethod = "tools/call"
-	MethodNotificationCancelled   MCPMethod = "notifications/cancelled"
-	MethodNotificationInitialized MCPMethod = "notifications/initialized"
+	MethodInitialize              Method = "initialize"
+	MethodPing                    Method = "ping"
+	MethodRootsList               Method = "roots/list"
+	MethodCompletionComplete      Method = "completion/complete"
+	MethodLoggingSetLevel         Method = "logging/setLevel"
+	MethodSamplingCreateMessage   Method = "sampling/createMessage"
+	MethodElicitationCreate       Method = "elicitation/create"
+	MethodTasksList               Method = "tasks/list"
+	MethodTasksGet                Method = "tasks/get"
+	MethodTasksResult             Method = "tasks/result"
+	MethodTasksCancel             Method = "tasks/cancel"
+	MethodResourcesList           Method = "resources/list"
+	MethodResourcesTemplatesList  Method = "resources/templates/list"
+	MethodResourcesSubscribe      Method = "resources/subscribe"
+	MethodResourcesUnsubscribe    Method = "resources/unsubscribe"
+	MethodResourcesRead           Method = "resources/read"
+	MethodPromptsList             Method = "prompts/list"
+	MethodPromptsGet              Method = "prompts/get"
+	MethodToolsList               Method = "tools/list"
+	MethodToolsCall               Method = "tools/call"
+	MethodNotificationCancelled   Method = "notifications/cancelled"
+	MethodNotificationInitialized Method = "notifications/initialized"
 
 	// Notification methods
-	MethodProgress            MCPMethod = "notifications/progress"
-	MethodLogging             MCPMethod = "notifications/message"
-	MethodElicitationComplete MCPMethod = "notifications/elicitation/complete"
-	MethodResourceUpdated     MCPMethod = "notifications/resources/updated"
-	MethodResourceListChanged MCPMethod = "notifications/resources/list_changed"
-	MethodPromptListChanged   MCPMethod = "notifications/prompts/list_changed"
-	MethodToolListChanged     MCPMethod = "notifications/tools/list_changed"
-	MethodRootsListChanged    MCPMethod = "notifications/roots/list_changed"
-	MethodTasksStatus         MCPMethod = "notifications/tasks/status"
+	MethodProgress            Method = "notifications/progress"
+	MethodLogging             Method = "notifications/message"
+	MethodElicitationComplete Method = "notifications/elicitation/complete"
+	MethodResourceUpdated     Method = "notifications/resources/updated"
+	MethodResourceListChanged Method = "notifications/resources/list_changed"
+	MethodPromptListChanged   Method = "notifications/prompts/list_changed"
+	MethodToolListChanged     Method = "notifications/tools/list_changed"
+	MethodRootsListChanged    Method = "notifications/roots/list_changed"
+	MethodTasksStatus         Method = "notifications/tasks/status"
 )
 
 // JSONRPCNotification represents a notification message in the JSON-RPC protocol.
@@ -840,7 +840,7 @@ func (v *ParameterValidator) ValidateReadResourceRequest(params ReadResourceRequ
 	return nil
 }
 
-func (v *ParameterValidator) ValidateResourceSubscription(method MCPMethod, uri string) error {
+func (v *ParameterValidator) ValidateResourceSubscription(method Method, uri string) error {
 	if !v.config.ValidateRequired {
 		return nil
 	}

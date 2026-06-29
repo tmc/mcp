@@ -160,3 +160,14 @@ func WrapSanitizedError(err error, message string) error {
 	wrapped := fmt.Errorf("%s: %w", message, err)
 	return SanitizeError(wrapped)
 }
+
+// ResponseError represents an MCP protocol error.
+type ResponseError struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+func (e *ResponseError) Error() string {
+	return fmt.Sprintf("MCP error %d: %s", e.Code, e.Message)
+}

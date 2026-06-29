@@ -691,17 +691,6 @@ func getOrGenerateRequestID(ctx context.Context) string {
 // Error Response Helpers
 // ======================
 
-// ResponseError represents an MCP protocol error
-type ResponseError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
-func (e *ResponseError) Error() string {
-	return fmt.Sprintf("MCP error %d: %s", e.Code, e.Message)
-}
-
 // NewErrorResponse creates a new error response
 func NewErrorResponse(message string, code int) MCPResponse {
 	return &errorResponse{

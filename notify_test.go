@@ -38,7 +38,7 @@ func TestListChangeNotifications(t *testing.T) {
 			server := NewServer("test", "1.0.0", WithCapabilities(tt.caps))
 
 			var notified bool
-			server.dispatch.Handle(string(tt.method), func(method string, params json.RawMessage) error {
+			server.dispatch.Handle(string(tt.method), func(_ context.Context, method string, params json.RawMessage) error {
 				notified = true
 				return nil
 			})
@@ -66,7 +66,7 @@ func TestDispatcher(t *testing.T) {
 	d := NewDispatcher()
 
 	var received []string
-	d.Handle("test", func(method string, params json.RawMessage) error {
+	d.Handle("test", func(_ context.Context, method string, params json.RawMessage) error {
 		received = append(received, string(params))
 		return nil
 	})
@@ -78,6 +78,25 @@ func TestDispatcher(t *testing.T) {
 
 	if diff := cmp.Diff([]string{want}, received); diff != "" {
 		t.Errorf("notification mismatch (-want +got):\n%s", diff)
+	}
+}
+
+func TestDispatcherPropagatesContext(t *testing.T) {
+	d := NewDispatcher()
+
+	type ctxKey struct{}
+	var got any
+	d.Handle("test", func(ctx context.Context, _ string, _ json.RawMessage) error {
+		got = ctx.Value(ctxKey{})
+		return nil
+	})
+
+	ctx := context.WithValue(context.Background(), ctxKey{}, "value")
+	if err := d.Dispatch(ctx, "test", json.RawMessage(`{}`)); err != nil {
+		t.Fatal(err)
+	}
+	if got != "value" {
+		t.Errorf("handler ctx value = %v, want %q", got, "value")
 	}
 }
 
@@ -121,7 +140,7 @@ func TestNotifications(t *testing.T) {
 			var gotType string
 			var gotData json.RawMessage
 
-			d.Handle(tt.wantType, func(method string, params json.RawMessage) error {
+			d.Handle(tt.wantType, func(_ context.Context, method string, params json.RawMessage) error {
 				gotType = method
 				gotData = params
 				return nil

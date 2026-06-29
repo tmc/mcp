@@ -24,7 +24,7 @@ func NewDispatcher() *Dispatcher {
 }
 
 // Handle registers a handler for a notification method.
-func (d *Dispatcher) Handle(method string, h NotificationHandler) {
+func (d *Dispatcher) Handle(method string, h NotificationHandlerFunc) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.handlers[method] = append(d.handlers[method], h)
@@ -41,11 +41,11 @@ func (d *Dispatcher) Dispatch(ctx context.Context, method string, params json.Ra
 
 	var allErrors []error
 	for _, h := range handlers {
-		handler, ok := h.(NotificationHandler)
+		handler, ok := h.(NotificationHandlerFunc)
 		if !ok {
 			continue
 		}
-		if err := handler(method, params); err != nil {
+		if err := handler(ctx, method, params); err != nil {
 			allErrors = append(allErrors, fmt.Errorf("handler error for %s: %w", method, err))
 		}
 	}

@@ -645,10 +645,11 @@ const (
 	LogLevelEmergency LoggingLevel = "emergency"
 )
 
-// NotificationHandler handles MCP notifications.
+// NotificationHandlerFunc handles MCP notifications.
 // Notifications are one-way messages for events like progress updates,
-// logging messages, and resource/tool/prompt list changes.
-type NotificationHandler func(method string, params json.RawMessage) error
+// logging messages, and resource/tool/prompt list changes. The context is
+// canceled when the originating request or connection is canceled.
+type NotificationHandlerFunc func(ctx context.Context, method string, params json.RawMessage) error
 
 // ToolHandlerFunc defines the signature for functions handling tools/call requests.
 type ToolHandlerFunc func(ctx context.Context, request CallToolRequest) (*CallToolResult, error)

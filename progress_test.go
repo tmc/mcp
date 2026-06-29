@@ -18,7 +18,7 @@ func TestProgressNotificationBasic(t *testing.T) {
 	var mu sync.Mutex
 
 	// Register handler
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		var progress modelcontextprotocol.ProgressNotificationParams
 		if err := json.Unmarshal(params, &progress); err != nil {
 			return err
@@ -71,7 +71,7 @@ func TestProgressNotificationWithoutTotal(t *testing.T) {
 	var receivedParams modelcontextprotocol.ProgressNotificationParams
 	var received bool
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		received = true
 		return json.Unmarshal(params, &receivedParams)
 	})
@@ -106,7 +106,7 @@ func TestProgressNotificationDifferentTokenTypes(t *testing.T) {
 	var receivedTokens []any
 	var mu sync.Mutex
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		var progress modelcontextprotocol.ProgressNotificationParams
 		if err := json.Unmarshal(params, &progress); err != nil {
 			return err
@@ -155,12 +155,12 @@ func TestProgressNotificationMultipleHandlers(t *testing.T) {
 
 	var handler1Called, handler2Called bool
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		handler1Called = true
 		return nil
 	})
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		handler2Called = true
 		return nil
 	})
@@ -187,7 +187,7 @@ func TestProgressNotificationSequence(t *testing.T) {
 	var progressSequence []float64
 	var mu sync.Mutex
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		var progress modelcontextprotocol.ProgressNotificationParams
 		if err := json.Unmarshal(params, &progress); err != nil {
 			return err
@@ -236,7 +236,7 @@ func TestProgressNotificationConcurrency(t *testing.T) {
 	var notificationCount int
 	var mu sync.Mutex
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		mu.Lock()
 		notificationCount++
 		mu.Unlock()
@@ -285,7 +285,7 @@ func TestProgressNotificationWithMessage(t *testing.T) {
 	var receivedParams modelcontextprotocol.ProgressNotificationParams
 	var received bool
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		received = true
 		return json.Unmarshal(params, &receivedParams)
 	})
@@ -366,7 +366,7 @@ func TestProgressNotificationBoundaryValues(t *testing.T) {
 	var receivedProgress []float64
 	var mu sync.Mutex
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		var progress modelcontextprotocol.ProgressNotificationParams
 		if err := json.Unmarshal(params, &progress); err != nil {
 			return err
@@ -410,7 +410,7 @@ func TestProgressNotificationBoundaryValues(t *testing.T) {
 func BenchmarkProgressNotification(b *testing.B) {
 	dispatcher := NewDispatcher()
 
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		return nil // No-op handler
 	})
 
@@ -434,13 +434,13 @@ func TestProgressNotificationErrorHandling(t *testing.T) {
 	dispatcher := NewDispatcher()
 
 	// Handler that always returns an error
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		return fmt.Errorf("test error")
 	})
 
 	// Handler that succeeds
 	var successHandlerCalled bool
-	dispatcher.Handle(string(MethodProgress), func(method string, params json.RawMessage) error {
+	dispatcher.Handle(string(MethodProgress), func(_ context.Context, method string, params json.RawMessage) error {
 		successHandlerCalled = true
 		return nil
 	})

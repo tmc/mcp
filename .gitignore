@@ -24,11 +24,21 @@ build/
 /mcp-serve
 /mcp-shadow
 /mcp-vet
+/mcp-connect
 /mcpcat
+/mcpctl
 /mcpdiff
 /mcpspy
 /mcptel
+/analyze-deduplication
+/conformance-server
+/verify_escape
 /test-server
+
+# Compiled Go test binaries left in tree (extension-less Mach-O/ELF)
+testing/mcpscripttest/testgraph
+testing/mcpscripttest/testcallgraph-coverage
+internal/mcptest/testdata/echo-server/echo-server
 
 # Binary executables in exp/cmd/<tool>/<tool>
 exp/cmd/*/jsonrpc2gostruct

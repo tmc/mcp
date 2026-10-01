@@ -1,0 +1,9 @@
+# Toolkit examples
+
+This untagged module contains small programs demonstrating SDK middleware, trace writing, and script tests. The [workflow example](workflow/README.md) records a faulty tool, inspects its trace, turns the observation into a reviewed regression, checks the fix, and compares API snapshots. Run its checks from this directory:
+
+```sh
+GOWORK=off go build ./...
+GOWORK=off go vet ./...
+GOWORK=off go test -race ./...
+```

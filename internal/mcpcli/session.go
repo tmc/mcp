@@ -1,0 +1,346 @@
+//lint:file-ignore SA1019 The pre-v0.2 client keeps SDK v1.8 compatibility for older servers.
+package mcpcli
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"sync"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+// Config describes how to connect to an MCP server and where to keep local state.
+type Config struct {
+	Cmd             string
+	HTTPURL         string
+	SSEURL          string
+	Timeout         time.Duration
+	ProtocolVersion string
+	ServerStderr    bool
+	StateDir        string
+	ClientInfo      mcp.Implementation
+
+	// SamplingHandler, when set, answers server-initiated sampling/createMessage
+	// requests and causes the session to advertise the sampling capability.
+	SamplingHandler func(context.Context, mcp.CreateMessageRequest) (*mcp.CreateMessageResult, error)
+	// ElicitHandler, when set, answers server-initiated elicitation/create
+	// requests and causes the session to advertise the elicitation capability.
+	ElicitHandler func(context.Context, mcp.ElicitRequest) (*mcp.ElicitResult, error)
+	// ElicitModes declares which elicitation styles ElicitHandler supports.
+	// It defaults to form when ElicitHandler is set and no modes are listed.
+	ElicitModes []string
+}
+
+// DefaultConfig returns the default shared CLI configuration.
+func DefaultConfig() Config {
+	return Config{
+		Timeout:         30 * time.Second,
+		ProtocolVersion: "",
+		StateDir:        defaultStateDir(),
+	}
+}
+
+// Event represents an asynchronous MCP notification observed by the session.
+type Event struct {
+	Time   time.Time       `json:"time"`
+	Method string          `json:"method"`
+	Params json.RawMessage `json:"params,omitempty"`
+}
+
+// Session owns a client connection, local root state, and notification fanout.
+type Session struct {
+	cfg      Config
+	client   *mcp.ClientSession
+	init     *mcp.InitializeResult
+	roots    *StateStore
+	eventsMu sync.Mutex
+	nextID   int
+	events   map[int]chan Event
+}
+
+// Connect initializes a new session using cfg.
+func Connect(ctx context.Context, cfg Config) (*Session, error) {
+	cfg = withDefaults(cfg)
+	if cfg.transportCount() == 0 {
+		return nil, errors.New("no server transport configured")
+	}
+	if cfg.transportCount() > 1 {
+		return nil, errors.New("choose exactly one of stdio, http, or sse transport")
+	}
+
+	store, err := OpenStateStore(cfg.StateDir)
+	if err != nil {
+		return nil, err
+	}
+
+	transport, err := newTransport(cfg)
+	if err != nil {
+		return nil, err
+	}
+	s := &Session{
+		cfg:    cfg,
+		roots:  store,
+		events: make(map[int]chan Event),
+	}
+	clientOptions := &mcp.ClientOptions{
+		LoggingMessageHandler: func(ctx context.Context, req *mcp.LoggingMessageRequest) {
+			data, _ := json.Marshal(req.Params)
+			s.publish(Event{Time: time.Now(), Method: "notifications/message", Params: data})
+		},
+		ProgressNotificationHandler: func(ctx context.Context, req *mcp.ProgressNotificationClientRequest) {
+			data, _ := json.Marshal(req.Params)
+			s.publish(Event{Time: time.Now(), Method: "notifications/progress", Params: data})
+		},
+	}
+	if cfg.SamplingHandler != nil {
+		clientOptions.CreateMessageHandler = func(ctx context.Context, req *mcp.CreateMessageRequest) (*mcp.CreateMessageResult, error) {
+			return cfg.SamplingHandler(ctx, *req)
+		}
+	}
+	if cfg.ElicitHandler != nil {
+		clientOptions.ElicitationHandler = func(ctx context.Context, req *mcp.ElicitRequest) (*mcp.ElicitResult, error) {
+			return cfg.ElicitHandler(ctx, *req)
+		}
+	}
+	client := mcp.NewClient(&cfg.ClientInfo, clientOptions)
+	if roots, err := store.List(); err != nil {
+		return nil, err
+	} else {
+		for i := range roots {
+			client.AddRoots(&roots[i])
+		}
+	}
+
+	initCtx, cancel := context.WithTimeout(ctx, cfg.Timeout)
+	defer cancel()
+	clientSession, err := client.Connect(initCtx, transport, &mcp.ClientSessionOptions{ProtocolVersion: cfg.ProtocolVersion})
+	if err != nil {
+		return nil, fmt.Errorf("initialize server: %w", err)
+	}
+	s.client = clientSession
+	s.init = clientSession.InitializeResult()
+	return s, nil
+}
+
+func withDefaults(cfg Config) Config {
+	def := DefaultConfig()
+	if cfg.Timeout == 0 {
+		cfg.Timeout = def.Timeout
+	}
+	if cfg.ProtocolVersion == "" {
+		cfg.ProtocolVersion = def.ProtocolVersion
+	}
+	if cfg.StateDir == "" {
+		cfg.StateDir = def.StateDir
+	}
+	if cfg.ClientInfo.Name == "" {
+		cfg.ClientInfo.Name = "mcp"
+	}
+	if cfg.ClientInfo.Version == "" {
+		cfg.ClientInfo.Version = "0.1.0"
+	}
+	return cfg
+}
+
+func defaultStateDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".mcp"
+	}
+	return home + "/.mcp"
+}
+
+func (cfg Config) transportCount() int {
+	n := 0
+	if cfg.Cmd != "" {
+		n++
+	}
+	if cfg.HTTPURL != "" {
+		n++
+	}
+	if cfg.SSEURL != "" {
+		n++
+	}
+	return n
+}
+
+func newTransport(cfg Config) (mcp.Transport, error) {
+	switch {
+	case cfg.Cmd != "":
+		return CommandTransport(cfg.Cmd, serverStderr(cfg.ServerStderr)), nil
+	case cfg.SSEURL != "":
+		return &mcp.SSEClientTransport{Endpoint: cfg.SSEURL}, nil
+	case cfg.HTTPURL != "":
+		return &mcp.StreamableClientTransport{Endpoint: cfg.HTTPURL}, nil
+	default:
+		return nil, errors.New("no server transport configured")
+	}
+}
+
+func serverStderr(enabled bool) io.Writer {
+	if enabled {
+		return os.Stderr
+	}
+	return io.Discard
+}
+
+// Close closes the underlying client.
+func (s *Session) Close() error {
+	if s == nil || s.client == nil {
+		return nil
+	}
+	return s.client.Close()
+}
+
+// Client returns the underlying client.
+func (s *Session) Client() *mcp.ClientSession {
+	return s.client
+}
+
+// InitializeResult returns the negotiated server metadata.
+func (s *Session) InitializeResult() *mcp.InitializeResult {
+	return s.init
+}
+
+// RootStore returns the persistent root store backing the session.
+func (s *Session) RootStore() *StateStore {
+	return s.roots
+}
+
+// Subscribe returns a best-effort event stream of session notifications.
+func (s *Session) Subscribe(buffer int) (<-chan Event, func()) {
+	if buffer <= 0 {
+		buffer = 32
+	}
+	ch := make(chan Event, buffer)
+	s.eventsMu.Lock()
+	id := s.nextID
+	s.nextID++
+	s.events[id] = ch
+	s.eventsMu.Unlock()
+	return ch, func() {
+		s.eventsMu.Lock()
+		if ch, ok := s.events[id]; ok {
+			delete(s.events, id)
+			close(ch)
+		}
+		s.eventsMu.Unlock()
+	}
+}
+
+func (s *Session) publish(event Event) {
+	s.eventsMu.Lock()
+	defer s.eventsMu.Unlock()
+	for _, ch := range s.events {
+		select {
+		case ch <- event:
+		default:
+		}
+	}
+}
+
+// ListToolsAll retrieves every page of tools and returns them sorted by name.
+func (s *Session) ListToolsAll(ctx context.Context) ([]*mcp.Tool, error) {
+	cursor := ""
+	var all []*mcp.Tool
+	for {
+		var params *mcp.ListToolsParams
+		if cursor != "" {
+			params = &mcp.ListToolsParams{Cursor: cursor}
+		}
+		result, err := s.client.ListTools(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Tools...)
+		if result.NextCursor == "" || result.NextCursor == cursor {
+			break
+		}
+		cursor = result.NextCursor
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	return all, nil
+}
+
+// ListResourcesAll retrieves every page of resources and returns them sorted by URI.
+func (s *Session) ListResourcesAll(ctx context.Context) ([]*mcp.Resource, error) {
+	cursor := ""
+	var all []*mcp.Resource
+	for {
+		var params *mcp.ListResourcesParams
+		if cursor != "" {
+			params = &mcp.ListResourcesParams{Cursor: cursor}
+		}
+		result, err := s.client.ListResources(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Resources...)
+		if result.NextCursor == "" || result.NextCursor == cursor {
+			break
+		}
+		cursor = result.NextCursor
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].URI < all[j].URI })
+	return all, nil
+}
+
+// ListPromptsAll retrieves every page of prompts and returns them sorted by name.
+func (s *Session) ListPromptsAll(ctx context.Context) ([]*mcp.Prompt, error) {
+	cursor := ""
+	var all []*mcp.Prompt
+	for {
+		var params *mcp.ListPromptsParams
+		if cursor != "" {
+			params = &mcp.ListPromptsParams{Cursor: cursor}
+		}
+		result, err := s.client.ListPrompts(ctx, params)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, result.Prompts...)
+		if result.NextCursor == "" || result.NextCursor == cursor {
+			break
+		}
+		cursor = result.NextCursor
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].Name < all[j].Name })
+	return all, nil
+}
+
+// CallRaw invokes an arbitrary method and unmarshals into out when non-nil.
+func (s *Session) CallRaw(ctx context.Context, method string, params any, out any) error {
+	if s.client == nil {
+		return errors.New("session is not connected")
+	}
+	return fmt.Errorf("unsupported method %q through typed SDK session", method)
+}
+
+// Supports reports whether the server advertised a given capability group.
+func (s *Session) Supports(name string) bool {
+	if s.init == nil {
+		return false
+	}
+	switch name {
+	case "logging":
+		return s.init.Capabilities.Logging != nil
+	case "completions":
+		return s.init.Capabilities.Completions != nil
+	case "tasks":
+		return false
+	case "resources":
+		return s.init.Capabilities.Resources != nil
+	case "prompts":
+		return s.init.Capabilities.Prompts != nil
+	case "tools":
+		return s.init.Capabilities.Tools != nil
+	default:
+		return false
+	}
+}

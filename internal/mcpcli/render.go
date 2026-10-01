@@ -1,0 +1,147 @@
+package mcpcli
+
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+// OutputMode controls CLI rendering format.
+type OutputMode string
+
+const (
+	OutputText   OutputMode = "text"
+	OutputJSON   OutputMode = "json"
+	OutputNDJSON OutputMode = "ndjson"
+)
+
+// RenderToolResult returns either plain text or structured JSON for a tool result.
+func RenderToolResult(result *mcp.CallToolResult, mode OutputMode) ([]byte, error) {
+	if mode == OutputJSON || mode == OutputNDJSON {
+		return json.MarshalIndent(result, "", "  ")
+	}
+	text := textOnlyResult(result)
+	if text != "" {
+		return []byte(text), nil
+	}
+	return json.MarshalIndent(result, "", "  ")
+}
+
+// RenderPromptResult returns a terminal-friendly prompt transcript or JSON.
+func RenderPromptResult(result *mcp.GetPromptResult, mode OutputMode) ([]byte, error) {
+	if mode == OutputJSON || mode == OutputNDJSON {
+		return json.MarshalIndent(result, "", "  ")
+	}
+	var b strings.Builder
+	for i, msg := range result.Messages {
+		if i > 0 {
+			b.WriteString("\n\n")
+		}
+		fmt.Fprintf(&b, "[%s]\n", msg.Role)
+		writePromptContent(&b, msg.Content)
+	}
+	return []byte(b.String()), nil
+}
+
+func writePromptContent(b *strings.Builder, item any) {
+	switch v := item.(type) {
+	case []any:
+		for _, item := range v {
+			writePromptContent(b, item)
+		}
+	case *mcp.TextContent:
+		b.WriteString(v.Text)
+	case map[string]any:
+		if v["type"] == "text" {
+			if text, ok := v["text"].(string); ok {
+				b.WriteString(text)
+				return
+			}
+		}
+		raw, _ := json.MarshalIndent(v, "", "  ")
+		b.Write(raw)
+	default:
+		raw, _ := json.MarshalIndent(v, "", "  ")
+		b.Write(raw)
+	}
+}
+
+// RenderResourceResult renders a resource read result.
+func RenderResourceResult(result *mcp.ReadResourceResult, mode OutputMode) ([]byte, error) {
+	if mode == OutputJSON || mode == OutputNDJSON {
+		return json.MarshalIndent(result, "", "  ")
+	}
+	var b bytes.Buffer
+	for i, content := range result.Contents {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		if content == nil {
+			continue
+		}
+		if content.Text != "" {
+			b.WriteString(content.Text)
+		} else if len(content.Blob) != 0 {
+			decoded, err := base64.StdEncoding.DecodeString(string(content.Blob))
+			if err != nil {
+				return nil, err
+			}
+			b.Write(decoded)
+		} else {
+			raw, _ := json.MarshalIndent(content, "", "  ")
+			b.Write(raw)
+		}
+	}
+	return b.Bytes(), nil
+}
+
+func textOnlyResult(result *mcp.CallToolResult) string {
+	if result == nil || len(result.Content) == 0 {
+		return ""
+	}
+	lines := make([]string, 0, len(result.Content))
+	for _, item := range result.Content {
+		m, ok := item.(*mcp.TextContent)
+		if !ok || m == nil {
+			return ""
+		}
+		lines = append(lines, m.Text)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// WriteOutput writes rendered output with a trailing newline for text/json modes.
+func WriteOutput(path string, data []byte) error {
+	if path == "" {
+		if len(data) == 0 {
+			return nil
+		}
+		if bytes.HasSuffix(data, []byte("\n")) {
+			_, err := os.Stdout.Write(data)
+			return err
+		}
+		_, err := fmt.Fprintln(os.Stdout, string(data))
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
+}
+
+// ParseOutputMode validates output mode.
+func ParseOutputMode(s string) (OutputMode, error) {
+	switch OutputMode(s) {
+	case "", OutputText:
+		return OutputText, nil
+	case OutputJSON:
+		return OutputJSON, nil
+	case OutputNDJSON:
+		return OutputNDJSON, nil
+	default:
+		return "", errors.New("invalid output mode")
+	}
+}

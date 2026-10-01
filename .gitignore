@@ -1,0 +1,159 @@
+# Coverage files
+.cover
+*cov*.out
+coverage/
+*.out
+
+# Security scan reports
+security-reports/
+*.sarif
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+dist/
+build/
+
+# Command executables
+/cmd/mcpapi/mcpapi
+/cmd/mcpcorpus/mcpcorpus
+/cmd/mcpfixture/mcpfixture
+/cmd/mcpfixture/testdata/server/server
+/cmd/mcpinspect/mcpinspect
+/cmd/mcpnorm/mcpnorm
+/cmd/mcpvet/mcpvet
+/cmd2mcpserver
+/exp/cmd/cmd2mcpserver/cmd2mcpserver
+/exp/cmd/mcp-attach/mcp-attach
+/exp/cmd/mcp-connect/mcp-connect
+/exp/cmd/mcp-gen/mcp-gen
+/exp/cmd/mcp-probe/mcp-probe
+/exp/cmd/mcp-probe/testserver/testserver
+/exp/cmd/mcp-replay/mcp-replay
+/exp/cmd/mcp-send/mcp-send
+/exp/cmd/mcp-serve/mcp-serve
+/exp/cmd/mcp-shadow/mcp-shadow
+/exp/cmd/mcp-sort/mcp-sort
+/exp/cmd/mcp-tsnorm/mcp-tsnorm
+/exp/cmd/mcp-vet/mcp-vet
+/exp/cmd/mcp/mcp
+/exp/cmd/mcpcat/mcpcat
+/exp/cmd/mcpcolor/mcpcolor
+/exp/cmd/mcpd/mcpd
+/exp/cmd/mcpdiff/mcpdiff
+/exp/cmd/mcpsh/mcpsh
+/exp/cmd/mcpspy/mcpspy
+/exp/cmd/mcptrace-to-otel/mcptrace-to-otel
+/exp/cmd/mcptrace2gostruct/mcptrace2gostruct
+/exp/cmd/tsnorm/tsnorm
+/mcp
+/mcp-attach
+/mcp-connect
+/mcp-gen
+/mcp-probe
+/mcp-replay
+/mcp-send
+/mcp-serve
+/mcp-shadow
+/mcp-sort
+/mcp-tsnorm
+/mcp-vet
+/mcpapi
+/mcpcat
+/mcpcolor
+/mcpcorpus
+/mcpd
+/mcpdiff
+/mcpfixture
+/mcpinspect
+/mcpnorm
+/mcpsh
+/mcpspy
+/mcptrace-to-otel
+/mcptrace2gostruct
+/mcpvet
+/server
+/testserver
+/tsnorm
+
+# Test artifacts
+*.test
+# *_test_*
+test_output/
+test_results/
+*.log
+
+# MCP trace files
+*.mcp
+traces/*
+
+# Temporary development files
+temp/
+tmp/
+.tmp/
+*_temp*
+*_tmp*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Go workspace files
+go.work
+go.work.sum
+examples/servers/*/go.work
+examples/servers/*/go.work.sum
+exp/cmd/*/go.work
+exp/cmd/*/go.work.sum
+
+# Local development artifacts
+bin/
+debug
+*.pprof
+
+# OS generated files
+Thumbs.db
+.Thumbs.db
+*.orig
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration
+.env
+.env.local
+*.local
+
+# Local issue tracker
+.beads/
+
+# Ad-hoc dev artifacts
+proxy_log.txt
+proxy_output.txt
+test_output*.log
+screenshot-*.png
+lastsession.txt
+mcpd.log
+mcpscripttest_run.log
+*.disabled
+
+# node_modules (internal/mcpspy/web/app)
+node_modules/
+
+# Generated documentation
+docs/build/
+
+# Experimental command run output
+exp/cmd/mcp-serve/*transport_results/
+exp/cmd/mcp-serve/test_results.json
+exp/cmd/mcp-serve/sse_post_response.json
+.mcp-server.stdin
+.mcp-server.stdout
+.mcp-server.stderr

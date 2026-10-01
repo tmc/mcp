@@ -1,0 +1,7 @@
+{
+    "method": "initialize",
+    "params": {
+        "protocol": "mcp",
+        "version": "2"
+    }
+}

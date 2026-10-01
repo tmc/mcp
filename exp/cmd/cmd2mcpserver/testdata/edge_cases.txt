@@ -1,0 +1,63 @@
+# Test edge cases and error handling
+
+# Test missing binary
+! exec cmd2mcpserver nonexistent-binary
+stderr 'Binary not found'
+
+# Test invalid flags combination (no binary)
+! exec cmd2mcpserver
+stderr 'Usage:'
+
+# Test with custom naming
+exec go build -o mycli testcli.go
+! stderr .
+exec cmd2mcpserver -tool custom-name -server CustomServer -dry-run ./mycli
+stdout 'type CustomServerTool struct'
+stdout '"custom-name"'
+
+# Test with FlagVar functions
+exec go build -o varcli varcli.go
+! stderr .
+exec cmd2mcpserver -dry-run -source . ./varcli
+stdout '"name"'
+stdout '"port"'
+stdout '"enabled"'
+stdout '"rate"'
+
+-- testcli.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+func main() {
+	test := flag.String("test", "default", "A test flag")
+	flag.Parse()
+	fmt.Println(*test)
+}
+
+-- varcli.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var (
+	name    string
+	port    int
+	enabled bool
+	rate    float64
+)
+
+func main() {
+	flag.StringVar(&name, "name", "default", "Name parameter")
+	flag.IntVar(&port, "port", 8080, "Port number")
+	flag.BoolVar(&enabled, "enabled", false, "Enable feature")
+	flag.Float64Var(&rate, "rate", 1.0, "Rate limit")
+	flag.Parse()
+	fmt.Printf("name=%s port=%d enabled=%v rate=%f\n", name, port, enabled, rate)
+}

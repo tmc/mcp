@@ -1,0 +1,5 @@
+# Minimal test to verify scripttest framework
+
+# Simple echo test
+exec echo "hello"
+stdout 'hello'

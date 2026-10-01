@@ -1,0 +1,207 @@
+# Test cmd2mcpserver stdin detection
+#
+# This test verifies that cmd2mcpserver correctly detects programs that use stdin
+
+# Create a program that reads from stdin
+-- reader/main.go --
+package main
+
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"os"
+)
+
+var prefix = flag.String("prefix", "", "prefix to add to each line")
+
+func main() {
+	flag.Parse()
+	
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		fmt.Printf("%s%s\n", *prefix, scanner.Text())
+	}
+}
+
+-- reader/go.mod --
+module github.com/test/reader
+
+go 1.21
+
+# Run cmd2mcpserver with tool-def to see if stdin is detected
+exec go run ../../cmd/cmd2mcpserver -tool-def -source reader reader
+stdout '"stdin":\s*{'
+stdout '"type":\s*"string"'
+stdout '"description":\s*"Optional input data to provide to the command via stdin"'
+
+# Verify that the tool definition includes stdin
+stdout '"inputSchema"'
+stdout '"properties"'
+stdout '"prefix"'
+
+# Create a program that doesn't use stdin
+-- noread/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var name = flag.String("name", "world", "name to greet")
+
+func main() {
+	flag.Parse()
+	fmt.Printf("Hello, %s!\n", *name)
+}
+
+-- noread/go.mod --
+module github.com/test/noread
+
+go 1.21
+
+# Run cmd2mcpserver on the non-stdin program
+exec go run ../../cmd/cmd2mcpserver -tool-def -source noread noread
+! stdout '"stdin"'
+stdout '"name"'
+
+# Test dry-run output includes stdin handling
+exec go run ../../cmd/cmd2mcpserver -dry-run -source reader reader
+stdout 'if stdinData, ok := args\["stdin"\]'
+stdout 'cmd.Stdin = strings.NewReader\(stdinStr\)'
+
+# Test a program that uses file I/O but not stdin
+-- fileio/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"os"
+)
+
+var filename = flag.String("file", "", "file to read")
+
+func main() {
+	flag.Parse()
+
+	if *filename == "" {
+		fmt.Fprintln(os.Stderr, "Please provide a filename")
+		os.Exit(1)
+	}
+
+	data, err := ioutil.ReadFile(*filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Print(string(data))
+}
+
+-- fileio/go.mod --
+module github.com/test/fileio
+
+go 1.21
+
+# Verify file I/O program doesn't get stdin parameter
+exec go run ../../cmd/cmd2mcpserver -tool-def -source fileio fileio
+! stdout '"stdin"'
+stdout '"file"'
+stdout '"description":\s*"file to read"'
+
+# Test a program with multiple I/O operations but no stdin
+-- multiio/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+var (
+	port   = flag.String("port", "8080", "server port")
+	debug  = flag.Bool("debug", false, "enable debug logging")
+	output = flag.String("output", "", "output file")
+)
+
+func main() {
+	flag.Parse()
+
+	if *debug {
+		log.SetOutput(os.Stderr)
+		log.Println("Debug mode enabled")
+	}
+
+	if *output != "" {
+		file, err := os.Create(*output)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		file.WriteString("Server started\n")
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello from server on port %s\n", *port)
+	})
+
+	fmt.Printf("Starting server on port %s\n", *port)
+	log.Fatal(http.ListenAndServe(":"+*port, nil))
+}
+
+-- multiio/go.mod --
+module github.com/test/multiio
+
+go 1.21
+
+# Verify complex I/O program without stdin doesn't get stdin parameter
+exec go run ../../cmd/cmd2mcpserver -tool-def -source multiio multiio
+! stdout '"stdin"'
+stdout '"port"'
+stdout '"debug"'
+stdout '"output"'
+
+# Test a program that uses io.Reader but not stdin
+-- reader/main.go --
+package main
+
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"io"
+	"strings"
+)
+
+var text = flag.String("text", "hello", "text to process")
+
+func processReader(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+}
+
+func main() {
+	flag.Parse()
+
+	// Use a string reader, not stdin
+	reader := strings.NewReader(*text)
+	processReader(reader)
+}
+
+-- reader/go.mod --
+module github.com/test/reader
+
+go 1.21
+
+# Verify io.Reader usage without stdin doesn't trigger stdin parameter
+exec go run ../../cmd/cmd2mcpserver -tool-def -source reader reader
+! stdout '"stdin"'
+stdout '"text"'

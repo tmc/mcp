@@ -1,0 +1,65 @@
+# Final cmd2mcpserver test with mcp-probe pattern
+#
+# This test shows how to use mcp-probe to test a generated MCP server
+
+# Create a test program
+-- hello/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var name = flag.String("name", "world", "name to greet")
+
+func main() {
+	flag.Parse()
+	fmt.Printf("Hello, %s!\n", *name)
+}
+
+-- hello/go.mod --
+module github.com/test/hello
+
+go 1.21
+
+# Generate MCP server
+exec go run ../../cmd/cmd2mcpserver hello
+stdout 'Server generated successfully'
+
+# Build the MCP server
+cd mcpserver
+exec go build -o hello-mcp
+cd ..
+
+# Create a probe script to initialize the server
+-- init.jsonrpc --
+{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"0.1.0","capabilities":{},"clientInfo":{"name":"probe","version":"1.0"}},"id":1}
+
+# Create a probe script to call tools/list
+-- tools_list.jsonrpc --
+{"jsonrpc":"2.0","method":"tools/list","params":{},"id":2}
+
+# Initialize the server
+stdin init.jsonrpc
+exec ./mcpserver/hello-mcp
+stdout '"jsonrpc":\s*"2.0"'
+stdout '"result"'
+stdout '"protocolVersion"'
+stdout '"serverInfo"'
+
+# Get the tools list
+stdin tools_list.jsonrpc
+exec ./mcpserver/hello-mcp
+stdout '"jsonrpc":\s*"2.0"'
+stdout '"result"'
+stdout '"tools"'
+stdout '"name":\s*"hello"'
+
+# Verify the tool has proper input schema with our flags
+stdout '"inputSchema"'
+stdout '"properties"'
+stdout '"name":\s*{[^}]*"type":\s*"string"'
+
+# Clean up
+exec rm -rf hello mcpserver

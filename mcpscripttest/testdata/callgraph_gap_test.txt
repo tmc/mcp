@@ -1,0 +1,23 @@
+# Simple test showing the callgraph gap
+
+# Create a test that calls mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# Run callgraph on a specific binary
+exec sh -c 'printf "package main\\nimport \"os/exec\"\\nfunc main() {\\n    exec.Command(\"mcpdiff\").Run()\\n}\\n" > runner.go'
+exec go build -o runner runner.go
+
+# Analyze with callgraph
+# Analyze with callgraph
+exec sh -c 'callgraph -algo static runner.go > callgraph.txt'
+
+# Look for mcpdiff's main - won't find it
+! exec grep 'mcpdiff.*main' callgraph.txt
+
+# Can find exec.Command (how we run programs)
+exec grep 'exec\.Command' callgraph.txt
+stdout 'Command'
+
+# But no connection to mcpdiff specifically
+! exec grep -i 'mcpdiff' callgraph.txt

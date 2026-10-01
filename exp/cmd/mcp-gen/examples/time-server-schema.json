@@ -1,0 +1,86 @@
+{
+  "result": {
+    "tools": [
+      {
+        "name": "get_current_time",
+        "description": "Get current time in a specific timezone",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "IANA timezone name (e.g., 'America/New_York', 'Europe/London')"
+            }
+          },
+          "required": ["timezone"]
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "The timezone used"
+            },
+            "datetime": {
+              "type": "string",
+              "description": "Current date and time in RFC3339 format"
+            },
+            "is_dst": {
+              "type": "boolean",
+              "description": "Whether daylight saving time is in effect"
+            }
+          },
+          "required": ["timezone", "datetime", "is_dst"]
+        }
+      },
+      {
+        "name": "convert_time",
+        "description": "Convert time between timezones",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "source_timezone": {
+              "type": "string",
+              "description": "Source IANA timezone name"
+            },
+            "time": {
+              "type": "string",
+              "description": "Time to convert in 24-hour format (HH:MM)"
+            },
+            "target_timezone": {
+              "type": "string",
+              "description": "Target IANA timezone name"
+            }
+          },
+          "required": ["source_timezone", "time", "target_timezone"]
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "object",
+              "properties": {
+                "timezone": {"type": "string"},
+                "datetime": {"type": "string"},
+                "is_dst": {"type": "boolean"}
+              }
+            },
+            "target": {
+              "type": "object",
+              "properties": {
+                "timezone": {"type": "string"},
+                "datetime": {"type": "string"},
+                "is_dst": {"type": "boolean"}
+              }
+            },
+            "time_difference": {
+              "type": "string",
+              "description": "Time difference in hours"
+            }
+          },
+          "required": ["source", "target", "time_difference"]
+        }
+      }
+    ]
+  }
+}

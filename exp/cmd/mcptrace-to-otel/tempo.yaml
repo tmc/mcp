@@ -1,0 +1,58 @@
+stream_over_http_enabled: true
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+        grpc:
+          endpoint: 0.0.0.0:14250
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  lifecycle:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  trace_idle_period: 10s
+  max_block_bytes: 1_000_000
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    compaction_window: 1h
+    max_block_bytes: 100_000_000
+    block_retention: 1h
+    compacted_block_retention: 10m
+
+querier:
+  frontend_worker:
+    frontend_address: 127.0.0.1:9095
+
+storage:
+  trace:
+    backend: local
+    wal:
+      path: /tmp/tempo/wal
+      bloom_filter_shard_size_bytes: 100_000
+      v2_encoding: json
+    local:
+      path: /tmp/tempo/blocks
+
+overrides:
+  ingestion_rate_strategy: local
+  ingestion_rate_limit_bytes: 15000000
+  ingestion_burst_size_bytes: 20000000
+  max_search_bytes_per_trace: 5000

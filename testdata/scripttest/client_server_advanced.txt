@@ -1,0 +1,23 @@
+# Advanced client-server interaction tests
+
+# Set aggressive timeouts for this test
+env MCP_TOOL_TIMEOUT=3s
+
+# Test complex JSON processing with mcpspy
+exec bash -c 'printf "%s\n%s\n%s\n" "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"test\"}}" "{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"resources/list\"}" | mcpspy --pretty'
+stdout '"tools/list"'
+stdout '"tools/call"'
+stdout '"resources/list"'
+
+# Test mcpdiff with different MCP trace files
+! exec mcpdiff trace1.mcp trace2.mcp
+
+# Test mcpspy help functionality
+exec mcpspy --help
+stderr 'Usage'
+
+-- trace1.mcp --
+mcp-send {"jsonrpc": "2.0", "id": 1, "method": "initialize"} # 1000.123
+
+-- trace2.mcp --
+mcp-send {"jsonrpc": "2.0", "id": 1, "method": "tools/list"} # 1000.123

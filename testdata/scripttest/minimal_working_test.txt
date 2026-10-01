@@ -1,0 +1,25 @@
+# Minimal working test
+# Just test basic functionality without external dependencies
+
+# Test 1: Basic echo
+exec echo "hello world"
+stdout 'hello world'
+
+# Test 2: Check go is available
+exec go version
+stdout 'go version'
+
+# Test 3: Simple environment test
+env TEST_VAR=success
+exec echo $TEST_VAR
+stdout 'success'
+
+# Test 4: Basic file operations
+exec bash -c 'echo "test content" > testfile.txt'
+exec cat testfile.txt
+stdout 'test content'
+
+# Test 5: Cleanup
+exec rm -f testfile.txt
+exec echo "test completed"
+stdout 'test completed'

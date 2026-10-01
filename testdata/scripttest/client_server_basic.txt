@@ -1,0 +1,15 @@
+# Test basic client-server interaction using MCP tools
+
+# Test mcpspy basic functionality with JSON input
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-03-26\"}}" | mcpspy --pretty'
+stdout '"jsonrpc": "2.0"'
+stdout '"method": "initialize"'
+stdout '"protocolVersion": "2025-03-26"'
+
+# Test mcpdiff with identical MCP trace files
+exec bash -c 'echo "mcp-send {\"jsonrpc\":\"2.0\",\"method\":\"ping\"}" > file1.mcp && cp file1.mcp file2.mcp'
+exec mcpdiff file1.mcp file2.mcp
+stdout 'Files match exactly!'
+
+# Cleanup
+exec rm -f file1.mcp file2.mcp

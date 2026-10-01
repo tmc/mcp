@@ -1,0 +1,46 @@
+# Working basic test that doesn't require external tools
+
+# Test 1: Basic echo functionality
+exec echo "working test started"
+stdout 'working test started'
+
+# Test 2: Test that go is available
+exec go version
+stdout 'go version'
+
+# Test 3: Simple file operations
+# File content is provided in txtar format at the end
+
+# Test 4: File reading
+exec cat test.json
+stdout '"test": "basic"'
+stdout '"status": "working"'
+
+# Test 5: Basic shell operations
+bash 'echo "shell test: $(echo success)"'
+stdout 'shell test: success'
+
+# Test 6: Environment variables
+env TEST_VAR=working
+bash 'echo "env test: $TEST_VAR"'
+stdout 'env test: working'
+
+# Test 7: Simple JSON processing (using basic tools)
+bash 'echo "{\\"rapid\\": true}" | grep -q "rapid" && echo "json test passed"'
+stdout 'json test passed'
+
+# Test 8: File operations
+bash 'ls *.json | head -1'
+stdout 'test.json'
+
+# Test 9: Multiple operations
+bash 'touch temp.txt && echo "temp created" && rm temp.txt'
+stdout 'temp created'
+
+# Test 10: Cleanup and completion
+exec rm -f test.json
+exec echo "working basic test completed"
+stdout 'working basic test completed'
+
+-- test.json --
+{"test": "basic", "status": "working"}

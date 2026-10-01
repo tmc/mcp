@@ -1,0 +1,43 @@
+# Test converting cmd2mcpserver itself to an MCP server
+
+# Run cmd2mcpserver on itself with dry-run to see what it generates
+exec sh -c 'cmd2mcpserver -dry-run -source "$CMD2MCPSERVER_SOURCE" $(which cmd2mcpserver)'
+stdout '# Generated MCP server for cmd2mcpserver'
+stdout '-- go.mod --'
+stdout '-- main.go --'
+stdout '-- README.md --'
+stdout 'type Cmd2mcpserverTool struct'
+stdout '"output"'
+stdout '"module"'
+stdout '"server"'
+stdout '"tool"'
+stdout '"desc"'
+stdout '"source"'
+stdout '"dry-run"'
+stdout '"v"'
+stdout 'MCP wrapper for cmd2mcpserver command'
+
+# Check that the generated server has all our flags
+stdout '"type": "string"'
+stdout '"type": "boolean"'
+
+# Now actually generate the server (not just dry-run)
+exec sh -c 'cmd2mcpserver -output ./server -module github.com/test/cmd2mcpserver-mcp -source "$CMD2MCPSERVER_SOURCE" $(which cmd2mcpserver)'
+! stderr 'error'
+exists server/go.mod
+exists server/main.go
+exists server/bin/cmd2mcpserver
+
+# Verify the generated go.mod has the right module name
+exec cat server/go.mod
+stdout 'module github.com/test/cmd2mcpserver-mcp'
+
+# Verify the main.go has correct structure
+exec cat server/main.go
+stdout 'type Cmd2mcpserverTool struct'
+stdout 'func.*Execute.*context.Context'
+
+-- go.mod --
+module test
+
+go 1.22

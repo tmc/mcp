@@ -1,0 +1,17 @@
+# Example showing stdin command usage
+#
+# This test uses the built-in echo command to read from stdin
+
+# Set stdin content directly
+setstdin "Hello from stdin"
+cat
+stdout 'Hello from stdin'
+
+# Verify that stdin is cleared after the command
+cat
+! stdout 'Hello from stdin'
+
+# Use explicit JSON content
+setstdin {"name":"example","value":123}
+cat
+stdout '{"name":"example","value":123}'

@@ -1,0 +1,32 @@
+# Environment Variables Test - Verify Environment Configuration
+# Demonstrates: env variable setting, conditional behavior, variable verification
+
+# Set and verify environment variables
+env TEST_MODE=true
+exec printenv TEST_MODE
+stdout "true"
+
+# Set multiple variables
+env DEBUG_LEVEL=verbose
+env LOG_FORMAT=json
+exec printenv DEBUG_LEVEL
+stdout "verbose"
+
+exec printenv LOG_FORMAT
+stdout "json"
+
+# Test conditional behavior based on environment
+env SKIP_EXPENSIVE_TEST=false
+exec sh -c 'if [ "$SKIP_EXPENSIVE_TEST" = "true" ]; then echo "Skipped"; else echo "Running"; fi'
+stdout "Running"
+! stdout "Skipped"
+
+# Override environment variable
+env OPTION=new_value
+exec printenv OPTION
+stdout "new_value"
+
+# Verify variables persist across commands in same test
+env PERSISTENT_VAR=original
+exec sh -c 'echo "Value: $PERSISTENT_VAR"'
+stdout "Value: original"

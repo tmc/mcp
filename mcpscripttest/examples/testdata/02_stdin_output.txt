@@ -1,0 +1,27 @@
+# Stdin and Output Test - Verify Input Processing
+# Demonstrates: setstdin, command piping, output validation
+
+# Test basic stdin to stdout pass-through
+setstdin "Hello from stdin"
+exec cat
+stdout "Hello from stdin"
+
+# Test multi-line input
+setstdin "Line 1
+Line 2
+Line 3"
+exec cat
+stdout "Line 1"
+stdout "Line 2"
+stdout "Line 3"
+
+# Test empty input
+setstdin ""
+exec cat
+! stdout "."
+
+# Test input with special characters
+setstdin "Special: @#$%^&*()"
+exec cat
+stdout "@#"
+stdout "&"

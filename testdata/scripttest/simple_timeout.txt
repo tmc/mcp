@@ -1,0 +1,19 @@
+# Simple timeout test
+
+# Set very aggressive timeout
+env MCP_TOOL_TIMEOUT=1s
+
+# Test that quick operations work
+exec echo "fast operation"
+stdout 'fast operation'
+
+# Test bash with aggressive timeout
+env MCP_BASH_TIMEOUT=2s
+bash 'echo "bash works"'
+stdout 'bash works'
+
+# Test multiple quick operations
+exec echo "test1"
+exec echo "test2"
+exec echo "test3"
+stdout 'test3'

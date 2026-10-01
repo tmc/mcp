@@ -1,0 +1,98 @@
+# MCP Conformance Tests - Base Messaging (JSON-RPC 2.0)
+# This test validates the basic JSON-RPC message format requirements for MCP protocol
+
+# Start the test server with minimal capabilities
+exec mcp-scripttest-server --stdio
+cmp stderr "MCP server listening on stdio"
+
+# TEST 1: Request Format Requirements
+# - Must include jsonrpc: "2.0"
+# - Must include a string or integer ID (not null)
+# - Must include a method field
+# - Params are optional
+setstdin {"jsonrpc":"2.0","id":1,"method":"echo","params":{"message":"hello"}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"method":"echo"'
+stdout '"params":{"message":"hello"}'
+
+# TEST 2: Response Format Requirements
+# - Must include jsonrpc: "2.0"
+# - Must include the same ID as the request
+# - Must include either result or error, not both
+# - Error must include code and message
+setstdin {"jsonrpc":"2.0","id":2,"method":"echo","params":{"message":"test response"}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":2'
+stdout '"result":'
+! stdout '"error":'
+
+# TEST 3: Error Response Format
+setstdin {"jsonrpc":"2.0","id":3,"method":"unknown_method"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":3'
+stdout '"error":'
+stdout '"code":'
+stdout '"message":'
+! stdout '"result":'
+
+# TEST 4: Notification Format (no ID)
+# - Must include jsonrpc: "2.0"
+# - Must include a method field
+# - Must NOT include an ID field
+# - Params are optional
+setstdin {"jsonrpc":"2.0","method":"notifications/test","params":{"value":"test notification"}}
+exec cat | mcp-send --stdio
+# No response should be received for notifications
+
+# TEST 5: Invalid request - Missing jsonrpc version
+setstdin {"id":5,"method":"echo"}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 6: Invalid request - Missing method
+setstdin {"jsonrpc":"2.0","id":6}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 7: Invalid request - Null ID (not allowed in MCP)
+setstdin {"jsonrpc":"2.0","id":null,"method":"echo"}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 8: Batch request support
+setstdin [{"jsonrpc":"2.0","id":801,"method":"echo","params":{"message":"batch1"}},{"jsonrpc":"2.0","id":802,"method":"echo","params":{"message":"batch2"}}]
+exec cat | mcp-send --stdio
+stdout '"id":801'
+stdout '"result":'
+stdout '"id":802'
+stdout '"result":'
+
+# TEST 9: Batch with mixed requests and notifications
+setstdin [{"jsonrpc":"2.0","id":901,"method":"echo","params":{"message":"batch_req"}},{"jsonrpc":"2.0","method":"notifications/test","params":{"value":"batch_notif"}}]
+exec cat | mcp-send --stdio
+stdout '"id":901'
+stdout '"result":'
+# Only the request should get a response, not the notification
+
+# TEST 10: Duplicate request IDs within session (should be rejected)
+# First request with ID 1001
+setstdin {"jsonrpc":"2.0","id":1001,"method":"echo","params":{"message":"first use"}}
+exec cat | mcp-send --stdio
+stdout '"id":1001'
+stdout '"result":'
+
+# Same ID used again in same session (should be rejected)
+setstdin {"jsonrpc":"2.0","id":1001,"method":"echo","params":{"message":"duplicate id"}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"message":"Duplicate request ID"'

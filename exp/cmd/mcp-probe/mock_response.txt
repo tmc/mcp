@@ -1,0 +1,3 @@
+Content-Length: 198
+
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26","serverInfo":{"name":"mock-server","version":"1.0.0"},"capabilities":{"tools":{"listChanged":false}}}}

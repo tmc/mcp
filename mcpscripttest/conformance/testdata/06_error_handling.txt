@@ -1,0 +1,275 @@
+# MCP Conformance Tests - Error Handling
+# Tests for protocol and tool execution errors
+
+# ============================
+# PROTOCOL ERROR TESTS
+# ============================
+
+# Start the test server
+exec mcp-scripttest-server --stdio
+cmp stderr "MCP server listening on stdio"
+
+# TEST 1: Parse Error (-32700)
+# Invalid JSON
+setstdin {this is not valid json}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"error":'
+stdout '"code":-32700'
+stdout '"message":"Parse error"'
+
+# TEST 2: Invalid Request (-32600)
+# Missing required fields
+setstdin {"id":1}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+
+# TEST 3: Method Not Found (-32601)
+# Initialize first
+setstdin {"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Call non-existent method
+setstdin {"jsonrpc":"2.0","id":3,"method":"non_existent_method"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":3'
+stdout '"error":'
+stdout '"code":-32601'
+stdout '"message":"Method not found"'
+
+# TEST 4: Invalid Params (-32602)
+# Call method with invalid parameters
+setstdin {"jsonrpc":"2.0","id":4,"method":"ping","params":{"invalid":"parameter"}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":4'
+stdout '"error":'
+stdout '"code":-32602'
+stdout '"message":"Invalid params"'
+
+# TEST 5: Internal Error (-32603)
+# Force internal error in server
+setstdin {"jsonrpc":"2.0","id":5,"method":"test/force_internal_error"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":5'
+stdout '"error":'
+stdout '"code":-32603'
+stdout '"message":"Internal error"'
+
+# TEST 6: Server Error (Implementation Specific)
+# Force a server-specific error
+setstdin {"jsonrpc":"2.0","id":6,"method":"test/server_specific_error"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":6'
+stdout '"error":'
+stdout '"code":-32000'
+stdout '"message":"Server error"'
+
+# ============================
+# CUSTOM ERROR CODES
+# ============================
+
+# TEST 7: Request Cancelled Error
+exec mcp-scripttest-server --stdio --simulate-delay=5000
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Start a long-running operation in the background
+setstdin {"jsonrpc":"2.0","id":8,"method":"delayed_echo","params":{"message":"to be cancelled"}}
+exec cat | mcp-send --stdio &
+
+# Send cancellation notification
+sleep 0.5
+setstdin {"jsonrpc":"2.0","method":"notifications/$/cancelRequest","params":{"id":8}}
+exec cat | mcp-send --stdio
+
+# Should get cancellation error
+sleep 1
+stdout '"jsonrpc":"2.0"'
+stdout '"id":8'
+stdout '"error":'
+stdout '"code":-32800'
+stdout '"message":"Request cancelled"'
+
+# TEST 8: Content Length Error
+exec mcp-scripttest-server --stdio --strict-protocol
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":9,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Send a message that would exceed content length limit
+setstdin {"jsonrpc":"2.0","id":10,"method":"echo","params":{"message":"$VERY_LONG_MESSAGE_EXCEEDING_LIMIT"}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":10'
+stdout '"error":'
+stdout '"code":-32801'
+stdout '"message":"Content length exceeded"'
+
+# ============================
+# CAPABILITY ERROR TESTS
+# ============================
+
+# TEST 9: Required Capability Not Available
+exec mcp-scripttest-server --stdio --capabilities=prompts
+cmp stderr "MCP server listening on stdio"
+
+# Initialize with only prompts capability
+setstdin {"jsonrpc":"2.0","id":11,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"capabilities":'
+stdout '"prompts":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Try to use tools capability that wasn't declared
+setstdin {"jsonrpc":"2.0","id":12,"method":"tools/list"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":12'
+stdout '"error":'
+stdout '"code":-32601'
+stdout '"message":"Server does not support tools capability"'
+
+# ============================
+# TOOL EXECUTION ERROR TESTS
+# ============================
+
+# TEST 10: Tool Invocation Errors
+exec mcp-scripttest-server --stdio --capabilities=tools --tools=calculator,api_client
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":13,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Tool protocol error - unknown tool
+setstdin {"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"unknown_tool","arguments":{}}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":14'
+stdout '"error":'
+stdout '"code":-32602'
+stdout '"message":"Unknown tool: unknown_tool"'
+
+# Tool protocol error - invalid arguments
+setstdin {"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"calculator","arguments":{"invalid":"arguments"}}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":15'
+stdout '"error":'
+stdout '"code":-32602'
+stdout '"message":"Invalid arguments for tool"'
+
+# Tool execution error - division by zero (returns isError: true)
+setstdin {"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"calculator","arguments":{"operation":"divide","operands":[10,0]}}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":16'
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":"Division by zero error"'
+stdout '"isError":true'
+
+# Tool execution error - API error (returns isError: true)
+setstdin {"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"api_client","arguments":{"endpoint":"example","params":{"trigger_error":true}}}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":17'
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":"API request failed"'
+stdout '"isError":true'
+
+# ============================
+# ERROR DATA TESTS
+# ============================
+
+# TEST 11: Error Data Field
+exec mcp-scripttest-server --stdio --detailed-errors
+cmp stderr "MCP server listening on stdio"
+
+# Initialize
+setstdin {"jsonrpc":"2.0","id":18,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ErrorTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Error with data field
+setstdin {"jsonrpc":"2.0","id":19,"method":"test/error_with_data"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"id":19'
+stdout '"error":'
+stdout '"code":-32000'
+stdout '"message":"Error with structured data"'
+stdout '"data":'
+stdout '"reason":"detailed error info"'
+stdout '"details":{'
+
+# TEST 12: Invalid JSON-RPC Version
+setstdin {"jsonrpc":"1.0","id":20,"method":"test"}
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+stdout '"data":"Unsupported JSON-RPC version"'
+
+# ============================
+# BATCH ERROR TESTS
+# ============================
+
+# TEST 13: Invalid Batch
+setstdin []
+exec cat | mcp-send --stdio
+stdout '"jsonrpc":"2.0"'
+stdout '"error":'
+stdout '"code":-32600'
+stdout '"message":"Invalid request"'
+stdout '"data":"Empty batch"'
+
+# TEST 14: Batch with Some Invalid Requests
+setstdin [{"jsonrpc":"2.0","id":21,"method":"ping"},{"jsonrpc":"2.0","method":"invalid!method"},{"jsonrpc":"2.0","id":22,"method":"ping"}]
+exec cat | mcp-send --stdio
+# Should have two responses, one success and one error
+stdout '"id":21'
+stdout '"result":'
+stdout '"id":22'
+stdout '"result":'
+stdout '"error":'
+stdout '"code":-32601'
+stdout '"message":"Method not found"'

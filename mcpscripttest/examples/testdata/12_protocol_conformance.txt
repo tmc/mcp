@@ -1,0 +1,43 @@
+# Protocol Conformance Test - Strict MCP Protocol Compliance
+# Demonstrates: protocol validation, field requirements, format checking
+
+# Test required jsonrpc field
+setstdin {"jsonrpc":"2.0","id":1,"method":"test"}
+stdout '"jsonrpc":"2.0"'
+
+# Verify ID is present in response
+stdout '"id":1'
+
+# Verify ID is not null
+! stdout '"id":null'
+
+# Test either result or error (mutual exclusivity)
+# Valid responses have either result OR error, never both
+setstdin {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+stdout '"result":'
+! stdout '"error":'
+
+# Or error without result
+setstdin {"jsonrpc":"2.0","id":3,"method":"invalid"}
+stdout '"error":'
+! stdout '"error":.*"result":'
+
+# Notification format (no ID required or allowed)
+setstdin {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}}
+! stdout '"id":'
+
+# Batch request format
+setstdin [{"jsonrpc":"2.0","id":101,"method":"echo"}]
+stdout '"jsonrpc":"2.0"'
+stdout '"id":101'
+
+# Array response format
+stdout '\['
+! stdout 'null.*null'
+
+# Test string and integer IDs are both valid
+setstdin {"jsonrpc":"2.0","id":"string-id","method":"test"}
+stdout '"id":"string-id"'
+
+setstdin {"jsonrpc":"2.0","id":42,"method":"test"}
+stdout '"id":42'

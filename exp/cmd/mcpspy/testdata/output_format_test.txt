@@ -1,0 +1,78 @@
+# Output format test for mcpspy
+#
+# This script tests mcpspy's ability to handle different output formats,
+# logging options, and file output configurations.
+
+# Setup test files with sample MCP messages
+-- simple_message.json --
+{"jsonrpc":"2.0","id":"req1","method":"initialize","params":{}}
+{"jsonrpc":"2.0","id":"req2","method":"tools/list","params":{}}
+
+# Test standard output format
+cat simple_message.json | mcpspy -v -f standard_output.mcp -- echo "Standard format"
+! stderr "error"
+# Verify colored output appears in stderr
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" standard_output.mcp
+grep "initialize" standard_output.mcp
+stdout "Standard format"
+
+# Test JSON format (output file should be valid JSON)
+cat simple_message.json | mcpspy -v -f json_output.json -json-format -- echo "JSON format"
+! stderr "error"
+# Verify colored output with JSON format
+stderr "\033\\[32m" # Green color code for recv messages
+grep "\"direction\": \"recv\"" json_output.json
+grep "\"content\": {" json_output.json
+stdout "JSON format"
+
+# Test timestamp formats
+cat simple_message.json | mcpspy -v -ts-format "15:04:05" -f timestamp_output.mcp -- echo "Custom timestamp"
+! stderr "error"
+# Verify colored output with custom timestamp format
+stderr "\033\\[32m" # Green color code for recv messages
+# Check for time format HH:MM:SS
+grep -E "[0-9]{2}:[0-9]{2}:[0-9]{2}" timestamp_output.mcp
+stdout "Custom timestamp"
+
+# Test without timestamps
+cat simple_message.json | mcpspy -v -no-timestamps -f no_timestamp_output.mcp -- echo "No timestamps"
+! stderr "error"
+# Verify colored output still works without timestamps
+stderr "\033\\[32m" # Green color code for recv messages
+! grep -E "[0-9]{2}:[0-9]{2}:[0-9]{2}" no_timestamp_output.mcp
+stdout "No timestamps"
+
+# Test file output with append mode
+cat simple_message.json | mcpspy -v -f append_output.mcp -- echo "First write"
+cat simple_message.json | mcpspy -v -f append_output.mcp -a -- echo "Append mode"
+! stderr "error"
+# Verify colored output in append mode
+stderr "\033\\[32m" # Green color code for recv messages
+# Count number of occurrences of "initialize" - should be at least 2 with append
+grep -c "initialize" append_output.mcp | grep -v "^1$"
+stdout "Append mode"
+
+# Test with verbose output off
+cat simple_message.json | mcpspy -f quiet_output.mcp -- echo "Quiet mode"
+! stderr "error"
+# No colored output without -v flag
+! stderr "\033\\[32m" # No color codes without verbose mode
+# File should still contain the messages
+grep "initialize" quiet_output.mcp
+grep "tools/list" quiet_output.mcp
+stdout "Quiet mode"
+
+# Test with very verbose mode (should show additional details with color)
+cat simple_message.json | mcpspy -vv -f veryverbose_output.mcp -- echo "Very verbose mode"
+! stderr "error"
+# Verify both normal and additional colored output
+stderr "\033\\[32m" # Green color code for standard messages
+stderr "#>"      # Marker for very verbose raw input
+stdout "Very verbose mode"
+
+# Test with non-existent command (should capture error)
+! mcpspy -v -f error_output.mcp -- non_existent_command
+stderr "executable file not found"
+# Output file should still be created
+test -f error_output.mcp

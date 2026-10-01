@@ -1,0 +1,3 @@
+# Test basic functionality
+mcp-replay --help
+stderr 'Usage: .* \[options\] recording'

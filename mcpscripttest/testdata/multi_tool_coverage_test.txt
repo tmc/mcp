@@ -1,0 +1,24 @@
+# Test multiple tools with coverage collection
+# This demonstrates coverage being collected from different binaries
+
+# Use mcpdiff to compare non-identical files
+! exec mcpdiff -no-color test1.mcp test2.mcp
+stdout 'test2.mcp'
+stdout '@@ -1,2 +1,3 @@'
+
+# Use mcpcat to display the content
+exec mcpcat -color=never test1.mcp
+stderr 'initialize'
+
+# Create a combined trace with mcpspy
+exec bash -c 'echo "test trace" | mcpspy'
+stdout 'test trace'
+
+-- test1.mcp --
+mcp-send {"jsonrpc":"2.0","method":"initialize","id":1}
+mcp-recv {"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}
+
+-- test2.mcp --
+mcp-send {"jsonrpc":"2.0","method":"initialize","id":1}  
+mcp-recv {"jsonrpc":"2.0","id":1,"result":{"capabilities":{}}}
+mcp-send {"jsonrpc":"2.0","method":"ping","id":2}

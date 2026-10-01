@@ -1,0 +1,3 @@
+exec mcpdiff file1.txt file2.txt
+exec echo "Diff test"
+exec grep "pattern" file.txt

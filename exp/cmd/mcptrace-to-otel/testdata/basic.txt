@@ -1,0 +1,28 @@
+# Test basic mcptrace-to-otel functionality
+
+# Create a simple trace file
+exec cat > test.mcp << 'EOF'
+# mcptrace:v1
+mcp-recv {"jsonrpc":"2.0","method":"ping","id":1} # 1683000000.000 spanid=aaa1
+mcp-send {"jsonrpc":"2.0","id":1,"result":"pong"} # 1683000000.100 spanid=aaa2
+EOF
+
+# Convert to stdout
+exec mcptrace-to-otel -f test.mcp -type stdout
+stdout 'Name.*mcp.recv.ping'
+stdout 'Name.*mcp.send'
+stdout 'Attributes:'
+stdout 'mcp.direction.*recv'
+stdout 'rpc.method.*ping'
+
+# Test with trace context
+exec cat > traced.mcp << 'EOF'
+# mcptrace:v1 traceparent=00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+mcp-recv {"jsonrpc":"2.0","method":"test","id":1} # 1683000000.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":"ok"} # 1683000000.100
+EOF
+
+exec mcptrace-to-otel -f traced.mcp -type stdout
+stdout 'mcp-trace'  # Root span name
+stdout 'mcp.recv.test'
+stdout 'mcp.send'

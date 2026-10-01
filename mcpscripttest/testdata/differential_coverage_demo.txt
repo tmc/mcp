@@ -1,0 +1,37 @@
+# Demonstration of differential coverage with testcallgraph
+
+# Create a test that runs different programs
+exec mkdir -p tests
+exec sh -c 'printf "exec mcpdiff --help\\nexec mcp-spy -- trace.json\\n" > tests/test1.txt'
+exec sh -c 'printf "exec mcpspy -- trace.json\\nexec mcp-test -- go test ./...\\nexec go test -cover ./pkg/...\\n" > tests/test2.txt'
+
+# Simulate baseline coverage
+exec mkdir -p cov/baseline
+exec sh -c 'printf "github.com/tmc/mcp/cmd/mcpdiff\\t70.5%%\\ngithub.com/tmc/mcp/cmd/mcp-spy\\t65.0%%\\ngithub.com/tmc/mcp/core\\t80.0%%\\n" > cov/baseline/summary.txt'
+
+# Simulate improved coverage after running test2
+exec mkdir -p cov/after_test2
+exec sh -c 'printf "github.com/tmc/mcp/cmd/mcpdiff\\t70.5%%\\ngithub.com/tmc/mcp/cmd/mcp-spy\\t68.0%%\\ngithub.com/tmc/mcp/cmd/mcp-test\\t55.0%%\\ngithub.com/tmc/mcp/core\\t82.5%%\\ngithub.com/tmc/mcp/pkg\\t45.0%%\\n" > cov/after_test2/summary.txt'
+
+# Analyze which test contributed to coverage improvements
+echo "=== Analyzing test contributions to coverage ==="
+
+# Show test1 programs
+exec testcallgraph -analyze mcpdiff tests/test1.txt
+exec testcallgraph -analyze mcp-spy tests/test1.txt
+
+# Show test2 programs and coverage impact
+exec testcallgraph tests/test2.txt
+stdout 'mcp-test'
+stdout 'go.*test'
+
+echo "=== Coverage impact analysis ==="
+echo "test1.txt: Uses mcpdiff, mcp-spy (no coverage change)"
+echo "test2.txt: Uses mcp-spy, mcp-test, go test"
+echo "  - Improved mcp-spy coverage by 3%"
+echo "  - Added new coverage for mcp-test (55%)"
+echo "  - Added new coverage for pkg (45%)"
+echo "  - Improved core coverage by 2.5%"
+
+# This demonstrates how testcallgraph can help identify
+# which tests are responsible for coverage improvements

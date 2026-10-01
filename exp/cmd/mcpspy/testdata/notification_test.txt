@@ -1,0 +1,68 @@
+# Notification test for mcpspy
+#
+# This script tests mcpspy's ability to handle server-sent notifications
+# (messages without an ID) correctly in various formats.
+
+# Setup test files with sample MCP notifications
+-- notifications.json --
+{"jsonrpc":"2.0","method":"notification/system","params":{"type":"info","message":"System starting"}}
+{"jsonrpc":"2.0","method":"notification/log","params":{"level":"info","message":"Operation completed"}}
+{"jsonrpc":"2.0","id":"req1","method":"normal_request","params":{}}
+{"jsonrpc":"2.0","method":"notification/progress","params":{"percent":50}}
+
+-- notification_with_requests.json --
+{"jsonrpc":"2.0","id":"req1","method":"initialize","params":{}}
+{"jsonrpc":"2.0","method":"notification/status","params":{"status":"connected"}}
+{"jsonrpc":"2.0","id":"req2","method":"tools/list","params":{}}
+{"jsonrpc":"2.0","method":"notification/status","params":{"status":"processing"}}
+
+# Test capturing notifications
+cat notifications.json | mcpspy -v -f output_notif1.mcp -- echo "Capturing notifications"
+! stderr "error"
+# Verify colored output appears in stderr for notifications
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output_notif1.mcp
+stdout "Capturing notifications"
+
+# Verify notifications are properly captured and labeled
+grep "notification/system" output_notif1.mcp
+grep "notification/log" output_notif1.mcp
+grep "notification/progress" output_notif1.mcp
+grep "normal_request" output_notif1.mcp
+
+# Test notifications with pretty printing enabled
+cat notifications.json | mcpspy -v -pretty -f output_notif2.mcp -- echo "Pretty notifications"
+! stderr "error"
+# Verify colored output with pretty printing
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output_notif2.mcp
+stdout "Pretty notifications"
+
+# Verify pretty formatting of notifications
+grep "\"method\": \"notification/system\"" output_notif2.mcp
+grep "\"message\": \"System starting\"" output_notif2.mcp
+grep "\"percent\": 50" output_notif2.mcp
+
+# Test interleaved notifications and requests
+cat notification_with_requests.json | mcpspy -v -f output_notif3.mcp -- echo "Interleaved messages"
+! stderr "error"
+# Verify colored output for interleaved messages
+stderr "\033\\[32m" # Green color code for recv messages
+grep "mcp-recv" output_notif3.mcp
+stdout "Interleaved messages"
+
+# Verify order is preserved for interleaved notifications and requests
+# We can't easily verify exact order, but we can check that all messages are present
+grep "initialize" output_notif3.mcp
+grep "notification/status" output_notif3.mcp
+grep "tools/list" output_notif3.mcp
+grep "\"status\": \"processing\"" output_notif3.mcp
+
+# Test bi-directional communication with color
+# (This tests response colors which should be blue)
+cat notification_with_requests.json | mcpspy -v -f output_notif4.mcp -- mcpspy -v -f output_notif4_inner.mcp -- echo "Colored responses"
+! stderr "error"
+# Verify both colors are present in a pipeline
+stderr "\033\\[32m" # Green color code for recv messages
+stderr "\033\\[34m" # Blue color code for send messages
+stdout "Colored responses"

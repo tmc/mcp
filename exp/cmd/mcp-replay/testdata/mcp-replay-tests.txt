@@ -1,0 +1,33 @@
+# Test MCP-Replay Mock Client/Server Pipeline
+
+# Run the full pipeline
+# Using single quotes to avoid shell interpretation issues
+exec bash -c 'mcp-replay -speed=10 -mock-client basic_sample.mcp | mcpspy -v -f test_replay.mcp -- mcp-replay -speed=10 -mock-server basic_sample.mcp'
+
+# Verify mcpspy created a replay file
+exists test_replay.mcp
+
+# Check that all original messages are present in the new trace
+# Note: Order of messages may vary in trace files due to race conditions
+cat test_replay.mcp
+stdout "initialize"
+stdout "ping"
+stdout "tools/list"
+stdout "tools/call"
+stdout "exit"
+
+-- basic_sample.mcp --
+mcp-recv {"jsonrpc":"2.0","method":"initialize","id":1} # 1683000000.000
+mcp-send {"jsonrpc":"2.0","id":1,"result":{"capabilities":{"server":true}}} # 1683000000.550
+mcp-recv {"jsonrpc":"2.0","method":"ping","id":2} # 1683000001.300
+mcp-send {"jsonrpc":"2.0","id":2,"result":"pong"} # 1683000001.320
+mcp-send {"method":"notifications/message","params":{"level":"error","data":"Error-level message"},"jsonrpc":"2.0"} # 1683000001.450
+mcp-recv {"jsonrpc":"2.0","method":"tools/list","id":3} # 1683000002.150
+mcp-send {"jsonrpc":"2.0","id":3,"result":{"tools":[{"name":"echo","description":"Echo tool"}]}} # 1683000002.180
+mcp-send {"method":"notifications/stderr","params":{"content":"Error message from stderr"},"jsonrpc":"2.0"} # 1683000002.350
+mcp-recv {"jsonrpc":"2.0","method":"tools/call","id":4,"params":{"name":"echo","arguments":{"message":"test"}}} # 1683000003.250
+mcp-send {"jsonrpc":"2.0","id":4,"result":{"message":"test"}} # 1683000003.270
+mcp-send {"method":"notifications/message","params":{"level":"emergency","data":"Emergency-level message"},"jsonrpc":"2.0"} # 1683000003.450
+mcp-recv {"jsonrpc":"2.0","method":"exit"} # 1683000004.100
+
+

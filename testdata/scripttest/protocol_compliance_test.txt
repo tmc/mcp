@@ -1,0 +1,21 @@
+# Protocol Compliance Test
+# Tests protocol compliance using static validation
+
+exec echo "Testing protocol compliance"
+
+# Test protocol version validation
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-03-26\", \"capabilities\": {}}}" | mcpspy --pretty'
+stdout '"jsonrpc": "2.0"'
+stdout '"protocolVersion": "2025-03-26"'
+stdout '"capabilities"'
+
+# Test method name validation  
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/list\"}" | mcpspy --pretty'
+stdout '"tools/list"'
+
+# Test tool invocation format
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"test_tool\", \"arguments\": {}}}" | mcpspy --pretty'
+stdout '"tools/call"'
+stdout '"test_tool"'
+
+exec echo "Protocol compliance test completed"

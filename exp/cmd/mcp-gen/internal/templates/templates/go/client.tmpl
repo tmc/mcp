@@ -1,0 +1,111 @@
+package {{.Package}}
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+)
+
+// {{.Client.Name}} provides a client for the MCP server.
+type {{.Client.Name}} struct {
+	transport mcp.Transport
+	client *mcp.Client
+	session *mcp.ClientSession
+}
+
+// New{{.Client.Name}} creates a client for transport.
+func New{{.Client.Name}}(transport mcp.Transport) (*{{.Client.Name}}, error) {
+	if transport == nil { return nil, fmt.Errorf("transport is required") }
+	return &{{.Client.Name}}{transport: transport}, nil
+}
+
+// Initialize connects to the MCP server.
+func (c *{{.Client.Name}}) Initialize(ctx context.Context, clientInfo mcp.Implementation) error {
+	if c.session != nil { return fmt.Errorf("client is already initialized") }
+	c.client = mcp.NewClient(&clientInfo, nil)
+	session, err := c.client.Connect(ctx, c.transport, nil)
+	if err != nil { return fmt.Errorf("connect to server: %w", err) }
+	c.session = session
+	return nil
+}
+
+// Close closes the client session.
+func (c *{{.Client.Name}}) Close() error {
+	if c.session == nil { return nil }
+	return c.session.Close()
+}
+
+{{range .Tools}}{{$tool := .}}
+// {{.Name | toPascalCase}}Input contains the input for the {{.Name}} tool.
+type {{.Name | toPascalCase}}Input struct {
+	{{range $name, $schema := .InputSchema.properties}}
+	{{$name | toGoName}} {{$schema | jsonToGoType}} `json:"{{$name}}"{{if not (hasString $tool.InputSchema.required $name)}},omitempty{{end}}`
+	{{end}}
+}
+
+// {{.Name | toPascalCase}}Output contains the result of calling {{.Name}}.
+type {{.Name | toPascalCase}}Output struct {
+	Content []mcp.Content `json:"content"`
+	StructuredContent any `json:"structuredContent,omitempty"`
+	IsError bool `json:"isError,omitempty"`
+}
+
+// {{.Name | toPascalCase}} calls the {{.Name}} tool.
+func (c *{{$.Client.Name}}) {{.Name | toPascalCase}}(ctx context.Context, input *{{.Name | toPascalCase}}Input) (*{{.Name | toPascalCase}}Output, error) {
+	if c.session == nil { return nil, fmt.Errorf("client is not initialized") }
+	result, err := c.session.CallTool(ctx, &mcp.CallToolParams{Name: "{{.Name}}", Arguments: input})
+	if err != nil { return nil, fmt.Errorf("call tool: %w", err) }
+	return &{{.Name | toPascalCase}}Output{Content: result.Content, StructuredContent: result.StructuredContent, IsError: result.IsError}, nil
+}
+{{end}}
+
+// GetAvailableTools returns the server tools.
+func (c *{{.Client.Name}}) GetAvailableTools(ctx context.Context) ([]*mcp.Tool, error) {
+	if c.session == nil { return nil, fmt.Errorf("client is not initialized") }
+	result, err := c.session.ListTools(ctx, nil)
+	if err != nil { return nil, fmt.Errorf("list tools: %w", err) }
+	return result.Tools, nil
+}
+
+// GetServerInfo returns the server capabilities from initialization.
+func (c *{{.Client.Name}}) GetServerInfo(ctx context.Context) (*mcp.ServerCapabilities, error) {
+	if c.session == nil { return nil, fmt.Errorf("client is not initialized") }
+	return c.session.InitializeResult().Capabilities, nil
+}
+
+// Ping checks the connection using the MCP ping method.
+func (c *{{.Client.Name}}) Ping(ctx context.Context) error {
+	if c.session == nil { return fmt.Errorf("client is not initialized") }
+	return c.session.Ping(ctx, nil)
+}
+
+// WithTimeout creates a context with the specified timeout.
+func (c *{{.Client.Name}}) WithTimeout(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
+}
+
+// WithDeadline creates a context with the specified deadline.
+func (c *{{.Client.Name}}) WithDeadline(deadline time.Time) (context.Context, context.CancelFunc) {
+	return context.WithDeadline(context.Background(), deadline)
+}
+
+// HealthCheck checks the connection and server tools.
+func (c *{{.Client.Name}}) HealthCheck(ctx context.Context) error {
+	if err := c.Ping(ctx); err != nil { return fmt.Errorf("ping: %w", err) }
+	tools, err := c.GetAvailableTools(ctx)
+	if err != nil { return fmt.Errorf("list tools: %w", err) }
+	available := make(map[string]bool, len(tools))
+	for _, tool := range tools { if tool != nil { available[tool.Name] = true } }
+	for _, name := range []string{ {{range .Tools}}"{{.Name}}",{{end}} } {
+		if !available[name] { return fmt.Errorf("expected tool %s is unavailable", name) }
+	}
+	return nil
+}
+
+// IsConnected reports whether the server responds to ping.
+func (c *{{.Client.Name}}) IsConnected(ctx context.Context) bool { return c.Ping(ctx) == nil }
+
+// GetClient returns the active client session.
+func (c *{{.Client.Name}}) GetClient() *mcp.ClientSession { return c.session }

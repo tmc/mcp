@@ -1,0 +1,20 @@
+# Test scripttest's own coverage collection across binaries
+# This test demonstrates coverage working when scripttest calls coverage-enabled tools
+
+# First use mcpdiff to compare files
+exec mcpdiff file1.mcp file2.mcp
+stdout 'Files match exactly!'
+
+# Use mcpcat to display content
+exec mcpcat -color=never file1.mcp
+stderr 'mcp-send'
+
+# Use mcpspy to spy on communication
+exec bash -c 'echo "test" | mcpspy'
+stdout 'test'
+
+-- file1.mcp --
+mcp-send {"jsonrpc":"2.0","method":"test","id":1}
+
+-- file2.mcp --
+mcp-send {"jsonrpc":"2.0","method":"test","id":1}

@@ -1,0 +1,27 @@
+# Test basic mcp-shadow functionality
+
+# Make echo.sh executable
+exec chmod +x $WORK/echo.sh
+
+# Use echo.sh as servers
+exec sh -c 'echo "{\"jsonrpc\":\"2.0\",\"method\":\"test\",\"id\":1}" | mcp-shadow -primary "$WORK/echo.sh" -shadow "$WORK/echo.sh" -o shadow.mcp -q'
+
+# Give it time to process
+exec sleep 0.5
+
+# Check that the trace file was created
+exec test -f shadow.mcp
+! stderr .
+
+# Test with trace context
+exec sh -c 'echo "{\"jsonrpc\":\"2.0\",\"method\":\"ping\",\"id\":1}" | mcp-shadow -primary "$WORK/echo.sh" -shadow "$WORK/echo.sh" -trace -baggage "test=true" -o traced.mcp -q'
+exec sleep 0.5
+
+# Check that trace file exists
+exec test -f traced.mcp
+! stderr .
+
+-- echo.sh --
+#!/bin/sh
+read line
+echo "$line"

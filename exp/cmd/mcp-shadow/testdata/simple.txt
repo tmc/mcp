@@ -1,0 +1,11 @@
+# Simple test to verify mcp-shadow functionality
+
+# Use cat as both primary and shadow servers - they just echo what they receive
+exec sh -c 'echo "{\"jsonrpc\":\"2.0\",\"method\":\"test\",\"id\":1}" | mcp-shadow -primary "cat" -shadow "cat" -o output.mcp -q'
+
+# Small delay to ensure processing
+exec sleep 0.2
+
+# Check that the trace file was created
+exec test -f output.mcp
+! stderr .

@@ -1,0 +1,27 @@
+# Enhanced stitching: Handles custom commands beyond just exec
+
+# Regular exec command
+exec sh -c 'printf "mcp-send {\"jsonrpc\":\"2.0\",\"method\":\"ping\"}\n" > trace1.mcp && cp trace1.mcp trace2.mcp'
+exec mcpdiff --help
+stderr 'Usage'
+
+# Custom mcpdiff command (without exec)
+mcpdiff trace1.mcp trace2.mcp
+
+# MCP tool commands
+mcp-spy -- sh -c 'cat >/dev/null'
+exec echo "testing"
+
+# Server commands that start long-running processes
+exec echo "server started"
+mcp-serve -- echo "serving"
+
+# Commands that interact with existing servers
+# mcp-send myserver {"method":"test"}
+# mcp-server-stop myserver
+
+# Enhanced stitcher handles all these cases:
+# - exec commands (standard)
+# - Custom MCP commands that execute programs
+# - Server commands that start processes
+# - Commands that manage existing processes

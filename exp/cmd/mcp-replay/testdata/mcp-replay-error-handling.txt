@@ -1,0 +1,34 @@
+# Error Handling Tests for MCP-Replay
+#
+# This test verifies that mcp-replay:
+# 1. Handles malformed JSON gracefully
+# 2. Continues processing valid messages even when some are invalid
+# 3. Does not crash when processing invalid input
+
+# === Malformed JSON Test ===
+# Test how mcp-replay handles malformed messages (use 10x speed for faster tests)
+exec mcp-replay -v -speed=10 malformed.mcp
+! stdout 'panic:'
+# Don't assert any specific stderr content since we're only testing that it doesn't crash
+
+# === Mixed Valid/Invalid Messages Test ===
+# Test with mixed valid and invalid messages - ensure it continues processing
+exec mcp-replay -v -speed=10 mixed.mcp
+! stdout 'panic:'
+# The warning message goes to stderr but we don't need to check specific content
+
+# Test Files with Embedded Timestamps (millisecond precision for timing tests)
+
+-- malformed.mcp --
+mcp-send {"this is not valid json # 1683000000.000
+mcp-recv {"method":"test","params":"also broken}} # 1683000001.000
+mcp-send {"valid": true, "id": "test-id"} # 1683000002.000
+mcp-recv {"result": "ok", "id": "test-id"} # 1683000003.000
+
+-- mixed.mcp --
+mcp-send {"this is not valid json # 1683000000.000
+mcp-send {"valid":true, "id":"request1"} # 1683000001.000
+mcp-recv {"result":{"ok":true}, "id":"request1"} # 1683000001.500
+mcp-recv {"method":"test","params":"also broken}} # 1683000002.000
+mcp-send {"valid": true, "id": "test-id2"} # 1683000003.000
+mcp-recv {"result": "ok", "id": "test-id2"} # 1683000003.500

@@ -1,0 +1,22 @@
+# Test showing callgraph doesn't connect scripttest to programs it executes
+# This is self-referential - using mcpscripttest to test mcpscripttest's callgraph limitation
+
+# Create a simple test that calls a program
+exec mkdir -p testdir
+exec sh -c 'printf "exec echo \"Hello from test\"\nstdout \"Hello\"\n" > testdir/simple.txt'
+
+# Run mcpscripttest on our simple test
+# Create dummy test for mcpscripttest to run
+mkdir -p testdata
+exec sh -c 'echo "echo hello" > testdata/dummy.txt'
+
+# Run mcpscripttest on the dummy test
+exec sh -c 'mcpscripttest -- echo "dummy server" > stdout 2>&1'
+exec grep 'PASS' stdout
+stdout 'dummy.txt'
+
+# Skipping static analysis of source package as it requires source access
+# exec callgraph -algo static github.com/tmc/mcp/exp/cmd/mcpscripttest
+
+# This shows the gap: callgraph sees that mcpscripttest uses exec.Command
+# but doesn't know which specific programs it executes

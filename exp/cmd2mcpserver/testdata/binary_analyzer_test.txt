@@ -1,0 +1,56 @@
+# Test binary analyzer functionality
+#
+# This test verifies that cmd2mcpserver can analyze Go binaries
+
+# Build a test program
+-- analyzer_test/main.go --
+// Package main provides a test CLI tool for analysis
+package main
+
+import (
+	"flag"
+	"fmt"
+	"strings"
+)
+
+var (
+	name = flag.String("name", "world", "name to greet")
+	loud = flag.Bool("loud", false, "shout the greeting")
+)
+
+func main() {
+	flag.Parse()
+	msg := fmt.Sprintf("Hello, %s!", *name)
+	if *loud {
+		msg = strings.ToUpper(msg)
+	}
+	fmt.Println(msg)
+}
+
+-- analyzer_test/go.mod --
+module github.com/test/analyzer_test
+
+go 1.21
+
+-- analyzer_test/main_test.go --
+package main
+
+import "testing"
+
+func TestGreeting(t *testing.T) {
+	// Dummy test
+}
+
+# Build the binary
+cd analyzer_test
+exec go build -o test_binary
+
+# Test cmd2mcpserver with verbose output on the binary
+exec go run ../../../cmd/cmd2mcpserver -v -tool-def test_binary
+stdout 'Binary Analysis:'
+stdout 'Module: github.com/test/analyzer_test'
+
+# Test that automatic source detection works
+exec go run ../../../cmd/cmd2mcpserver -v test_binary
+stdout 'Using source directory from binary analysis'
+stdout 'Extracted 2 flag definitions'

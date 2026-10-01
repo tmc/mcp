@@ -1,0 +1,23 @@
+exec $MCPDIFF -calls a.mcp ids.mcp
+! stdout .
+exec $MCPDIFF -calls -json a.mcp ids.mcp
+stdout '^\[\]'
+! exec $MCPDIFF -calls a.mcp changed.mcp
+stdout 'response result or error changed'
+stderr '^$'
+! exec $MCPDIFF -calls a.mcp incomplete.mcp
+stderr 'no response observed'
+! exec $MCPDIFF -calls -timing a.mcp ids.mcp
+stderr 'duration unavailable'
+
+-- a.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"ping"}
+mcp-recv {"jsonrpc":"2.0","id":1,"result":{"n":9007199254740993}}
+-- ids.mcp --
+mcp-send {"jsonrpc":"2.0","id":"different","method":"ping"}
+mcp-recv {"jsonrpc":"2.0","id":"different","result":{"n":9007199254740993}}
+-- changed.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"ping"}
+mcp-recv {"jsonrpc":"2.0","id":1,"error":{"code":-1,"message":"failed"}}
+-- incomplete.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"ping"}

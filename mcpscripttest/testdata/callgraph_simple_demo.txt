@@ -1,0 +1,18 @@
+# Simple demonstration of the callgraph limitation
+# This test executes an external program but static analysis can't see this connection
+
+# Step 1: This test executes mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# Step 2: Create a simple Go program that also executes mcpdiff
+exec mkdir -p demo
+exec sh -c 'printf "package main\nimport \"os/exec\"\nfunc main() {\n    cmd := exec.Command(\"mcpdiff\", \"--help\")\n    cmd.Run()\n}\n" > demo/test_runner.go'
+
+# Step 3: If we had callgraph, it would show:
+# - The test_runner.go calls exec.Command
+# - But NOT that it specifically calls mcpdiff
+# - And NOT that this scripttest also calls mcpdiff
+
+# This gap is what our enhanced testcallgraph tool will address:
+# Dynamic execution tracking to connect test scripts to the programs they run

@@ -1,0 +1,51 @@
+# Test cmd2mcpserver dry-run functionality
+#
+# This test verifies that cmd2mcpserver can output txtar format
+# when using the -dry-run flag
+
+# Create a test program in the workspace
+-- testprog/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var name = flag.String("name", "world", "name to greet")
+var verbose = flag.Bool("verbose", false, "enable verbose output")
+
+func main() {
+	flag.Parse()
+	if *verbose {
+		fmt.Printf("Greeting %s\n", *name)
+	}
+	fmt.Printf("Hello, %s!\n", *name)
+}
+
+-- testprog/go.mod --
+module github.com/test/testprog
+
+go 1.21
+
+# Run cmd2mcpserver with dry-run flag
+exec ../../cmd2mcpserver -dry-run testprog
+stdout "-- main.go --"
+stdout "-- go.mod --"
+stdout "-- README.md --"
+
+# Check for expected content in the output
+stdout "modelcontextprotocol"
+stdout "testprog"
+stdout "MCP server"
+
+# Verify flag definitions are detected and included
+stdout '"name"'
+stdout '"verbose"'
+
+# Check that the generated code returns stdout, stderr, and returnCode
+stdout '"stdout":\s*stdout.String\(\)'
+stdout '"stderr":\s*stderr.String\(\)'
+stdout '"returnCode":\s*0'
+stdout 'var stdout, stderr bytes.Buffer'
+! stderr "error"

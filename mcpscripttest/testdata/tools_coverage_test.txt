@@ -1,0 +1,15 @@
+# Test that tools can be installed with coverage
+
+# Run mcpdiff help to ensure it's installed
+exec mcpdiff --help
+stderr 'Usage: mcpdiff'
+
+# Test that mcpdiff actually works
+exec mcpdiff file1.mcp file2.mcp
+stdout 'Files match exactly!'
+
+-- file1.mcp --
+mcp-send {"jsonrpc":"2.0","method":"test"}
+
+-- file2.mcp --
+mcp-send {"jsonrpc":"2.0","method":"test"}

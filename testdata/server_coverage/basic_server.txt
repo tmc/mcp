@@ -1,0 +1,16 @@
+# Basic MCP server functionality tests
+# This tests basic server tool functionality
+
+# Set test environment
+env MCP_TOOL_TIMEOUT=10s
+
+# Test basic mcpspy functionality
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-03-26\", \"capabilities\": {}}}" | mcpspy --pretty'
+stdout '"jsonrpc": "2.0"'
+stdout '"method": "initialize"'
+stdout '"protocolVersion": "2025-03-26"'
+
+# Test tools request
+exec bash -c 'echo "{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/list\", \"params\": {}}" | mcpspy --pretty'
+stdout '"jsonrpc": "2.0"'
+stdout '"method": "tools/list"'

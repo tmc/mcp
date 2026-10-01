@@ -1,0 +1,30 @@
+# Test showing that standard callgraph does NOT stitch test scripts to programs
+
+# Create a simple test that calls mcpdiff
+exec mcpdiff --help
+stderr 'Usage'
+
+# Create a simple Go test that uses exec.Command
+mkdir -p test_project
+
+# Create the test file using echo and redirects instead of setstdin
+exec echo 'package main_test' > test_project/test_example.go
+exec echo '' >> test_project/test_example.go
+exec echo 'import (' >> test_project/test_example.go
+exec echo '    "os/exec"' >> test_project/test_example.go
+exec echo '    "testing"' >> test_project/test_example.go
+exec echo ')' >> test_project/test_example.go
+exec echo '' >> test_project/test_example.go
+exec echo 'func TestCallsMCPDiff(t *testing.T) {' >> test_project/test_example.go
+exec echo '    cmd := exec.Command("mcpdiff", "--version")' >> test_project/test_example.go
+exec echo '    if err := cmd.Run(); err != nil {' >> test_project/test_example.go
+exec echo '        t.Fatal(err)' >> test_project/test_example.go
+exec echo '    }' >> test_project/test_example.go
+exec echo '}' >> test_project/test_example.go
+
+# If we ran standard callgraph on this, it would show:
+# - The test calls exec.Command
+# - But NOT what specific binary (mcpdiff) is executed
+# - And NOT the connection to mcpdiff's main() function
+
+# This is the gap our testcallgraph tool will fix

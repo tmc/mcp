@@ -1,0 +1,69 @@
+# Integration test for cmd2mcpserver
+#
+# This test creates a simple program, converts it with cmd2mcpserver,
+# and verifies the MCP server operates correctly
+
+# Create test program with flags
+-- testprog/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var name = flag.String("name", "world", "name to greet")
+var count = flag.Int("count", 1, "number of times to greet")
+var verbose = flag.Bool("verbose", false, "enable verbose output")
+
+func main() {
+	flag.Parse()
+	if *verbose {
+		fmt.Printf("Greeting %s %d times\n", *name, *count)
+	}
+	for i := 0; i < *count; i++ {
+		fmt.Printf("Hello, %s!\n", *name)
+	}
+}
+
+-- testprog/go.mod --
+module github.com/test/testprog
+
+go 1.21
+
+# Build cmd2mcpserver (assumes it's in the PATH or relative location)
+# For testing, we use the built binary from the Go test environment
+exec go run ../../cmd/cmd2mcpserver testprog
+stdout "Server generated successfully"
+stdout "mcpserver"
+
+# Check generated files
+exec ls mcpserver
+stdout "main.go"
+stdout "go.mod"
+stdout "README.md"
+
+# Verify the README contains usage information
+exec cat mcpserver/README.md
+stdout "testprog MCP Server"
+stdout "Model Context Protocol"
+stdout "go run main.go"
+
+# Use dry-run to verify tool schema generation
+exec go run ../../cmd/cmd2mcpserver -dry-run testprog
+stdout "-- main.go --"
+stdout "InputSchema.*json.RawMessage"
+stdout '"properties"'
+stdout '"name"'
+stdout '"count"'
+stdout '"verbose"'
+
+# Verify multiple flags are properly detected
+stdout '"type":\s*"string".*name'
+stdout '"type":\s*"integer".*count'  
+stdout '"type":\s*"boolean".*verbose'
+
+# Verify proper flag descriptions are included
+stdout 'name to greet'
+stdout 'number of times to greet'
+stdout 'enable verbose output'

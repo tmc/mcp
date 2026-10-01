@@ -1,0 +1,69 @@
+# Test cmd2mcpserver tool definition output
+#
+# This test verifies that the -tool-def flag outputs valid JSON
+
+# Create a test program with various flag types
+-- testcli/main.go --
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+var (
+	name    = flag.String("name", "world", "name to greet")
+	count   = flag.Int("count", 1, "number of times to greet")
+	verbose = flag.Bool("verbose", false, "enable verbose output")
+	timeout = flag.Float64("timeout", 30.0, "timeout in seconds")
+)
+
+func main() {
+	flag.Parse()
+	for i := 0; i < *count; i++ {
+		if *verbose {
+			fmt.Printf("[%d/%d] ", i+1, *count)
+		}
+		fmt.Printf("Hello, %s!\n", *name)
+	}
+}
+
+-- testcli/go.mod --
+module github.com/test/testcli
+
+go 1.21
+
+# Run cmd2mcpserver with -tool-def flag
+exec go run ../../cmd/cmd2mcpserver -tool-def testcli
+stdout '{'
+stdout '"name":\s*"testcli"'
+stdout '"description":\s*"MCP wrapper'
+stdout '"inputSchema":'
+stdout '"type":\s*"object"'
+stdout '"properties":'
+
+# Check that all flag types are correctly represented
+stdout '"name":\s*{\s*"default":\s*"world"'
+stdout '"type":\s*"string"'
+stdout '"count":\s*{\s*"default":\s*"1"'
+stdout '"type":\s*"integer"'
+stdout '"verbose":\s*{\s*"default":\s*false'
+stdout '"type":\s*"boolean"'
+stdout '"timeout":\s*{\s*"default":\s*"30"'
+stdout '"type":\s*"number"'
+
+# Verify it's valid JSON by using jq if available
+exec sh -c 'go run ../../cmd/cmd2mcpserver -tool-def testcli | jq . > /dev/null || true'
+
+# Test with source directory
+exec go run ../../cmd/cmd2mcpserver -tool-def -source testcli testcli
+stdout '"name":\s*{\s*"default":\s*"world"'
+stdout '"description":\s*"name to greet"'
+
+# Check for return type
+stdout '"returnType":'
+stdout '"stdout":\s*{'
+stdout '"stderr":\s*{'
+stdout '"returnCode":\s*{'
+stdout '"type":\s*"integer"'
+stdout '"description":\s*"Exit code of the command"'

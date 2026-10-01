@@ -1,0 +1,28 @@
+# Integration Workflow Test - End-to-End MCP Interaction
+# Demonstrates: multi-step workflows, state progression, complete server interaction
+
+# Step 1: Initialize connection
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"IntegrationTest","version":"1.0"}}}
+stdout '"result":'
+stdout '"protocolVersion":'
+
+# Step 2: List available tools
+setstdin {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+stdout '"tools":'
+stdout '"name":'
+
+# Step 3: Get tool details (verify tool listing contains valid tools)
+stdout '"inputSchema":'
+
+# Step 4: Verify complete workflow responses are valid JSON-RPC
+stdout '"jsonrpc":"2.0"'
+stdout '"id":'
+
+# Step 5: Verify no unexpected errors occurred throughout
+! stdout '"error":.*"message":"internal'
+
+# Step 6: All responses should be properly formatted
+! stdout 'null.*null.*null'
+
+# Step 7: State should be consistent
+stdout '"result":'

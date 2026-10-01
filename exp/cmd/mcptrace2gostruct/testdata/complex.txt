@@ -1,0 +1,61 @@
+# Test complex schema with nested objects and arrays
+cat > complex_schema.json << 'EOF'
+{
+  "type": "object",
+  "description": "A complex test schema",
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp"
+    },
+    "user": {
+      "type": "object",
+      "description": "User information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "User's name"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User's email"
+        }
+      },
+      "required": ["name", "email"]
+    },
+    "tags": {
+      "type": "array",
+      "description": "List of tags",
+      "items": {
+        "type": "string"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Additional metadata"
+    }
+  },
+  "required": ["id", "created", "user"]
+}
+EOF
+
+# Process complex schema
+exec mcptrace2gostruct -package complex complex_schema.json
+stdout 'package complex'
+stdout 'Schema - A complex test schema'
+stdout 'Created time.Time'
+stdout 'ID string'
+stdout 'Metadata map\[string\]string'
+stdout 'Tags \[\]string'
+stdout 'User map\[string\]interface{}'
+! stderr 'ERROR'

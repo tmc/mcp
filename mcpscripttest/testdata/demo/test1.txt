@@ -1,0 +1,2 @@
+exec echo "test"
+exec mcpdiff file1 file2

@@ -1,0 +1,241 @@
+# MCP Conformance Tests - Tools
+# Tests for tool listing, invocation, and error handling
+
+# Start the test server with tool capabilities
+exec mcp-scripttest-server --stdio --capabilities=tools --list-change-support --tools=get_weather,calculator,search,fetch_image
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"capabilities":'
+stdout '"tools":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# ============================
+# TOOL LISTING TESTS
+# ============================
+
+# TEST 1: Basic Tool Listing
+setstdin {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"tools":'
+stdout '"name":"get_weather"'
+stdout '"name":"calculator"'
+stdout '"name":"search"'
+stdout '"name":"fetch_image"'
+
+# TEST 2: Tool Schema Information
+# Each tool should include a description and input schema
+setstdin {"jsonrpc":"2.0","id":3,"method":"tools/list"}
+exec cat | mcp-send --stdio
+stdout '"description":'
+stdout '"inputSchema":'
+stdout '"type":"object"'
+stdout '"properties":'
+stdout '"required":'
+
+# TEST 3: Tool Pagination
+exec mcp-scripttest-server --stdio --capabilities=tools --many-tools=20
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":4,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# First page of results with pagination
+setstdin {"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"limit":10}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"tools":'
+stdout '"nextCursor":'
+# Should have exactly 10 tools
+stdout -count=10 '"name":'
+
+# Second page using the cursor
+setstdin {"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"cursor":"$CURSOR_FROM_RESPONSE"}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"tools":'
+# Should have the remaining tools
+stdout -count=10 '"name":'
+! stdout '"nextCursor":'
+
+# ============================
+# TOOL INVOCATION TESTS
+# ============================
+
+# Start a fresh server
+exec mcp-scripttest-server --stdio --capabilities=tools --tools=get_weather,calculator,fetch_image
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# TEST 4: Basic Tool Invocation
+setstdin {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"get_weather","arguments":{"location":"New York"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":'
+stdout '"isError":false'
+
+# TEST 5: Tool Invocation with Complex Arguments
+setstdin {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"calculator","arguments":{"operation":"add","operands":[10,20,30]}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":"60"'
+stdout '"isError":false'
+
+# TEST 6: Tool with Multiple Content Types in Response
+setstdin {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"fetch_image","arguments":{"query":"mountain landscape"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+# Should have text and image contents
+stdout '"type":"text"'
+stdout '"type":"image"'
+stdout '"data":'
+stdout '"mimeType":"image/png"'
+stdout '"isError":false'
+
+# ============================
+# TOOL CONTENT TYPE TESTS
+# ============================
+
+# TEST 7: Text Content Type
+setstdin {"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"get_weather","arguments":{"location":"London"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":'
+
+# TEST 8: Image Content Type
+setstdin {"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"fetch_image","arguments":{"query":"city skyline"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"image"'
+stdout '"data":'
+stdout '"mimeType":"image/png"'
+
+# TEST 9: Resource Content Type
+exec mcp-scripttest-server --stdio --capabilities=tools,resources --tools=fetch_resource
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":13,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Call a tool that returns a resource
+setstdin {"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"fetch_resource","arguments":{"id":"example-resource"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"resource"'
+stdout '"resource":'
+stdout '"uri":"resource://'
+stdout '"mimeType":'
+stdout '"text":'
+
+# ============================
+# TOOL ERROR HANDLING TESTS
+# ============================
+
+# TEST 10: Unknown Tool
+exec mcp-scripttest-server --stdio --capabilities=tools
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":15,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Call a non-existent tool (protocol error)
+setstdin {"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"non_existent_tool","arguments":{}}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"code":'
+stdout '"message":"Unknown tool: non_existent_tool"'
+
+# TEST 11: Invalid Tool Arguments
+# Call a tool with invalid arguments (protocol error)
+setstdin {"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"calculator","arguments":{"operation":"divide","operands":[10,0]}}}
+exec cat | mcp-send --stdio
+stdout '"error":'
+stdout '"code":'
+stdout '"message":"Invalid arguments"'
+
+# TEST 12: Tool Execution Error
+# Call a tool that returns an execution error (not a protocol error)
+setstdin {"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"name":"get_weather","arguments":{"location":"invalid_location_that_causes_error"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"content":'
+stdout '"type":"text"'
+stdout '"text":"Failed to fetch weather data:'
+stdout '"isError":true'
+
+# ============================
+# TOOL LIST CHANGED NOTIFICATION TESTS
+# ============================
+
+# TEST 13: List Changed Notification
+exec mcp-scripttest-server --stdio --capabilities=tools --list-change-support --dynamic-tools
+cmp stderr "MCP server listening on stdio"
+
+# Initialize the server connection
+setstdin {"jsonrpc":"2.0","id":19,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ToolsTestClient","version":"1.0.0"}}}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"capabilities":'
+stdout '"tools":{"listChanged":true}'
+
+setstdin {"jsonrpc":"2.0","method":"notifications/initialized"}
+exec cat | mcp-send --stdio
+
+# Initial tool list
+setstdin {"jsonrpc":"2.0","id":20,"method":"tools/list"}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"tools":'
+
+# Trigger tool list change
+setstdin {"jsonrpc":"2.0","id":21,"method":"test/trigger_tool_change"}
+exec cat | mcp-send --stdio
+stdout '"result":'
+
+# Server should send notification
+stdout '"jsonrpc":"2.0"'
+stdout '"method":"notifications/tools/list_changed"'
+
+# Verify updated tool list
+setstdin {"jsonrpc":"2.0","id":22,"method":"tools/list"}
+exec cat | mcp-send --stdio
+stdout '"result":'
+stdout '"tools":'
+stdout '"name":"new_tool"'

@@ -1,0 +1,32 @@
+# Conditional Execution Test - Verify Environment-Driven Behavior
+# Demonstrates: conditional logic, environment-based test variations, test branching
+
+# Test execution with condition true
+env FEATURE_ENABLED=true
+exec sh -c 'if [ "$FEATURE_ENABLED" = "true" ]; then echo "Feature is enabled"; else exit 1; fi'
+stdout "Feature is enabled"
+
+# Test execution with condition false
+env FEATURE_ENABLED=false
+exec sh -c 'if [ "$FEATURE_ENABLED" = "false" ]; then echo "Feature is disabled"; else exit 1; fi'
+stdout "Feature is disabled"
+
+# Test skip logic
+env SKIP_TEST=false
+exec sh -c 'if [ "$SKIP_TEST" = "true" ]; then echo "Skipped"; exit 0; fi; echo "Executed"'
+stdout "Executed"
+! stdout "Skipped"
+
+# Test with different values
+env LEVEL=basic
+exec sh -c 'case $LEVEL in basic) echo "Basic mode";; advanced) echo "Advanced";; esac'
+stdout "Basic mode"
+
+env LEVEL=advanced
+exec sh -c 'case $LEVEL in basic) echo "Basic mode";; advanced) echo "Advanced";; esac'
+stdout "Advanced"
+
+# Test environment variable existence check
+env CONFIG_PATH=/etc/config
+exec sh -c 'if [ -n "$CONFIG_PATH" ]; then echo "Config path set"; fi'
+stdout "Config path set"

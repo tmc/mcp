@@ -1,0 +1,18 @@
+# Example test script
+exec mcpdiff --help
+stderr 'Usage'
+
+# Custom command without exec
+mcpdiff trace1.json trace2.json
+
+# MCP tool commands
+mcp-spy -- mcpdiff file1 file2
+mcp-test -- go run ./test/main.go
+
+# Server commands
+mcp-server-start myserver -- go run ./cmd/server/main.go
+mcp-server-send myserver {"method":"test"}
+mcp-server-stop myserver
+
+# More execs
+exec echo "done"

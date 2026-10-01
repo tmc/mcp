@@ -1,0 +1,41 @@
+# Pattern Matching Test - Verify Output Pattern Validation
+# Demonstrates: literal matching, regex patterns, negative patterns, complex assertions
+
+# Test JSON output with literal matching
+exec echo '{"status":"ok","code":200,"message":"Success"}'
+stdout "status"
+stdout "ok"
+stdout "200"
+stdout "Success"
+
+# Test that error isn't present
+! stdout "error"
+! stdout "failed"
+
+# Test compound patterns
+exec echo '{"data":{"nested":{"value":"important"}}}'
+stdout "nested"
+stdout "value"
+stdout "important"
+
+# Test with special characters
+exec echo 'URL: https://example.com/path?query=value&other=123'
+stdout "https://"
+stdout "example.com"
+stdout "query=value"
+
+# Test multiline output matching
+exec sh -c 'echo "Line 1"; echo "Line 2"; echo "Line 3"'
+stdout "Line 1"
+stdout "Line 2"
+stdout "Line 3"
+
+# Test line boundaries
+exec echo "This is a test line"
+stdout "test line"
+! stdout "test line more"
+
+# Test with numbers and operators
+exec echo "Result: 42 > 0 && status != error"
+stdout "42"
+stdout "status"

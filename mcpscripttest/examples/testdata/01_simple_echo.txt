@@ -1,0 +1,16 @@
+# Simple Echo Test - Verify Basic Command Execution
+# This is the most fundamental test structure
+# Demonstrates: exec command, stdout assertion
+
+# Test basic echo command output
+exec echo "Hello, MCP!"
+stdout "Hello, MCP!"
+
+# Test echo with multiple words
+exec echo "MCPScriptTest Framework"
+stdout "Framework"
+stdout "MCPScriptTest"
+
+# Verify output doesn't contain unexpected content
+! stdout "error"
+! stdout "failed"

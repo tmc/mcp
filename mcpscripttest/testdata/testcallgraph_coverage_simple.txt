@@ -1,0 +1,28 @@
+# Test for testcallgraph-coverage tool
+
+# Create test file
+mkdir -p test
+exec sh -c 'echo "exec go test -cover ./..." > test/example.txt'
+exec sh -c 'echo "exec mcpdiff --help" >> test/example.txt'
+
+# Test help - exits with status 1
+! exec testcallgraph-coverage
+stderr 'Usage:'
+stderr 'Options:'
+stderr 'testcallgraph-coverage'
+
+# Test basic analysis without coverage data
+exec testcallgraph-coverage -test test/example.txt
+stdout 'Programs executed:'
+stdout 'go'
+stdout 'mcpdiff'
+
+# Test JSON output
+exec testcallgraph-coverage -test test/example.txt -format json
+stdout '"test_file":'
+stdout '"programs":'
+stdout '"edges":'
+
+# Test error handling - exits with status 1
+! exec testcallgraph-coverage -test nonexistent.txt
+stderr 'Error'

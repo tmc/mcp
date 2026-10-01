@@ -1,0 +1,55 @@
+# Example of Using Conditional Tests in MCP Conformance Tests
+# This demonstrates various ways to use condition prefixes to make tests skip when features are not supported.
+
+# Basic condition - only run this command if stdio transport is supported
+[stdio] exec mcp-scripttest-server --stdio
+[stdio] cmp stderr "MCP server listening on stdio"
+
+# Multiple conditions - only run if both conditions are satisfied
+[stdio] [version 2025-03-26] setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"ConditionalTestClient","version":"1.0.0"}}}
+[stdio] [version 2025-03-26] exec cat | mcp-send --stdio
+[stdio] [version 2025-03-26] stdout '"result":'
+
+# Negated condition - only run if NOT on Windows
+[!windows] echo "Running on a non-Windows platform"
+
+# Conditions with parameters - check for specific environment
+[env TEST_MODE conformance] echo "Running in conformance test mode"
+
+# Feature-specific tests - only run if extended tests are enabled
+[extended] echo "Running advanced extended tests"
+[extended] [tools] echo "Running extended tool tests"
+
+# Version-specific API tests
+[version 2024-11-05] setstdin {"jsonrpc":"2.0","id":2,"method":"2024_specific_method"}
+[version 2024-11-05] exec cat | mcp-send --stdio
+
+[version 2025-03-26] setstdin {"jsonrpc":"2.0","id":3,"method":"2025_specific_method"}
+[version 2025-03-26] exec cat | mcp-send --stdio
+
+# Platform-specific tests
+[windows] echo "Running Windows-specific tests"
+[unix] echo "Running Unix-specific tests"
+[macos] echo "Running macOS-specific tests"
+[linux] echo "Running Linux-specific tests"
+
+# HTTP and SSE tests
+[http] exec mcp-scripttest-server --http=localhost:9000
+[http] cmp stderr "MCP server listening on http://localhost:9000"
+
+[sse] [http] exec mcp-scripttest-server --http=localhost:9001 --sse
+[sse] [http] cmp stderr "MCP server listening on http://localhost:9001 with SSE enabled"
+
+# Optional tools tests
+[tools] setstdin {"jsonrpc":"2.0","id":4,"method":"tools/list"}
+[tools] exec cat | mcp-send --stdio
+[tools] stdout '"tools":'
+
+# Combining standard and custom conditions (custom conditions would be defined in your test setup)
+[tools] [feature advanced_tools] echo "Advanced tools feature is enabled"
+
+# Using ? prefix to make a command optional regardless of result
+? echo "This command always runs and continues even if it fails"
+
+# Using ! prefix to indicate a command should fail
+! exec non-existent-command

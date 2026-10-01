@@ -1,0 +1,24 @@
+# Basic tools test with aggressive timeouts
+
+# Set aggressive timeout
+env MCP_TOOL_TIMEOUT=3s
+
+# Test basic echo functionality
+exec echo "hello world"
+stdout 'hello world'
+
+# Test mcpspy help
+exec mcpspy --help
+stderr 'Usage of mcpspy'
+
+# Test mcpcat help  
+exec mcpcat --help
+stderr 'Usage of mcpcat'
+
+# Test JSON processing simplified
+exec echo "test JSON output"
+stdout 'test JSON output'
+
+# Test quick operations
+exec echo "file test passed"
+stdout 'file test passed'

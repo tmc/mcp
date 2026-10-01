@@ -1,0 +1,32 @@
+# Tool Discovery Test - Verify MCP Tool Registration and Listing
+# Demonstrates: tool discovery, capability negotiation, server initialization
+
+# Initialize the server with proper MCP handshake
+setstdin {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{"roots":{"listChanged":true}},"clientInfo":{"name":"TestClient","version":"1.0.0"}}}
+
+# Verify initialization response
+stdout '"jsonrpc":"2.0"'
+stdout '"id":1'
+stdout '"result":'
+stdout '"protocolVersion":'
+
+# List available tools
+setstdin {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+
+# Verify tools list response
+stdout '"result":'
+stdout '"tools":'
+
+# Verify tool properties
+stdout '"name":'
+stdout '"description":'
+
+# Verify array format
+stdout '\['
+
+# Verify no error occurred
+! stdout '"error":'
+
+# Request specific tool information
+setstdin {"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}
+stdout '"tools":'

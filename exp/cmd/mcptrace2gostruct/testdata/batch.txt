@@ -1,0 +1,52 @@
+# Test batch mode with multiple files
+mkdir schemas
+
+# Create first schema file
+cat > schemas/schema1.json << 'EOF'
+{
+  "type": "object",
+  "description": "A simple test schema",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The name of the item"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether the item is active"
+    }
+  },
+  "required": ["name", "active"]
+}
+EOF
+
+# Create second schema file
+cat > schemas/schema2.json << 'EOF'
+{
+  "type": "object",
+  "description": "Calculator tool input schema",
+  "properties": {
+    "operation": {
+      "type": "string",
+      "description": "The operation to perform",
+      "enum": ["add", "subtract", "multiply", "divide"]
+    },
+    "a": {
+      "type": "number",
+      "description": "First operand"
+    },
+    "b": {
+      "type": "number",
+      "description": "Second operand"
+    }
+  },
+  "required": ["operation", "a", "b"]
+}
+EOF
+
+# Process in batch mode
+exec mcptrace2gostruct -batch -dir schemas -pattern "*.json" -package batch
+stdout 'package batch'
+stdout 'Schema1 struct'
+stdout 'Schema2 struct'
+! stderr 'ERROR'

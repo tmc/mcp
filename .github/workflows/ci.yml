@@ -1,0 +1,259 @@
+name: CI
+
+on:
+  push:
+    branches: [main, next, toolkit]
+  pull_request:
+    branches: [main, next]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root:
+    name: Root module gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: test -z "$(git ls-files '*.go' | xargs gofmt -s -l)"
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+      - run: "$(go env GOPATH)/bin/staticcheck ./..."
+      - run: go test -race ./...
+
+  modules:
+    name: ${{ matrix.name }} gates
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcp
+            dir: exp/cmd/mcp
+          - name: mcp9p
+            dir: exp/mcp9p
+          - name: mcptrace-to-otel
+            dir: exp/cmd/mcptrace-to-otel
+          - name: examples
+            dir: examples
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: GOWORK=off go build ./...
+      - run: GOWORK=off go vet ./...
+      - run: GOWORK=off go test -race ./...
+
+  dependencies:
+    name: Dependency contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          set -euo pipefail
+
+          check_module() {
+            local label=$1
+            local dir=$2
+            shift 2
+            local modules module allowed
+            modules=$(cd "$dir" && GOWORK=off go list -deps -f '{{with .Module}}{{.Path}}{{end}}' ./... | sort -u)
+            while IFS= read -r module; do
+              [[ -z "$module" ]] && continue
+              allowed=false
+              for item in "$@"; do
+                if [[ "$module" == "$item" ]]; then
+                  allowed=true
+                  break
+                fi
+              done
+              if [[ "$allowed" != true ]]; then
+                printf '%s: dependency not allowed: %s\n' "$label" "$module" >&2
+                return 1
+              fi
+            done <<< "$modules"
+            printf '%s: dependencies allowed\n' "$label"
+          }
+
+          # Terminal UI dependencies belong to the separate experimental client module.
+          root_modules=$(GOWORK=off go list -m -f '{{.Path}}' all)
+          if printf '%s\n' "$root_modules" | rg -q '^github\.com/charmbracelet/'; then
+            printf 'root module includes terminal UI dependencies\n' >&2
+            exit 1
+          fi
+
+          check_module root . \
+            github.com/google/jsonschema-go \
+            github.com/modelcontextprotocol/go-sdk \
+            github.com/segmentio/asm \
+            github.com/segmentio/encoding \
+            github.com/spf13/cobra \
+            github.com/spf13/pflag \
+            github.com/tmc/mcp \
+            github.com/yosida95/uritemplate/v3 \
+            golang.org/x/crypto \
+            golang.org/x/mod \
+            golang.org/x/oauth2 \
+            golang.org/x/sync \
+            golang.org/x/sys \
+            golang.org/x/term \
+            golang.org/x/time \
+            golang.org/x/text \
+            golang.org/x/tools \
+            rsc.io/script
+
+          check_module mcp exp/cmd/mcp \
+            github.com/aymanbagabas/go-osc52/v2 \
+            github.com/charmbracelet/bubbletea \
+            github.com/charmbracelet/colorprofile \
+            github.com/charmbracelet/lipgloss \
+            github.com/charmbracelet/x/ansi \
+            github.com/charmbracelet/x/cellbuf \
+            github.com/charmbracelet/x/term \
+            github.com/google/jsonschema-go \
+            github.com/lucasb-eyer/go-colorful \
+            github.com/mattn/go-isatty \
+            github.com/mattn/go-runewidth \
+            github.com/modelcontextprotocol/go-sdk \
+            github.com/muesli/ansi \
+            github.com/muesli/cancelreader \
+            github.com/muesli/termenv \
+            github.com/rivo/uniseg \
+            github.com/segmentio/asm \
+            github.com/segmentio/encoding \
+            github.com/spf13/cobra \
+            github.com/spf13/pflag \
+            github.com/tmc/mcp \
+            github.com/tmc/mcp/exp/cmd/mcp \
+            github.com/xo/terminfo \
+            github.com/yosida95/uritemplate/v3 \
+            golang.org/x/oauth2 \
+            golang.org/x/sync \
+            golang.org/x/sys \
+            golang.org/x/term \
+            golang.org/x/time
+
+          check_module mcp9p exp/mcp9p \
+            github.com/google/uuid github.com/gorilla/mux github.com/gorilla/websocket \
+            github.com/hanwen/go-fuse/v2 github.com/tmc/mcp/exp/mcp9p \
+            golang.org/x/net golang.org/x/sys
+
+          check_module mcptrace-to-otel exp/cmd/mcptrace-to-otel \
+            github.com/cenkalti/backoff/v4 github.com/go-logr/logr github.com/go-logr/stdr \
+            github.com/golang/protobuf github.com/grpc-ecosystem/grpc-gateway/v2 \
+            github.com/openzipkin/zipkin-go \
+            go.opentelemetry.io/otel go.opentelemetry.io/otel/exporters/jaeger \
+            go.opentelemetry.io/otel/exporters/otlp/otlptrace \
+            go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc \
+            go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp \
+            go.opentelemetry.io/otel/exporters/stdout/stdouttrace \
+            go.opentelemetry.io/otel/exporters/zipkin go.opentelemetry.io/otel/metric \
+            go.opentelemetry.io/otel/sdk go.opentelemetry.io/otel/trace \
+            go.opentelemetry.io/proto/otlp github.com/tmc/mcp/exp/cmd/mcptrace-to-otel \
+            golang.org/x/net golang.org/x/sys golang.org/x/text \
+            google.golang.org/genproto/googleapis/api google.golang.org/genproto/googleapis/rpc \
+            google.golang.org/grpc google.golang.org/protobuf
+
+          check_module examples examples \
+            github.com/google/jsonschema-go github.com/modelcontextprotocol/go-sdk \
+            github.com/segmentio/asm github.com/segmentio/encoding \
+            github.com/tmc/mcp github.com/tmc/mcp/examples \
+            github.com/yosida95/uritemplate/v3 golang.org/x/oauth2 \
+            golang.org/x/sync golang.org/x/sys golang.org/x/time
+
+          while IFS= read -r file; do
+            [[ -f "$file" ]] || continue
+            case "$file" in *_test.go) continue ;; esac
+            case "$file" in
+              mcpscripttest/*) continue ;; # This module is the test framework and fuzz harness.
+            esac
+            if rg -q '"testing"' "$file"; then
+              printf 'testing imported by non-test source: %s\n' "$file" >&2
+              exit 1
+            fi
+          done < <(git ls-files '*.go')
+
+  benchmarks:
+    name: mcptrace benchmark gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          set -euo pipefail
+          go test -run='^$' -bench='Benchmark(Reader|Writer|RecordOverhead)$' -benchmem ./mcptrace/ | awk '
+            { print }
+            /^Benchmark/ {
+              for (i = 1; i < NF; i++) {
+                if ($(i + 1) == "ns/op") {
+                  count++
+                  if ($i > 100000) failed = 1
+                  break
+                }
+              }
+            }
+            END { if (count < 3 || failed) exit 1 }
+          '
+
+  mcpspy:
+    name: mcpspy passthrough
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          set -euo pipefail
+          mkdir -p "$HOME/tmp"
+          work=$(mktemp -d "$HOME/tmp/mcpspy-smoke.XXXXXX")
+          trap 'rm -rf "$work"' EXIT
+          GOWORK=off go build -o "$work/mcpspy" ./exp/cmd/mcpspy
+          input='{"jsonrpc":"2.0","id":1,"method":"ping"}'
+          printf '%s\n' "$input" | "$work/mcpspy" -q -f "$work/trace.mcp" -spec-file "$work/spec.mcpspec" -- cat > "$work/output"
+          printf '%s\n' "$input" > "$work/want"
+          cmp "$work/want" "$work/output"
+          test -s "$work/trace.mcp"
+
+  gate:
+    name: Required aggregate
+    if: always()
+    needs: [root, modules, dependencies, benchmarks, mcpspy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every blocking job
+        env:
+          ROOT: ${{ needs.root.result }}
+          MODULES: ${{ needs.modules.result }}
+          DEPENDENCIES: ${{ needs.dependencies.result }}
+          BENCHMARKS: ${{ needs.benchmarks.result }}
+          MCPSPY: ${{ needs.mcpspy.result }}
+        run: |
+          test "$ROOT" = success
+          test "$MODULES" = success
+          test "$DEPENDENCIES" = success
+          test "$BENCHMARKS" = success
+          test "$MCPSPY" = success

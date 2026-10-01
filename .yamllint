@@ -1,0 +1,30 @@
+# yamllint configuration for MCP Go implementation
+extends: default
+
+rules:
+  # Allow longer lines for GitHub Actions
+  line-length:
+    max: 120
+    level: warning
+
+  # Allow document start markers to be optional
+  document-start:
+    present: false
+
+  # Allow comments without space after #
+  comments:
+    min-spaces-from-content: 1
+
+  # Allow truthy values like 'yes', 'no', 'on', 'off'
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+
+  # Allow empty values
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Indentation settings
+  indentation:
+    spaces: 2
+    indent-sequences: true

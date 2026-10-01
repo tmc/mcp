@@ -1,0 +1,112 @@
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - tmp
+    - traces
+    - coverage_data
+  skip-files:
+    - ".*_test.go$"
+  modules-download-mode: readonly
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment  # Too noisy for this project
+  gocyclo:
+    min-complexity: 15
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/tmc/mcp
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - unnamedResult
+      - hugeParam
+  funlen:
+    lines: 100
+    statements: 50
+  lll:
+    line-length: 120
+  misspell:
+    locale: US
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+
+linters:
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - errcheck
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - nolintlint
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  disable:
+    - funlen        # Some functions are necessarily long in this codebase
+    - gochecknoglobals # Globals are used appropriately in some places
+    - wsl           # Too opinionated about whitespace
+
+issues:
+  exclude-rules:
+    # Exclude some lints for test files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - lll
+    # Exclude some lints for generated files
+    - path: ".*\\.gen\\.go"
+      linters:
+        - all
+    # Exclude some lints for experimental code
+    - path: "exp/"
+      linters:
+        - gochecknoinits
+        - gosec
+    # Allow long lines in comments
+    - source: "^//.*"
+      linters:
+        - lll
+  exclude:
+    # Exclude known false positives
+    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print.*|os\\.(Un)?Setenv). is not checked"
+    - "exported (type|method|function) .* should have comment or be unexported"
+    - "ST1000: at least one file in a package should have a package comment"
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true

@@ -1,0 +1,18 @@
+exec $MCPINSPECT trace.mcp
+stdout 'response id=1 ping request=1'
+exec $MCPINSPECT -json trace.mcp
+stdout '"requestRecord":1'
+inspectstdin trace.mcp
+stdout 'response id=1 ping request=1'
+exec $MCPINSPECT -h
+stderr 'Usage: mcpinspect'
+! exec $MCPINSPECT broken.mcp
+stderr 'input truncated; conclusions are incomplete'
+! exec $MCPINSPECT missing.mcp
+stderr 'open trace:'
+
+-- trace.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"ping"}
+mcp-recv {"jsonrpc":"2.0","id":1,"result":{}}
+-- broken.mcp --
+mcp-recv {

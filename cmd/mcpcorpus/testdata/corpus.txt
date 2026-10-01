@@ -1,0 +1,56 @@
+# Stdin, repeated calls, byte preservation, and native fuzz output.
+mcpcorpus 0 calls.mcp -tool search -out fuzz
+stdout 'wrote 1 seeds'
+cmp fuzz/29a9829b3c03948275ca3be1cb7b633c0207849d2c0bd3215060f2ac05abce64 expected.fuzz
+
+# Explicit JSON mode and file input.
+mcpcorpus 0 empty -tool search -out json -format json calls.mcp
+cmp json/29a9829b3c03948275ca3be1cb7b633c0207849d2c0bd3215060f2ac05abce64.json expected.json
+
+# Refuse existing directories and preserve unrelated files.
+mcpcorpus 1 calls.mcp -tool search -out existing
+stderr 'file exists'
+cmp existing/keep keep
+
+# A malformed trailing record must not leave any output.
+mcpcorpus 1 bad.mcp -tool search -out bad
+stderr 'record 2'
+! exists bad
+
+# Missing and null arguments fail rather than inventing empty arguments.
+mcpcorpus 1 absent.mcp -tool search -out absent
+stderr 'arguments must be a JSON object'
+! exists absent
+mcpcorpus 1 null.mcp -tool search -out null
+stderr 'arguments must be a JSON object'
+! exists null
+
+# No selected call and missing options must not create files.
+mcpcorpus 1 calls.mcp -tool other -out no-calls
+stderr 'no calls'
+! exists no-calls
+mcpcorpus 1 empty -out missing
+stderr 'required:'
+mcpcorpus 0 empty -h
+stderr 'Usage of mcpcorpus'
+
+-- calls.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"q":"a"}}}
+mcp-send {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search","arguments":{"q":"a"}}}
+-- bad.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{}}}
+mcp-send {"jsonrpc":
+-- absent.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search"}}
+-- null.mcp --
+mcp-send {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":null}}
+-- expected.fuzz --
+go test fuzz v1
+[]byte("{\"q\":\"a\"}")
+-- expected.json --
+{"q":"a"}
+-- existing/keep --
+unrelated
+-- keep --
+unrelated
+-- empty --

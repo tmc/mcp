@@ -1,0 +1,21 @@
+mcpapi 0 snapshot -h
+stderr 'Usage of snapshot'
+
+# The declared enum narrows, unsupported patterns are unknown, and identical supported snapshots pass.
+mcpapi 0 diff old.json old.json
+stdout '^\[\]'
+mcpapi 1 diff old.json narrow.json
+stdout 'incompatible'
+mcpapi 2 diff old.json unknown.json
+stdout 'unknown'
+mcpapi 3 diff missing.json old.json
+stderr 'mcpapi:'
+mcpapi 3 snapshot -- server
+stderr 'visibility labels'
+
+-- old.json --
+{"format":1,"context":{"scope":"p","principal":"local","client":"default"},"initialize":{"protocolVersion":"2026-07-28","serverInfo":{"name":"s"},"capabilities":{}},"tools":[{"name":"q","inputSchema":{"type":"object","properties":{"q":{"type":"string"}}}}]}
+-- narrow.json --
+{"format":1,"context":{"scope":"p","principal":"local","client":"default"},"initialize":{"protocolVersion":"2026-07-28","serverInfo":{"name":"s"},"capabilities":{}},"tools":[{"name":"q","inputSchema":{"type":"object","properties":{"q":{"type":"string","enum":["a"]}}}}]}
+-- unknown.json --
+{"format":1,"context":{"scope":"p","principal":"local","client":"default"},"initialize":{"protocolVersion":"2026-07-28","serverInfo":{"name":"s"},"capabilities":{}},"tools":[{"name":"q","inputSchema":{"type":"object","properties":{"q":{"type":"string","pattern":"a"}}}}]}

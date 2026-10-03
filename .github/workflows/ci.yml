@@ -227,8 +227,8 @@ jobs:
           cache: true
       - run: |
           set -euo pipefail
-          mkdir -p "$HOME/tmp"
-          work=$(mktemp -d "$HOME/tmp/mcpspy-smoke.XXXXXX")
+          mkdir -p "$HOME/tmp/mcp"
+          work=$(mktemp -d "$HOME/tmp/mcp/mcpspy-smoke.XXXXXX")
           trap 'rm -rf "$work"' EXIT
           GOWORK=off go build -o "$work/mcpspy" ./exp/cmd/mcpspy
           input='{"jsonrpc":"2.0","id":1,"method":"ping"}'

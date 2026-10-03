@@ -224,6 +224,12 @@ func TestCmd2mcpserverScripts(t *testing.T) {
 	})
 	defer cleanup()
 
-	// Run all script tests in testdata/ directory
-	mcpscripttest.Test(t, "testdata/*.txt", nil)
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MCP_REPO_ROOT", root)
+	opts := mcpscripttest.DefaultOptions()
+	opts.AdditionalEnvVars = []string{"MCP_REPO_ROOT"}
+	mcpscripttest.Test(t, "testdata/*.txt", opts)
 }

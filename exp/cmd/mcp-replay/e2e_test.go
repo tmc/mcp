@@ -64,21 +64,14 @@ func TestMockClientServerPipeline(t *testing.T) {
 
 // ensureMcpReplayBinary ensures the mcp-replay binary is available for tests
 func ensureMcpReplayBinary(t *testing.T) (string, error) {
-	// First check if the binary is in the PATH
-	mcpReplayPath, err := exec.LookPath("mcp-replay")
-	if err == nil {
-		return mcpReplayPath, nil
-	}
-
-	// Otherwise build it locally
-	buildCmd := exec.Command("go", "build", "-o", "mcp-replay")
-	buildCmd.Dir = "."
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "mcp-replay")
+	buildCmd := exec.Command("go", "build", "-o", path, ".")
+	buildCmd.Env = append(os.Environ(), "GOWORK=off")
 	if err := buildCmd.Run(); err != nil {
 		return "", err
 	}
-
-	// Return the relative path
-	return "./mcp-replay", nil
+	return path, nil
 }
 
 // createTestMcpContent creates test content for our MCP test file
@@ -104,8 +97,8 @@ func runPipelineTest(t *testing.T, mcpReplayPath, testMcpFile, clientTraceFile, 
 	// Create copies of the test file for client and server to ensure clean execution
 	clientInputFile := filepath.Join(tempDir, "client.mcp")
 	serverInputFile := filepath.Join(tempDir, "server.mcp")
-	clientOutput := "/tmp/client-debug-output.txt"
-	serverOutput := "/tmp/server-debug-output.txt"
+	clientOutput := filepath.Join(tempDir, "client-debug-output.txt")
+	serverOutput := filepath.Join(tempDir, "server-debug-output.txt")
 
 	// Copy test file to both client and server input files
 	testContent, err := os.ReadFile(testMcpFile)

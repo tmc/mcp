@@ -52,6 +52,7 @@ type shadowServer struct {
 	shutdown     chan struct{}
 	shutdownOnce sync.Once
 	wg           sync.WaitGroup
+	outputWG     sync.WaitGroup
 	ctx          context.Context
 	cancel       context.CancelFunc
 
@@ -119,6 +120,7 @@ func main() {
 
 	// Start server output monitors
 	server.wg.Add(4) // 2 for each server (stdout/stderr)
+	server.outputWG.Add(4)
 	go server.monitorOutput(server.primaryStdout, "primary", false)
 	go server.monitorOutput(server.primaryStderr, "primary", true)
 	go server.monitorOutput(server.shadowStdout, "shadow", false)
@@ -138,6 +140,11 @@ func main() {
 		// Normal shutdown
 	}
 
+	// EOF must reach the child servers before waiting for their responses.
+	server.primaryStdin.Close()
+	server.shadowStdin.Close()
+	server.outputWG.Wait()
+	server.cancel()
 	server.wg.Wait()
 }
 
@@ -337,6 +344,7 @@ func (s *shadowServer) forwardInput() {
 
 func (s *shadowServer) monitorOutput(reader io.Reader, source string, isStderr bool) {
 	defer s.wg.Done()
+	defer s.outputWG.Done()
 
 	scanner := bufio.NewScanner(reader)
 
@@ -527,24 +535,6 @@ func (s *shadowServer) recordMessages() {
 			}
 			file.Sync()
 
-		case <-s.shutdown:
-			// Drain remaining messages before returning
-			for {
-				select {
-				case msg := <-s.messages:
-					line := formatMCPLine(msg)
-					if *compareMode {
-						fmt.Fprintln(file, line)
-					} else {
-						if !msg.isPrimary && msg.direction == "send" {
-							line = "# " + line
-						}
-						fmt.Fprintln(file, line)
-					}
-				default:
-					return
-				}
-			}
 		}
 	}
 }

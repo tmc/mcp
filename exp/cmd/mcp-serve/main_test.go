@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,104 +11,77 @@ import (
 
 func TestMCPServeIntegration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("integration test")
 	}
-
-	// Create temporary workspace
-	wsDir, err := os.MkdirTemp("", "mcp-serve-test")
+	dir := t.TempDir()
+	binary := filepath.Join(dir, "mcp-serve")
+	build := exec.Command("go", "build", "-o", binary, ".")
+	build.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, output)
+	}
+	logPath := filepath.Join(dir, "server.log")
+	log, err := os.Create(logPath)
 	if err != nil {
-		t.Fatalf("Failed to create temp workspace: %v", err)
+		t.Fatal(err)
 	}
-	defer os.RemoveAll(wsDir)
-
-	// Build the mcp-serve binary for testing
-	binPath := filepath.Join(wsDir, "mcp-serve")
-	buildCmd := exec.Command("go", "build", "-o", binPath, ".")
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("Failed to build mcp-serve: %v\nOutput: %s", err, out)
+	defer log.Close()
+	cmd := exec.Command(binary, "-workspace", dir, "-v", "--", "sleep", "60")
+	cmd.Stdout, cmd.Stderr = log, log
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
 	}
-
-	// Helper to run mcp-serve
-	runServe := func(args ...string) error {
-		args = append([]string{"-workspace", wsDir, "-v"}, args...)
-		cmd := exec.Command(binPath, args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		return cmd.Run()
-	}
-
-	// 1. Start a persistent process (sleep 10)
-	// We run this in background (startServer doesn't block if we run it directly?
-	// Wait, main blocks on cmd.Wait(). So `startServer` BLOCKS.
-	// So we need to start it in a separate process or goroutine.
-	// The CLI usage is `mcp-serve [flags] -- command`.
-	// If we run `mcp-serve -- sh -c "sleep 10"`, it blocks until sleep finishes.
-
-	// So for "Start", we should start it asynchronously.
-	startCmd := exec.Command(binPath, "-workspace", wsDir, "-v", "--", "sh", "-c", "sleep 10")
-	// cmd.Start() starts it but doesn't wait.
-	if err := startCmd.Start(); err != nil {
-		t.Fatalf("Failed to start server process: %v", err)
-	}
-	defer func() {
-		if startCmd.Process != nil {
-			startCmd.Process.Kill()
-		}
-	}()
-
-	// Wait for PID file to appear
-	pidFile := filepath.Join(wsDir, PidFile)
-	timeout := time.After(5 * time.Second)
-	found := false
-	for !found {
-		select {
-		case <-timeout:
-			t.Fatal("Timeout waiting for PID file")
-		case <-time.After(100 * time.Millisecond):
-			if _, err := os.Stat(pidFile); err == nil {
-				found = true
-			}
-		}
-	}
-
-	// 2. Check Status
-	if err := runServe("-status"); err != nil {
-		t.Errorf("Status check failed: %v", err)
-	}
-
-	// 3. Stop Server
-	if err := runServe("-stop"); err != nil {
-		t.Errorf("Stop failed: %v", err)
-	}
-
-	// Verify PID file is gone
-	timeout = time.After(5 * time.Second)
-	gone := false
-	for !gone {
-		select {
-		case <-timeout:
-			t.Fatal("Timeout waiting for PID file removal")
-		case <-time.After(100 * time.Millisecond):
-			if _, err := os.Stat(pidFile); os.IsNotExist(err) {
-				gone = true
-			}
-		}
-	}
-
-	// 4. Verify process stopped (wait for startCmd to exit)
 	done := make(chan error, 1)
 	go func() {
-		done <- startCmd.Wait()
+		done <- cmd.Wait()
+		close(done)
 	}()
-
-	select {
-	case err := <-done:
-		if err != nil {
-			// It might return error because it was killed or exited with signal
-			// t.Logf("Server exited with: %v", err)
+	pidFile := filepath.Join(dir, PidFile)
+	t.Cleanup(func() {
+		if pid, err := readPidFile(pidFile); err == nil {
+			if process, err := os.FindProcess(pid); err == nil {
+				process.Kill()
+			}
 		}
-	case <-time.After(2 * time.Second):
-		t.Error("Server process did not exit after stop command")
+		cmd.Process.Kill()
+		<-done
+	})
+	timer := time.NewTimer(15 * time.Second)
+	defer timer.Stop()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if _, err := readPidFile(pidFile); err == nil {
+			break
+		}
+		select {
+		case err := <-done:
+			output, _ := os.ReadFile(logPath)
+			t.Fatalf("server exited before writing PID: %v\n%s", err, output)
+		case <-timer.C:
+			output, _ := os.ReadFile(logPath)
+			t.Fatalf("timeout waiting for PID\n%s", output)
+		case <-ticker.C:
+		}
+	}
+	run := func(args ...string) {
+		t.Helper()
+		args = append([]string{"-workspace", dir, "-v"}, args...)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if output, err := exec.CommandContext(ctx, binary, args...).CombinedOutput(); err != nil {
+			t.Fatalf("mcp-serve %v: %v\n%s", args, err, output)
+		}
+	}
+	run("-status")
+	run("-stop")
+	if _, err := os.Stat(pidFile); !os.IsNotExist(err) {
+		t.Fatalf("PID file remains after stop: %v", err)
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("server process did not exit after stop")
 	}
 }
 

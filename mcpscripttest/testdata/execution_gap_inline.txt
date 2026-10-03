@@ -1,24 +1,40 @@
-# Demonstration: Static Analysis vs Dynamic Execution Gap
-
-# This scripttest executes several programs
-exec echo "Hello from scripttest"
+# Execute commands and inspect an exec.Command call in Go source.
+exec echo 'Hello from scripttest'
 stdout 'Hello'
-
 exec mcpdiff --help
 stderr 'Usage'
-
-# Create a Go program that analyzes itself
-mkdir -p demo
-
-# Create analyzer.go using setstdin and cat
-exec sh -c 'printf "package main\n\nimport (\n    \"fmt\"\n    \"go/ast\"\n    \"go/parser\"\n    \"go/token\"\n)\n\nfunc main() {\n    fmt.Println(\"Static analysis sees function calls...\")\n    src := \x60package main\nimport \"os/exec\"\nfunc runTest() {\n    cmd := exec.Command(\"mcpdiff\", \"--help\")\n    cmd.Run()\n}\x60\n    \n    fset := token.NewFileSet()\n    node, _ := parser.ParseFile(fset, \"\", src, 0)\n    \n    ast.Inspect(node, func(n ast.Node) bool {\n        if call, ok := n.(*ast.CallExpr); ok {\n            if sel, ok := call.Fun.(*ast.SelectorExpr); ok {\n                if sel.Sel.Name == \"Command\" {\n                    fmt.Println(\"Found exec.Command call\")\n                    fmt.Println(\"Cannot determine target binary statically\")\n                }\n            }\n        }\n        return true\n    })\n}\n" > demo/analyzer.go'
-
 exec go run demo/analyzer.go
 stdout 'Found exec.Command'
 stdout 'Cannot determine target binary statically'
 
-# This demonstrates the fundamental limitation:
-# 1. This scripttest executes echo and mcpdiff
-# 2. Static analysis of this test would only see "exec" commands
-# 3. It can't determine which specific binaries are executed
-# 4. Traditional callgraph tools miss these dynamic connections
+-- demo/analyzer.go --
+package main
+
+import (
+    "fmt"
+    "go/ast"
+    "go/parser"
+    "go/token"
+)
+
+func main() {
+    const src = `package main
+import "os/exec"
+func runTest() {
+    cmd := exec.Command("mcpdiff", "--help")
+    cmd.Run()
+}`
+    node, err := parser.ParseFile(token.NewFileSet(), "", src, 0)
+    if err != nil {
+        panic(err)
+    }
+    ast.Inspect(node, func(n ast.Node) bool {
+        if call, ok := n.(*ast.CallExpr); ok {
+            if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Command" {
+                fmt.Println("Found exec.Command call")
+                fmt.Println("Cannot determine target binary statically")
+            }
+        }
+        return true
+    })
+}

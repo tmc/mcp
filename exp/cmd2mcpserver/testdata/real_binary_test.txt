@@ -8,7 +8,7 @@ exec which mcpspy
 cp stdout mcpspy_path.txt
 
 # Test cmd2mcpserver with verbose output on mcpspy
-exec sh -c 'cmd2mcpserver -v -tool-def $(cat mcpspy_path.txt)'
+exec sh -c 'binary=$(cat mcpspy_path.txt); cd "$MCP_REPO_ROOT" && cmd2mcpserver -v -tool-def "$binary"'
 stdout 'Binary Analysis:'
 stdout 'Module: github.com/tmc/mcp/exp/cmd/mcpspy'
 stdout 'Command mcpspy records MCP interactions'
@@ -21,7 +21,7 @@ stdout '"name": "mcpspy"'
 exec which mcp-probe
 cp stdout probe_path.txt
 
-exec sh -c 'cmd2mcpserver -v -tool-def $(cat probe_path.txt)'
+exec sh -c 'binary=$(cat probe_path.txt); cd "$MCP_REPO_ROOT" && cmd2mcpserver -v -tool-def "$binary"'
 stdout 'Binary Analysis:'
 stdout 'Module: github.com/tmc/mcp/exp/cmd/mcp-probe'
 
@@ -29,7 +29,7 @@ stdout 'Module: github.com/tmc/mcp/exp/cmd/mcp-probe'
 exec which mcpdiff
 cp stdout diff_path.txt
 
-exec sh -c 'cmd2mcpserver -v -tool-def $(cat diff_path.txt)'
+exec sh -c 'binary=$(cat diff_path.txt); cd "$MCP_REPO_ROOT" && cmd2mcpserver -v -tool-def "$binary"'
 stdout 'Binary Analysis:'
 stdout 'Module: github.com/tmc/mcp/exp/cmd/mcpdiff'
 stdout '"name":\s*"mcpdiff"'

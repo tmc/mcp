@@ -91,16 +91,19 @@ func record(path string, fixed bool, protocol string) error {
 	defer right.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	server, err := newServer(fixed).Connect(ctx, &sdk.IOTransport{Reader: right, Writer: right}, nil)
+	trace := mcptrace.NewWriter(file)
+	// Record each direction before its receiving peer handles the message.
+	server, err := newServer(fixed).Connect(ctx, &sdk.IOTransport{
+		Reader: mcptrace.ReadCloser(right, trace, "send"), Writer: right,
+	}, nil)
 	if err != nil {
 		return err
 	}
 	defer server.Close()
-	trace := mcptrace.NewWriter(file)
 	client := sdk.NewClient(&sdk.Implementation{Name: "workflow", Version: "1"}, &sdk.ClientOptions{Capabilities: &sdk.ClientCapabilities{}})
 	session, err := client.Connect(ctx, &sdk.IOTransport{
 		Reader: mcptrace.ReadCloser(left, trace, "recv"),
-		Writer: mcptrace.WriteCloser(left, trace, "send"),
+		Writer: left,
 	}, &sdk.ClientSessionOptions{ProtocolVersion: protocol})
 	if err != nil {
 		return err

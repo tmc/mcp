@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tmc/mcp/mcpfixture"
 	"github.com/tmc/mcp/mcptrace"
 )
 
@@ -19,6 +20,28 @@ import (
 func TestWorkflow(t *testing.T) {
 	for _, protocol := range []string{"2025-11-25", "2026-07-28"} {
 		t.Run(protocol, func(t *testing.T) { testWorkflow(t, protocol) })
+	}
+}
+
+func TestRecordedFixture(t *testing.T) {
+	for _, protocol := range []string{"2025-11-25", "2026-07-28"} {
+		t.Run(protocol, func(t *testing.T) {
+			for i := 0; i < 20; i++ {
+				path := filepath.Join(t.TempDir(), "session.mcp")
+				if err := record(path, false, protocol); err != nil {
+					t.Fatal(err)
+				}
+				file, err := os.Open(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = mcpfixture.Convert(file, io.Discard, mcpfixture.Options{Record: callRecord(t, path)})
+				file.Close()
+				if err != nil {
+					t.Fatalf("recording %d: %v", i, err)
+				}
+			}
+		})
 	}
 }
 
